@@ -1,0 +1,8 @@
+.git
+.github
+web/node_modules
+web/dist
+web/.vinext
+web/.wrangler
+web/coverage
+*.log

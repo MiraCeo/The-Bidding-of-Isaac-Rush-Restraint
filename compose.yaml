@@ -1,0 +1,9 @@
+services:
+  game:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: the-bidding-of-isaac:local
+    ports:
+      - "3000:80"
+    restart: unless-stopped
