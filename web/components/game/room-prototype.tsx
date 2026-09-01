@@ -1,154 +1,338 @@
-'use client';
-
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, Coins, Gauge, Scale, ShieldAlert, Sparkles } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Coins,
+  Gauge,
+  Menu,
+  Scale,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type Group = 'A' | 'B';
-type Intent = 'bid' | 'disrupt' | 'withdraw';
+type ActionKind = 'bid' | 'disrupt' | 'withdraw';
+type SelectedAction = { kind: ActionKind; group?: Group };
+
+interface PlayerRanking {
+  id: string;
+  name: string;
+  money: number;
+  isHuman?: boolean;
+}
 
 const rewards = {
-  A: { name: '谨慎者的存钱罐', description: '保留余地，强化后续房间的资金规划。', tone: 'amber' },
-  B: { name: '冲锋者的筹码', description: '承担风险，争取当前房间的主动权。', tone: 'red' },
+  A: { emoji: '❤️', name: '谨慎者的存钱罐', description: '把今天的余裕，留给下一次抉择。' },
+  B: { emoji: '🔥', name: '冲锋者的筹码', description: '把风险推高，也把机会握在手中。' },
 } as const;
 
-const actionCopy: Record<Intent, { title: string; description: string }> = {
-  bid: { title: '正常竞拍', description: '进入最高价与合作区两条奖励路线。' },
-  disrupt: { title: '扰乱市场', description: '放弃奖励资格，以更强权重影响共同市场。' },
-  withdraw: { title: '退出房间', description: '不花费、不计分，为之后保存全部资金。' },
-};
+const players: PlayerRanking[] = [
+  { id: 'p07', name: '守夜人', money: 100 },
+  { id: 'p12', name: '纸冠', money: 100 },
+  { id: 'human', name: '你', money: 100, isHuman: true },
+  { id: 'p03', name: '红桃六', money: 96 },
+  { id: 'p15', name: '长尾猫', money: 94 },
+  { id: 'p01', name: '阿贝尔', money: 91 },
+  { id: 'p18', name: '旧钥匙', money: 89 },
+  { id: 'p09', name: '灯芯', money: 86 },
+  { id: 'p05', name: '灰骰子', money: 82 },
+  { id: 'p14', name: '盐柱', money: 80 },
+  { id: 'p04', name: '羊皮卷', money: 76 },
+  { id: 'p17', name: '小石子', money: 73 },
+  { id: 'p02', name: '木勺', money: 69 },
+  { id: 'p11', name: '空口袋', money: 65 },
+  { id: 'p19', name: '黑烛', money: 62 },
+  { id: 'p08', name: '铜纽扣', money: 58 },
+  { id: 'p16', name: '蓝火柴', money: 53 },
+  { id: 'p06', name: '玻璃眼', money: 48 },
+  { id: 'p13', name: '断羽', money: 44 },
+  { id: 'p10', name: '无名者', money: 39 },
+];
+
+const marketPlayers = [
+  { value: 14, group: 'A' },
+  { value: 22, group: 'B' },
+  { value: 31, group: 'A' },
+  { value: 38, group: 'B' },
+  { value: 45, group: 'A' },
+  { value: 55, group: 'A' },
+  { value: 63, group: 'B' },
+  { value: 72, group: 'A' },
+  { value: 81, group: 'B' },
+  { value: 92, group: 'A' },
+  { value: 104, group: 'B' },
+] as const;
 
 export function RoomPrototype() {
-  const [group, setGroup] = useState<Group>('A');
-  const [intent, setIntent] = useState<Intent>('bid');
-  const [amount, setAmount] = useState(24);
-  const maximum = intent === 'disrupt' ? 50 : 100;
-  const effectiveAmount = Math.min(amount, maximum);
-  const marketEquivalent = useMemo(
-    () => (intent === 'disrupt' ? effectiveAmount * 2.5 : effectiveAmount),
-    [effectiveAmount, intent],
+  const [rankingOpen, setRankingOpen] = useState(false);
+  const [marketOpen, setMarketOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<SelectedAction>({ kind: 'bid', group: 'A' });
+  const [amounts, setAmounts] = useState({
+    A: { bid: 24, disrupt: 18 },
+    B: { bid: 24, disrupt: 18 },
+  });
+
+  const ranking = useMemo(
+    () => [...players].sort((left, right) => right.money - left.money || left.name.localeCompare(right.name, 'zh-CN')),
+    [],
   );
 
-  function chooseIntent(nextIntent: Intent) {
-    setIntent(nextIntent);
-    if (nextIntent === 'disrupt' && amount > 50) setAmount(50);
+  const selectedAmount = selectedAction.group
+    ? amounts[selectedAction.group][selectedAction.kind === 'withdraw' ? 'bid' : selectedAction.kind]
+    : 0;
+  const marketEquivalent = selectedAction.kind === 'disrupt' ? selectedAmount * 2.5 : selectedAmount;
+  const marketPosition = Math.min((marketEquivalent / 125) * 100, 100);
+
+  function selectAction(kind: Exclude<ActionKind, 'withdraw'>, group: Group) {
+    setSelectedAction({ kind, group });
+  }
+
+  function setAmount(group: Group, kind: 'bid' | 'disrupt', amount: number) {
+    setAmounts((current) => ({
+      ...current,
+      [group]: { ...current[group], [kind]: amount },
+    }));
+    selectAction(kind, group);
+  }
+
+  const selectedLabel = selectedAction.kind === 'withdraw'
+    ? '静观其变，保存全部资金'
+    : `${selectedAction.kind === 'bid' ? '竞拍' : '扰乱'}奖励 ${selectedAction.group} · 支付 ${selectedAmount}`;
+  const confirmLabel = selectedAction.kind === 'bid'
+    ? '出价竞拍'
+    : selectedAction.kind === 'disrupt'
+      ? '扰乱市场'
+      : '静观其变';
+
+  return (
+    <main className="game-page">
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="brand-block">
+            <p className="eyebrow">THE BIDDING OF ISAAC</p>
+            <h1>以撒的竞合：冲 · 慎</h1>
+          </div>
+
+          <nav className="main-nav" aria-label="主导航">
+            <button type="button" className="nav-item nav-item-active" aria-current="page">游戏</button>
+            <button type="button" className="nav-item" disabled>排行</button>
+            <button type="button" className="nav-item" disabled>设置</button>
+            <button type="button" className="nav-item" disabled>规则</button>
+          </nav>
+
+          <div className="round-status">
+            <span className="status-chip"><Gauge aria-hidden="true" />第 1 层 · 房间 1/5</span>
+            <span className="status-chip status-chip-money"><Coins aria-hidden="true" /><strong>100</strong></span>
+          </div>
+        </div>
+      </header>
+
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-left ${rankingOpen ? 'drawer-tab-expanded' : ''}`}
+        onClick={() => setRankingOpen((open) => !open)}
+        aria-controls="ranking-drawer"
+        aria-expanded={rankingOpen}
+      >
+        <Menu aria-hidden="true" />
+        <span>{rankingOpen ? '收起排行' : '排行'}</span>
+        {rankingOpen ? <ChevronLeft aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+      </button>
+
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
+        onClick={() => setMarketOpen((open) => !open)}
+        aria-controls="market-drawer"
+        aria-expanded={marketOpen}
+      >
+        {marketOpen ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+        <span>{marketOpen ? '收起市场' : '市场'}</span>
+        <Scale aria-hidden="true" />
+      </button>
+
+      <aside id="ranking-drawer" className={`side-drawer ranking-drawer ${rankingOpen ? 'drawer-open' : ''}`} aria-hidden={!rankingOpen} inert={!rankingOpen}>
+        <div className="drawer-heading">
+          <div><p className="eyebrow">PLAYER RANKING</p><h2>资金排行</h2></div>
+        </div>
+        <p className="drawer-description">按照当前剩余资金从高到低排列。</p>
+        <ol className="ranking-list">
+          {ranking.map((player, index) => (
+            <li key={player.id} className={player.isHuman ? 'ranking-self' : ''}>
+              <span className="ranking-position">{index + 1}</span>
+              <span className="ranking-avatar" aria-hidden="true">{player.name.slice(0, 1)}</span>
+              <span className="ranking-name">{player.name}{player.isHuman && <small>当前玩家</small>}</span>
+              <strong><Coins aria-hidden="true" />{player.money}</strong>
+            </li>
+          ))}
+        </ol>
+      </aside>
+
+      <aside id="market-drawer" className={`side-drawer market-drawer ${marketOpen ? 'drawer-open' : ''}`} aria-hidden={!marketOpen} inert={!marketOpen}>
+        <div className="drawer-heading">
+          <div><p className="eyebrow">SHARED MARKET</p><h2>全房间共同市场</h2></div>
+        </div>
+        <p className="drawer-description">A、B 两组共同影响一条市场基准线。</p>
+
+        <div className="vertical-market-wrap">
+          <span className="market-top-label">高投入 · 125</span>
+          <div className="vertical-market" aria-label="纵向共同市场示意">
+            <div className="vertical-cooperation-zone" />
+            <div className="vertical-baseline"><span>共同基准线</span></div>
+            {[0, 25, 50, 75, 100, 125].map((tick) => (
+              <span key={tick} className="market-tick" style={{ bottom: `${(tick / 125) * 100}%` }}>{tick}</span>
+            ))}
+            {marketPlayers.map((player, index) => (
+              <span
+                key={`${player.value}-${index}`}
+                className={`vertical-player-marker market-group-${player.group.toLowerCase()}`}
+                style={{ bottom: `${(player.value / 125) * 100}%`, left: `${index % 3 === 0 ? 38 : index % 3 === 1 ? 50 : 62}%` }}
+              />
+            ))}
+            {selectedAction.kind !== 'withdraw' && (
+              <span className="vertical-self-marker" style={{ bottom: `${marketPosition}%` }}><b>你</b></span>
+            )}
+          </div>
+          <span className="market-bottom-label">低投入 · 0</span>
+        </div>
+
+        <div className="market-legend">
+          <span><i className="legend-dot market-group-a" />A 组</span>
+          <span><i className="legend-dot market-group-b" />B 组</span>
+          <span><i className="legend-dot legend-self" />你</span>
+        </div>
+        <div className="market-readout">
+          <span>你的市场等价出价</span>
+          <strong>{selectedAction.kind === 'withdraw' ? '—' : marketEquivalent}</strong>
+        </div>
+      </aside>
+
+      <section className="game-stage" aria-label="房间行动区">
+        <div className="room-intro">
+          <div><p className="eyebrow">ROOM REWARDS</p><h2>选择这一房间的目标</h2></div>
+          <p>所有行动将同时秘密提交</p>
+        </div>
+
+        <div className="reward-grid">
+          {(Object.keys(rewards) as Group[]).map((group) => {
+            const reward = rewards[group];
+            const groupSelected = selectedAction.group === group && selectedAction.kind !== 'withdraw';
+            return (
+              <section key={group} className={`reward-column reward-column-${group.toLowerCase()}`}>
+                <article className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}>
+                  <span className="item-emoji" aria-hidden="true">{reward.emoji}</span>
+                  <h3>{reward.name}</h3>
+                  <p>{reward.description}</p>
+                </article>
+
+                <fieldset className="action-pair">
+                  <legend className="sr-only">奖励 {group} 的行动</legend>
+                  <ActionOption
+                    group={group}
+                    kind="bid"
+                    amount={amounts[group].bid}
+                    maximum={100}
+                    selected={selectedAction.kind === 'bid' && selectedAction.group === group}
+                    onSelect={() => selectAction('bid', group)}
+                    onAmountChange={(amount) => setAmount(group, 'bid', amount)}
+                  />
+                  <ActionOption
+                    group={group}
+                    kind="disrupt"
+                    amount={amounts[group].disrupt}
+                    maximum={50}
+                    selected={selectedAction.kind === 'disrupt' && selectedAction.group === group}
+                    onSelect={() => selectAction('disrupt', group)}
+                    onAmountChange={(amount) => setAmount(group, 'disrupt', amount)}
+                  />
+                </fieldset>
+              </section>
+            );
+          })}
+        </div>
+
+        <footer className="action-footer">
+          <div className="action-summary">
+            <span>当前选择</span>
+            <strong>{selectedLabel}</strong>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            className={`confirm-button confirm-button-${selectedAction.kind}`}
+          >
+            {confirmLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="observe-button"
+            onClick={() => setSelectedAction({ kind: 'withdraw' })}
+          >
+            静观其变
+          </Button>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+interface ActionOptionProps {
+  group: Group;
+  kind: 'bid' | 'disrupt';
+  amount: number;
+  maximum: number;
+  selected: boolean;
+  onSelect: () => void;
+  onAmountChange: (amount: number) => void;
+}
+
+function ActionOption({ group, kind, amount, maximum, selected, onSelect, onAmountChange }: ActionOptionProps) {
+  const id = `${kind}-${group}`;
+  const isDisruption = kind === 'disrupt';
+
+  function changeAmount(nextAmount: number) {
+    onSelect();
+    onAmountChange(Math.min(maximum, Math.max(1, nextAmount)));
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col px-4 py-5 sm:px-7 lg:px-10">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <div>
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1 className="mt-1 text-2xl font-black tracking-[-0.04em] sm:text-3xl">以撒的竞合：冲 · 慎</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="status-chip"><Gauge aria-hidden="true" />第 1 层 · 房间 1/5</div>
-            <div className="status-chip status-chip-money"><Coins aria-hidden="true" /><strong>100</strong></div>
-          </div>
-        </header>
-
-        <section className="mt-6 grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              {(Object.keys(rewards) as Group[]).map((rewardGroup) => {
-                const reward = rewards[rewardGroup];
-                const selected = group === rewardGroup && intent !== 'withdraw';
-                return (
-                  <button
-                    key={rewardGroup}
-                    type="button"
-                    onClick={() => { setGroup(rewardGroup); if (intent === 'withdraw') setIntent('bid'); }}
-                    className={`reward-card reward-${reward.tone} ${selected ? 'reward-selected' : ''}`}
-                    aria-pressed={selected}
-                  >
-                    <span className="reward-letter">{rewardGroup}</span>
-                    <span>
-                      <span className="block text-lg font-extrabold">{reward.name}</span>
-                      <span className="mt-1 block text-sm leading-6 text-muted-foreground">{reward.description}</span>
-                    </span>
-                    {selected && <span className="selected-label">已选择</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            <Card className="market-card">
-              <CardHeader className="border-b border-white/10">
-                <CardTitle className="flex items-center gap-2 text-lg font-bold"><Scale aria-hidden="true" className="text-primary" />全房间共同市场</CardTitle>
-                <CardDescription>A、B 两组共享同一条基准线；下方仅为界面示意，正式公式尚待接入。</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="market-scale" aria-label="共同市场基准线示意图">
-                  <div className="cooperation-zone" />
-                  <div className="baseline" style={{ left: '52%' }}><span>共同基准线</span></div>
-                  {[12, 23, 31, 38, 45, 58, 66, 74, 81, 89].map((position, index) => (
-                    <span key={position} className={`bot-marker ${index % 2 ? 'bot-b' : 'bot-a'}`} style={{ left: `${position}%` }} title={`人机玩家 ${index + 1}`} />
-                  ))}
-                  {intent !== 'withdraw' && <span className="player-marker" style={{ left: `${Math.min(marketEquivalent, 100)}%` }}>你</span>}
-                </div>
-                <div className="mt-7 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>低投入</span>
-                  <span className="flex items-center gap-2"><i className="legend-dot bg-[var(--group-a)]" /> A 组 <i className="legend-dot bg-[var(--group-b)]" /> B 组 <i className="legend-dot bg-primary" /> 你的市场位置</span>
-                  <span>高投入</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rule-note"><Sparkles aria-hidden="true" /><span><strong>竞</strong>：以资金争取最高价奖励</span></div>
-              <div className="rule-note"><Scale aria-hidden="true" /><span><strong>合</strong>：靠近共同基准线</span></div>
-              <div className="rule-note"><ArrowDownToLine aria-hidden="true" /><span><strong>退</strong>：保存资金等待时机</span></div>
-            </div>
-          </div>
-
-          <aside>
-            <Card className="action-panel xl:sticky xl:top-6">
-              <CardHeader>
-                <p className="eyebrow">秘密行动</p>
-                <CardTitle className="text-xl font-black">你准备怎么做？</CardTitle>
-                <CardDescription>其余 19 名玩家也会同时提交，确认前不会公开。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="grid gap-2">
-                  {(Object.keys(actionCopy) as Intent[]).map((item) => (
-                    <button type="button" key={item} onClick={() => chooseIntent(item)} className={`intent-button ${intent === item ? 'intent-selected' : ''}`} aria-pressed={intent === item}>
-                      <span className="font-bold">{actionCopy[item].title}</span>
-                      <span>{actionCopy[item].description}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {intent !== 'withdraw' && (
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-end justify-between gap-4"><label htmlFor="bid-amount" className="text-sm font-bold">实际出价</label><output className="font-mono text-2xl font-black text-primary">{effectiveAmount}</output></div>
-                    <input id="bid-amount" className="bid-slider mt-4" type="range" min="1" max={maximum} value={effectiveAmount} onChange={(event) => setAmount(Number(event.target.value))} />
-                    <div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>1</span><span>{maximum} 上限</span></div>
-                  </div>
-                )}
-
-                <div className="summary-box">
-                  {intent === 'withdraw' ? (
-                    <p>本轮不消耗资金、不获取积分，也不影响市场。</p>
-                  ) : intent === 'disrupt' ? (
-                    <>
-                      <p className="flex items-center gap-2 font-bold text-[var(--warning)]"><ShieldAlert aria-hidden="true" />扰乱将放弃全部奖励资格</p>
-                      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt>市场等价出价</dt><dd>{marketEquivalent}</dd></div><div><dt>计分等价出价</dt><dd>{effectiveAmount * 1.25}</dd></div></dl>
-                    </>
-                  ) : (
-                    <p>你将以 <strong>{effectiveAmount}</strong> 竞拍奖励 {group}，并同时参与最高价与合作区判定。</p>
-                  )}
-                </div>
-
-                <Button className="h-12 w-full text-base font-black" size="lg">锁定秘密行动</Button>
-                <p className="text-center text-xs text-muted-foreground">原型界面 · 当前不会真正提交结算</p>
-              </CardContent>
-            </Card>
-          </aside>
-        </section>
+    <div className={`action-option ${isDisruption ? 'action-option-disrupt' : ''} ${selected ? 'action-option-selected' : ''}`}>
+      <label className="action-option-label" htmlFor={id} aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group}`}>
+        <input id={id} type="radio" name="room-action" checked={selected} onChange={onSelect} />
+        <span>
+          <strong>{isDisruption ? '扰乱市场' : '出价竞拍'}</strong>
+          <small>{isDisruption ? '2.5× 市场影响，放弃奖励' : '争夺最高价与合作区奖励'}</small>
+        </span>
+      </label>
+      <div className="action-control-row">
+        <div className="slider-block">
+          <input
+            type="range"
+            min="1"
+            max={maximum}
+            value={amount}
+            aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的出价`}
+            onFocus={onSelect}
+            onPointerDown={onSelect}
+            onChange={(event) => changeAmount(Number(event.target.value))}
+          />
+          <div className="range-limits"><span>1</span><span>{maximum} 上限</span></div>
+        </div>
+        <div className="number-stepper">
+          <button type="button" onClick={() => changeAmount(amount - 1)} disabled={amount <= 1} aria-label="出价减一">−1</button>
+          <input
+            type="number"
+            min="1"
+            max={maximum}
+            value={amount}
+            onFocus={onSelect}
+            onChange={(event) => changeAmount(Number(event.target.value))}
+            aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的数值`}
+          />
+          <button type="button" onClick={() => changeAmount(amount + 1)} disabled={amount >= maximum} aria-label="出价加一">+1</button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

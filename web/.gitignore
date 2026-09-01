@@ -36,3 +36,6 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# local simulation console captures; keep curated Markdown reports instead
+/simulation-output*.txt

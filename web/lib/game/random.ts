@@ -1,6 +1,4 @@
-export interface RandomSource {
-  next(): number;
-}
+import type { RandomSource } from './types';
 
 export function createSeededRandom(seed: number): RandomSource {
   let state = seed >>> 0;

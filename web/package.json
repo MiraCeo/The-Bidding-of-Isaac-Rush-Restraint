@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "vite preview --host 0.0.0.0 --port 3000",
     "test": "vitest run",
+    "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",
     "lint": "oxlint",
     "format": "oxfmt"
   },
