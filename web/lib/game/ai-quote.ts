@@ -75,6 +75,8 @@ export interface AnalyzeAiQuoteOptions {
   context?: AiDecisionContext;
   profile?: AiQuoteProfile;
   cooperationPositionOverride?: number;
+  randomNoiseRatio?: number;
+  forceLegalMaximum?: boolean;
 }
 
 const baseQuoteRatios: Readonly<Record<QuotingStrategy, number>> = {
@@ -434,7 +436,8 @@ export function analyzeAiQuote(options: AnalyzeAiQuoteOptions): AiQuoteAnalysis 
     };
   });
   const selectedCandidate = weightedPick(candidates, random);
-  const randomFactor = 0.95 + random.next() * 0.1;
+  const randomNoiseRatio = clamp(options.randomNoiseRatio ?? 0.05, 0, 0.25);
+  const randomFactor = 1 - randomNoiseRatio + random.next() * randomNoiseRatio * 2;
   const desiredEquivalentQuote = roundMoney(selectedCandidate.desiredEquivalent * randomFactor);
   const requestedAction = actionFromEquivalent(player, strategy, group, desiredEquivalentQuote, rules);
   const nominalQuoteBeforeLimit = requestedAction.type === 'withdraw' ? 0 : requestedAction.amount;
@@ -445,7 +448,9 @@ export function analyzeAiQuote(options: AnalyzeAiQuoteOptions): AiQuoteAnalysis 
   const legalMaximum = strategy === 'disrupt_high' || strategy === 'disrupt_cooperate'
     ? Math.floor(player.money * rules.disruptionMaxMoneyRatio)
     : player.money;
-  const amount = Math.max(0, Math.min(nominalQuoteBeforeLimit, paceMaximumNominal, legalMaximum));
+  const amount = options.forceLegalMaximum
+    ? legalMaximum
+    : Math.max(0, Math.min(nominalQuoteBeforeLimit, paceMaximumNominal, legalMaximum));
   const finalAction: PlayerAction = strategy === 'disrupt_high' || strategy === 'disrupt_cooperate'
     ? { type: 'disrupt', group, amount }
     : { type: 'bid', group, amount };

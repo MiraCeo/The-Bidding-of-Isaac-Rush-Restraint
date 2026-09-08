@@ -216,6 +216,7 @@ export interface SimulationOptions {
   personalityCountMinimum?: number;
   personalityCountMaximum?: number;
   enableDoubleActions?: boolean;
+  personalityPool?: readonly AiPersonality[];
 }
 
 export interface DoctrinePerformanceSummary {
@@ -702,6 +703,7 @@ export function simulateAiGames(
             personalityRandom,
             options.personalityCountMinimum ?? 1,
             options.personalityCountMaximum ?? 3,
+            options.personalityPool,
           )
         : [];
       playerPersonalities.set(player.id, personalities);

@@ -35,11 +35,16 @@ export type {
 export {
   aiPersonalityNames,
   aiPersonalityOrder,
+  implementedAiPersonalityOrder,
+  initialAiPersonalityOrder,
   calculatePersonalityGroupMultipliers,
   calculatePersonalityMultipliers,
   generateAiPersonalities,
+  personalityAnalysisInfluence,
   personalitiesConflict,
   personalityCooperationPosition,
+  personalityForcesMaximumQuote,
+  personalityQuoteNoiseRatio,
   reshapeWeightsForPersonalities,
 } from './ai-personality';
 export type { AiPersonality } from './ai-personality';

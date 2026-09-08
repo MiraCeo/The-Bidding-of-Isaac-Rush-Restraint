@@ -4,7 +4,10 @@ import { getDoubleActionScoreMultiplier } from './characters';
 import {
   calculatePersonalityGroupMultipliers,
   calculatePersonalityMultipliers,
+  personalityAnalysisInfluence,
   personalityCooperationPosition,
+  personalityForcesMaximumQuote,
+  personalityQuoteNoiseRatio,
   reshapeWeightsForPersonalities,
   type AiPersonality,
 } from './ai-personality';
@@ -296,6 +299,8 @@ function considerSecondaryAction(
       context: options.context,
       profile: options.quoteProfile,
       cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
+      randomNoiseRatio: personalityQuoteNoiseRatio(options.personalities ?? []),
+      forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
     });
     const amount = Math.min(rawQuote.amount, legalSecondaryMaximum);
     const action = mode === 'bid'
@@ -422,21 +427,25 @@ export function decideAiTurn(
   const liquidityMultipliers = liquidityStrategyMultipliers[getAiLiquidityBand(liquidityRatio)];
   const doctrineWeights = aiDoctrineWeights[options.doctrine ?? 'balanced'];
   const analysis = options.context ? analyzeAiDecision(player, options.context) : null;
+  const analysisInfluence = personalityAnalysisInfluence(options.personalities ?? []);
   const personalityMultipliers = calculatePersonalityMultipliers(
     options.personalities ?? [],
     options.context,
     analysis,
+    liquidityRatio,
   );
 
   let finalWeights = Object.fromEntries(
     strategyOrder.map((strategy) => {
       const modifier = Math.max(0, options.strategyMultipliers?.[strategy] ?? 1);
-      const situationModifier = options.enableSituationAnalysis === false
+      const rawSituationModifier = options.enableSituationAnalysis === false
         ? 1
         : analysis?.situationMultipliers[strategy] ?? 1;
-      const itemModifier = options.enableItemAnalysis === false
+      const rawItemModifier = options.enableItemAnalysis === false
         ? 1
         : analysis?.itemMultipliers[strategy] ?? 1;
+      const situationModifier = rawSituationModifier ** analysisInfluence.situation;
+      const itemModifier = rawItemModifier ** analysisInfluence.items;
       const decisionNoise = 0.9 + random.next() * 0.2;
       return [
         strategy,
@@ -507,6 +516,8 @@ export function decideAiTurn(
     context: options.context,
     profile: options.quoteProfile,
     cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
+    randomNoiseRatio: personalityQuoteNoiseRatio(options.personalities ?? []),
+    forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
   });
   const { baseQuote, randomFactor: quoteFactor, amount } = quoteAnalysis;
 

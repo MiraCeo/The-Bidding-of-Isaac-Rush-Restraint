@@ -205,6 +205,45 @@ describe('provisional AI decision and quoting', () => {
     );
   });
 
+  it('lets all-in spend the full legal amount after choosing a first-floor action', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 87, score: 0, isHuman: false });
+    const decision = decideAiTurn(player, 0, defaultRules, queuedRandom(), {
+      context: decisionContext('normal'),
+      personalities: ['all_in'],
+      strategyMultipliers: {
+        cooperate: 0,
+        disrupt_high: 0,
+        disrupt_cooperate: 0,
+        withdraw: 0,
+      },
+      groupWeights: { A: 1, B: 0 },
+    });
+    expect(decision.strategy).toBe('high_bid');
+    expect(decision.turn.actions[0]).toEqual({ type: 'bid', group: 'A', amount: 87 });
+  });
+
+  it('expands final quote noise to plus or minus fifteen percent for gamblers', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+    const decision = decideAiTurn(player, 0, defaultRules, queuedRandom(), {
+      personalities: ['gambler'],
+      strategyMultipliers: {
+        cooperate: 0,
+        disrupt_high: 0,
+        disrupt_cooperate: 0,
+        withdraw: 0,
+      },
+      groupWeights: { A: 1, B: 0 },
+      quoteProfile: {
+        highestPredictionBias: 1,
+        targetPredictionBias: 1,
+        cooperationPositionBias: 0,
+        qualificationPredictionBias: 1,
+      },
+      quoteRandom: queuedRandom(0.5, 0.5, 0.5, 0.5, 0.5, 0),
+    });
+    expect(decision.quoteFactor).toBe(0.85);
+  });
+
   it('can conditionally add a legal second bid through More Options', () => {
     const player = createRuntimePlayer({ id: 'ai', money: 500, score: 0, isHuman: false });
     player.items.push({ instanceId: 'options', itemId: 'more_options', acquiredOrder: 1 });
