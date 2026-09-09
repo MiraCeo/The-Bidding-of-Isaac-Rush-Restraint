@@ -14,7 +14,7 @@ import { calculateHighPriceSlotCount } from './rewards';
 import { resolveTurnActions, validateTurn } from './turns';
 import type { MarketBaseline, RandomSource, RewardGroup, RulesConfig } from './types';
 
-interface Entitlement {
+export interface Entitlement {
   playerId: string;
   group: RewardGroup;
   sources: string[];
