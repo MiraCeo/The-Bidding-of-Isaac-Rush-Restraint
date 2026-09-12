@@ -59,21 +59,21 @@ describe('client game session', () => {
     expect(clientGameReducer(active, { type: 'start_game', characterId: 'lost' })).toBe(active);
   });
 
-  it('accepts one legal human turn and locks the room for AI reveal', () => {
+  it('accepts one legal human turn and settles immediately', () => {
     const active = startClientGame('isaac', 7);
     const turn = {
       playerId: 'human',
       actions: [{ type: 'bid' as const, group: 'A' as const, amount: 25 }],
     };
     const submitted = clientGameReducer(active, { type: 'submit_player_turn', turn });
-    expect(submitted.phase).toBe('ai_reveal');
+    expect(submitted.phase).toBe('room_result');
     if (submitted.phase === 'character_selection') throw new Error('Expected an active game.');
     expect(submitted.submittedPlayerTurn).toEqual(turn);
     expect(submitted.revealedAiDecisions).toHaveLength(19);
     expect(submitted.pendingRoomTurns).toHaveLength(20);
     expect(submitted.pendingRoomTurns?.[0]).toEqual(turn);
     for (const decision of submitted.revealedAiDecisions) {
-      const player = submitted.players.find((candidate) => candidate.id === decision.turn.playerId);
+      const player = submitted.roomSettlement?.playersBefore.find((candidate) => candidate.id === decision.turn.playerId);
       expect(player).toBeDefined();
       expect(validateTurn(player!, decision.turn, defaultRules)).toEqual([]);
     }
@@ -110,15 +110,12 @@ describe('client game session', () => {
     expect(submitted).toBe(active);
   });
 
-  it('settles the revealed room once and stores a structured result', () => {
+  it('stores a structured result as part of submission', () => {
     const active = startClientGame('isaac', 314159);
-    const revealed = clientGameReducer(active, {
+    const settled = clientGameReducer(active, {
       type: 'submit_player_turn',
       turn: { playerId: 'human', actions: [{ type: 'bid', group: 'A', amount: 25 }] },
     });
-    if (revealed.phase !== 'ai_reveal') throw new Error('Expected AI reveal.');
-
-    const settled = clientGameReducer(revealed, { type: 'settle_room' });
     expect(settled.phase).toBe('room_result');
     if (settled.phase === 'character_selection') throw new Error('Expected an active game.');
     expect(settled.roomSettlement).not.toBeNull();
@@ -132,21 +129,14 @@ describe('client game session', () => {
     expect(settled.players).not.toEqual(active.players);
     expect(active.players.find((player) => player.id === 'human')?.money).toBe(110);
     expect(settled.players.every((player) => Number.isInteger(player.money))).toBe(true);
-    expect(clientGameReducer(settled, { type: 'settle_room' })).toBe(settled);
   });
 
-  it('replays the same settlement deterministically from the same room state', () => {
-    const createRevealed = () => clientGameReducer(startClientGame('eden', 271828), {
+  it('replays the same direct settlement deterministically from the same room state', () => {
+    const createSettled = () => clientGameReducer(startClientGame('eden', 271828), {
       type: 'submit_player_turn',
       turn: { playerId: 'human', actions: [{ type: 'bid', group: 'B', amount: 20 }] },
     });
-    const first = createRevealed();
-    const second = createRevealed();
-    if (first.phase !== 'ai_reveal' || second.phase !== 'ai_reveal') {
-      throw new Error('Expected AI reveal states.');
-    }
-    expect(clientGameReducer(first, { type: 'settle_room' }))
-      .toEqual(clientGameReducer(second, { type: 'settle_room' }));
+    expect(createSettled()).toEqual(createSettled());
   });
 
   it('plays all fifteen rooms through to a complete final ranking', () => {
@@ -161,9 +151,9 @@ describe('client game session', () => {
         type: 'submit_player_turn',
         turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
       });
-      expect(state.phase).toBe('ai_reveal');
-      state = clientGameReducer(state, { type: 'settle_room' });
       expect(state.phase).toBe('room_result');
+      state = clientGameReducer(state, { type: 'show_room_ranking', view: 'score' });
+      expect(state.phase).toBe('room_ranking');
       state = clientGameReducer(state, { type: 'advance_room' });
     }
 
@@ -188,11 +178,41 @@ describe('client game session', () => {
           type: 'submit_player_turn',
           turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
         });
-        state = clientGameReducer(state, { type: 'settle_room' });
+        state = clientGameReducer(state, { type: 'show_room_ranking', view: 'score' });
         state = clientGameReducer(state, { type: 'advance_room' });
       }
       return state;
     };
     expect(playGame()).toEqual(playGame());
+  });
+
+  it('opens either ranking view and switches between them', () => {
+    const active = startClientGame('isaac', 8080);
+    const settled = clientGameReducer(active, {
+      type: 'submit_player_turn',
+      turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+    });
+    const contest = clientGameReducer(settled, { type: 'show_room_ranking', view: 'contest' });
+    expect(contest.phase).toBe('room_ranking');
+    if (contest.phase !== 'room_ranking') throw new Error('Expected room ranking.');
+    expect(contest.roomRankingView).toBe('contest');
+    const score = clientGameReducer(contest, { type: 'switch_room_ranking', view: 'score' });
+    expect(score.phase).toBe('room_ranking');
+    if (score.phase !== 'room_ranking') throw new Error('Expected room ranking.');
+    expect(score.roomRankingView).toBe('score');
+  });
+
+  it('can skip both ranking views directly from settlement', () => {
+    const active = startClientGame('isaac', 9090);
+    const settled = clientGameReducer(active, {
+      type: 'submit_player_turn',
+      turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+    });
+    expect(settled.phase).toBe('room_result');
+    const nextRoom = clientGameReducer(settled, { type: 'advance_room' });
+    expect(nextRoom.phase).toBe('room_action');
+    if (nextRoom.phase === 'character_selection') throw new Error('Expected an active game.');
+    expect(nextRoom.roomIndex).toBe(1);
+    expect(nextRoom.roomRankingView).toBe('score');
   });
 });

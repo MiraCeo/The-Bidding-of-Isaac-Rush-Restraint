@@ -12,7 +12,6 @@ import {
   itemPresentations,
   validateTurn,
   type ActiveClientGameState,
-  type AiStrategy,
   type PlayerAction,
   type PlayerTurn,
   type RewardGroup,
@@ -27,7 +26,6 @@ type SelectedAction =
 interface RoomPrototypeProps {
   game: ActiveClientGameState;
   onSubmit: (turn: PlayerTurn) => void;
-  onSettle: () => void;
 }
 
 const roomKindNames = {
@@ -39,20 +37,12 @@ const roomKindNames = {
 } as const;
 const poolNames = { common: '常见', boss: 'BOSS', curse: '诅咒' } as const;
 const rarityNames = { normal: '普通', rare: '稀有' } as const;
-const strategyNames: Readonly<Record<AiStrategy, string>> = {
-  high_bid: '高价竞争',
-  cooperate: '合作竞争',
-  disrupt_high: '高价扰乱',
-  disrupt_cooperate: '合作扰乱',
-  withdraw: '观望',
-};
-
 function actionLabel(action: PlayerAction): string {
   if (action.type === 'withdraw') return '静观其变';
   return `${action.type === 'bid' ? '竞拍' : '扰乱'} ${action.group} · ${action.amount}`;
 }
 
-export function RoomPrototype({ game, onSubmit, onSettle }: RoomPrototypeProps) {
+export function RoomPrototype({ game, onSubmit }: RoomPrototypeProps) {
   const floorMoney = defaultRules.floorStartingMoney[game.floorIndex]!;
   const [rankingOpen, setRankingOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);
@@ -299,41 +289,6 @@ export function RoomPrototype({ game, onSubmit, onSettle }: RoomPrototypeProps) 
           <Button type="button" size="lg" className={`confirm-button confirm-button-${selectedAction.kind}`} disabled={locked || turnErrors.length > 0} onClick={() => onSubmit(turn)}>{confirmLabel}</Button>
           <Button type="button" variant="secondary" className="observe-button" disabled={locked} onClick={() => setSelectedAction({ kind: 'withdraw', groups: [] })}>静观其变</Button>
         </footer>
-        {game.phase === 'ai_reveal' && (
-          <section className="ai-reveal" aria-labelledby="ai-reveal-title">
-            <div className="ai-reveal-heading">
-              <div><p className="eyebrow">ACTIONS REVEALED</p><h2 id="ai-reveal-title">AI 行动已公开</h2></div>
-              <div className="ai-reveal-next">
-                <p>19 名 AI 已根据提交前的公开局势完成决策。</p>
-                <Button type="button" onClick={onSettle}>结算本房间</Button>
-              </div>
-            </div>
-            <div className="ai-action-grid">
-              {game.revealedAiDecisions.map((decision) => {
-                const profile = game.aiProfiles[decision.turn.playerId];
-                const player = game.players.find((candidate) => candidate.id === decision.turn.playerId);
-                return (
-                  <article key={decision.turn.playerId} className="ai-action-card">
-                    <div className="ai-action-identity">
-                      <span className="ranking-avatar" aria-hidden="true">{profile?.name.slice(0, 1)}</span>
-                      <span><strong>{profile?.name ?? decision.turn.playerId}</strong><small>{player?.characterId ? characterNames[player.characterId] : '未知角色'}</small></span>
-                    </div>
-                    <span className={`strategy-chip strategy-chip-${decision.strategy}`}>{strategyNames[decision.strategy]}</span>
-                    <div className="ai-action-values">
-                      {decision.turn.actions.map((action, index) => <span key={index}>{actionLabel(action)}</span>)}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-        {game.phase === 'room_result' && game.roomSettlement && (
-          <section className="settlement-ready" aria-live="polite">
-            <div><p className="eyebrow">ROOM SETTLED</p><h2>本房间结算完成</h2></div>
-            <p>共同基准线 <strong>{game.roomSettlement.baseline?.target.toFixed(2) ?? '无'}</strong>，已记录 <strong>{game.roomSettlement.events.length}</strong> 项结算事件。</p>
-          </section>
-        )}
       </section>
     </main>
   );

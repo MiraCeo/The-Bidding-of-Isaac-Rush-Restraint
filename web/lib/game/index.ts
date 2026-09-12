@@ -84,6 +84,7 @@ export type {
   ClientRoomSettlementRecord,
   ClientGameAction,
   ClientGamePhase,
+  ClientRankingView,
   ClientGameState,
 } from './client-session';
 export type {

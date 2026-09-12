@@ -218,29 +218,7 @@
 .market-readout { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); padding: 12px; color: var(--muted-foreground); font-size: .68rem; }
 .market-readout strong { color: var(--primary); font-family: var(--font-mono); font-size: 1rem; }
 
-.ai-reveal { margin-top: 2.5vh; border-top: 1px solid var(--border); padding-top: 2.5vh; }
-.ai-reveal-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
-.ai-reveal-heading h2 { margin-top: 4px; font-size: 1.25rem; font-weight: 900; }
-.ai-reveal-next { display: flex; align-items: center; gap: 16px; }
-.ai-reveal-next p { max-width: 420px; color: var(--muted-foreground); font-size: .78rem; line-height: 1.6; text-align: right; }
-.ai-reveal-next button { min-width: 140px; background: var(--primary); color: var(--primary-foreground); font-weight: 900; }
-.ai-action-grid { display: grid; margin-top: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.ai-action-card { display: grid; min-height: 72px; grid-template-columns: minmax(150px, 1fr) auto minmax(130px, 1fr); align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 12px; background: rgb(25 22 19 / 82%); padding: 11px 14px; }
-.ai-action-identity { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.ai-action-identity > span:last-child { min-width: 0; }
-.ai-action-identity strong, .ai-action-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ai-action-identity strong { font-size: .82rem; }
-.ai-action-identity small { margin-top: 3px; color: var(--muted-foreground); font-size: .67rem; }
-.strategy-chip { border: 1px solid rgb(237 175 61 / 25%); border-radius: 999px; background: rgb(237 175 61 / 8%); padding: 5px 9px; color: var(--primary); font-size: .67rem; font-weight: 850; white-space: nowrap; }
-.strategy-chip-disrupt_high, .strategy-chip-disrupt_cooperate { border-color: rgb(211 90 77 / 32%); background: rgb(211 90 77 / 9%); color: #e47769; }
-.strategy-chip-withdraw { border-color: rgb(255 255 255 / 10%); background: rgb(255 255 255 / 4%); color: var(--muted-foreground); }
-.ai-action-values { display: flex; min-width: 0; align-items: end; flex-direction: column; gap: 3px; color: var(--foreground); font-family: var(--font-mono); font-size: .72rem; }
-.settlement-ready { display: flex; margin-top: 2.5vh; align-items: center; justify-content: space-between; gap: 24px; border: 1px solid rgb(237 175 61 / 35%); border-radius: 14px; background: rgb(237 175 61 / 7%); padding: 18px 20px; }
-.settlement-ready h2 { margin-top: 3px; font-size: 1.15rem; font-weight: 900; }
-.settlement-ready > p { color: var(--muted-foreground); font-size: .82rem; }
-.settlement-ready strong { color: var(--primary); font-family: var(--font-mono); font-size: 1rem; }
-
-.result-page, .final-page { min-height: 100vh; background: radial-gradient(circle at 50% 4%, rgb(126 79 36 / 12%), transparent 38rem), var(--background); }
+.result-page, .ranking-page, .final-page { min-height: 100vh; background: radial-gradient(circle at 50% 4%, rgb(126 79 36 / 12%), transparent 38rem), var(--background); }
 .result-header-title { display: flex; align-items: center; flex-direction: column; color: var(--muted-foreground); font-size: .7rem; }
 .result-header-title strong { margin-top: 2px; color: var(--foreground); font-size: .95rem; }
 .result-stage, .final-stage { width: min(92vw, 1480px); margin: 0 auto; padding: 3vh 0 6vh; }
@@ -251,6 +229,7 @@
 .result-summary-grid .summary-score { color: var(--primary); }
 .result-summary-grid .summary-negative { color: var(--group-b); }
 .result-main-grid { display: grid; margin-top: 14px; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 14px; }
+.result-main-grid-reversed { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
 .result-panel { border: 1px solid var(--border); border-radius: 15px; background: rgb(27 23 20 / 88%); padding: 20px; }
 .result-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .result-panel-heading h2 { margin-top: 4px; font-size: 1.1rem; font-weight: 900; }
@@ -268,7 +247,9 @@
 .score-total-row strong { color: var(--primary); font-family: var(--font-mono); font-size: 1rem; }
 .score-cleared { margin-top: 10px; color: var(--group-b); font-size: .75rem; }
 .settled-rewards { display: grid; margin-top: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.settled-rewards > article { border: 1px solid var(--border); border-radius: 12px; background: rgb(255 255 255 / 2%); padding: 14px; }
+.settled-rewards > article { position: relative; border: 1px solid var(--border); border-radius: 12px; background: rgb(255 255 255 / 2%); padding: 14px; }
+.settled-rewards > article.settled-reward-earned { border-color: rgb(237 175 61 / 72%); background: linear-gradient(145deg, rgb(237 175 61 / 12%), rgb(255 255 255 / 2%)); box-shadow: 0 12px 34px rgb(237 175 61 / 10%), inset 0 0 28px rgb(237 175 61 / 5%); }
+.earned-badge { position: absolute; top: 10px; right: 10px; border-radius: 999px; background: var(--primary); padding: 5px 9px; color: var(--primary-foreground); font-size: .64rem; font-weight: 950; }
 .settled-reward-title { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .settled-reward-title > span { font-family: "Segoe UI Emoji", sans-serif; font-size: 2rem; }
 .settled-reward-title small { color: var(--muted-foreground); font-size: .62rem; }
@@ -276,6 +257,13 @@
 .result-line { display: grid; margin-top: 7px; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; font-size: .68rem; line-height: 1.45; }
 .result-line span { color: var(--muted-foreground); }
 .result-line strong { text-align: right; }
+.reward-acquired-banner { display: flex; margin-top: 14px; min-height: 92px; align-items: center; gap: 22px; border: 1px solid rgb(237 175 61 / 65%); border-radius: 15px; background: linear-gradient(100deg, rgb(237 175 61 / 16%), rgb(237 175 61 / 5%)); padding: 13px 20px; box-shadow: 0 14px 42px rgb(237 175 61 / 8%); }
+.reward-acquired-label { flex: 0 0 auto; border-right: 1px solid rgb(237 175 61 / 30%); padding-right: 20px; color: var(--primary); font-size: .76rem; font-weight: 950; letter-spacing: .08em; }
+.reward-acquired-banner > div { display: flex; align-items: center; gap: 11px; }
+.reward-acquired-emoji { font-family: "Segoe UI Emoji", sans-serif; font-size: 2.7rem; filter: drop-shadow(0 8px 12px rgb(0 0 0 / 25%)); }
+.reward-acquired-banner small, .reward-acquired-banner strong { display: block; }
+.reward-acquired-banner small { color: var(--muted-foreground); font-size: .65rem; }
+.reward-acquired-banner strong { margin-top: 3px; font-size: 1rem; }
 .event-panel, .round-ranking-panel, .final-ranking-panel { margin-top: 14px; }
 .event-list { display: flex; margin-top: 14px; flex-wrap: wrap; gap: 8px; }
 .event-list span { border: 1px solid rgb(237 175 61 / 18%); border-radius: 999px; background: rgb(237 175 61 / 5%); padding: 7px 10px; color: var(--muted-foreground); font-size: .7rem; }
@@ -289,10 +277,50 @@
 .result-self-row { background: rgb(237 175 61 / 7%); color: var(--foreground); }
 .result-self-row td:first-child { color: var(--primary); font-weight: 900; }
 .result-actions { display: flex; margin-top: 18px; align-items: center; justify-content: flex-end; gap: 24px; }
-.result-actions > div { display: flex; align-items: end; flex-direction: column; }
+.result-actions > .result-actions-copy, .result-actions > div:first-child { display: flex; align-items: end; flex-direction: column; }
 .result-actions span { color: var(--muted-foreground); font-size: .68rem; }
 .result-actions strong { margin-top: 3px; font-size: .82rem; }
 .result-actions button, .final-actions button { min-width: 210px; background: var(--primary); color: var(--primary-foreground); font-weight: 900; }
+.result-action-buttons { display: flex; align-items: center; flex-direction: row; gap: 9px; }
+.result-action-buttons button { min-width: 132px; }
+.result-action-buttons button:not(:last-child) { border-color: rgb(237 175 61 / 30%); background: rgb(237 175 61 / 5%); color: var(--foreground); }
+.result-action-buttons button:not(:last-child):hover { background: rgb(237 175 61 / 12%); }
+
+.ranking-stage { width: min(92vw, 1480px); margin: 0 auto; padding: 4vh 0 6vh; }
+.ranking-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.ranking-page-heading h2 { margin-top: 5px; font-size: 1.55rem; font-weight: 950; }
+.ranking-page-heading > p { color: var(--muted-foreground); font-size: .78rem; }
+.ranking-page-panel { margin-top: 18px; padding: 22px 24px; }
+.ranking-table { font-size: .78rem; }
+.ranking-table th, .ranking-table td { height: 48px; }
+.ranking-actions { margin-top: 18px; }
+.ranking-view-tabs { display: inline-flex; margin-top: 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: rgb(25 22 19 / 88%); padding: 4px; }
+.ranking-view-tabs button { min-width: 116px; border: 0; border-radius: 7px; background: transparent; padding: 9px 16px; color: var(--muted-foreground); font-size: .76rem; font-weight: 850; }
+.ranking-view-tabs button:hover { color: var(--foreground); }
+.ranking-view-tabs button.ranking-view-tab-active { background: var(--primary); color: var(--primary-foreground); }
+.contest-grid { display: grid; margin-top: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.contest-panel { min-width: 0; padding: 20px; }
+.contest-panel-heading { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 18px; }
+.contest-panel-heading > strong { flex: 0 0 auto; border-radius: 999px; background: rgb(237 175 61 / 9%); padding: 7px 11px; color: var(--primary); font-family: var(--font-mono); font-size: .72rem; }
+.contest-item-title { display: flex; min-width: 0; align-items: center; gap: 12px; }
+.contest-item-title > span { font-family: "Segoe UI Emoji", sans-serif; font-size: 2.4rem; }
+.contest-item-title small { color: var(--muted-foreground); font-size: .62rem; }
+.contest-item-title h3 { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; }
+.contest-table-head, .contest-row { display: grid; grid-template-columns: minmax(120px, 1.25fr) .58fr .65fr .7fr minmax(116px, 1fr); align-items: center; gap: 9px; }
+.contest-table-head { margin-top: 14px; border-block: 1px solid var(--border); padding: 9px 10px; color: var(--muted-foreground); font-size: .6rem; }
+.contest-list { display: grid; max-height: 55vh; margin-top: 5px; gap: 4px; overflow-y: auto; padding: 0; list-style: none; }
+.contest-empty { padding: 28px 10px; color: var(--muted-foreground); font-size: .72rem; text-align: center; }
+.contest-row { min-height: 45px; border: 1px solid transparent; border-radius: 8px; padding: 6px 10px; color: var(--muted-foreground); font-family: var(--font-mono); font-size: .69rem; }
+.contest-row > span:first-child { display: flex; min-width: 0; align-items: center; gap: 10px; font-family: var(--font-sans); }
+.contest-row > span:first-child b { width: 18px; color: #776c61; font-family: var(--font-mono); font-size: .62rem; text-align: center; }
+.contest-row > span:first-child strong { overflow: hidden; color: var(--foreground); text-overflow: ellipsis; white-space: nowrap; font-size: .73rem; }
+.contest-row-awarded { border-color: rgb(237 175 61 / 48%); background: rgb(237 175 61 / 8%); }
+.contest-row-disrupted { border-color: rgb(211 90 77 / 48%); background: rgb(211 90 77 / 8%); }
+.contest-action-disrupt { color: var(--group-b); font-weight: 900; }
+.contest-statuses { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.contest-badge { display: inline-flex; border-radius: 999px; background: rgb(255 255 255 / 6%); padding: 4px 7px; color: var(--muted-foreground); font-family: var(--font-sans); font-size: .58rem; font-style: normal; font-weight: 850; white-space: nowrap; }
+.contest-badge-awarded { background: var(--primary); color: var(--primary-foreground); }
+.contest-badge-disrupted { background: var(--group-b); color: white; }
 
 .final-stage { width: min(90vw, 1320px); }
 .final-hero { padding: 5vh 0 3vh; text-align: center; }

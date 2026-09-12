@@ -29,9 +29,11 @@ import { validateTurn } from './turns';
 export type ClientGamePhase =
   | 'character_selection'
   | 'room_action'
-  | 'ai_reveal'
   | 'room_result'
+  | 'room_ranking'
   | 'game_result';
+
+export type ClientRankingView = 'score' | 'contest';
 
 export interface CharacterSelectionState {
   phase: 'character_selection';
@@ -74,6 +76,7 @@ export interface ActiveClientGameState {
   pendingRoomTurns: PlayerTurn[] | null;
   recentMarkets: AiPublicMarketSnapshot[];
   roomSettlement: ClientRoomSettlementRecord | null;
+  roomRankingView: ClientRankingView;
   finalRanking: ClientFinalRankingEntry[];
 }
 
@@ -89,7 +92,12 @@ export type ClientGameAction =
       turn: PlayerTurn;
     }
   | {
-      type: 'settle_room';
+      type: 'show_room_ranking';
+      view: ClientRankingView;
+    }
+  | {
+      type: 'switch_room_ranking';
+      view: ClientRankingView;
     }
   | {
       type: 'advance_room';
@@ -213,6 +221,7 @@ export function startClientGame(
     pendingRoomTurns: null,
     recentMarkets: [],
     roomSettlement: null,
+    roomRankingView: 'score',
     finalRanking: [],
   };
 }
@@ -452,6 +461,7 @@ function advanceClientRoom(state: ActiveClientGameState): ActiveClientGameState 
     revealedAiDecisions: [],
     pendingRoomTurns: null,
     roomSettlement: null,
+    roomRankingView: 'score',
   };
 }
 
@@ -467,18 +477,21 @@ export function clientGameReducer(
     if (!human || validateTurn(human, action.turn, defaultRules).length > 0) return state;
     const submittedState: ActiveClientGameState = {
       ...state,
-      phase: 'ai_reveal',
       submittedPlayerTurn: action.turn,
     };
-    return {
+    const revealedState: ActiveClientGameState = {
       ...submittedState,
       ...revealAiDecisions(submittedState),
     };
+    return settleClientRoom(revealedState);
   }
-  if (action.type === 'settle_room' && state.phase === 'ai_reveal') {
-    return settleClientRoom(state);
+  if (action.type === 'show_room_ranking' && state.phase === 'room_result') {
+    return { ...state, phase: 'room_ranking', roomRankingView: action.view };
   }
-  if (action.type === 'advance_room' && state.phase === 'room_result') {
+  if (action.type === 'switch_room_ranking' && state.phase === 'room_ranking') {
+    return { ...state, roomRankingView: action.view };
+  }
+  if (action.type === 'advance_room' && (state.phase === 'room_result' || state.phase === 'room_ranking')) {
     return advanceClientRoom(state);
   }
   if (action.type === 'restart_game' && state.phase === 'game_result') {

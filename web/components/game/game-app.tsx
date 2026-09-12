@@ -2,6 +2,7 @@ import { useReducer } from 'react';
 
 import { CharacterSelection } from './character-selection';
 import { GameResult } from './game-result';
+import { RoomRanking } from './room-ranking';
 import { RoomResult } from './room-result';
 import { RoomPrototype } from './room-prototype';
 import {
@@ -26,7 +27,23 @@ export function GameApp() {
   }
 
   if (game.phase === 'room_result') {
-    return <RoomResult game={game} onAdvance={() => dispatch({ type: 'advance_room' })} />;
+    return (
+      <RoomResult
+        game={game}
+        onShowRanking={(view) => dispatch({ type: 'show_room_ranking', view })}
+        onAdvance={() => dispatch({ type: 'advance_room' })}
+      />
+    );
+  }
+
+  if (game.phase === 'room_ranking') {
+    return (
+      <RoomRanking
+        game={game}
+        onSwitch={(view) => dispatch({ type: 'switch_room_ranking', view })}
+        onAdvance={() => dispatch({ type: 'advance_room' })}
+      />
+    );
   }
 
   if (game.phase === 'game_result') {
@@ -43,7 +60,6 @@ export function GameApp() {
       key={`${game.floorIndex}:${game.roomIndex}`}
       game={game}
       onSubmit={(turn) => dispatch({ type: 'submit_player_turn', turn })}
-      onSettle={() => dispatch({ type: 'settle_room' })}
     />
   );
 }
