@@ -1,6 +1,7 @@
 import { Coins, Crown, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import {
   aiPersonalityNames,
   characterNames,
@@ -11,6 +12,7 @@ import {
 interface GameResultProps {
   game: ActiveClientGameState;
   onRestart: () => void;
+  scoreDecimals?: ScoreDisplayDecimals;
 }
 
 const doctrineNames: Readonly<Record<AiDoctrine, string>> = {
@@ -19,7 +21,7 @@ const doctrineNames: Readonly<Record<AiDoctrine, string>> = {
   chaotic: '混乱主义',
 };
 
-export function GameResult({ game, onRestart }: GameResultProps) {
+export function GameResult({ game, onRestart, scoreDecimals = 2 }: GameResultProps) {
   const playerById = new Map(game.players.map((player) => [player.id, player]));
   const playerName = (playerId: string) => playerId === game.humanPlayerId
     ? '你'
@@ -41,7 +43,7 @@ export function GameResult({ game, onRestart }: GameResultProps) {
         <div className="final-hero">
           <p className="eyebrow">FINAL RANKING</p>
           <h2>本局最终排行</h2>
-          <p>你以 <strong>{humanEntry?.finalScore.toFixed(2) ?? '0.00'}</strong> 分位列第 <strong>{humanRank}</strong> 名。</p>
+          <p>你以 <strong>{(humanEntry?.finalScore ?? 0).toFixed(scoreDecimals)}</strong> 分位列第 <strong>{humanRank}</strong> 名。</p>
         </div>
 
         <div className="podium-grid">
@@ -53,7 +55,7 @@ export function GameResult({ game, onRestart }: GameResultProps) {
                 <span className="podium-avatar" aria-hidden="true">{playerName(entry.playerId).slice(0, 1)}</span>
                 <h3>{playerName(entry.playerId)}</h3>
                 <p>{player?.characterId ? characterNames[player.characterId] : '未知角色'}</p>
-                <strong>{entry.finalScore.toFixed(2)}</strong>
+                <strong>{entry.finalScore.toFixed(scoreDecimals)}</strong>
                 <small>{player?.items.length ?? 0} 件道具 · {player?.money ?? 0} 资金</small>
               </article>
             );
@@ -78,7 +80,7 @@ export function GameResult({ game, onRestart }: GameResultProps) {
                       <td>{profile ? profile.personalities.map((personality) => aiPersonalityNames[personality]).join('、') : '—'}</td>
                       <td>{player?.items.length ?? 0}</td>
                       <td><span className="money-cell"><Coins aria-hidden="true" />{player?.money ?? 0}</span></td>
-                      <td><strong>{entry.finalScore.toFixed(2)}</strong></td>
+                      <td><strong>{entry.finalScore.toFixed(scoreDecimals)}</strong></td>
                     </tr>
                   );
                 })}

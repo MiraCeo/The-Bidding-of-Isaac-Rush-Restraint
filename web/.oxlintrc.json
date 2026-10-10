@@ -28,6 +28,7 @@
     "out/**",
     "build/**",
     "dist/**",
+    "dist-offline/**",
     "coverage/**",
     "next-env.d.ts"
   ],

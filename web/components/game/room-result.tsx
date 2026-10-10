@@ -1,6 +1,7 @@
 import { ArrowRight, Coins } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import {
   characterNames,
   defaultRules,
@@ -15,6 +16,7 @@ interface RoomResultProps {
   game: ActiveClientGameState;
   onShowRanking: (view: ClientRankingView) => void;
   onAdvance: () => void;
+  scoreDecimals?: ScoreDisplayDecimals;
 }
 
 const roomKindNames = {
@@ -26,7 +28,7 @@ function actionLabel(action: PlayerAction): string {
   return `${action.type === 'bid' ? '竞拍' : '扰乱'} ${action.group} · ${action.amount}`;
 }
 
-export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) {
+export function RoomResult({ game, onShowRanking, onAdvance, scoreDecimals = 2 }: RoomResultProps) {
   const settlement = game.roomSettlement;
   if (!settlement) throw new Error('结算页面缺少房间结算记录。');
   const humanBefore = settlement.playersBefore.find((player) => player.id === game.humanPlayerId);
@@ -64,7 +66,7 @@ export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) 
         <div className="result-summary-grid">
           <article><span>共同基准线</span><strong>{settlement.baseline?.target.toFixed(2) ?? '无市场样本'}</strong><small>{settlement.baseline ? `均值 ${settlement.baseline.meanMarketBid.toFixed(2)} + 常量 ${settlement.baseline.floorConstant.toFixed(2)}` : '本房间无人参与市场'}</small></article>
           <article><span>合作区</span><strong>{settlement.baseline ? `${Math.max(0, settlement.baseline.target - cooperationRadius).toFixed(2)} – ${(settlement.baseline.target + cooperationRadius).toFixed(2)}` : '—'}</strong><small>基准线上下各 {cooperationRadius} 范围</small></article>
-          <article><span>本房积分</span><strong className="summary-score">+{humanScore.finalScore.toFixed(2)}</strong><small>当前总分 {humanAfter.score.toFixed(2)}</small></article>
+          <article><span>本房积分</span><strong className="summary-score">+{humanScore.finalScore.toFixed(scoreDecimals)}</strong><small>当前总分 {humanAfter.score.toFixed(scoreDecimals)}</small></article>
           <article><span>资金变化</span><strong className={humanAfter.money - humanBefore.money < 0 ? 'summary-negative' : 'summary-score'}>{humanAfter.money - humanBefore.money >= 0 ? '+' : ''}{humanAfter.money - humanBefore.money}</strong><small>{humanBefore.money} → {humanAfter.money}</small></article>
         </div>
 
@@ -115,15 +117,15 @@ export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) 
                       <div><dt>实际扣款</dt><dd>{resolved.actualCost}</dd></div>
                       <div><dt>市场等价</dt><dd>{resolved.marketEquivalent ?? '—'}</dd></div>
                       <div><dt>计分等价</dt><dd>{score?.scoringValue ?? resolved.scoringEquivalent ?? '—'}</dd></div>
-                      <div><dt>基础积分</dt><dd>{score?.baseScore.toFixed(2) ?? '0.00'}</dd></div>
-                      <div><dt>加算积分</dt><dd>{score?.additiveScore.toFixed(2) ?? '0.00'}</dd></div>
+                      <div><dt>基础积分</dt><dd>{(score?.baseScore ?? 0).toFixed(scoreDecimals)}</dd></div>
+                      <div><dt>加算积分</dt><dd>{(score?.additiveScore ?? 0).toFixed(scoreDecimals)}</dd></div>
                     </dl>
                   </article>
                 );
               })}
             </div>
-            <div className="score-total-row"><span>原始结算积分</span><strong>{humanScore.initialScore.toFixed(2)}</strong><span>追溯追加积分</span><strong>+{humanScore.retroactiveScore.toFixed(2)}</strong></div>
-            <div className="score-total-row"><span>积分乘算倍率</span><strong>×{finalMultiplier.toFixed(3)}</strong><span>最终房间积分</span><strong>{humanScore.finalScore.toFixed(2)}</strong></div>
+            <div className="score-total-row"><span>原始结算积分</span><strong>{humanScore.initialScore.toFixed(scoreDecimals)}</strong><span>追溯追加积分</span><strong>+{humanScore.retroactiveScore.toFixed(scoreDecimals)}</strong></div>
+            <div className="score-total-row"><span>积分乘算倍率</span><strong>×{finalMultiplier.toFixed(3)}</strong><span>最终房间积分</span><strong>{humanScore.finalScore.toFixed(scoreDecimals)}</strong></div>
             {humanBreakdown?.cleared && <p className="score-cleared">本房间积分因道具效果被清零。</p>}
           </section>
         </div>

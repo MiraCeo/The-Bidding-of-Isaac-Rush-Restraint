@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc --noEmit && vite build",
+    "build:offline": "tsc --noEmit && node scripts/build-offline.mjs",
     "start": "vite preview --host 0.0.0.0 --port 3000",
     "test": "vitest run",
     "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",
@@ -30,6 +31,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
+    "happy-dom": "20.14.6",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
