@@ -29,6 +29,11 @@ export type AiDoctrine = 'balanced' | 'cooperative' | 'chaotic';
 
 export type AiStrategyWeights = Record<AiStrategy, number>;
 
+export interface AiDecisionExperiments {
+  gamblerQuoteNoiseRatio?: number;
+  doubleActionBudgetBasis?: 'public' | 'character';
+}
+
 export interface AiDecisionOptions {
   strategyMultipliers?: Partial<Record<AiStrategy, number>>;
   groupWeights?: Partial<Record<RewardGroup, number>>;
@@ -43,6 +48,8 @@ export interface AiDecisionOptions {
   /** Includes the room currently being played. */
   remainingRooms?: number;
   enableDoubleActions?: boolean;
+  /** Opt-in research only; the playable client keeps the existing defaults. */
+  experiments?: AiDecisionExperiments;
 }
 
 export interface AiDecision {
@@ -78,6 +85,8 @@ export interface AiSecondaryActionAnalysis {
   nextRoomReserve: number;
   totalNominalCap: number;
   totalActualCostCap: number;
+  budgetBasis: 'public' | 'character';
+  budgetFloorStartingMoney: number;
   legalSecondaryMaximum: number;
   selectedStrategy: Exclude<AiStrategy, 'withdraw'> | null;
   selectedQuote: AiQuoteAnalysis | null;
@@ -198,6 +207,17 @@ function predictedBaseScore(value: number, target: number, sigma: number): numbe
   return 100 * Math.exp(-Math.abs(value - target) / sigma);
 }
 
+function quoteNoiseRatio(options: AiDecisionOptions): number {
+  const personalities = options.personalities ?? [];
+  const override = options.experiments?.gamblerQuoteNoiseRatio;
+  if (override !== undefined && (!Number.isFinite(override) || override < 0 || override > 0.25)) {
+    throw new RangeError('Experimental quote noise must be between 0 and 0.25.');
+  }
+  return personalities.includes('gambler') && override !== undefined
+    ? override
+    : personalityQuoteNoiseRatio(personalities);
+}
+
 function considerSecondaryAction(
   player: RuntimePlayerState,
   primaryStrategy: Exclude<AiStrategy, 'withdraw'>,
@@ -224,9 +244,13 @@ function considerSecondaryAction(
     ? Math.ceil(Math.max(player.money / remainingRooms, floorMoney * 0.1))
     : 0;
   const totalNominalCap = Math.floor(player.money * doubleActionNominalMoneyRatio);
+  const budgetBasis = options.experiments?.doubleActionBudgetBasis ?? 'public';
+  const budgetFloorStartingMoney = budgetBasis === 'character'
+    ? player.characterFloorStartingMoney ?? floorMoney
+    : floorMoney;
   const totalActualCostCap = roundMoney(Math.min(
     player.money * doubleActionNominalMoneyRatio,
-    floorMoney * doubleActionFloorActualCostRatio,
+    budgetFloorStartingMoney * doubleActionFloorActualCostRatio,
   ));
   const primaryAction = mode === 'bid'
     ? { type: 'bid' as const, group: primaryGroup, amount: primaryAmount }
@@ -256,6 +280,8 @@ function considerSecondaryAction(
       nextRoomReserve,
       totalNominalCap,
       totalActualCostCap,
+      budgetBasis,
+      budgetFloorStartingMoney,
       legalSecondaryMaximum: 0,
       selectedStrategy: null,
       selectedQuote: null,
@@ -266,6 +292,10 @@ function considerSecondaryAction(
   const strategies: readonly Exclude<AiStrategy, 'withdraw'>[] = mode === 'bid'
     ? ['high_bid', 'cooperate']
     : ['disrupt_high', 'disrupt_cooperate'];
+  const doctrineWeights = aiDoctrineWeights[options.doctrine ?? 'balanced'];
+  const allowedStrategies = strategies.filter(
+    (strategy) => doctrineWeights[strategy] > 0 && finalWeights[strategy] > 0,
+  );
   const sigma = floorMoney * rules.scoreSigmaRatio;
   const primarySingleScore = predictedBaseScore(
     primaryAmounts.scoringEquivalent ?? 0,
@@ -285,7 +315,7 @@ function considerSecondaryAction(
   );
   const groupValue = clamp(analysis?.groupValues[remainingGroup] ?? 0.5, 0, 1.25);
 
-  const candidateBundles = strategies.map((strategy) => {
+  const candidateBundles = allowedStrategies.map((strategy) => {
     const rawQuote = analyzeAiQuote({
       player,
       strategy,
@@ -299,7 +329,7 @@ function considerSecondaryAction(
       context: options.context,
       profile: options.quoteProfile,
       cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
-      randomNoiseRatio: personalityQuoteNoiseRatio(options.personalities ?? []),
+      randomNoiseRatio: quoteNoiseRatio(options),
       forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
     });
     const amount = Math.min(rawQuote.amount, legalSecondaryMaximum);
@@ -350,7 +380,7 @@ function considerSecondaryAction(
     const costPenalty = (amount / floorMoney) * 45 * reservePressure;
     const expectedUtility = expectedScoreDelta + expectedItemUtility + expectedSabotageUtility - costPenalty;
     const strategyShare = finalWeights[strategy] /
-      Math.max(1, strategies.reduce((sum, value) => sum + finalWeights[value], 0));
+      Math.max(1, allowedStrategies.reduce((sum, value) => sum + finalWeights[value], 0));
     const weight = Math.exp(clamp(expectedUtility / 28, -4, 4)) * (0.45 + strategyShare * 2.2);
     const selectedQuote: AiQuoteAnalysis = {
       ...rawQuote,
@@ -386,6 +416,8 @@ function considerSecondaryAction(
       nextRoomReserve,
       totalNominalCap,
       totalActualCostCap,
+      budgetBasis,
+      budgetFloorStartingMoney,
       legalSecondaryMaximum,
       selectedStrategy: null,
       selectedQuote: null,
@@ -404,6 +436,8 @@ function considerSecondaryAction(
     nextRoomReserve,
     totalNominalCap,
     totalActualCostCap,
+    budgetBasis,
+    budgetFloorStartingMoney,
     legalSecondaryMaximum,
     selectedStrategy: selected.analysis.strategy,
     selectedQuote: selected.quote,
@@ -516,7 +550,7 @@ export function decideAiTurn(
     context: options.context,
     profile: options.quoteProfile,
     cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
-    randomNoiseRatio: personalityQuoteNoiseRatio(options.personalities ?? []),
+    randomNoiseRatio: quoteNoiseRatio(options),
     forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
   });
   const { baseQuote, randomFactor: quoteFactor, amount } = quoteAnalysis;

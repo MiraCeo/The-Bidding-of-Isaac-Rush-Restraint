@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { analyzeAiDecision, createEmptyAiHistory, type AiDecisionContext } from './ai-analysis';
 import type { GeneratedRoom, ItemId } from './item-types';
 import { createRuntimePlayer } from './runtime';
+import { getItemDefinition } from './item-catalog';
 
 function context(room: GeneratedRoom, overrides: Partial<AiDecisionContext> = {}): AiDecisionContext {
   return {
@@ -82,5 +83,28 @@ describe('AI situation and item-value analysis', () => {
     player.items.push({ instanceId: 't', itemId: 'transcendence', acquiredOrder: 1 });
     const after = analyzeAiDecision(player, context(room('transcendence', 'score_charm')));
     expect(after.groupValues.A).toBeLessThan(before.groupValues.A);
+  });
+
+  it.each(['brimstone', 'short_brimstone', 'lucky_foot'] as const)(
+    'treats %s as non-stacking and discounts every repeat to 0.08', (itemId) => {
+      const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+      expect(getItemDefinition(itemId).effectStacks).toBe(false);
+      expect(analyzeAiDecision(player, context(room(itemId, 'score_charm'))).groupValues.A)
+        .toBeGreaterThan(0.08);
+      for (let copies = 1; copies <= 3; copies += 1) {
+        player.items.push({ instanceId: `copy-${copies}`, itemId, acquiredOrder: copies });
+        expect(analyzeAiDecision(player, context(room(itemId, 'score_charm'))).groupValues.A)
+          .toBe(0.08);
+      }
+    },
+  );
+
+  it('does not expose an owned non-stacking item behind a hidden reward', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+    player.items.push({ instanceId: 'owned', itemId: 'brimstone', acquiredOrder: 1 });
+    const ownedHidden = analyzeAiDecision(player, context(room('score_charm', 'brimstone', true)));
+    const otherHidden = analyzeAiDecision(player, context(room('score_charm', 'sacred_heart', true)));
+    expect(ownedHidden.groupValues.B).toBe(otherHidden.groupValues.B);
+    expect(ownedHidden.groupValues.B).toBeGreaterThan(0.08);
   });
 });

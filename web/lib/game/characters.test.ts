@@ -8,6 +8,21 @@ import {
 } from './characters';
 import { createSeededRandom } from './random';
 import { createRuntimePlayer } from './runtime';
+import { itemCatalog } from './item-catalog';
+import { defaultRules } from './config';
+import { preparePlayersForRoom } from './room-economy';
+import { settleRuntimeRoom } from './room-engine';
+
+function edenWithStartingCross() {
+  const pool = itemCatalog.filter((item) => item.id !== 'grab_bag');
+  const crossIndex = pool.findIndex((item) => item.id === 'wooden_cross');
+  let draws = 0;
+  return assignCharacter(
+    createRuntimePlayer({ id: 'eden', money: 0, score: 0, isHuman: true }),
+    'eden',
+    { next: () => draws++ === 0 ? (crossIndex + 0.5) / pool.length : 0 },
+  );
+}
 
 describe('character system', () => {
   it('defines the five initial characters', () => {
@@ -53,5 +68,59 @@ describe('character system', () => {
     expect(getCharacterFloorStartingMoney(player, 1000, { next: () => 0.5 })).toBe(1000);
     expect(getCharacterFloorStartingMoney(player, 1000, { next: () => 0.999 })).toBe(1100);
     expect(player.items).toEqual([]);
+  });
+
+  it('grants Eden a persistent shield immediately for a starting Wooden Cross', () => {
+    const assigned = edenWithStartingCross();
+    expect(assigned.items.filter((item) => item.itemId === 'wooden_cross')).toHaveLength(1);
+    expect(assigned.persistentShields).toBe(1);
+
+    const firstRoom = preparePlayersForRoom([assigned], 0, 0, defaultRules, { next: () => 0.5 });
+    const nextFloor = preparePlayersForRoom(firstRoom.players, 1, 0, defaultRules, { next: () => 0.5 });
+    expect(firstRoom.players[0]?.persistentShields).toBe(1);
+    expect(nextFloor.players[0]?.persistentShields).toBe(1);
+  });
+
+  it('uses a starting cross for a failed first-room bid and never regenerates it', () => {
+    const prepared = preparePlayersForRoom(
+      [edenWithStartingCross()], 0, 0, defaultRules, { next: () => 0.5 },
+    ).players[0]!;
+    const winner = createRuntimePlayer({ id: 'winner', money: 100, score: 0, isHuman: false });
+    const settled = settleRuntimeRoom(
+      {
+        floorIndex: 0, roomIndex: 0, kind: 'normal',
+        rewards: [
+          { group: 'A', itemId: 'score_charm', hidden: false },
+          { group: 'B', itemId: 'interest', hidden: false },
+        ],
+      },
+      [prepared, winner],
+      [
+        { playerId: 'eden', actions: [{ type: 'bid', group: 'A', amount: 10 }] },
+        { playerId: 'winner', actions: [{ type: 'bid', group: 'A', amount: 50 }] },
+      ],
+      defaultRules,
+      { next: () => 0.5 },
+    );
+    const after = settled.players.find((player) => player.id === 'eden')!;
+    expect(after.money).toBe(prepared.money);
+    expect(after.persistentShields).toBe(0);
+    expect(settled.events).toContainEqual(expect.objectContaining({
+      type: 'refund', playerId: 'eden', itemId: 'wooden_cross', amount: 10,
+    }));
+    expect(preparePlayersForRoom([after], 0, 1, defaultRules, { next: () => 0.5 })
+      .players[0]?.persistentShields).toBe(0);
+    expect(preparePlayersForRoom([after], 1, 0, defaultRules, { next: () => 0.5 })
+      .players[0]?.persistentShields).toBe(0);
+  });
+
+  it('does not double-grant starting Holy Mantle shields when the first floor starts', () => {
+    const base = createRuntimePlayer({ id: 'lost', money: 0, score: 0, isHuman: false });
+    const assigned = assignCharacter(base, 'lost', createSeededRandom(1));
+    expect(assigned.temporaryShields).toBe(1);
+    const prepared = preparePlayersForRoom([assigned], 0, 0, defaultRules, createSeededRandom(2));
+    expect(prepared.players[0]?.temporaryShields).toBe(1);
+    expect(base.items).toEqual([]);
+    expect(base.temporaryShields).toBe(0);
   });
 });

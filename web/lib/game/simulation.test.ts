@@ -82,4 +82,36 @@ describe('20 AI full-game simulation', () => {
       expect(personality.decisions).toBe(personality.playerGames * 15);
     }
   });
+
+  it('separates original, retroactive and final room scoring without changing legacy fields', () => {
+    const report = simulateAiGames(10, 20260908, { ...defaultRules, playerCount: 19 }, {
+      doctrinePopulation: { balanced: 9, cooperative: 5, chaotic: 5 },
+      enablePersonalities: true, personalityCountMinimum: 2, personalityCountMaximum: 4,
+    });
+    const totals = report.scoringTotals;
+    expect(totals.retroactiveRoomScore).toBeGreaterThan(0);
+    expect(totals.initialRoomScore + totals.retroactiveRoomScore).toBeCloseTo(totals.finalRoomScore, 4);
+    expect(totals.finalRoomScore).toBeCloseTo(totals.cumulativeBeforeFinalMultipliers, 4);
+    expect(report.quoteAnalysis.scorePerActualMoney).toBe(totals.initialRoomScore / totals.actualCosts);
+    expect(report.quoteAnalysis.finalScorePerActualMoney).toBe(totals.finalRoomScore / totals.actualCosts);
+    for (const room of Object.values(report.roomKindAnalysis)) {
+      expect(room.initialRoomScore.count).toBe(room.decisions);
+      expect(room.initialRoomScore.mean + room.retroactiveRoomScore.mean).toBeCloseTo(room.finalRoomScore.mean, 5);
+    }
+    expect(report.doubleActionAnalysis.actualRoomScore.mean + report.doubleActionAnalysis.retroactiveRoomScore.mean)
+      .toBeCloseTo(report.doubleActionAnalysis.finalRoomScore.mean, 5);
+  });
+
+  it('keeps gameplay unchanged when research only collects diagnostics with legacy randomness', () => {
+    const settings = { enablePersonalities: true, personalityCountMinimum: 2, personalityCountMaximum: 4 };
+    const baseline = simulateAiGames(5, 42, defaultRules, settings);
+    const research = simulateAiGames(5, 42, defaultRules, { ...settings, research: {} });
+    expect(research.finalScore).toEqual(baseline.finalScore);
+    expect(research.strategyCounts).toEqual(baseline.strategyCounts);
+    expect(research.itemAwardCounts).toEqual(baseline.itemAwardCounts);
+    expect(research.research?.cohorts.all?.players).toBe(100);
+    expect(research.research?.cohorts.all?.score.mean).toBeCloseTo(baseline.finalScore.mean, 8);
+    expect(research.research?.cohorts.all?.scoreQuantiles.p99)
+      .toBeGreaterThanOrEqual(research.research!.cohorts.all!.scoreQuantiles.p50);
+  });
 });

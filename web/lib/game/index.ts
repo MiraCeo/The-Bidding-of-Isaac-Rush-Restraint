@@ -26,11 +26,12 @@ export { getRuntimeActionAmounts, resolveTurnActions, validateTurn } from './tur
 export { calculateTurnScore, calculateFinalScore } from './item-scoring';
 export { preparePlayersForRoom } from './room-economy';
 export { settleRuntimeRoom } from './room-engine';
-export type { Entitlement, RoomSettlementResult } from './room-engine';
+export type { Entitlement, RoomScoreSummary, RoomSettlementResult } from './room-engine';
 export { aiDoctrineWeights, baseAiStrategyWeights, decideAiTurn } from './ai-decision';
 export type {
   AiDecision,
   AiDecisionOptions,
+  AiDecisionExperiments,
   AiDoctrine,
   AiStrategy,
   AiStrategyWeights,
@@ -91,6 +92,7 @@ export type {
   DoctrinePerformanceSummary,
   MetricSummary,
   SimulationOptions,
+  SimulationResearchOptions,
   SimulationReport,
   PersonalityPerformanceSummary,
 } from './simulation';

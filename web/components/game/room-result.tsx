@@ -37,6 +37,8 @@ export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) 
     ? '你'
     : game.aiProfiles[playerId]?.name ?? playerId;
   const humanBreakdown = settlement.scoreBreakdowns[game.humanPlayerId];
+  const humanScore = settlement.roomScoreSummaries[game.humanPlayerId]!;
+  const finalMultiplier = (humanBreakdown?.multiplier ?? 0) * humanScore.retroactiveMultiplier;
   const humanResolved = settlement.resolvedActions.filter((action) => action.playerId === game.humanPlayerId);
   const humanEvents = settlement.events.filter((event) => event.playerId === game.humanPlayerId);
   const humanAwards = settlement.awards.filter((award) => award.playerId === game.humanPlayerId);
@@ -62,7 +64,7 @@ export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) 
         <div className="result-summary-grid">
           <article><span>共同基准线</span><strong>{settlement.baseline?.target.toFixed(2) ?? '无市场样本'}</strong><small>{settlement.baseline ? `均值 ${settlement.baseline.meanMarketBid.toFixed(2)} + 常量 ${settlement.baseline.floorConstant.toFixed(2)}` : '本房间无人参与市场'}</small></article>
           <article><span>合作区</span><strong>{settlement.baseline ? `${Math.max(0, settlement.baseline.target - cooperationRadius).toFixed(2)} – ${(settlement.baseline.target + cooperationRadius).toFixed(2)}` : '—'}</strong><small>基准线上下各 {cooperationRadius} 范围</small></article>
-          <article><span>本房积分</span><strong className="summary-score">+{(humanAfter.score - humanBefore.score).toFixed(2)}</strong><small>当前总分 {humanAfter.score.toFixed(2)}</small></article>
+          <article><span>本房积分</span><strong className="summary-score">+{humanScore.finalScore.toFixed(2)}</strong><small>当前总分 {humanAfter.score.toFixed(2)}</small></article>
           <article><span>资金变化</span><strong className={humanAfter.money - humanBefore.money < 0 ? 'summary-negative' : 'summary-score'}>{humanAfter.money - humanBefore.money >= 0 ? '+' : ''}{humanAfter.money - humanBefore.money}</strong><small>{humanBefore.money} → {humanAfter.money}</small></article>
         </div>
 
@@ -120,7 +122,8 @@ export function RoomResult({ game, onShowRanking, onAdvance }: RoomResultProps) 
                 );
               })}
             </div>
-            <div className="score-total-row"><span>积分乘算倍率</span><strong>×{humanBreakdown?.multiplier.toFixed(3) ?? '0.000'}</strong><span>最终房间积分</span><strong>{humanBreakdown?.score.toFixed(2) ?? '0.00'}</strong></div>
+            <div className="score-total-row"><span>原始结算积分</span><strong>{humanScore.initialScore.toFixed(2)}</strong><span>追溯追加积分</span><strong>+{humanScore.retroactiveScore.toFixed(2)}</strong></div>
+            <div className="score-total-row"><span>积分乘算倍率</span><strong>×{finalMultiplier.toFixed(3)}</strong><span>最终房间积分</span><strong>{humanScore.finalScore.toFixed(2)}</strong></div>
             {humanBreakdown?.cleared && <p className="score-cleared">本房间积分因道具效果被清零。</p>}
           </section>
         </div>

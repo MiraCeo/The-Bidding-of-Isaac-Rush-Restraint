@@ -247,6 +247,11 @@ describe('provisional AI decision and quoting', () => {
   it('can conditionally add a legal second bid through More Options', () => {
     const player = createRuntimePlayer({ id: 'ai', money: 500, score: 0, isHuman: false });
     player.items.push({ instanceId: 'options', itemId: 'more_options', acquiredOrder: 1 });
+    // Discounted bids leave a meaningful budget for the allowed cooperation candidate.
+    player.items.push(
+      { instanceId: 'sale-1', itemId: 'steam_sale', acquiredOrder: 2 },
+      { instanceId: 'sale-2', itemId: 'steam_sale', acquiredOrder: 3 },
+    );
     const decisions = Array.from({ length: 100 }, (_, seed) => decideAiTurn(
       player,
       1,
@@ -287,6 +292,10 @@ describe('provisional AI decision and quoting', () => {
   it('reserves next-room money and caps double-action nominal and actual spending', () => {
     const player = createRuntimePlayer({ id: 'ai', money: 500, score: 0, isHuman: false });
     player.items.push({ instanceId: 'options', itemId: 'more_options', acquiredOrder: 1 });
+    player.items.push(
+      { instanceId: 'sale-1', itemId: 'steam_sale', acquiredOrder: 2 },
+      { instanceId: 'sale-2', itemId: 'steam_sale', acquiredOrder: 3 },
+    );
     const decisions = Array.from({ length: 500 }, (_, seed) => decideAiTurn(
       player,
       1,
@@ -315,5 +324,93 @@ describe('provisional AI decision and quoting', () => {
       expect(actualTotal).toBeLessThanOrEqual(analysis.totalActualCostCap);
       expect(player.money - nominalTotal).toBeGreaterThanOrEqual(analysis.nextRoomReserve);
     }
+  });
+
+  it('excludes a cooperative doctrine hard-disable from secondary disruption candidates', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+    player.items.push({ instanceId: 'options-question', itemId: 'more_options_question', acquiredOrder: 1 });
+    const decision = decideAiTurn(player, 0, defaultRules, { next: () => 0.999 }, {
+      doctrine: 'cooperative',
+      context: decisionContext('normal'),
+      strategyMultipliers: { high_bid: 0, cooperate: 0, withdraw: 0 },
+      quoteRandom: { next: () => 0 },
+    });
+    expect(decision.strategy).toBe('disrupt_cooperate');
+    expect(decision.finalWeights.disrupt_high).toBe(0);
+    expect(decision.secondaryActionAnalysis?.legalSecondaryMaximum).toBeGreaterThan(0);
+    expect(decision.secondaryActionAnalysis?.candidates.map((candidate) => candidate.strategy))
+      .toEqual(['disrupt_cooperate']);
+    expect(decision.secondaryActionAnalysis?.selectedStrategy).not.toBe('disrupt_high');
+    expect(validateTurn(player, decision.turn, defaultRules)).toEqual([]);
+  });
+
+  it.each(['balanced', 'chaotic'] as const)(
+    'keeps both secondary disruption strategies available for %s doctrines',
+    (doctrine) => {
+      const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+      player.items.push({ instanceId: 'options-question', itemId: 'more_options_question', acquiredOrder: 1 });
+      const decision = decideAiTurn(player, 0, defaultRules, { next: () => 0.999 }, {
+        doctrine,
+        context: decisionContext('normal'),
+        strategyMultipliers: { high_bid: 0, cooperate: 0, withdraw: 0 },
+        quoteRandom: { next: () => 0 },
+      });
+      expect(decision.strategy).toBe('disrupt_cooperate');
+      expect(decision.secondaryActionAnalysis?.candidates.map((candidate) => candidate.strategy))
+        .toEqual(['disrupt_high', 'disrupt_cooperate']);
+    },
+  );
+
+  it('also excludes explicitly zeroed strategy weights from secondary candidates', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+    player.items.push({ instanceId: 'options-question', itemId: 'more_options_question', acquiredOrder: 1 });
+    const decision = decideAiTurn(player, 0, defaultRules, { next: () => 0.5 }, {
+      strategyMultipliers: { high_bid: 0, cooperate: 0, disrupt_high: 0, withdraw: 0 },
+      quoteRandom: { next: () => 0 },
+    });
+    expect(decision.secondaryActionAnalysis?.candidates.map((candidate) => candidate.strategy))
+      .toEqual(['disrupt_cooperate']);
+  });
+
+  it.each([
+    { floor: 0, money: 120, publicCap: 17, characterCap: 20 },
+    { floor: 1, money: 600, publicCap: 85, characterCap: 102 },
+    { floor: 2, money: 1200, publicCap: 170, characterCap: 204 },
+  ])('opts into the recorded role budget only on floor $floor', ({ floor, money, publicCap, characterCap }) => {
+    const player = createRuntimePlayer({ id: 'ai', money, score: 0, isHuman: false });
+    player.characterId = 'jacob_esau';
+    player.characterFloorStartingMoney = money;
+    player.items.push({ instanceId: 'options', itemId: 'more_options_question', acquiredOrder: 1 });
+    const options = {
+      strategyMultipliers: { high_bid: 0, cooperate: 0, disrupt_high: 0, withdraw: 0 },
+      quoteRandom: { next: () => 0 },
+    };
+    const original = decideAiTurn(player, floor, defaultRules, { next: () => 0.5 }, options);
+    const experiment = decideAiTurn(player, floor, defaultRules, { next: () => 0.5 }, {
+      ...options, experiments: { doubleActionBudgetBasis: 'character' },
+    });
+    expect(original.secondaryActionAnalysis?.budgetBasis).toBe('public');
+    expect(original.secondaryActionAnalysis?.totalActualCostCap).toBe(publicCap);
+    expect(experiment.secondaryActionAnalysis?.budgetFloorStartingMoney).toBe(money);
+    expect(experiment.secondaryActionAnalysis?.totalActualCostCap).toBe(characterCap);
+    expect(validateTurn(player, experiment.turn, defaultRules)).toEqual([]);
+  });
+
+  it('changes only gambler quote noise while retaining suppression and strategy weights', () => {
+    const player = createRuntimePlayer({ id: 'ai', money: 100, score: 0, isHuman: false });
+    const make = (ratio: number, gambler = true) => decideAiTurn(player, 0, defaultRules, { next: () => 0.5 }, {
+      personalities: gambler ? ['gambler', 'stable'] : ['stable'],
+      strategyMultipliers: { cooperate: 0, disrupt_high: 0, disrupt_cooperate: 0, withdraw: 0 },
+      quoteRandom: { next: () => 0 },
+      experiments: { gamblerQuoteNoiseRatio: ratio },
+    });
+    const original = make(0.15);
+    const reduced = make(0.05);
+    expect(original.finalWeights).toEqual(reduced.finalWeights);
+    expect(original.personalityMultipliers).toEqual(reduced.personalityMultipliers);
+    expect(original.quoteFactor).toBe(0.85);
+    expect(reduced.quoteFactor).toBe(0.95);
+    expect(make(0.1).quoteFactor).toBe(0.9);
+    expect(make(0.15, false).quoteFactor).toBe(0.95);
   });
 });

@@ -1,7 +1,7 @@
 import { itemCatalog } from './item-catalog';
 import type { CharacterId, ItemId, RuntimePlayerState } from './item-types';
 import { roundMoney } from './money';
-import { cloneRuntimePlayer } from './runtime';
+import { cloneRuntimePlayer, grantItemInstance } from './runtime';
 import type { RandomSource } from './types';
 
 export interface CharacterDefinition {
@@ -75,10 +75,10 @@ export function assignCharacter(
   const next = cloneRuntimePlayer(player);
   next.characterId = characterId;
   const startingItems = getCharacterStartingItems(characterId, random);
-  next.items.push(...startingItems.map((itemId, index) => ({
+  startingItems.forEach((itemId, index) => grantItemInstance(next, {
     instanceId: `${player.id}-starting-${index + 1}`,
     itemId,
     acquiredOrder: index + 1,
-  })));
+  }));
   return next;
 }
