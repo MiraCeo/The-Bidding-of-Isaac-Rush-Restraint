@@ -673,6 +673,7 @@ describe('room utility interaction without a real browser', () => {
       'true',
     );
     await click(button('返回游戏'));
+    await click(button('扰乱', element('.action-mode-switch')));
     await click(element<HTMLInputElement>('#disrupt-B'));
     await click(element<HTMLButtonElement>('.confirm-button'));
     expect(element('.result-summary-grid .summary-score').textContent).toMatch(

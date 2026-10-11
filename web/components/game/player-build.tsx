@@ -42,27 +42,58 @@ export function BuildStatus({
 export function QuotePreview({
   game,
   turn,
+  group,
+  compact = false,
 }: {
   game: ActiveClientGameState;
   turn: PlayerTurn;
+  group?: 'A' | 'B';
+  compact?: boolean;
 }) {
   const player = game.players.find((p) => p.id === game.humanPlayerId)!;
-  const previews = getQuotePreviews(player, turn);
+  const previews = getQuotePreviews(player, turn).filter(
+    (preview) =>
+      !group ||
+      (preview.action.type !== 'withdraw' && preview.action.group === group),
+  );
   return (
-    <div className="quote-preview" aria-label="当前报价的四种数值">
+    <div
+      className={`quote-preview${compact ? ' quote-preview-compact' : ''}`}
+      aria-label={group ? `目标 ${group} 的四种报价数值` : '当前报价的四种数值'}
+    >
       <div className="quote-preview-heading">
         <strong>
-          {game.phase === 'room_action' ? '当前报价预览' : '提交时报价'}
+          {compact
+            ? previews.length
+              ? '报价预览'
+              : '未选择此目标'
+            : game.phase === 'room_action'
+              ? '当前报价预览'
+              : '提交时报价'}
         </strong>
-        <small>不预测秘密市场与最终积分</small>
+        {!compact && <small>不预测秘密市场与最终积分</small>}
       </div>
+      {compact && previews.length === 0 && (
+        <div className="quote-preview-row quote-preview-empty">
+          <dl>
+            {['名义报价', '实际扣款', '市场等价', '计分等价'].map((label) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>—</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       {previews.map((preview, index) => (
         <div className="quote-preview-row" key={index}>
-          <strong>
-            {preview.action.type === 'withdraw'
-              ? '观望'
-              : `${preview.action.group} · ${preview.action.type === 'bid' ? '竞拍' : '扰乱'}`}
-          </strong>
+          {!compact && (
+            <strong>
+              {preview.action.type === 'withdraw'
+                ? '观望'
+                : `${preview.action.group} · ${preview.action.type === 'bid' ? '竞拍' : '扰乱'}`}
+            </strong>
+          )}
           <dl>
             {[
               ['名义报价', preview.nominal],
@@ -86,7 +117,9 @@ export function QuotePreview({
             <small>
               计分调整区间 {Number(preview.scoringRange[0]!.toFixed(4))} –{' '}
               {Number(preview.scoringRange[1]!.toFixed(4))}
-              ；基准线公开后才确定实际取值，不改变合作资格。
+              {compact
+                ? '；公开后确定，不改变合作资格。'
+                : '；基准线公开后才确定实际取值，不改变合作资格。'}
             </small>
           )}
         </div>

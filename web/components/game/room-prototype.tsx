@@ -15,11 +15,13 @@ import { RoomUtilities } from './room-utilities';
 import { GameNavigation } from './game-navigation';
 import { ItemBadges } from './item-badges';
 import { BuildStatus, QuotePreview } from './player-build';
+import { createRoomDraft, type RoomDraft } from '@/lib/ui/game-session';
 import {
-  createRoomDraft,
-  type RoomDraft,
-  type SelectedAction,
-} from '@/lib/ui/game-session';
+  changeQuoteAmount,
+  quoteMaximum,
+  selectQuoteTarget,
+  switchQuoteKind,
+} from '@/lib/ui/room-action-draft';
 import { useUtilityPages } from './use-utility-pages';
 import type { PreferenceSaveStatus } from './game-settings';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
@@ -84,15 +86,14 @@ export function RoomPrototype({
   const currentDraft = draft ?? localDraft;
   const { selectedAction, amounts } = currentDraft;
   const changeDraft = onDraftChange ?? setLocalDraft;
-  const setSelectedAction = (selectedAction: SelectedAction) =>
-    changeDraft((current) => ({ ...current, selectedAction }));
-  const setAmounts = (
-    update: (current: RoomDraft['amounts']) => RoomDraft['amounts'],
-  ) =>
-    changeDraft((current) => ({
-      ...current,
-      amounts: update(current.amounts),
-    }));
+  const [lastQuoteKind, setLastQuoteKind] = useState<ActiveActionKind>(
+    currentDraft.selectedAction.kind === 'withdraw'
+      ? 'bid'
+      : currentDraft.selectedAction.kind,
+  );
+  const [modeNotice, setModeNotice] = useState('');
+  const activeKind =
+    selectedAction.kind === 'withdraw' ? lastQuoteKind : selectedAction.kind;
 
   const room = getCurrentRoom(game);
   const human = game.players.find((player) => player.id === game.humanPlayerId);
@@ -168,54 +169,18 @@ export function RoomPrototype({
     return kind === 'bid' ? canDoubleBid : canDoubleDisrupt;
   }
 
-  function selectAction(kind: ActiveActionKind, group: RewardGroup) {
+  function switchMode(kind: ActiveActionKind) {
     if (locked) return;
-    if (selectedAction.kind !== kind || !canDouble(kind)) {
-      setSelectedAction({ kind, groups: [group] });
-      return;
-    }
-    if (selectedAction.groups.includes(group)) {
-      if (selectedAction.groups.length === 2) {
-        setSelectedAction({
-          kind,
-          groups: selectedAction.groups.filter((value) => value !== group),
-        });
-      }
-      return;
-    }
-    if (kind === 'bid') {
-      const otherGroup = selectedAction.groups[0]!;
-      const remaining = Math.floor(humanMoney * 0.5) - amounts[otherGroup].bid;
-      if (remaining < 1) {
-        setSelectedAction({ kind, groups: [group] });
-        return;
-      }
-      setAmounts((current) => ({
-        ...current,
-        [group]: {
-          ...current[group],
-          bid: Math.min(current[group].bid, remaining),
-        },
-      }));
-    }
-    setSelectedAction({ kind, groups: [...selectedAction.groups, group] });
+    setLastQuoteKind(kind);
+    setModeNotice(switchQuoteKind(currentDraft, kind, human!).notice);
+    changeDraft((current) => switchQuoteKind(current, kind, human!).draft);
   }
 
-  function maximumFor(group: RewardGroup, kind: ActiveActionKind): number {
-    const legalMaximum =
-      kind === 'bid'
-        ? humanMoney
-        : Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio);
-    if (
-      kind !== 'bid' ||
-      selectedAction.kind !== 'bid' ||
-      !canDoubleBid ||
-      selectedAction.groups.length !== 2 ||
-      !selectedAction.groups.includes(group)
-    )
-      return Math.max(1, legalMaximum);
-    const otherGroup = group === 'A' ? 'B' : 'A';
-    return Math.max(1, Math.floor(humanMoney * 0.5) - amounts[otherGroup].bid);
+  function selectAction(kind: ActiveActionKind, group: RewardGroup) {
+    if (locked) return;
+    setLastQuoteKind(kind);
+    setModeNotice('');
+    changeDraft((current) => selectQuoteTarget(current, kind, group, human!));
   }
 
   function setAmount(
@@ -224,20 +189,11 @@ export function RoomPrototype({
     amount: number,
   ) {
     if (locked) return;
-    const maximum = maximumFor(group, kind);
-    setAmounts((current) => ({
-      ...current,
-      [group]: {
-        ...current[group],
-        [kind]: Math.min(maximum, Math.max(1, amount)),
-      },
-    }));
-    if (
-      selectedAction.kind !== kind ||
-      !selectedAction.groups.includes(group)
-    ) {
-      selectAction(kind, group);
-    }
+    setModeNotice('');
+    setLastQuoteKind(kind);
+    changeDraft((current) =>
+      changeQuoteAmount(current, group, kind, amount, human!),
+    );
   }
 
   const actionDescription =
@@ -479,6 +435,32 @@ export function RoomPrototype({
               ))}
             </div>
           )}
+          <div className={`action-mode-bar action-mode-bar-${activeKind}`}>
+            <fieldset className="action-mode-switch" aria-label="本房行动方式">
+              <legend className="sr-only">本房行动方式</legend>
+              {(['bid', 'disrupt'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={selectedAction.kind === kind}
+                  disabled={locked}
+                  onClick={() => switchMode(kind)}
+                >
+                  {kind === 'bid' ? '竞拍' : '扰乱'}
+                </button>
+              ))}
+            </fieldset>
+            <p id="action-mode-hint">
+              {selectedAction.kind === 'withdraw'
+                ? '已选择观望，确认后提交；点击模式或目标可恢复报价。'
+                : activeKind === 'bid'
+                  ? canDoubleBid
+                    ? `可选 A＋B · 双竞拍名义总额 ≤ ${Math.floor(humanMoney * 0.5)}`
+                    : '选择一个目标 · 争夺最高价与合作区奖励'
+                  : `${canDoubleDisrupt ? '可选 A＋B' : '选择一个目标'} · 每笔上限 ${Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio)} · 市场影响 ×2.5`}
+            </p>
+          </div>
+          <output className="action-mode-notice">{modeNotice}</output>
           <div className="reward-grid">
             {room.rewards.map((reward) => {
               const definition = getItemDefinition(reward.itemId);
@@ -486,8 +468,12 @@ export function RoomPrototype({
               const groupSelected =
                 selectedAction.kind !== 'withdraw' &&
                 selectedAction.groups.includes(reward.group);
-              const bidMaximum = maximumFor(reward.group, 'bid');
-              const disruptMaximum = maximumFor(reward.group, 'disrupt');
+              const maximum = quoteMaximum(
+                currentDraft,
+                reward.group,
+                activeKind,
+                human,
+              );
               return (
                 <section
                   key={reward.group}
@@ -496,6 +482,17 @@ export function RoomPrototype({
                   <article
                     className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}
                   >
+                    <button
+                      type="button"
+                      className="reward-target"
+                      aria-label={`选择目标 ${reward.group}`}
+                      aria-pressed={groupSelected}
+                      disabled={locked}
+                      onClick={() => selectAction(activeKind, reward.group)}
+                    >
+                      目标 {reward.group}{' '}
+                      <span>{groupSelected ? '已选' : '选择'}</span>
+                    </button>
                     {reward.hidden ? (
                       <ItemIcon hidden size="room" className="room-item-icon" />
                     ) : (
@@ -517,53 +514,44 @@ export function RoomPrototype({
                       <ItemBadges item={definition} compact />
                     )}
                   </article>
-                  <fieldset className="action-pair" disabled={locked}>
+                  <fieldset
+                    className="action-pair"
+                    disabled={locked}
+                    aria-describedby="action-mode-hint"
+                  >
                     <legend className="sr-only">
                       奖励 {reward.group} 的行动
                     </legend>
                     <ActionOption
                       group={reward.group}
-                      kind="bid"
-                      amount={Math.min(amounts[reward.group].bid, bidMaximum)}
-                      maximum={bidMaximum}
-                      selected={
-                        selectedAction.kind === 'bid' &&
-                        selectedAction.groups.includes(reward.group)
-                      }
-                      multiple={canDoubleBid}
-                      onSelect={() => selectAction('bid', reward.group)}
+                      kind={activeKind}
+                      amount={amounts[reward.group][activeKind]}
+                      maximum={maximum}
+                      selected={groupSelected}
+                      multiple={canDouble(activeKind)}
+                      onSelect={() => selectAction(activeKind, reward.group)}
                       onAmountChange={(amount) =>
-                        setAmount(reward.group, 'bid', amount)
-                      }
-                    />
-                    <ActionOption
-                      group={reward.group}
-                      kind="disrupt"
-                      amount={Math.min(
-                        amounts[reward.group].disrupt,
-                        disruptMaximum,
-                      )}
-                      maximum={disruptMaximum}
-                      selected={
-                        selectedAction.kind === 'disrupt' &&
-                        selectedAction.groups.includes(reward.group)
-                      }
-                      multiple={canDoubleDisrupt}
-                      onSelect={() => selectAction('disrupt', reward.group)}
-                      onAmountChange={(amount) =>
-                        setAmount(reward.group, 'disrupt', amount)
+                        setAmount(reward.group, activeKind, amount)
                       }
                     />
                   </fieldset>
+                  <QuotePreview
+                    game={game}
+                    turn={turn}
+                    group={reward.group}
+                    compact
+                  />
                 </section>
               );
             })}
           </div>
-          <QuotePreview game={game} turn={turn} />
           <p className="secret-action-note">
-            提交前，其他玩家无法看到你的行动。
+            仅预览你的报价，不预测秘密市场与最终积分。提交前，其他玩家无法看到你的行动。
           </p>
-          <footer className="action-footer">
+          <footer
+            className="action-footer action-footer-sticky"
+            aria-label="确认本房行动"
+          >
             <div className="action-summary">
               <span>当前选择</span>
               <strong>{actionDescription}</strong>
@@ -585,9 +573,14 @@ export function RoomPrototype({
               variant="secondary"
               className="observe-button"
               disabled={locked}
-              onClick={() =>
-                setSelectedAction({ kind: 'withdraw', groups: [] })
-              }
+              aria-pressed={selectedAction.kind === 'withdraw'}
+              onClick={() => {
+                setModeNotice('');
+                changeDraft((current) => ({
+                  ...current,
+                  selectedAction: { kind: 'withdraw', groups: [] },
+                }));
+              }}
             >
               静观其变
             </Button>
@@ -655,11 +648,15 @@ function ActionOption({
           onChange={onSelect}
         />
         <span>
-          <strong>{isDisruption ? '扰乱市场' : '出价竞拍'}</strong>
+          <strong>
+            {group} · {isDisruption ? '扰乱报价' : '竞拍报价'}
+          </strong>
           <small>
-            {isDisruption
-              ? '2.5× 市场影响，以得分为目的'
-              : '争夺最高价与合作区奖励'}
+            {selected
+              ? '已选择此目标'
+              : multiple
+                ? '可追加此目标'
+                : '选择此目标'}
           </small>
         </span>
       </label>
