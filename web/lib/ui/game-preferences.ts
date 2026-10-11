@@ -19,7 +19,7 @@ export const defaultGamePreferences: Readonly<GamePreferences> = {
 export const gamePreferencesKey = 'bidding-ui-preferences-v1';
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
-export function getPreferenceStorage(): PreferenceStorage | null {
+export function getPreferenceStorage(): Storage | null {
   try {
     return typeof window === 'undefined' ? null : window.localStorage;
   } catch {

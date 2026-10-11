@@ -8,6 +8,9 @@ import { GameApp } from '@/components/game/game-app';
 import { RoomPrototype } from '@/components/game/room-prototype';
 import * as roomGeneration from '../game/rooms';
 import * as aiDecision from '../game/ai-decision';
+import * as preferenceStorage from './game-preferences';
+import { gameSaveKey, parseGameSave, serializeGameSave } from './game-save';
+import { createGameSession, reduceGameSession } from './game-session';
 import {
   startClientGame,
   type ActiveClientGameState,
@@ -72,6 +75,22 @@ async function setInput(selector: string, value: string) {
   });
 }
 
+function savedSession(characterId: 'lost' | 'jacob_esau' = 'lost', seed = 42) {
+  return reduceGameSession(createGameSession(seed), {
+    type: 'start_game',
+    characterId,
+  });
+}
+
+async function upload(source: string) {
+  const input = element<HTMLInputElement>('input[aria-label="读取 JSON 存档"]');
+  const file = new File([source], 'save.json', { type: 'application/json' });
+  Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+  await act(async () => {
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 function Harness({
   game,
   onSubmit = () => {},
@@ -92,6 +111,225 @@ function Harness({
 }
 
 describe('room utility interaction without a real browser', () => {
+  it('starts a new game only after the settings confirmation and leaves preferences separate', async () => {
+    const source = serializeGameSave(savedSession());
+    localStorage.setItem(gameSaveKey, source);
+    localStorage.setItem(
+      gamePreferencesKey,
+      JSON.stringify({
+        version: 1,
+        preferences: { ...defaultGamePreferences, scoreDecimals: 4 },
+      }),
+    );
+    await mount(createElement(GameApp));
+    await click(button('设置', element('nav')));
+    await click(button('开始新对局'));
+    expect(localStorage.getItem(gameSaveKey)).not.toBeNull();
+    await click(button('保留当前对局'));
+    expect(container.querySelector('.save-candidate')).toBeNull();
+    await click(button('开始新对局'));
+    await click(button('确认开始新对局'));
+    expect(container.textContent).toContain('选择角色');
+    expect(localStorage.getItem(gameSaveKey)).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem(gamePreferencesKey)!).preferences
+        .scoreDecimals,
+    ).toBe(4);
+    expect(parseGameSave(source).session.game.phase).toBe('room_action');
+  });
+  it('does not silently erase an unreadable automatic save while showing the initial page', async () => {
+    localStorage.setItem(gameSaveKey, 'broken');
+    await mount(createElement(GameApp));
+    expect(container.textContent).toContain('选择角色');
+    expect(localStorage.getItem(gameSaveKey)).toBe('broken');
+    await click(button('设置', element('nav')));
+    expect(element('.save-panel').textContent).toContain('自动存档未读取');
+    await upload(serializeGameSave(savedSession()));
+    await click(button('载入此存档'));
+    expect(
+      parseGameSave(localStorage.getItem(gameSaveKey)!).session.game.phase,
+    ).toBe('room_action');
+  });
+  it('opens the build page from either agreed position and retains the editable draft', async () => {
+    localStorage.setItem(
+      gameSaveKey,
+      serializeGameSave(savedSession('jacob_esau')),
+    );
+    await mount(createElement(GameApp));
+    await setInput('input[aria-label="竞拍奖励 A 的数值"]', '19');
+    const original = element('input[aria-label="竞拍奖励 A 的数值"]');
+    await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
+    expect(element('#room-utilities-title').textContent).toBe('构筑与当前状态');
+    expect(
+      container.querySelectorAll('.player-build-content .build-item'),
+    ).toHaveLength(2);
+    expect(element('.player-build-content').textContent).toContain(
+      '双行动积分 ×1',
+    );
+    expect(element('.room-game-content').hasAttribute('hidden')).toBe(true);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await click(button('返回游戏'));
+    expect(element('input[aria-label="竞拍奖励 A 的数值"]')).toBe(original);
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe('19');
+    await click(
+      element<HTMLButtonElement>('[aria-label="查看构筑与当前状态"]'),
+    );
+    expect(element('#room-utilities-title').textContent).toContain('构筑');
+    await act(async () =>
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      ),
+    );
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe('19');
+    expect(
+      parseGameSave(localStorage.getItem(gameSaveKey)!).session.draft!.amounts.A
+        .bid,
+    ).toBe(19);
+  });
+
+  it('automatically resumes unsubmitted amounts after a fresh mount without changing items or money', async () => {
+    const session = savedSession('jacob_esau');
+    localStorage.setItem(gameSaveKey, serializeGameSave(session));
+    await mount(createElement(GameApp));
+    await setInput('input[aria-label="竞拍奖励 A 的数值"]', '19');
+    await setInput('input[aria-label="竞拍奖励 B 的数值"]', '21');
+    const stored = parseGameSave(localStorage.getItem(gameSaveKey)!).session;
+    await mount(createElement(GameApp, { key: 'refresh' }));
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe('19');
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 B 的数值"]').value,
+    ).toBe('21');
+    const recovered = parseGameSave(localStorage.getItem(gameSaveKey)!).session;
+    expect(recovered).toEqual(stored);
+    expect(recovered.game).toEqual(session.game);
+    await click(button('设置', element('nav')));
+    expect(element('.save-panel').textContent).toContain('已恢复浏览器');
+  });
+
+  it('previews valid files before replacing a game and leaves the live game intact on failure or cancel', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(savedSession()));
+    await mount(createElement(GameApp));
+    await setInput('input[aria-label="竞拍奖励 A 的数值"]', '17');
+    const before = localStorage.getItem(gameSaveKey)!;
+    await click(button('设置', element('nav')));
+    await upload('{bad');
+    expect(element('.save-message').textContent).toContain('JSON');
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+    const candidate = savedSession('jacob_esau', 777);
+    candidate.draft!.amounts.B.bid = 22;
+    await upload(serializeGameSave(candidate));
+    expect(element('.save-candidate').textContent).toContain('雅阁和以扫');
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+    await click(button('取消读取'));
+    expect(container.querySelector('.save-candidate')).toBeNull();
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+    await upload(serializeGameSave(candidate));
+    await click(button('载入此存档'));
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 B 的数值"]').value,
+    ).toBe('22');
+    expect(element('.round-status').textContent).toContain('雅阁和以扫');
+    expect(parseGameSave(localStorage.getItem(gameSaveKey)!).session).toEqual(
+      candidate,
+    );
+  });
+
+  it('loads a file from initial settings without requiring a new game first', async () => {
+    await mount(createElement(GameApp));
+    await click(button('设置', element('nav')));
+    expect(button('导出 JSON 存档').disabled).toBe(true);
+    await upload(serializeGameSave(savedSession('jacob_esau')));
+    await click(button('载入此存档'));
+    expect(element('.round-status').textContent).toContain('雅阁和以扫');
+    expect(element('.game-stage').getAttribute('aria-label')).toBe(
+      '房间行动区',
+    );
+  });
+
+  it('exports a JSON blob containing the exact live draft without any network request', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(savedSession()));
+    await mount(createElement(GameApp));
+    await setInput('input[aria-label="竞拍奖励 B 的数值"]', '23');
+    await click(button('设置', element('nav')));
+    let blob: Blob | undefined;
+    const download = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => {
+      blob = value as Blob;
+      return 'blob:test-save';
+    });
+    const request = vi.spyOn(globalThis, 'fetch');
+    await click(button('导出 JSON 存档'));
+    expect(download).toHaveBeenCalledOnce();
+    expect(parseGameSave(await blob!.text()).session.draft!.amounts.B.bid).toBe(
+      23,
+    );
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('keeps file saving available with blocked storage and does not reset the game from display settings', async () => {
+    vi.spyOn(preferenceStorage, 'getPreferenceStorage').mockReturnValue(null);
+    await mount(createElement(GameApp));
+    await click(
+      element<HTMLInputElement>('input[name="character"][value="isaac"]'),
+    );
+    await click(button('开始游戏'));
+    await setInput('input[aria-label="竞拍奖励 A 的数值"]', '12');
+    await click(button('设置', element('nav')));
+    expect(element('.save-panel').textContent).toContain('存储不可用');
+    expect(button('导出 JSON 存档').disabled).toBe(false);
+    await click(button('恢复默认设置'));
+    await click(button('返回游戏'));
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe('12');
+  });
+
+  it.each(['room_result', 'room_ranking', 'game_result'] as const)(
+    'preserves %s when navigating settings, rules and build',
+    async (phase) => {
+      let session = savedSession();
+      const rooms = phase === 'game_result' ? 15 : 1;
+      for (let i = 0; i < rooms; i++) {
+        session = reduceGameSession(session, {
+          type: 'submit_player_turn',
+          turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+        });
+        if (i < rooms - 1)
+          session = reduceGameSession(session, { type: 'advance_room' });
+      }
+      if (phase === 'room_ranking')
+        session = reduceGameSession(session, {
+          type: 'show_room_ranking',
+          view: 'contest',
+        });
+      if (phase === 'game_result')
+        session = reduceGameSession(session, { type: 'advance_room' });
+      localStorage.setItem(gameSaveKey, serializeGameSave(session));
+      await mount(createElement(GameApp));
+      expect(container.querySelectorAll('.topbar')).toHaveLength(1);
+      const before = localStorage.getItem(gameSaveKey)!;
+      await click(button('设置', element('nav')));
+      expect(button('导出 JSON 存档').disabled).toBe(false);
+      await click(button('规则', element('nav')));
+      await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
+      await click(button('返回游戏'));
+      expect(localStorage.getItem(gameSaveKey)).toBe(before);
+      expect(parseGameSave(before).session.game.phase).toBe(phase);
+      if (phase === 'game_result') {
+        await click(button('重新开始'));
+        expect(localStorage.getItem(gameSaveKey)).toBeNull();
+        expect(container.textContent).toContain('选择角色');
+      }
+    },
+  );
   it('provides four working home-page tabs before choosing a character without creating a game', async () => {
     const generate = vi.spyOn(roomGeneration, 'generateFloor');
     const decide = vi.spyOn(aiDecision, 'decideAiTurn');
@@ -111,7 +349,10 @@ describe('room utility interaction without a real browser', () => {
     expect(element<HTMLDivElement>('.character-stage').hidden).toBe(true);
     await click(button('设置', nav));
     expect(element('#room-utilities-title').textContent).toBe('设置');
-    expect(container.querySelectorAll('.settings-group')).toHaveLength(2);
+    expect(container.querySelectorAll('fieldset.settings-group')).toHaveLength(
+      2,
+    );
+    expect(container.querySelector('.save-panel')).not.toBeNull();
     await click(button('排行', nav));
     expect(element('.empty-ranking-state').textContent).toContain('暂无排行');
     expect(container.querySelector('.ranking-table')).toBeNull();
@@ -501,6 +742,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.game-client').getAttribute('data-reduce-motion')).toBe(
       'true',
     );
-    expect(localStorage.length).toBe(1);
+    expect(localStorage.length).toBe(2);
+    expect(localStorage.getItem(gameSaveKey)).not.toBeNull();
   });
 });

@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { SaveControls } from './save-controls';
+import { ReplayControls } from './replay-controls';
 import {
   defaultGamePreferences,
   type GamePreferences,
@@ -11,6 +13,7 @@ interface GameSettingsProps {
   saveStatus: PreferenceSaveStatus;
   onChange: (preferences: GamePreferences) => void;
   beforeGame?: boolean;
+  onOpenReplay?: () => void;
 }
 
 export function GameSettings({
@@ -18,6 +21,7 @@ export function GameSettings({
   saveStatus,
   onChange,
   beforeGame = false,
+  onOpenReplay,
 }: GameSettingsProps) {
   return (
     <div className="game-settings-content">
@@ -108,7 +112,7 @@ export function GameSettings({
               ? '当前浏览器无法保存偏好，本次修改仍在当前会话生效。'
               : beforeGame
                 ? '浏览器允许时会保存界面偏好；查看和修改设置不会自动开始对局。'
-                : '浏览器允许时会保存界面偏好；当前对局仍不存档，刷新会重新开始。'}
+                : '界面偏好与对局存档分别保存。'}
         </output>
         <Button
           type="button"
@@ -118,6 +122,8 @@ export function GameSettings({
           恢复默认设置
         </Button>
       </div>
+      <SaveControls />
+      <ReplayControls onOpen={onOpenReplay ?? (() => {})} />
     </div>
   );
 }

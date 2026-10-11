@@ -15,6 +15,7 @@ import {
 } from '@/lib/game';
 
 type RoomRankingProps = {
+  embedded?: boolean;
   scoreDecimals?: ScoreDisplayDecimals;
 } & (
   | {
@@ -27,6 +28,7 @@ type RoomRankingProps = {
 );
 
 export function RoomRanking(props: RoomRankingProps) {
+  const Container = props.embedded ? 'div' : 'main';
   const { scoreDecimals = 2 } = props;
   if (props.variant === 'public') {
     const game = props.game;
@@ -85,42 +87,44 @@ export function RoomRanking(props: RoomRankingProps) {
     game.roomIndex === game.rooms[game.floorIndex]!.length - 1;
 
   return (
-    <main className="ranking-page">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1>以撒的竞合：冲 · 慎</h1>
+    <Container className="ranking-page">
+      {!props.embedded && (
+        <header className="topbar">
+          <div className="topbar-inner">
+            <div className="brand-block">
+              <p className="eyebrow">THE BIDDING OF ISAAC</p>
+              <h1>以撒的竞合：冲 · 慎</h1>
+            </div>
+            <nav className="main-nav" aria-label="主导航">
+              <button type="button" className="nav-item" disabled>
+                游戏
+              </button>
+              <button
+                type="button"
+                className="nav-item nav-item-active"
+                aria-current="page"
+              >
+                排行
+              </button>
+              <button type="button" className="nav-item" disabled>
+                设置
+              </button>
+              <button type="button" className="nav-item" disabled>
+                规则
+              </button>
+            </nav>
+            <div className="round-status">
+              <span className="status-chip">
+                <Trophy aria-hidden="true" />第 {humanRank} 名
+              </span>
+              <span className="status-chip status-chip-money">
+                <Coins aria-hidden="true" />
+                <strong>{human?.money ?? 0}</strong>
+              </span>
+            </div>
           </div>
-          <nav className="main-nav" aria-label="主导航">
-            <button type="button" className="nav-item" disabled>
-              游戏
-            </button>
-            <button
-              type="button"
-              className="nav-item nav-item-active"
-              aria-current="page"
-            >
-              排行
-            </button>
-            <button type="button" className="nav-item" disabled>
-              设置
-            </button>
-            <button type="button" className="nav-item" disabled>
-              规则
-            </button>
-          </nav>
-          <div className="round-status">
-            <span className="status-chip">
-              <Trophy aria-hidden="true" />第 {humanRank} 名
-            </span>
-            <span className="status-chip status-chip-money">
-              <Coins aria-hidden="true" />
-              <strong>{human?.money ?? 0}</strong>
-            </span>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <section className="ranking-stage">
         <div className="ranking-page-heading">
@@ -201,7 +205,7 @@ export function RoomRanking(props: RoomRankingProps) {
           </Button>
         </footer>
       </section>
-    </main>
+    </Container>
   );
 }
 

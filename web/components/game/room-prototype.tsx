@@ -12,6 +12,12 @@ import { Button } from '@/components/ui/button';
 import { RoomUtilities } from './room-utilities';
 import { GameNavigation } from './game-navigation';
 import { ItemBadges } from './item-badges';
+import { BuildStatus, QuotePreview } from './player-build';
+import {
+  createRoomDraft,
+  type RoomDraft,
+  type SelectedAction,
+} from '@/lib/ui/game-session';
 import { useUtilityPages } from './use-utility-pages';
 import type { PreferenceSaveStatus } from './game-settings';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
@@ -32,11 +38,10 @@ import {
 
 type ActionKind = 'bid' | 'disrupt' | 'withdraw';
 type ActiveActionKind = Exclude<ActionKind, 'withdraw'>;
-type SelectedAction =
-  | { kind: ActiveActionKind; groups: RewardGroup[] }
-  | { kind: 'withdraw'; groups: [] };
 
 interface RoomPrototypeProps {
+  draft?: RoomDraft;
+  onDraftChange?: (update: (current: RoomDraft) => RoomDraft) => void;
   game: ActiveClientGameState;
   onSubmit: (turn: PlayerTurn) => void;
   preferences: GamePreferences;
@@ -57,6 +62,8 @@ function actionLabel(action: PlayerAction): string {
 }
 
 export function RoomPrototype({
+  draft,
+  onDraftChange,
   game,
   onSubmit,
   preferences,
@@ -69,20 +76,21 @@ export function RoomPrototype({
   );
   const [marketOpen, setMarketOpen] = useState(preferences.marketInitiallyOpen);
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
-  const [selectedAction, setSelectedAction] = useState<SelectedAction>({
-    kind: 'bid',
-    groups: ['A'],
-  });
-  const [amounts, setAmounts] = useState(() => ({
-    A: {
-      bid: Math.round(floorMoney * 0.25),
-      disrupt: Math.round(floorMoney * 0.2),
-    },
-    B: {
-      bid: Math.round(floorMoney * 0.25),
-      disrupt: Math.round(floorMoney * 0.2),
-    },
-  }));
+  const [localDraft, setLocalDraft] = useState(() =>
+    createRoomDraft({ ...game, phase: 'room_action' })!,
+  );
+  const currentDraft = draft ?? localDraft;
+  const { selectedAction, amounts } = currentDraft;
+  const changeDraft = onDraftChange ?? setLocalDraft;
+  const setSelectedAction = (selectedAction: SelectedAction) =>
+    changeDraft((current) => ({ ...current, selectedAction }));
+  const setAmounts = (
+    update: (current: RoomDraft['amounts']) => RoomDraft['amounts'],
+  ) =>
+    changeDraft((current) => ({
+      ...current,
+      amounts: update(current.amounts),
+    }));
 
   const room = getCurrentRoom(game);
   const human = game.players.find((player) => player.id === game.humanPlayerId);
@@ -259,9 +267,16 @@ export function RoomPrototype({
               <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
               {game.roomIndex + 1}/5
             </span>
-            <span className="status-chip">
-              {characterNames[game.selectedCharacter]}
-            </span>
+            <button
+              type="button"
+              className="status-chip build-entry"
+              aria-label="查看角色构筑"
+              aria-current={utilityPanel === 'build' ? 'page' : undefined}
+              onClick={() => changeUtilityPanel('build')}
+            >
+              {characterNames[game.selectedCharacter]}{' '}
+              <span aria-hidden="true">▾</span>
+            </button>
             <span className="status-chip status-chip-money">
               <Coins aria-hidden="true" />
               <strong>{human.money}</strong>
@@ -444,13 +459,10 @@ export function RoomPrototype({
               </p>
               <h2>选择这一房间的目标</h2>
             </div>
-            <p>
-              {game.phase === 'room_result'
-                ? '本房间已经完成结算'
-                : locked
-                  ? '你的行动已锁定，AI 行动已经公开'
-                  : '提交前，其他玩家无法看到你的行动'}
-            </p>
+            <BuildStatus
+              game={game}
+              onOpen={() => changeUtilityPanel('build')}
+            />
           </div>
           {humanEntryEvents.length > 0 && (
             <div
@@ -537,6 +549,10 @@ export function RoomPrototype({
               );
             })}
           </div>
+          <QuotePreview game={game} turn={turn} />
+          <p className="secret-action-note">
+            提交前，其他玩家无法看到你的行动。
+          </p>
           <footer className="action-footer">
             <div className="action-summary">
               <span>当前选择</span>
@@ -571,6 +587,7 @@ export function RoomPrototype({
       <RoomUtilities
         panel={utilityPanel}
         game={game}
+        turn={turn}
         preferences={preferences}
         saveStatus={preferenceSaveStatus}
         onPanelChange={changeUtilityPanel}
