@@ -1,3 +1,4 @@
+import { ItemIcon } from './item-icon';
 import {
   itemPresentations,
   type ActiveClientGameState,
@@ -167,9 +168,7 @@ export function PlayerBuild({
             {summary.inventory.map(({ item, count, effectiveCopies }) => (
               <article className="build-item" key={item.id}>
                 <div className="build-item-heading">
-                  <span aria-hidden="true">
-                    {itemPresentations[item.id].emoji}
-                  </span>
+                  <ItemIcon itemId={item.id} size="medium" />
                   <h4>{item.name}</h4>
                   <b>×{count}</b>
                 </div>

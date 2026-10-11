@@ -1,3 +1,5 @@
+import { ItemIcon } from './item-icon';
+import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -6,7 +8,6 @@ import {
   characterNames,
   defaultRules,
   getItemDefinition,
-  itemPresentations,
   type ActiveClientGameState,
   type ClientRankingView,
   type PlayerAction,
@@ -155,9 +156,7 @@ export function RoomResult({
             <span className="reward-acquired-label">获得道具</span>
             {humanAwards.map((award) => (
               <div key={`${award.group}-${award.itemId}`}>
-                <span className="reward-acquired-emoji" aria-hidden="true">
-                  {itemPresentations[award.itemId].emoji}
-                </span>
+                <ItemIcon itemId={award.itemId} size="large" />
                 <span>
                   <small>道具 {award.group}</small>
                   <strong>
@@ -205,7 +204,7 @@ export function RoomResult({
                       </span>
                     )}
                     <div className="settled-reward-title">
-                      <span>{itemPresentations[reward.itemId].emoji}</span>
+                      <ItemIcon itemId={reward.itemId} size="large" />
                       <div>
                         <small>道具 {reward.group}</small>
                         <h3>{definition.name}</h3>
@@ -324,7 +323,9 @@ export function RoomResult({
               <p className="empty-result">本房间没有与你相关的额外事件。</p>
             ) : (
               humanEvents.map((event, index) => (
-                <span key={`${event.type}-${index}`}>{event.message}</span>
+                <span key={`${event.type}-${index}`}>
+                  {displayItemText(event.message)}
+                </span>
               ))
             )}
           </div>

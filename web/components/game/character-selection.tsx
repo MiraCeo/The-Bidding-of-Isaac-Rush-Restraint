@@ -173,6 +173,15 @@ export function CharacterSelection({
           >
             开始游戏
           </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="character-tutorial-button"
+            disabled={utilityPanel !== null}
+            onClick={() => changeUtilityPanel('tutorial')}
+          >
+            新手教程
+          </Button>
         </footer>
       </section>
       <RoomUtilities

@@ -1,5 +1,7 @@
+import { ItemIcon } from './item-icon';
 import { useRef, useState } from 'react';
 import { ItemBadges } from './item-badges';
+import { Button } from '@/components/ui/button';
 
 import { itemCatalog } from '@/lib/game/item-catalog';
 import { itemPresentations } from '@/lib/game/item-presentation';
@@ -8,6 +10,7 @@ import {
   type GameRuleSection,
 } from '@/lib/ui/game-rules';
 import { getItemBadges } from '@/lib/ui/item-badges';
+import { itemVisualAlias } from '@/lib/ui/item-art';
 
 const sections = createGameRuleSections();
 
@@ -96,12 +99,14 @@ function RuleChapter({
   );
 }
 
-export function GameRules() {
+export function GameRules({
+  onOpenTutorial,
+}: { onOpenTutorial?: () => void } = {}) {
   const [query, setQuery] = useState('');
   const catalogRef = useRef<HTMLDetailsElement>(null);
   const normalizedQuery = query.trim().toLowerCase();
   const items = itemCatalog.filter((item) =>
-    `${item.name} ${itemPresentations[item.id].description} ${getItemBadges(
+    `${item.name} ${itemVisualAlias(item.id)} ${itemPresentations[item.id].description} ${getItemBadges(
       item,
     )
       .map((badge) => badge.label)
@@ -123,6 +128,11 @@ export function GameRules() {
           <p>
             目标是在整局结束时取得更高的最终积分。先选角色，再逐房报价、获取道具并完成构筑。
           </p>
+          {onOpenTutorial && (
+            <Button type="button" onClick={onOpenTutorial}>
+              进入交互式教程
+            </Button>
+          )}
         </div>
         <ol className="rules-start-steps">
           <li>
@@ -206,9 +216,7 @@ export function GameRules() {
                   {items.map((item) => (
                     <article key={item.id} className="rule-item-card">
                       <div className="rule-item-heading">
-                        <span aria-hidden="true">
-                          {itemPresentations[item.id].emoji}
-                        </span>
+                        <ItemIcon itemId={item.id} size="small" />
                         <h4>{item.name}</h4>
                       </div>
                       <p>{itemPresentations[item.id].description}</p>

@@ -15,12 +15,22 @@ function hashSource(directory: string) {
   }).sort((a, b) => a.name.localeCompare(b.name))) {
     const name = `${directory}/${entry.name}`;
     if (entry.isDirectory()) hashSource(name);
-    else if (/\.(tsx?|css)$/.test(name) && !name.endsWith('.test.ts'))
+    else if (
+      /\.(tsx?|css|png|svg|webp|gif)$/.test(name) &&
+      !name.endsWith('.test.ts')
+    )
       hash.update(name).update(readFileSync(resolve(root, name)));
   }
 }
-for (const directory of ['app', 'components', 'lib']) hashSource(directory);
-for (const name of ['main.tsx', 'index.html', 'package.json'])
+for (const directory of ['app', 'components', 'lib', 'assets'])
+  hashSource(directory);
+for (const name of [
+  'main.tsx',
+  'index.html',
+  'package.json',
+  'release-config.json',
+  'release-notes.json',
+])
   hash.update(name).update(readFileSync(resolve(root, name)));
 const version = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8'),

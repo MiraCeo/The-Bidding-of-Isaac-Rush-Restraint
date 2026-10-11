@@ -1,10 +1,8 @@
+import { ItemIcon } from './item-icon';
+import { displayItemText } from '@/lib/ui/item-labels';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  getItemDefinition,
-  characterNames,
-  itemPresentations,
-} from '@/lib/game';
+import { getItemDefinition, characterNames } from '@/lib/game';
 import {
   replayRoomLocator,
   type ReplayLog,
@@ -247,7 +245,7 @@ export function ReplayArchive({
                                 ? ` · ${getItemDefinition(event.itemId).name}`
                                 : ''}
                             </span>
-                            <p>{event.message}</p>
+                            <p>{displayItemText(event.message)}</p>
                             {event.amount !== undefined && (
                               <small>记录数值 {amount(event.amount)}</small>
                             )}
@@ -493,9 +491,7 @@ function ReplayRoomDetails({
             return (
               <article key={reward.group}>
                 <div className="build-item-heading">
-                  <span aria-hidden="true">
-                    {itemPresentations[item.id].emoji}
-                  </span>
+                  <ItemIcon itemId={item.id} size="medium" />
                   <h4>
                     {reward.group} · {item.name}
                   </h4>

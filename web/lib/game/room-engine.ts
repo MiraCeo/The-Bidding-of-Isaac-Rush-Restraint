@@ -410,6 +410,7 @@ export function settleRuntimeRoom(
         playerId: player.id,
         itemId: 'moms_heart',
         amount: bonus,
+        // Keep v1 trace wording/fingerprints stable; UI resolves the current item label.
         message: `${newHearts} 份妈妈的心脏追溯增加 ${bonus} 分。`,
       });
     }

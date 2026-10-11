@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "resources": [
+    { "id": "collectibles", "file": "collectibles-sprite.png", "sourceFilename": "Collectibles_sprite.png", "width": 640, "height": 1280, "cellSize": 32, "columns": 20, "rows": 40, "sha256": "78d604f82a5e0a0a7b858c7a7943b7f3a1be2a6ce6552d8c5e5875396d6b758b" },
+    { "id": "trinkets", "file": "trinket-sprite.png", "sourceFilename": "Trinket_sprite.png", "width": 640, "height": 320, "cellSize": 32, "columns": 20, "rows": 10, "sha256": "56ad4c4ee24ded48fe4f705811635bbe20935f464387fcf14a41eb4cd58a527b" },
+    { "id": "pickups", "file": "grab-bag.png", "sourceFilename": "Anm2_resources_gfx_items_pick_ups_grabbag.png", "width": 32, "height": 32, "cellSize": 32, "columns": 1, "rows": 1, "sha256": "c6d2f31ee7074b63afac75bc215f62f55bde35c9ae8749d4b80978ad9f404b2e" }
+  ]
+}

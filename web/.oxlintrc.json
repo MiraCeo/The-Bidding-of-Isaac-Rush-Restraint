@@ -29,6 +29,7 @@
     "build/**",
     "dist/**",
     "dist-offline/**",
+    "releases/**",
     "coverage/**",
     "next-env.d.ts"
   ],

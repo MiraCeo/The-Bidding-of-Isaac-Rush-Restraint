@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { SaveControls } from './save-controls';
 import { ReplayControls } from './replay-controls';
+import { AboutVersion } from './about-version';
 import {
   defaultGamePreferences,
   type GamePreferences,
@@ -124,6 +125,7 @@ export function GameSettings({
       </div>
       <SaveControls />
       <ReplayControls onOpen={onOpenReplay ?? (() => {})} />
+      <AboutVersion />
     </div>
   );
 }

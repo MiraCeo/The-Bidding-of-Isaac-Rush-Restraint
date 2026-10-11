@@ -1,5 +1,6 @@
 import { getItemDefinition } from '../game/item-catalog';
 import { countItem } from '../game/runtime';
+import { displayItemText } from './item-labels';
 import type { ReplayRoomRecord } from './replay-record';
 
 export const replayRoomNames = {
@@ -100,5 +101,5 @@ export function replayOutcomeLabels(
       (e.type === 'destroy' || e.type === 'duplicate'),
   ))
     labels.push(`${event.group ?? ''}：${event.message}`);
-  return labels;
+  return labels.map(displayItemText);
 }

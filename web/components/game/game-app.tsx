@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SessionContext } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
+import { ItemArtProvider } from './item-icon';
 import {
   createGameSession,
   reduceGameSession,
@@ -182,13 +183,15 @@ export function GameApp() {
         onPreferencesChange: changePreferences,
       }}
     >
-      <div
-        key={restoreRevision}
-        className="game-client"
-        data-reduce-motion={preferences.reduceMotion}
-      >
-        {page}
-      </div>
+      <ItemArtProvider>
+        <div
+          key={restoreRevision}
+          className="game-client"
+          data-reduce-motion={preferences.reduceMotion}
+        >
+          {page}
+        </div>
+      </ItemArtProvider>
     </SessionContext.Provider>
   );
 }

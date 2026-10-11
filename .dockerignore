@@ -3,6 +3,7 @@
 web/node_modules
 web/dist
 web/dist-offline
+web/releases
 web/.vinext
 web/.wrangler
 web/coverage

@@ -1,3 +1,4 @@
+import { ItemIcon } from './item-icon';
 import { ArrowLeft, ArrowRight, Coins, Trophy } from 'lucide-react';
 
 import { PlayerRankingTable } from './player-ranking-table';
@@ -8,7 +9,6 @@ import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import {
   characterNames,
   getItemDefinition,
-  itemPresentations,
   type ActiveClientGameState,
   type ClientRankingView,
   type RewardGroup,
@@ -281,9 +281,7 @@ function ContestPanel({
     <section className="result-panel contest-panel">
       <header className="contest-panel-heading">
         <div className="contest-item-title">
-          <span aria-hidden="true">
-            {itemPresentations[reward.itemId].emoji}
-          </span>
+          <ItemIcon itemId={reward.itemId} size="large" />
           <div>
             <small>道具 {group}</small>
             <h3>{getItemDefinition(reward.itemId).name}</h3>

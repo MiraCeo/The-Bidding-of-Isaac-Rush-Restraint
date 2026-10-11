@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { GameRules } from './game-rules';
 import { PlayerBuild } from './player-build';
 import { ReplayViewer } from './replay-viewer';
+import { GameTutorial } from './game-tutorial';
 import { useSessionTools } from './session-context';
 import { draftTurn } from '@/lib/ui/player-build';
 import type { PlayerTurn } from '@/lib/game/item-types';
@@ -18,13 +19,16 @@ export type RoomUtilityPanel =
   | 'settings'
   | 'rules'
   | 'build'
-  | 'replay';
+  | 'replay'
+  | 'tutorial';
+// Tutorial is a utility page, not another live-game phase.
 const panelNames: Readonly<Record<RoomUtilityPanel, string>> = {
   ranking: '排行',
   settings: '设置',
   rules: '规则',
   build: '构筑与当前状态',
   replay: '逐房回放',
+  tutorial: '新手教程',
 };
 
 interface RoomUtilitiesProps {
@@ -91,7 +95,9 @@ export function RoomUtilities({
                 ? 'YOUR BUILD'
                 : panel === 'replay'
                   ? 'ROOM REPLAY'
-                  : 'GAME RULES'}
+                  : panel === 'tutorial'
+                    ? 'LEARN BY PLAYING'
+                    : 'GAME RULES'}
           </p>
           <h2 id="room-utilities-title" tabIndex={-1}>
             {panelNames[panel]}
@@ -104,7 +110,9 @@ export function RoomUtilities({
               ? '已持有道具 · 实时状态 · 报价影响'
               : panel === 'replay'
                 ? '已结算记录 · 只读查看 · 问题定位'
-                : '现行机制与道具说明'}
+                : panel === 'tutorial'
+                  ? '独立练习 · 固定样本 · 不影响存档'
+                  : '现行机制与道具说明'}
         </p>
       </div>
       <div className="utility-page-content">
@@ -120,8 +128,10 @@ export function RoomUtilities({
           <PlayerBuild game={game} turn={buildTurn} />
         ) : panel === 'replay' ? (
           <ReplayViewer />
+        ) : panel === 'tutorial' ? (
+          <GameTutorial scoreDecimals={preferences.scoreDecimals} />
         ) : (
-          <GameRules />
+          <GameRules onOpenTutorial={() => onPanelChange('tutorial')} />
         )}
       </div>
       <footer className="result-actions utility-page-actions">

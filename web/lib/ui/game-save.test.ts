@@ -124,6 +124,8 @@ describe('versioned complete-game saves', () => {
       expect(resumed.game.phase).toBe('game_result');
       expect(resumed.turns).toHaveLength(15);
     },
+    // Every restore verifies all preceding rooms; keep assertions intact under parallel release load.
+    20_000,
   );
   it.each([
     [

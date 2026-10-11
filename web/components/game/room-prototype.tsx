@@ -1,3 +1,5 @@
+import { ItemIcon } from './item-icon';
+import { displayItemText } from '@/lib/ui/item-labels';
 import { useState } from 'react';
 import {
   ChevronLeft,
@@ -471,7 +473,9 @@ export function RoomPrototype({
             >
               <strong>进入房间</strong>
               {humanEntryEvents.map((event, index) => (
-                <span key={`${event.type}-${index}`}>{event.message}</span>
+                <span key={`${event.type}-${index}`}>
+                  {displayItemText(event.message)}
+                </span>
               ))}
             </div>
           )}
@@ -492,9 +496,15 @@ export function RoomPrototype({
                   <article
                     className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}
                   >
-                    <span className="item-emoji" aria-hidden="true">
-                      {reward.hidden ? '❓' : presentation.emoji}
-                    </span>
+                    {reward.hidden ? (
+                      <ItemIcon hidden size="room" className="room-item-icon" />
+                    ) : (
+                      <ItemIcon
+                        itemId={reward.itemId}
+                        size="room"
+                        className="room-item-icon"
+                      />
+                    )}
                     <h3>{reward.hidden ? '未知道具' : definition.name}</h3>
                     <p>
                       {reward.hidden
