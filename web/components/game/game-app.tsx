@@ -7,7 +7,16 @@ import {
   reduceGameSession,
   type GameSession,
 } from '@/lib/ui/game-session';
-import { loadAutoSave, persistGameSession } from '@/lib/ui/game-save';
+import {
+  loadAutoSave,
+  loadPlayerProfile,
+  persistGameSession,
+} from '@/lib/ui/game-save';
+import {
+  playerProfileKey,
+  readPlayerProfile,
+  type PlayerProfile,
+} from '@/lib/ui/player-profile';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 
 import { CharacterSelection } from './character-selection';
@@ -33,6 +42,11 @@ export function GameApp() {
     () => initial.session ?? createGameSession(),
   );
   const [restoreMessage, setRestoreMessage] = useState(initial.message);
+  const [initialProfile] = useState(() =>
+    loadPlayerProfile(getPreferenceStorage()),
+  );
+  const [profile, setProfile] = useState(initialProfile.profile);
+  const [profileMessage, setProfileMessage] = useState(initialProfile.message);
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     'idle' | 'saved' | 'session'
   >('idle');
@@ -63,7 +77,7 @@ export function GameApp() {
     const saved = persistGameSession(getPreferenceStorage(), session);
     let cancelled = false;
     queueMicrotask(() => {
-      if (!cancelled)
+      if (!cancelled) {
         setAutoSaveStatus(
           saved
             ? game.phase === 'character_selection'
@@ -71,12 +85,23 @@ export function GameApp() {
               : 'saved'
             : 'session',
         );
+        if (saved && game.phase === 'game_result')
+          setProfile(loadPlayerProfile(getPreferenceStorage()).profile);
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [session, game.phase, initial, restoreRevision]);
-  const restore = (next: GameSession) => {
+  const restore = (next: GameSession, incomingProfile?: PlayerProfile) => {
+    if (incomingProfile) {
+      const validated = readPlayerProfile(incomingProfile);
+      const storage = getPreferenceStorage();
+      if (!storage) throw new Error('浏览器存储不可用，未覆盖玩家档案。');
+      storage.setItem(playerProfileKey, JSON.stringify(validated));
+      setProfile(validated);
+      setProfileMessage('');
+    }
     setSession(next);
     setRestoreMessage('已载入文件存档，继续同一局。');
     setRestoreRevision((current) => current + 1);
@@ -169,6 +194,8 @@ export function GameApp() {
         session,
         autoSaveStatus,
         restoreMessage,
+        profile,
+        profileMessage,
         onRestore: restore,
         onNewGame: newGame,
         importedReplay,

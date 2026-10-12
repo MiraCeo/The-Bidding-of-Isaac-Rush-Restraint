@@ -4,7 +4,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameApp } from '@/components/game/game-app';
 import { createGameSession, reduceGameSession } from './game-session';
-import { parseGameSave, serializeGameSave, gameSaveKey } from './game-save';
+import {
+  parseGameSave,
+  serializeGameSave,
+  serializeGameCheckpoint,
+  serializeGameBackup,
+  persistGameSession,
+  gameSaveKey,
+  lastCompletedKey,
+} from './game-save';
+import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { parseReplay, serializeReplay } from './game-replay';
 import { readBuildVersion } from './game-version';
 import * as decisions from '../game/ai-decision';
@@ -85,6 +94,94 @@ async function changeSelect(value: string) {
 }
 
 describe('read-only replay UI', () => {
+  it('puts personal outcomes in the main pane and keeps technical and full-field details collapsed', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看本局回放'));
+    expect(element('.replay-sidebar nav[aria-label="回放房间"]')).toBeDefined();
+    expect(element('.replay-main .replay-summary-grid').textContent).toContain(
+      '实际获得',
+    );
+    expect(element<HTMLDetailsElement>('.replay-location').open).toBe(false);
+    expect(
+      element<HTMLDetailsElement>('.replay-calculation-details').open,
+    ).toBe(false);
+    expect(container.querySelectorAll('.replay-market svg')).toHaveLength(2);
+    expect(element('.replay-score-chain').textContent).toContain('最终房分');
+    await click(element<HTMLElement>('.replay-calculation-details summary'));
+    expect(
+      element<HTMLDetailsElement>('.replay-calculation-details').open,
+    ).toBe(true);
+  });
+  it('exports progression reserves in full backup and leaves them out of the lightweight continuation file', async () => {
+    const profile = createPlayerProfile(new Date('2026-10-12'));
+    profile.progression.modules.future = {
+      unlockConditions: ['complete-a-floor'],
+    };
+    profile.progression.achievements.test = { achievedAt: null, progress: 0.4 };
+    localStorage.setItem(playerProfileKey, JSON.stringify(profile));
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
+    await mount();
+    await click(button('设置', element('nav')));
+    let blob: Blob | undefined;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((v) => {
+      blob = v as Blob;
+      return 'blob:backup';
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await click(button('导出完整备份'));
+    const backup = parseGameSave(await blob!.text());
+    expect(backup.kind).toBe('backup');
+    expect(backup.profile).toEqual(profile);
+    await click(button('导出续玩存档'));
+    expect(parseGameSave(await blob!.text()).profile).toBeUndefined();
+    expect(JSON.parse(await blob!.text())).not.toHaveProperty('replay');
+  });
+  it('does not replace profile data while previewing a backup or loading a checkpoint', async () => {
+    const profile = createPlayerProfile();
+    profile.progression.statistics.futureWins = 4;
+    localStorage.setItem(playerProfileKey, JSON.stringify(profile));
+    await mount();
+    await click(button('设置', element('nav')));
+    const input = element<HTMLInputElement>(
+      'input[aria-label="读取 JSON 存档"]',
+    );
+    async function uploadSave(source: string) {
+      Object.defineProperty(input, 'files', {
+        configurable: true,
+        value: [new File([source], 'save.json')],
+      });
+      await act(async () =>
+        input.dispatchEvent(new Event('change', { bubbles: true })),
+      );
+    }
+    const incoming = createPlayerProfile();
+    incoming.progression.modules.newTree = { unlocked: true };
+    await uploadSave(serializeGameBackup(gameWithRooms(1), incoming));
+    expect(localStorage.getItem(playerProfileKey)).toBe(
+      JSON.stringify(profile),
+    );
+    await click(button('取消读取'));
+    await uploadSave(serializeGameCheckpoint(gameWithRooms(1)));
+    await click(button('载入此存档'));
+    expect(localStorage.getItem(playerProfileKey)).toBe(
+      JSON.stringify(profile),
+    );
+  });
+  it('opens the separately archived completed game after restart without reviving it as an active match', async () => {
+    persistGameSession(localStorage, gameWithRooms(15));
+    persistGameSession(localStorage, createGameSession(19));
+    const archive = localStorage.getItem(lastCompletedKey);
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看最近完成对局'));
+    expect(element('.replay-main').textContent).toContain('最终房间积分');
+    expect(localStorage.getItem(gameSaveKey)).toBeNull();
+    expect(localStorage.getItem(lastCompletedKey)).toBe(archive);
+    await click(button('返回游戏'));
+    expect(container.textContent).toContain('选择角色');
+  });
   it('does not navigate back to replay when file reading finishes after the user left settings', async () => {
     const source = serializeReplay(gameWithRooms(1).replay!, 'file-build');
     await mount();
@@ -209,7 +306,7 @@ describe('read-only replay UI', () => {
     const corrupt = JSON.parse(
       serializeReplay(gameWithRooms(1).replay!, 'corrupt'),
     );
-    corrupt.replay.rooms[0].settlement.players[0].money = -1;
+    corrupt.replay.initialPlayers[0].money = -1;
     await upload(JSON.stringify(corrupt));
     expect(element('.replay-controls .save-message').textContent).toContain(
       '保持不变',

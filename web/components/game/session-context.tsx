@@ -3,12 +3,15 @@ import type { GameSession } from '@/lib/ui/game-session';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 import type { PreferenceSaveStatus } from './game-settings';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
+import type { PlayerProfile } from '@/lib/ui/player-profile';
 
 export interface SessionTools {
   session: GameSession;
   autoSaveStatus: 'saved' | 'session' | 'idle';
   restoreMessage: string;
-  onRestore: (session: GameSession) => void;
+  onRestore: (session: GameSession, profile?: PlayerProfile) => void;
+  profile: PlayerProfile;
+  profileMessage: string;
   onNewGame: () => void;
   importedReplay: ReplayDocument | null;
   onReplayImport: (replay: ReplayDocument) => void;

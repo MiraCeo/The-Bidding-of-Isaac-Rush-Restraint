@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Script } from 'node:vm';
 
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 import { bundleOfflineGame } from './build-offline.mjs';
 import { assertStandaloneHtml } from './offline-html.mjs';
@@ -9,7 +9,14 @@ import { assertStandaloneHtml } from './offline-html.mjs';
 it('builds the real game as a production single-file document without touching dist', async () => {
   const webIndex = new URL('../dist/index.html', import.meta.url);
   const before = await readFile(webIndex, 'utf8').catch(() => null);
-  const { html } = await bundleOfflineGame({ logLevel: 'silent' });
+  let html;
+  vi.stubEnv('BIDDING_WEB_BASE', 'https://invalid-for-online.example/');
+  try {
+    ({ html } = await bundleOfflineGame({ logLevel: 'silent' }));
+  } finally {
+    vi.unstubAllEnvs();
+  }
+  expect(html).not.toContain('invalid-for-online.example');
   const script = html.match(
     /<script id="offline-game">([\s\S]*?)<\/script>/,
   )[1];

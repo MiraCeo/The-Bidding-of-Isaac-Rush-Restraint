@@ -1,0 +1,6 @@
+services:
+  game:
+    image: ${GAME_IMAGE:?Set GAME_IMAGE to the published immutable digest}
+    ports:
+      - "127.0.0.1:${GAME_PORT:-3000}:80"
+    restart: unless-stopped

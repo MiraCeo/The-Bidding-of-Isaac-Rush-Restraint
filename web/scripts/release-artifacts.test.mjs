@@ -56,9 +56,16 @@ describe('release identity and offline deliverables', () => {
     expect(() =>
       validateReleaseInputs({ version }, notes, {
         ...config,
-        saveFormatVersion: 2,
+        saveFormatVersion: 999,
       }),
-    ).toThrow('v1');
+    ).toThrow('协议');
+    expect(
+      validateReleaseInputs({ version }, notes, {
+        ...config,
+        saveFormatVersion: 2,
+        replayFormatVersion: 2,
+      }).compatibility.saveFormatVersion,
+    ).toBe(2);
     expect(() =>
       validateReleaseInputs(
         { version },

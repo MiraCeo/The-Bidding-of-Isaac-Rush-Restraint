@@ -16,7 +16,7 @@ export interface ReplayRoomRecord {
   seed: number;
   location: string;
   build: string;
-  source: 'live' | 'save-reconstruction';
+  source: 'live' | 'save-reconstruction' | 'checkpoint-reconstruction';
   previousPlayers: RuntimePlayerState[] | null;
   entryEvents: SettlementEvent[];
   aiChoices: Array<{ playerId: string; strategy: AiStrategy }>;

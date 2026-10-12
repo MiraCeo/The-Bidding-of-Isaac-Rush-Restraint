@@ -9,7 +9,14 @@ import { RoomPrototype } from '@/components/game/room-prototype';
 import * as roomGeneration from '../game/rooms';
 import * as aiDecision from '../game/ai-decision';
 import * as preferenceStorage from './game-preferences';
-import { gameSaveKey, parseGameSave, serializeGameSave } from './game-save';
+import {
+  gameSaveKey,
+  lastCompletedKey,
+  loadAutoSave,
+  parseGameSave,
+  serializeGameSave,
+} from './game-save';
+import { parseReplay } from './game-replay';
 import { createGameSession, reduceGameSession } from './game-session';
 import {
   startClientGame,
@@ -185,10 +192,7 @@ describe('room utility interaction without a real browser', () => {
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
     ).toBe('19');
-    expect(
-      parseGameSave(localStorage.getItem(gameSaveKey)!).session.draft!.amounts.A
-        .bid,
-    ).toBe(19);
+    expect(loadAutoSave(localStorage).session!.draft!.amounts.A.bid).toBe(19);
   });
 
   it('automatically resumes unsubmitted amounts after a fresh mount without changing items or money', async () => {
@@ -197,7 +201,7 @@ describe('room utility interaction without a real browser', () => {
     await mount(createElement(GameApp));
     await setInput('input[aria-label="竞拍奖励 A 的数值"]', '19');
     await setInput('input[aria-label="竞拍奖励 B 的数值"]', '21');
-    const stored = parseGameSave(localStorage.getItem(gameSaveKey)!).session;
+    const stored = loadAutoSave(localStorage).session;
     await mount(createElement(GameApp, { key: 'refresh' }));
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
@@ -205,7 +209,7 @@ describe('room utility interaction without a real browser', () => {
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 B 的数值"]').value,
     ).toBe('21');
-    const recovered = parseGameSave(localStorage.getItem(gameSaveKey)!).session;
+    const recovered = loadAutoSave(localStorage).session!;
     expect(recovered).toEqual(stored);
     expect(recovered.game).toEqual(session.game);
     await click(button('设置', element('nav')));
@@ -243,7 +247,7 @@ describe('room utility interaction without a real browser', () => {
   it('loads a file from initial settings without requiring a new game first', async () => {
     await mount(createElement(GameApp));
     await click(button('设置', element('nav')));
-    expect(button('导出 JSON 存档').disabled).toBe(true);
+    expect(button('导出续玩存档').disabled).toBe(true);
     await upload(serializeGameSave(savedSession('jacob_esau')));
     await click(button('载入此存档'));
     expect(element('.round-status').textContent).toContain('雅阁和以扫');
@@ -266,7 +270,7 @@ describe('room utility interaction without a real browser', () => {
       return 'blob:test-save';
     });
     const request = vi.spyOn(globalThis, 'fetch');
-    await click(button('导出 JSON 存档'));
+    await click(button('导出续玩存档'));
     expect(download).toHaveBeenCalledOnce();
     expect(parseGameSave(await blob!.text()).session.draft!.amounts.B.bid).toBe(
       23,
@@ -284,7 +288,7 @@ describe('room utility interaction without a real browser', () => {
     await setInput('input[aria-label="竞拍奖励 A 的数值"]', '12');
     await click(button('设置', element('nav')));
     expect(element('.save-panel').textContent).toContain('存储不可用');
-    expect(button('导出 JSON 存档').disabled).toBe(false);
+    expect(button('导出续玩存档').disabled).toBe(false);
     await click(button('恢复默认设置'));
     await click(button('返回游戏'));
     expect(
@@ -317,13 +321,18 @@ describe('room utility interaction without a real browser', () => {
       expect(container.querySelectorAll('.topbar')).toHaveLength(1);
       const before = localStorage.getItem(gameSaveKey)!;
       await click(button('设置', element('nav')));
-      expect(button('导出 JSON 存档').disabled).toBe(false);
+      expect(button('导出续玩存档').disabled).toBe(false);
       await click(button('规则', element('nav')));
       await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
       await click(button('返回游戏'));
       expect(localStorage.getItem(gameSaveKey)).toBe(before);
-      expect(parseGameSave(before).session.game.phase).toBe(phase);
+      if (phase !== 'game_result')
+        expect(parseGameSave(before).session.game.phase).toBe(phase);
       if (phase === 'game_result') {
+        expect(
+          parseReplay(localStorage.getItem(lastCompletedKey)!).replay.final,
+        ).toBeTruthy();
+        expect(before).toBeNull();
         await click(button('重新开始'));
         expect(localStorage.getItem(gameSaveKey)).toBeNull();
         expect(container.textContent).toContain('选择角色');
@@ -743,7 +752,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.game-client').getAttribute('data-reduce-motion')).toBe(
       'true',
     );
-    expect(localStorage.length).toBe(2);
+    expect(localStorage.length).toBe(4); // Preferences, checkpoint, independent draft and replay.
     expect(localStorage.getItem(gameSaveKey)).not.toBeNull();
   });
 });

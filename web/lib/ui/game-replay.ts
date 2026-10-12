@@ -3,11 +3,12 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { createGameSession, reduceGameSession } from './game-session';
 import { canonicalJson, copySnapshot, type ReplayLog } from './replay-record';
 import { saveCompatibility } from './game-version';
+import { packReplay, unpackReplay } from './replay-codec';
 
 export const maxReplayBytes = 8 * 1024 * 1024;
 export interface ReplayDocument {
   format: 'the-bidding-of-isaac-replay';
-  version: 1;
+  version: 1 | 2;
   exportedAt: string;
   exportedBuild: string;
   replay: ReplayLog;
@@ -104,7 +105,12 @@ export function verifyReplayLog(
   for (let i = 0; i < normalized.rooms.length; i++) {
     const room = record(input.rooms[i]);
     normalized.rooms[i]!.build = build(room.build);
-    if (room.source !== 'live' && room.source !== 'save-reconstruction') fail();
+    if (
+      room.source !== 'live' &&
+      room.source !== 'save-reconstruction' &&
+      room.source !== 'checkpoint-reconstruction'
+    )
+      fail();
     normalized.rooms[i]!.source = room.source;
   }
   if (normalized.final)
@@ -116,18 +122,15 @@ export function serializeReplay(
   replay: ReplayLog,
   exportedBuild: string,
   now = new Date(),
+  version: 1 | 2 = 2,
 ): string {
-  const source = JSON.stringify(
-    {
-      format: 'the-bidding-of-isaac-replay',
-      version: 1,
-      exportedAt: now.toISOString(),
-      exportedBuild,
-      replay,
-    } satisfies ReplayDocument,
-    null,
-    2,
-  );
+  const source = JSON.stringify({
+    format: 'the-bidding-of-isaac-replay',
+    version,
+    exportedAt: now.toISOString(),
+    exportedBuild,
+    replay: version === 2 ? packReplay(replay) : replay,
+  });
   if (new TextEncoder().encode(source).length > maxReplayBytes)
     fail('回放文件超过8 MiB，不能导出。');
   return source;
@@ -142,7 +145,10 @@ export function parseReplay(source: string): ReplayDocument {
     fail('不是有效的JSON回放文件。');
   }
   const doc = record(value);
-  if (doc.format !== 'the-bidding-of-isaac-replay' || doc.version !== 1)
+  if (
+    doc.format !== 'the-bidding-of-isaac-replay' ||
+    (doc.version !== 1 && doc.version !== 2)
+  )
     fail('不支持的回放格式或版本；存档与回放是不同文件。');
   if (
     typeof doc.exportedAt !== 'string' ||
@@ -151,9 +157,11 @@ export function parseReplay(source: string): ReplayDocument {
     fail('回放导出时间无效。');
   return {
     format: 'the-bidding-of-isaac-replay',
-    version: 1,
+    version: doc.version,
     exportedAt: doc.exportedAt,
     exportedBuild: build(doc.exportedBuild),
-    replay: verifyReplayLog(doc.replay),
+    replay: verifyReplayLog(
+      doc.version === 2 ? unpackReplay(doc.replay) : doc.replay,
+    ),
   };
 }

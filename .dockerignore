@@ -7,4 +7,5 @@ web/releases
 web/.vinext
 web/.wrangler
 web/coverage
+web/work
 *.log

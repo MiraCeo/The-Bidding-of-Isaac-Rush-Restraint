@@ -18,7 +18,9 @@ export async function bundleOfflineGame({ logLevel = 'info' } = {}) {
   const result = await build({
     root,
     configFile: resolve(root, 'vite.config.ts'),
-    mode: 'production',
+    mode: 'offline',
+    // An online subdirectory must never turn the portable file into a hosted build.
+    base: '/',
     publicDir: false,
     logLevel,
     // Library mode otherwise leaves process.env.NODE_ENV for the consumer.

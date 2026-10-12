@@ -8,6 +8,8 @@ import {
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { downloadJsonFile } from '@/lib/ui/json-download';
 import { useSessionTools } from './session-context';
+import { lastCompletedKey } from '@/lib/ui/game-save';
+import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 
 export function ReplayControls({ onOpen }: { onOpen: () => void }) {
   const tools = useSessionTools();
@@ -85,6 +87,30 @@ export function ReplayControls({ onOpen }: { onOpen: () => void }) {
       <div className="save-actions">
         <Button
           type="button"
+          variant="secondary"
+          onClick={() => {
+            try {
+              const source = getPreferenceStorage()?.getItem(lastCompletedKey);
+              if (!source) {
+                setMessage('尚无已归档的完成对局。');
+                return;
+              }
+              const archive = parseReplay(source);
+              tools.onReplayImport(archive);
+              onOpen();
+            } catch (error) {
+              setMessage(
+                error instanceof Error
+                  ? error.message
+                  : '无法读取最近完成对局。',
+              );
+            }
+          }}
+        >
+          查看最近完成对局
+        </Button>
+        <Button
+          type="button"
           disabled={count === 0}
           onClick={() => {
             tools.onReplaySourceChange('current');
@@ -133,7 +159,7 @@ export function ReplayControls({ onOpen }: { onOpen: () => void }) {
         </output>
       )}
       <small>
-        未提交报价、当前问号奖励和未来房间不进入回放。存档／回放分别导出；本局逐房记录随自动存档保存。
+        未提交报价、当前问号奖励和未来房间不进入回放。回放采用独立差分记录，仅结算时更新；迁移玩家档案与原始回放可导出完整备份。
       </small>
     </section>
   );

@@ -30,10 +30,10 @@ export function validateReleaseInputs(packageInfo, notes, config) {
   if (
     typeof config.engineVersion !== 'string' ||
     !/^[a-z0-9-]+$/.test(config.engineVersion) ||
-    config.saveFormatVersion !== 1 ||
-    config.replayFormatVersion !== 1
+    ![1, 2].includes(config.saveFormatVersion) ||
+    ![1, 2].includes(config.replayFormatVersion)
   )
-    throw new Error('发布兼容配置与当前v1文件协议不一致。');
+    throw new Error('发布兼容配置的文件协议不支持。');
   return {
     version: packageInfo.version,
     release: notes[0],
@@ -75,7 +75,7 @@ export function sourceProvenance(root) {
 }
 export function createArtifactManifest(
   bundle,
-  { source, validation = null, now = new Date() },
+  { source, validation = null, now = new Date(), webArtifact = null },
 ) {
   const filename = versionedHtmlName(bundle.version, bundle.buildId);
   if (!bundle.html.includes(`content="${bundle.version}-${bundle.buildId}"`))
@@ -95,6 +95,7 @@ export function createArtifactManifest(
     releaseNotes: bundle.release,
     source,
     validation,
+    webArtifact,
     entryAlias: '以撒的竞合.html',
   };
 }
@@ -107,12 +108,18 @@ export async function writeOfflineArtifacts(
   bundle,
   {
     validation = null,
+    webArtifact = null,
     source = sourceProvenance(root),
     now = new Date(),
     release = false,
   } = {},
 ) {
-  const manifest = createArtifactManifest(bundle, { validation, source, now });
+  const manifest = createArtifactManifest(bundle, {
+    validation,
+    source,
+    now,
+    webArtifact,
+  });
   const directory = release
     ? resolve(root, 'releases', `v${bundle.version}`, bundle.buildId)
     : resolve(root, 'dist-offline');

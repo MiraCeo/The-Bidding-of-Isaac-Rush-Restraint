@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
 import { bundleOfflineGame } from './build-offline.mjs';
+import { recordWebArtifact } from './web-artifact.mjs';
 import {
   readReleaseInputs,
   writeOfflineArtifacts,
@@ -80,11 +81,19 @@ export async function runReleaseGates({
 export async function buildRelease() {
   await readReleaseInputs(root);
   const gates = await runReleaseGates();
+  const webArtifact = await recordWebArtifact(
+    root,
+    process.env.BIDDING_WEB_BASE ?? '/',
+  );
   const bundle = await bundleOfflineGame();
   const validation = { ...gates, offlineContract: 'passed' };
-  const offline = await writeOfflineArtifacts(root, bundle, { validation });
+  const offline = await writeOfflineArtifacts(root, bundle, {
+    validation,
+    webArtifact,
+  });
   const release = await writeOfflineArtifacts(root, bundle, {
     validation,
+    webArtifact,
     release: true,
   });
   console.log(

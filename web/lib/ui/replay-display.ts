@@ -2,6 +2,35 @@ import { getItemDefinition } from '../game/item-catalog';
 import { countItem } from '../game/runtime';
 import { displayItemText } from './item-labels';
 import type { ReplayRoomRecord } from './replay-record';
+import type { SettlementEvent } from '../game/item-types';
+
+// Legacy Money Bag traces record only the owner; recognize its exact persisted grammar.
+// Do not infer associations from arbitrary substrings or change the engine's v1 event identity.
+function legacyTransferTarget(event: SettlementEvent): string | null {
+  if (event.type !== 'money' || event.itemId !== 'money_bag') return null;
+  return (
+    /^偷钱袋从 (human|ai-\d+) 窃取 \d+ 资金。$/.exec(event.message)?.[1] ?? null
+  );
+}
+export function replayEventRelatedTo(
+  event: SettlementEvent,
+  playerId: string,
+): boolean {
+  return (
+    event.playerId === playerId || legacyTransferTarget(event) === playerId
+  );
+}
+export function replayEventText(
+  event: SettlementEvent,
+  name: (id: string) => string,
+): string {
+  if (event.type === 'award' && event.itemId)
+    return `获得道具 ${getItemDefinition(event.itemId).name}。`;
+  const target = legacyTransferTarget(event);
+  if (target)
+    return `偷钱袋：${name(target)} → ${name(event.playerId)}，转移 ${event.amount ?? 0} 资金。`;
+  return displayItemText(event.message);
+}
 
 export const replayRoomNames = {
   normal: '普通房',

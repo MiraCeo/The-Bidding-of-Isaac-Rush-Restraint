@@ -1,6 +1,8 @@
 import { aiPersonalityOrder, type AiPersonality } from './ai-personality';
 import type { AiStrategy } from './ai-decision';
 import type { MetricSummary, RankedPlayerRecord } from './simulation';
+import type { CharacterBudgetDiagnostics } from './character-budget-diagnostics';
+import type { NoiseEcologySummary } from './noise-ecology-diagnostics';
 
 export interface ResearchPlayerRecord extends RankedPlayerRecord {
   money: number;
@@ -36,6 +38,8 @@ export interface SimulationResearchSummary {
   worldFingerprint: string;
   personalityFingerprint: string;
   cohorts: Record<string, ResearchCohortSummary>;
+  characterBudget?: CharacterBudgetDiagnostics;
+  noiseEcology?: NoiseEcologySummary;
 }
 
 const cohortDefinitions: Record<string, readonly AiPersonality[]> = {

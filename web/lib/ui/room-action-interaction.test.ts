@@ -13,7 +13,7 @@ import { grantItemInstance } from '../game/runtime';
 import * as aiDecision from '../game/ai-decision';
 import { defaultGamePreferences } from './game-preferences';
 import { createGameSession, reduceGameSession } from './game-session';
-import { gameSaveKey, parseGameSave, serializeGameSave } from './game-save';
+import { gameSaveKey, loadAutoSave, serializeGameSave } from './game-save';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -249,10 +249,10 @@ describe('room-wide compact mode and local previews', () => {
     await amount('扰乱', 'B', 17);
     await mode('竞拍');
     expect(element('.action-mode-notice').textContent).toContain('超过 60');
-    const saved = parseGameSave(localStorage.getItem(gameSaveKey)!);
-    expect(saved.session.draft!.amounts.A.bid).toBe(100);
-    expect(saved.session.draft!.amounts.B.disrupt).toBe(17);
-    expect(saved.session.draft!.selectedAction).toEqual({
+    const saved = loadAutoSave(localStorage).session!;
+    expect(saved.draft!.amounts.A.bid).toBe(100);
+    expect(saved.draft!.amounts.B.disrupt).toBe(17);
+    expect(saved.draft!.selectedAction).toEqual({
       kind: 'bid',
       groups: ['A'],
     });

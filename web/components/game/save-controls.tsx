@@ -5,7 +5,8 @@ import {
   describeSave,
   maxSaveBytes,
   parseGameSave,
-  serializeGameSave,
+  serializeGameCheckpoint,
+  serializeGameBackup,
   type SaveDocument,
 } from '@/lib/ui/game-save';
 
@@ -42,20 +43,31 @@ export function SaveControls() {
       if (id === requestId.current) setReading(false);
     }
   }
-  function exportSave() {
+  function exportSave(backup = false) {
     let url: string | null = null;
     try {
-      const blob = new Blob([serializeGameSave(tools!.session)], {
-        type: 'application/json;charset=utf-8',
-      });
+      const blob = new Blob(
+        [
+          backup
+            ? serializeGameBackup(tools!.session, tools!.profile)
+            : serializeGameCheckpoint(tools!.session),
+        ],
+        {
+          type: 'application/json;charset=utf-8',
+        },
+      );
       url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `以撒的竞合-${game.seed.toString(16)}-${active ? `${game.floorIndex + 1}-${game.roomIndex + 1}` : '新游戏'}.json`;
+      link.download = `以撒的竞合-${backup ? '完整备份' : '续玩'}-${game.seed.toString(16)}-${active ? `${game.floorIndex + 1}-${game.roomIndex + 1}` : '新游戏'}.json`;
       document.body.append(link);
       link.click();
       link.remove();
-      setMessage('已请求下载存档；保存 JSON 文件后，可从这里读取继续同一局。');
+      setMessage(
+        backup
+          ? '已请求下载完整备份：玩家档案、续玩检查点与独立回放各保存一份。'
+          : '已请求下载轻量续玩存档，不含完整历史快照；兼容规则下可核验重建历史。迁移原始回放与玩家档案时请导出完整备份。',
+      );
       const release = url;
       window.setTimeout(() => URL.revokeObjectURL(release), 1000);
     } catch (error) {
@@ -67,8 +79,7 @@ export function SaveControls() {
     <section className="save-panel settings-group" aria-labelledby="save-title">
       <h3 id="save-title">对局存档</h3>
       <p>
-        JSON 文件随离线 HTML 携带；读取文件 → 核对进度 →
-        载入。界面偏好单独保留，不随对局覆盖。
+        续玩检查点用于接着玩；完整备份额外保留原始回放和玩家档案。两种JSON均可从原入口读取，界面偏好单独保留。
       </p>
       <div className="save-summary">
         <strong>{describeSave(tools.session)}</strong>
@@ -76,15 +87,25 @@ export function SaveControls() {
       </div>
       <output className="save-storage-status">
         {tools.autoSaveStatus === 'saved'
-          ? '本局及未提交报价已自动保存到当前浏览器。刷新可继续。'
+          ? game.phase === 'game_result'
+            ? '已归档最近完成的对局，活动检查点已清理。'
+            : '续玩检查点及未提交报价已自动保存；回放单独保存。刷新可继续。'
           : tools.autoSaveStatus === 'session'
             ? '浏览器存储不可用；本局仍可游玩，请通过 JSON 文件保存。'
             : '开始对局后自动保存；也可读取已有 JSON 存档。'}
         {tools.restoreMessage && <span>{tools.restoreMessage}</span>}
       </output>
       <div className="save-actions">
-        <Button type="button" disabled={!active} onClick={exportSave}>
-          导出 JSON 存档
+        <Button type="button" disabled={!active} onClick={() => exportSave()}>
+          导出续玩存档
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!active || Boolean(tools.profileMessage)}
+          onClick={() => exportSave(true)}
+        >
+          导出完整备份
         </Button>
         <label className="save-file-picker">
           读取 JSON 存档
@@ -149,10 +170,25 @@ export function SaveControls() {
               ? '载入将替换当前对局。需要保留当前进度时，先导出。'
               : '载入后直接回到保存的阶段，不重新抽取角色、道具或人格。'}
           </p>
+          <p>
+            {candidate.kind === 'backup'
+              ? '完整备份：确认载入会同时替换玩家档案，包含其中的解锁、成就扩展数据和历史索引。'
+              : '仅恢复本局，不覆盖当前玩家档案；轻量检查点的历史按兼容规则核验重建。'}
+          </p>
           <div className="save-actions">
             <Button
               type="button"
-              onClick={() => tools.onRestore(candidate.session)}
+              onClick={() => {
+                try {
+                  tools.onRestore(candidate.session, candidate.profile);
+                } catch (error) {
+                  setMessage(
+                    error instanceof Error
+                      ? error.message
+                      : '载入失败，当前对局未改变。',
+                  );
+                }
+              }}
             >
               载入此存档
             </Button>
@@ -173,6 +209,19 @@ export function SaveControls() {
         重新开始会清除旧局自动存档；已经导出的 JSON
         不受影响。同一浏览器不同时编辑多个副本，最后一次保存会覆盖自动存档。
       </small>
+      <details className="profile-reservation">
+        <summary>玩家档案 · 与对局独立</summary>
+        <p>
+          已预留角色解锁条件记录、成就进度、累计统计和独立扩展模块；当前不限制角色选择、不自动发放成就。新开局不重置这些数据。
+        </p>
+        <p>
+          已记录 {tools.profile.history.length}{' '}
+          条完成对局索引。索引不是完整回放库；浏览器目前仅额外保留最近完成的一局，长期保留请导出回放或完整备份。
+        </p>
+        {tools.profileMessage && (
+          <output className="save-message">{tools.profileMessage}</output>
+        )}
+      </details>
     </section>
   );
 }

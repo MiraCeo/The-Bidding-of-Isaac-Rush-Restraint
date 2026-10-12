@@ -54,6 +54,7 @@ function fullGame(characterId: CharacterId) {
 function edited(doc: ReplayDocument, update: (doc: ReplayDocument) => void) {
   const clone = JSON.parse(JSON.stringify(doc)) as ReplayDocument;
   update(clone);
+  clone.version = 1; // Parsed documents expose full snapshots; exercise the legacy reader explicitly.
   return JSON.stringify(clone);
 }
 
@@ -298,7 +299,7 @@ describe('recorded read-only replays', () => {
     expect(() => parseReplay(' '.repeat(maxReplayBytes + 1))).toThrow('8 MiB');
     expect(() => parseReplay(serializeGameSave(start()))).toThrow('不同文件');
     const doc = JSON.parse(serializeReplay(submit(start()).replay!, 'current'));
-    doc.version = 2;
+    doc.version = 999;
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('版本');
     doc.version = 1;
     doc.exportedBuild = '';
@@ -315,8 +316,8 @@ describe('recorded read-only replays', () => {
       turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
     });
     const source = serializeReplay(session.replay!, 'build').replace(
-      '"marketEquivalent": null',
-      '"marketEquivalent": 1e999',
+      '"marketEquivalent":null',
+      '"marketEquivalent":1e999',
     );
     expect(() => parseReplay(source)).toThrow('非法数值');
   });

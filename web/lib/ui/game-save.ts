@@ -1,8 +1,20 @@
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
-import { verifyReplayLog } from './game-replay';
-import { reconstructLegacyReplay } from './replay-record';
-import { saveCompatibility } from './game-version';
+import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
+import { packReplay, unpackReplay } from './replay-codec';
+import {
+  reconstructLegacyReplay,
+  replayRoomLocator,
+  type ReplayLog,
+} from './replay-record';
+import { readBuildVersion, saveCompatibility, shortHash } from './game-version';
+import {
+  createPlayerProfile,
+  readPlayerProfile,
+  recordCompletedMatch,
+  playerProfileKey,
+  type PlayerProfile,
+} from './player-profile';
 export { saveCompatibility } from './game-version';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
@@ -14,15 +26,20 @@ import {
 } from './game-session';
 
 export const gameSaveKey = 'bidding-game-save-v1';
+export const activeReplayKey = 'bidding-active-replay-v2';
+export const lastCompletedKey = 'bidding-last-completed-v2';
+export const draftSaveKey = 'bidding-game-draft-v2';
 export const maxSaveBytes = 8 * 1024 * 1024;
 const format = 'the-bidding-of-isaac-save';
 
 export interface SaveDocument {
   format: typeof format;
-  version: 1;
+  version: 1 | 2;
   compatibility: string;
   savedAt: string;
   session: GameSession;
+  kind?: 'checkpoint' | 'backup';
+  profile?: PlayerProfile;
 }
 export type SaveStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -149,23 +166,120 @@ function readDraft(value: unknown, session: GameSession): RoomDraft | null {
   return clean;
 }
 
+function checkpointGame(game: GameSession['game']) {
+  if (game.phase === 'character_selection')
+    fail('尚未开始对局，无需导出存档。');
+  const {
+    revealedAiDecisions: _decisions,
+    pendingRoomTurns: _pending,
+    ...state
+  } = game;
+  return state;
+}
+function checkpointMetadata(log: ReplayLog | null) {
+  if (!log) fail();
+  return {
+    startedBuild: log.startedBuild,
+    rooms: log.rooms.map((r) => ({
+      build: r.build,
+      locator: replayRoomLocator(log, r),
+    })),
+    finalBuild: log.final?.build ?? null,
+  };
+}
+function restoreMetadata(value: unknown, expected: ReplayLog): ReplayLog {
+  const meta = object(value);
+  if (
+    typeof meta.startedBuild !== 'string' ||
+    !meta.startedBuild.trim() ||
+    meta.startedBuild.length > 160 ||
+    !Array.isArray(meta.rooms) ||
+    meta.rooms.length !== expected.rooms.length
+  )
+    fail('检查点的历史定位损坏。');
+  const log: ReplayLog = {
+    ...expected,
+    startedBuild: meta.startedBuild,
+    rooms: expected.rooms.map((r, i) => {
+      const m = object((meta.rooms as unknown[])[i]);
+      if (
+        typeof m.build !== 'string' ||
+        !m.build.trim() ||
+        m.build.length > 160 ||
+        m.locator !== replayRoomLocator(expected, r)
+      )
+        fail('检查点的历史定位损坏。');
+      return { ...r, build: m.build, source: 'checkpoint-reconstruction' };
+    }),
+  };
+  if (expected.final) {
+    if (
+      typeof meta.finalBuild !== 'string' ||
+      !meta.finalBuild.trim() ||
+      meta.finalBuild.length > 160
+    )
+      fail();
+    log.final = { ...expected.final, build: meta.finalBuild };
+  } else if (meta.finalBuild !== null) fail();
+  return log;
+}
+function encodeV2(
+  session: GameSession,
+  now: Date,
+  profile?: PlayerProfile,
+): string {
+  const doc = {
+    format,
+    version: 2,
+    kind: profile ? 'backup' : 'checkpoint',
+    compatibility: saveCompatibility,
+    savedAt: now.toISOString(),
+    checkpoint: {
+      game: checkpointGame(session.game),
+      draft: session.draft,
+      turns: session.turns,
+      metadata: checkpointMetadata(session.replay),
+    },
+    ...(profile
+      ? {
+          replay: packReplay(session.replay!),
+          profile: readPlayerProfile(profile),
+        }
+      : {}),
+  };
+  const source = JSON.stringify(doc);
+  if (new TextEncoder().encode(source).length > maxSaveBytes)
+    fail('存档文件超过8 MiB，不能导出。');
+  return source;
+}
+export function serializeGameCheckpoint(
+  session: GameSession,
+  now = new Date(),
+): string {
+  return encodeV2(session, now);
+}
+export function serializeGameBackup(
+  session: GameSession,
+  profile: PlayerProfile,
+  now = new Date(),
+): string {
+  return encodeV2(session, now, profile);
+}
+
+/** Legacy v1 encoder retained for compatibility fixtures. New UI exports use the v2 encoders. */
 export function serializeGameSave(
   session: GameSession,
   now = new Date(),
 ): string {
   if (session.game.phase === 'character_selection')
     fail('尚未开始对局，无需导出存档。');
-  const source = JSON.stringify(
-    {
-      format,
-      version: 1,
-      compatibility: saveCompatibility,
-      savedAt: now.toISOString(),
-      session,
-    } satisfies SaveDocument,
-    null,
-    2,
-  );
+  const source = JSON.stringify({
+    format,
+    version: 1,
+    compatibility: saveCompatibility,
+    savedAt: now.toISOString(),
+    session,
+  } satisfies SaveDocument);
   if (new TextEncoder().encode(source).length > maxSaveBytes)
     fail('存档文件超过8 MiB，不能导出。');
   return source;
@@ -182,7 +296,7 @@ export function parseGameSave(source: string): SaveDocument {
     fail('不是有效的 JSON 存档。');
   }
   const doc = object(value);
-  if (doc.format !== format || doc.version !== 1)
+  if (doc.format !== format || (doc.version !== 1 && doc.version !== 2))
     fail('不支持的存档格式或版本。');
   if (doc.compatibility !== saveCompatibility)
     fail('存档的规则／数据版本与当前游戏不兼容。');
@@ -191,7 +305,16 @@ export function parseGameSave(source: string): SaveDocument {
     !Number.isFinite(Date.parse(doc.savedAt))
   )
     fail('存档时间无效。');
-  const saved = object(doc.session);
+  const modern = doc.version === 2;
+  if (modern && doc.kind !== 'checkpoint' && doc.kind !== 'backup')
+    fail('检查点类型无效。');
+  if (
+    modern &&
+    doc.kind === 'checkpoint' &&
+    (doc.replay !== undefined || doc.profile !== undefined)
+  )
+    fail();
+  const saved = object(modern ? doc.checkpoint : doc.session);
   const game = object(saved.game);
   const seed = integer(game.seed, 0, 0xffffffff);
   if (!characterCatalog.some((c) => c.id === game.selectedCharacter))
@@ -236,24 +359,47 @@ export function parseGameSave(source: string): SaveDocument {
     verified = reduceGameSession(verified, { type: 'advance_room' });
   }
   // JSON removes optional undefined properties; compare JSON-normalized snapshots.
-  if (canonical(JSON.parse(JSON.stringify(verified.game))) !== canonical(game))
+  if (
+    canonical(
+      JSON.parse(
+        JSON.stringify(modern ? checkpointGame(verified.game) : verified.game),
+      ),
+    ) !== canonical(game)
+  )
     fail();
   if (canonical(turns) !== canonical(saved.turns)) fail();
   const session = {
     game: verified.game,
     turns,
     draft: readDraft(saved.draft, verified),
-    replay:
-      saved.replay === undefined
+    replay: modern
+      ? doc.kind === 'backup'
+        ? verifyReplayLog(unpackReplay(doc.replay), verified.replay!)
+        : restoreMetadata(saved.metadata, verified.replay!)
+      : saved.replay === undefined
         ? reconstructLegacyReplay(verified.replay!)
         : verifyReplayLog(saved.replay, verified.replay!),
   };
+  if (
+    modern &&
+    doc.kind === 'backup' &&
+    canonical(checkpointMetadata(session.replay)) !== canonical(saved.metadata)
+  )
+    fail('完整备份的检查点与回放来源不一致。');
   return {
     format,
-    version: 1,
+    version: doc.version,
     compatibility: saveCompatibility,
     savedAt: doc.savedAt,
     session,
+    ...(modern
+      ? {
+          kind: doc.kind as 'checkpoint' | 'backup',
+          ...(doc.kind === 'backup'
+            ? { profile: readPlayerProfile(doc.profile) }
+            : {}),
+        }
+      : {}),
   };
 }
 
@@ -268,15 +414,95 @@ export function describeSave(session: GameSession): string {
   };
   return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}`;
 }
+const storageCache = new WeakMap<
+  SaveStorage,
+  {
+    game: GameSession['game'];
+    replay: ReplayLog | null;
+    core: string;
+    draft: RoomDraft | null;
+  }
+>();
+export function loadPlayerProfile(storage: SaveStorage | null): {
+  profile: PlayerProfile;
+  message: string;
+} {
+  try {
+    const value = storage?.getItem(playerProfileKey);
+    return {
+      profile: value
+        ? readPlayerProfile(JSON.parse(value))
+        : createPlayerProfile(),
+      message: '',
+    };
+  } catch {
+    return {
+      profile: createPlayerProfile(),
+      message: '玩家档案未读取：原数据保留；可从完整备份恢复。',
+    };
+  }
+}
 export function persistGameSession(
   storage: SaveStorage | null,
   session: GameSession,
 ): boolean {
   try {
     if (!storage) return false;
-    if (session.game.phase === 'character_selection')
+    if (session.game.phase === 'character_selection') {
       storage.removeItem(gameSaveKey);
-    else storage.setItem(gameSaveKey, serializeGameSave(session));
+      storage.removeItem(draftSaveKey);
+      storage.removeItem(activeReplayKey);
+      storageCache.delete(storage);
+      return true;
+    }
+    const cached = storageCache.get(storage);
+    const needsCore =
+      cached?.game !== session.game || storage.getItem(gameSaveKey) === null;
+    const core =
+      !needsCore && cached ? cached.core : serializeGameCheckpoint(session);
+    // Draft edits never rewrite the replay or core snapshot.
+    if (session.game.phase === 'game_result') {
+      const loaded = loadPlayerProfile(storage);
+      if (loaded.message) return false;
+      const log = session.replay!;
+      const key = replayRoomLocator(log, log.rooms.at(-1)!);
+      const profile = recordCompletedMatch(loaded.profile, log, key);
+      storage.setItem(
+        lastCompletedKey,
+        serializeReplay(log, readBuildVersion()),
+      );
+      if (profile !== loaded.profile)
+        storage.setItem(playerProfileKey, JSON.stringify(profile));
+      // Only remove the active checkpoint after both completed archive and profile succeeded.
+      storage.removeItem(gameSaveKey);
+      storage.removeItem(draftSaveKey);
+      storage.removeItem(activeReplayKey);
+    } else {
+      if (
+        cached?.replay !== session.replay ||
+        storage.getItem(activeReplayKey) === null
+      )
+        storage.setItem(
+          activeReplayKey,
+          serializeReplay(session.replay!, readBuildVersion()),
+        );
+      if (needsCore) storage.setItem(gameSaveKey, core);
+      if (
+        cached?.draft !== session.draft ||
+        cached?.core !== core ||
+        storage.getItem(draftSaveKey) === null
+      )
+        storage.setItem(
+          draftSaveKey,
+          JSON.stringify({ token: shortHash(core), draft: session.draft }),
+        );
+    }
+    storageCache.set(storage, {
+      game: session.game,
+      replay: session.replay,
+      core,
+      draft: session.draft,
+    });
     return true;
   } catch {
     return false;
@@ -289,9 +515,28 @@ export function loadAutoSave(storage: SaveStorage | null): {
   try {
     const source = storage?.getItem(gameSaveKey);
     if (!source) return { session: null, message: '' };
+    const session = parseGameSave(source).session;
+    const draftSource = storage?.getItem(draftSaveKey);
+    if (draftSource) {
+      const draft = object(JSON.parse(draftSource));
+      if (draft.token === shortHash(source))
+        session.draft = readDraft(draft.draft, session);
+    }
+    const archive = storage?.getItem(activeReplayKey);
+    let archiveMessage = '';
+    if (archive && JSON.parse(source).version === 2) {
+      try {
+        session.replay = verifyReplayLog(
+          parseReplay(archive).replay,
+          session.replay!,
+        );
+      } catch {
+        archiveMessage = ' 独立回放损坏或未同步，已按有效检查点核验重建历史。';
+      }
+    }
     return {
-      session: parseGameSave(source).session,
-      message: '已恢复浏览器中的对局存档。',
+      session,
+      message: `已恢复浏览器中的对局存档。${archiveMessage}`,
     };
   } catch (error) {
     return {

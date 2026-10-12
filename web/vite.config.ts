@@ -1,49 +1,37 @@
 import { fileURLToPath, URL } from 'node:url';
-import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import tailwindcss from '@tailwindcss/postcss';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { normalizeWebBase } from './scripts/deployment-config.mjs';
+import { readSourceBuild } from './scripts/source-build.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const hash = createHash('sha256');
-function hashSource(directory: string) {
-  for (const entry of readdirSync(resolve(root, directory), {
-    withFileTypes: true,
-  }).sort((a, b) => a.name.localeCompare(b.name))) {
-    const name = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) hashSource(name);
-    else if (
-      /\.(tsx?|css|png|svg|webp|gif)$/.test(name) &&
-      !name.endsWith('.test.ts')
-    )
-      hash.update(name).update(readFileSync(resolve(root, name)));
-  }
-}
-for (const directory of ['app', 'components', 'lib', 'assets'])
-  hashSource(directory);
-for (const name of [
-  'main.tsx',
-  'index.html',
-  'package.json',
-  'release-config.json',
-  'release-notes.json',
-])
-  hash.update(name).update(readFileSync(resolve(root, name)));
-const version = JSON.parse(
-  readFileSync(resolve(root, 'package.json'), 'utf8'),
-).version;
-const sourceBuild = `${version}-web-${hash.digest('hex').slice(0, 12)}`;
+const sourceBuild = readSourceBuild(root);
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base:
+    mode === 'offline'
+      ? '/'
+      : normalizeWebBase(process.env.BIDDING_WEB_BASE ?? '/'),
   define: { __BIDDING_BUILD__: JSON.stringify(sourceBuild) },
   css: { postcss: { plugins: [tailwindcss()] } },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'bidding-web-build-identity',
+      transformIndexHtml: () => [
+        {
+          tag: 'meta',
+          attrs: { name: 'bidding-web-build', content: sourceBuild },
+          injectTo: 'head' as const,
+        },
+      ],
+    },
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('.', import.meta.url)),
     },
   },
-});
+}));

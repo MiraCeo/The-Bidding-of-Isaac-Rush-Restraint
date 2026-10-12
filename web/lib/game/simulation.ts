@@ -23,6 +23,8 @@ import {
   type AiPersonality,
 } from './ai-personality';
 import { defaultRules } from './config';
+import { CharacterBudgetCollector } from './character-budget-diagnostics';
+import { NoiseEcologyCollector } from './noise-ecology-diagnostics';
 import { assignCharacter, characterOrder, chooseRandomCharacter } from './characters';
 import { itemCatalog } from './item-catalog';
 import { calculateFinalScore } from './item-scoring';
@@ -231,6 +233,9 @@ export interface SimulationReport {
 export interface SimulationResearchOptions extends AiDecisionExperiments {
   neutralizedPersonalities?: readonly AiPersonality[];
   randomization?: 'legacy' | 'per-player-room';
+  /** Extra observations for T08; never used by AI or the playable client. */
+  collectCharacterBudget?: boolean;
+  collectNoiseEcology?: boolean;
 }
 
 export interface SimulationOptions {
@@ -599,6 +604,8 @@ export function simulateAiGames(
   const allPlayerRecords: RankedPlayerRecord[] = [];
   const researchRecords: ResearchPlayerRecord[] = [];
   const neutralized = new Set(options.research?.neutralizedPersonalities ?? []);
+  const characterBudget = options.research?.collectCharacterBudget ? new CharacterBudgetCollector() : undefined;
+  const noiseEcology = options.research?.collectNoiseEcology ? new NoiseEcologyCollector(rules) : undefined;
   let worldFingerprint = 0x811c9dc5;
   let personalityFingerprint = 0x811c9dc5;
   const championRecords: RankedPlayerRecord[] = [];
@@ -775,6 +782,7 @@ export function simulateAiGames(
       personalityFingerprint = updateResearchFingerprint(personalityFingerprint, [...playerPersonalities]);
     }
     const recentMarkets: AiPublicMarketSnapshot[] = [];
+    noiseEcology?.beginGame(gameIndex + 1, generatedFloors, players, new Map(players.map((p) => [p.id, { doctrine: playerDoctrines.get(p.id)!, personalities: playerPersonalities.get(p.id)! }])), [...quoteProfiles]);
 
     for (let floorIndex = 0; floorIndex < 3; floorIndex += 1) {
       const rooms = generatedFloors[floorIndex]!;
@@ -798,6 +806,8 @@ export function simulateAiGames(
           paired ? pairedRandom(0x13198a2e) : gameplayRandom,
         );
         players = preparation.players;
+        if (room.roomIndex === 0) characterBudget?.beginFloor(floorIndex + 1, floorMoney, players);
+        noiseEcology?.entry(room, players);
         if (options.research && room.roomIndex === 0) {
           worldFingerprint = updateResearchFingerprint(worldFingerprint,
             players.map((player) => [player.id, player.characterFloorStartingMoney]));
@@ -826,6 +836,7 @@ export function simulateAiGames(
         }> = [];
         const strategiesForRoom = new Map<string, AiStrategy>();
         const doubleActionPlayersForRoom = new Set<string>();
+        const ecologyDecisions: ReturnType<typeof decideAiTurn>[] = [];
         const decisionsForRoom = players.map((player, playerIndex) => {
           if (room.kind === 'shop' || room.kind === 'boss') {
             premiumRoomDecisions += 1;
@@ -855,6 +866,8 @@ export function simulateAiGames(
             experiments: options.research,
           });
           strategiesForRoom.set(player.id, decision.strategy);
+          if (noiseEcology) ecologyDecisions.push(decision);
+          characterBudget?.decision(player, room, decision);
           decisionsByRoomKind[room.kind] += 1;
           strategiesByRoomKind[room.kind][decision.strategy] += 1;
           if (decision.secondaryActionAnalysis?.considered) {
@@ -988,7 +1001,9 @@ export function simulateAiGames(
 
         const settlement = settleRuntimeRoom(room, players, decisionsForRoom, rules,
           paired ? pairedRandom(0x510e527f) : gameplayRandom);
+        noiseEcology?.room(room, players, ecologyDecisions, settlement);
         players = settlement.players;
+        characterBudget?.settlement(settlement, doubleActionPlayersForRoom);
         for (const playerId of doubleActionPlayersForRoom) {
           addMetric(doubleActionScoreMetric, settlement.scoreBreakdowns[playerId]?.score ?? 0);
           addMetric(doubleActionRetroactiveScoreMetric, settlement.roomScoreSummaries[playerId]!.retroactiveScore);
@@ -1188,11 +1203,14 @@ export function simulateAiGames(
         }
       }
       for (const player of players) addMetric(moneyMetrics[floorIndex]!, player.money);
+      characterBudget?.endFloor(players);
     }
 
     const finalScores = players.map((player) => calculateFinalScore(player));
+    noiseEcology?.endGame(players);
     const winnerScore = Math.max(...finalScores);
     const winnerIndexes = finalScores.flatMap((score, index) => (score === winnerScore ? [index] : []));
+    characterBudget?.endGame(gameIndex + 1, players, finalScores, winnerIndexes);
     const rankedIndexes = finalScores
       .map((score, index) => ({ score, index }))
       .sort((left, right) => right.score - left.score)
@@ -1644,6 +1662,8 @@ export function simulateAiGames(
       worldFingerprint: worldFingerprint.toString(16).padStart(8, '0'),
       personalityFingerprint: personalityFingerprint.toString(16).padStart(8, '0'),
       cohorts: summarizeResearchCohorts(researchRecords),
+      ...(characterBudget ? { characterBudget: characterBudget.summarize() } : {}),
+      ...(noiseEcology ? { noiseEcology: noiseEcology.summarize() } : {}),
     } : undefined,
   };
 }

@@ -1,0 +1,195 @@
+name: Manual desktop delivery
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Source branch, tag or commit to build
+        required: true
+        default: codex/offline-html
+        type: string
+      expected_version:
+        description: Must match package.json; prevents publishing an unintended version
+        required: true
+        default: 0.2.6
+        type: string
+      target:
+        description: Build-only by default; publishing is explicit
+        type: choice
+        default: package
+        options: [package, pages, image, pages-and-image, draft-release]
+      web_base:
+        description: Empty uses repository path for Pages, root path otherwise
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: manual-desktop-publication
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.delivery.outputs.source_sha }}
+      deployment_id: ${{ steps.delivery.outputs.deployment_id }}
+      version: ${{ steps.delivery.outputs.version }}
+      image_tag: ${{ steps.delivery.outputs.image_tag }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - run: npm ci
+      - name: Select base and validate version
+        env:
+          TARGET: ${{ inputs.target }}
+          REQUESTED_BASE: ${{ inputs.web_base }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          import {normalizeWebBase} from './scripts/deployment-config.mjs';
+          const version=JSON.parse(fs.readFileSync('package.json','utf8')).version;
+          if(version!==process.env.EXPECTED_VERSION)throw new Error('Requested version differs from package.json');
+          const pages=['pages','pages-and-image'].includes(process.env.TARGET);
+          const base=normalizeWebBase(process.env.REQUESTED_BASE || (pages ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : '/'));
+          fs.appendFileSync(process.env.GITHUB_ENV,'BIDDING_WEB_BASE='+base+'\n');
+          NODE
+          echo "BIDDING_EXPECTED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Full gates and delivery package
+        id: delivery
+        run: npm run build:deployment -- --require-clean
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: desktop-package
+          path: ${{ steps.delivery.outputs.directory }}
+          if-no-files-found: error
+          retention-days: 30
+  pages:
+    if: inputs.target == 'pages' || inputs.target == 'pages-and-image'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      BIDDING_EXPECTED_SHA: ${{ needs.build.outputs.source_sha }}
+      BIDDING_EXPECTED_DEPLOYMENT: ${{ needs.build.outputs.deployment_id }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: desktop-package
+          path: package
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - run: node package/verify-deployment.mjs package --require-publishable
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: package/site
+      - name: Deploy selected version
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+      - name: Verify served version and assets
+        env:
+          SITE_URL: ${{ steps.deploy.outputs.page_url }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if node package/verify-live-deployment.mjs package "$SITE_URL"; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+  image:
+    if: inputs.target == 'image' || inputs.target == 'pages-and-image'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      BIDDING_EXPECTED_SHA: ${{ needs.build.outputs.source_sha }}
+      BIDDING_EXPECTED_DEPLOYMENT: ${{ needs.build.outputs.deployment_id }}
+      IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: desktop-package
+          path: package
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - run: node package/verify-deployment.mjs package --require-publishable
+      - name: Build exact verified site with a resolved runtime digest
+        run: |
+          docker pull nginx:1.29-alpine
+          runtime=$(docker image inspect --format '{{index .RepoDigests 0}}' nginx:1.29-alpine)
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${IMAGE_TAG}-r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker build --build-arg "NGINX_IMAGE=$runtime" -t "$image" package/container
+          docker run -d --rm --name desktop-smoke -p 127.0.0.1:18080:80 "$image"
+          base=$(node -e "console.log(require('./package/deployment.json').base)")
+          for attempt in 1 2 3 4 5 6; do
+            if node package/verify-live-deployment.mjs package "http://127.0.0.1:18080$base"; then break; fi
+            if [ "$attempt" = 6 ]; then exit 1; fi
+            sleep 2
+          done
+          docker stop desktop-smoke
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$image"
+          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
+          IMAGE="$image" DIGEST="$digest" RUNTIME="$runtime" node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const m=JSON.parse(fs.readFileSync('package/deployment.json','utf8'));
+          fs.writeFileSync('image-build.json',JSON.stringify({version:m.version,deploymentId:m.deploymentId,source:m.source,image:process.env.IMAGE,digest:process.env.DIGEST,runtime:process.env.RUNTIME},null,2)+'\n');
+          NODE
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: desktop-image-record-${{ github.run_attempt }}
+          path: image-build.json
+          if-no-files-found: error
+  draft_release:
+    if: inputs.target == 'draft-release'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      BIDDING_EXPECTED_SHA: ${{ needs.build.outputs.source_sha }}
+      BIDDING_EXPECTED_DEPLOYMENT: ${{ needs.build.outputs.deployment_id }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: desktop-package
+          path: package
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - run: node package/verify-deployment.mjs package --require-publishable
+      - name: Create draft only, never auto-publish
+        run: |
+          version=$(node -e "console.log(require('./package/deployment.json').version)")
+          id=$(node -e "console.log(require('./package/deployment.json').deploymentId)")
+          filename=$(node -e "console.log(require('./package/deployment.json').offlineFilename)")
+          tag="delivery-v${version}-${id}-r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" --target "$BIDDING_EXPECTED_SHA" --draft --title "Desktop ${version} · ${id}" --notes-file "package/site/downloads/更新与使用说明.md" "package/site/downloads/$filename" package/site/downloads/SHA256SUMS.txt package/deployment.json

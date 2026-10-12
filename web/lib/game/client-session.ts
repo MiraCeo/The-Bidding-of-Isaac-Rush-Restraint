@@ -243,6 +243,7 @@ function rankPercentiles(
 
 function revealAiDecisions(
   state: ActiveClientGameState,
+  decideTurn: typeof decideAiTurn,
 ): Pick<ActiveClientGameState, 'aiProfiles' | 'revealedAiDecisions' | 'pendingRoomTurns'> {
   const room = getCurrentRoom(state);
   const globalRoomIndex = state.rooms
@@ -265,7 +266,7 @@ function revealAiDecisions(
     .map((player) => {
       const profile = state.aiProfiles[player.id];
       if (!profile) throw new Error(`玩家 ${player.id} 缺少 AI 档案。`);
-      const decision = decideAiTurn(player, state.floorIndex, defaultRules, decisionRandom, {
+      const decision = decideTurn(player, state.floorIndex, defaultRules, decisionRandom, {
         remainingRooms,
         context: {
           moneyRankPercentile: moneyRanks.get(player.id) ?? 0.5,
@@ -465,9 +466,10 @@ function advanceClientRoom(state: ActiveClientGameState): ActiveClientGameState 
   };
 }
 
-export function clientGameReducer(
+function reduceClientGame(
   state: ClientGameState,
   action: ClientGameAction,
+  decideTurn: typeof decideAiTurn,
 ): ClientGameState {
   if (action.type === 'start_game' && state.phase === 'character_selection') {
     return startClientGame(action.characterId, state.seed);
@@ -481,7 +483,7 @@ export function clientGameReducer(
     };
     const revealedState: ActiveClientGameState = {
       ...submittedState,
-      ...revealAiDecisions(submittedState),
+      ...revealAiDecisions(submittedState, decideTurn),
     };
     return settleClientRoom(revealedState);
   }
@@ -498,6 +500,16 @@ export function clientGameReducer(
     return createCharacterSelectionState(action.seed);
   }
   return state;
+}
+
+/** Production always uses the unchanged decision source and two-argument protocol. */
+export function clientGameReducer(state: ClientGameState, action: ClientGameAction): ClientGameState {
+  return reduceClientGame(state, action, decideAiTurn);
+}
+
+/** Explicit research-only seam. No setting or experiment is persisted in game/save state. */
+export function createClientResearchReducer(decideTurn: typeof decideAiTurn) {
+  return (state: ClientGameState, action: ClientGameAction): ClientGameState => reduceClientGame(state, action, decideTurn);
 }
 
 export function isActiveClientGame(
