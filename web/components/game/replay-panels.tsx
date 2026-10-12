@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { getItemDefinition } from '@/lib/game';
-import { defaultRules } from '@/lib/game/config';
 import { ItemIcon } from './item-icon';
 import { ReplayMarket } from './replay-market';
+import { ReplayFieldChart } from './replay-field-chart';
+import { ReplayScoreTimeline } from './replay-score-timeline';
 import type { ReplayLog, ReplayRoomRecord } from '@/lib/ui/replay-record';
 import {
   replayPlayerRows,
@@ -15,6 +16,8 @@ import {
   replayRewardVerdict,
   replayEventStages,
   replayOverview,
+  replayOwnedItems,
+  replayFloorGroups,
 } from '@/lib/ui/replay-view-model';
 
 export type ReplayPanelProps = {
@@ -33,13 +36,19 @@ export const actionText = (
     ? '观望'
     : a.group + ' · ' + (a.type === 'bid' ? '竞拍 ' : '扰乱 ') + a.amount;
 
-export function ReplayRoomPanel(props: ReplayPanelProps) {
+export function ReplayRoomPanel(
+  props: ReplayPanelProps & { cooperationRadius: number },
+) {
   const { record, playerId, name, score } = props;
-  const row = replaySelectedResult(record, playerId);
-  const b = row.breakdown;
-  const special = replayOutcomeLabels(record, playerId);
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const scoreDetailsId = useId();
+  const scoreToggle = useRef<HTMLButtonElement>(null);
+  const row = replaySelectedResult(record, playerId),
+    b = row.breakdown;
+  const special = replayOutcomeLabels(record, playerId),
+    owned = replayOwnedItems(record, playerId);
   return (
-    <div className="replay-room-panel">
+    <div className="replay-room-panel" id="replay-personal-result">
       <div className="replay-action-summary">
         {row.actions.map((a) => (
           <span
@@ -49,16 +58,32 @@ export function ReplayRoomPanel(props: ReplayPanelProps) {
             {actionText(a.action)}
           </span>
         ))}
-        <span>实际提交 · {row.actions.length}个行动</span>
+        <span>本房实际提交 · {row.actions.length}个行动</span>
       </div>
       <div className="replay-summary-grid">
         <article className="replay-score-hero">
           <span>最终房间积分</span>
           <strong>{score(row.score.finalScore)}</strong>
-          <small>
-            累计 {score(row.after.score)} · 原始 {score(row.score.initialScore)}{' '}
-            ＋ 追溯 {score(row.score.retroactiveScore)}
-          </small>
+          <small>结算后累计 {score(row.after.score)} · 不含终局王冠倍率</small>
+          <div className="replay-score-brief">
+            <span>
+              原始房分 <b>{score(row.score.initialScore)}</b>
+            </span>
+            <span>
+              追溯追加 <b>+{score(row.score.retroactiveScore)}</b>
+            </span>
+          </div>
+          <button
+            type="button"
+            className="replay-score-toggle"
+            ref={scoreToggle}
+            aria-expanded={scoreOpen}
+            aria-controls={scoreDetailsId}
+            onClick={() => setScoreOpen((open) => !open)}
+          >
+            {scoreOpen ? '收起计分过程' : '查看这笔分数的计分过程'}{' '}
+            <span aria-hidden="true">{scoreOpen ? '−' : '+'}</span>
+          </button>
         </article>
         <article className="replay-cash-hero">
           <span>资金变化</span>
@@ -68,7 +93,7 @@ export function ReplayRoomPanel(props: ReplayPanelProps) {
             {signed(row.moneyDelta)}
           </strong>
           <small>
-            入房 {row.before.money} → 结算 {row.after.money}
+            入房 {row.before.money} → 结算资金 {row.after.money}
           </small>
           <div className="replay-cash-breakdown">
             <span>
@@ -85,7 +110,7 @@ export function ReplayRoomPanel(props: ReplayPanelProps) {
           </div>
           <small>
             {row.previous
-              ? (row.floorReset ? '换层资金重置／入房效果：' : '入房变化：') +
+              ? (row.floorReset ? '换层重置／入房效果：' : '入房变化：') +
                 row.previous.money +
                 ' → ' +
                 row.before.money
@@ -109,43 +134,59 @@ export function ReplayRoomPanel(props: ReplayPanelProps) {
             )}
           </div>
           <small>
-            库存 {row.before.items.length} → {row.after.items.length} · 临时屏障{' '}
-            {row.before.temporaryShields} → {row.after.temporaryShields} ·
-            持久屏障 {row.before.persistentShields} →{' '}
-            {row.after.persistentShields}
+            本房新获得 {row.awards.reduce((n, a) => n + a.copies, 0)}份 · 库存{' '}
+            {row.before.items.length} → {row.after.items.length}
+          </small>
+          <small>
+            临时屏障 {row.before.temporaryShields} →{' '}
+            {row.after.temporaryShields} · 持久屏障{' '}
+            {row.before.persistentShields} → {row.after.persistentShields}
           </small>
         </article>
-      </div>
-      <section className="replay-score-section">
-        <div className="replay-section-heading">
-          <h3>这笔分数怎么来的</h3>
-          <span>记录中的计分过程</span>
-        </div>
-        <ol className="replay-score-chain" aria-label="本房计分过程">
-          {[
-            [
-              '行动小计',
-              score(b?.actions.reduce((sum, a) => sum + a.subtotal, 0) ?? 0),
-            ],
-            [
-              '综合倍率',
-              '×' + number(b?.multiplier) + (b?.cleared ? ' · 清零' : ''),
-            ],
-            ['原始房分', score(row.score.initialScore)],
-            ['追溯追加', '+' + score(row.score.retroactiveScore)],
-            ['最终房分', score(row.score.finalScore)],
-          ].map(([label, value], i) => (
-            <li key={label}>
-              <span className="replay-step-number">{i + 1}</span>
-              <span>
-                {label}
-                <b>{value}</b>
-              </span>
-            </li>
-          ))}
-        </ol>
-        <details className="replay-calculation-details">
-          <summary>展开实际行动与计分明细</summary>
+        <section
+          className="replay-calculation-details replay-score-expanded"
+          id={scoreDetailsId}
+          hidden={!scoreOpen}
+        >
+          <header>
+            <div>
+              <h3>本房计分过程 · {name(playerId)}</h3>
+              <p>对应上方最终房间积分 {score(row.score.finalScore)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setScoreOpen(false);
+                scoreToggle.current?.focus();
+              }}
+            >
+              收起
+            </button>
+          </header>
+
+          <ol className="replay-score-chain" aria-label="本房计分过程">
+            {[
+              [
+                '行动小计',
+                score(b?.actions.reduce((sum, a) => sum + a.subtotal, 0) ?? 0),
+              ],
+              [
+                '综合倍率',
+                '×' + number(b?.multiplier) + (b?.cleared ? ' · 清零' : ''),
+              ],
+              ['原始房分', score(row.score.initialScore)],
+              ['追溯追加', '+' + score(row.score.retroactiveScore)],
+              ['最终房分', score(row.score.finalScore)],
+            ].map(([label, value], i) => (
+              <li key={label}>
+                <span className="replay-step-number">{i + 1}</span>
+                <span>
+                  {label}
+                  <b>{value}</b>
+                </span>
+              </li>
+            ))}
+          </ol>
           <div className="replay-actions">
             {row.actions.map((a) => {
               const detail = b?.actions.find(
@@ -187,111 +228,58 @@ export function ReplayRoomPanel(props: ReplayPanelProps) {
           ) : (
             <p className="replay-muted">没有记录的特殊效果。</p>
           )}
-        </details>
-      </section>
-      <div className="replay-room-body">
-        <section className="replay-verdict-section">
-          <div className="replay-section-heading">
-            <h3>奖励最终去了哪里</h3>
-            <span>占位 ≠ 资格 ≠ 发放</span>
-          </div>
-          <div className="replay-verdicts">
-            {(['A', 'B'] as const).map((group) => {
-              const v = replayRewardVerdict(record, playerId, group);
-              return (
-                <article key={group} className={'verdict-' + v.status}>
-                  <header>
-                    <span className="replay-group-letter">{group}</span>
-                    <ItemIcon itemId={v.reward.itemId} size="medium" />
-                    <h4>{getItemDefinition(v.reward.itemId).name}</h4>
-                    <b className={'replay-verdict-badge verdict-' + v.status}>
-                      {v.award
-                        ? '获得 ×' + v.award.copies
-                        : v.entitlement
-                          ? '未发放'
-                          : v.status === 'occupied'
-                            ? '扰乱占位'
-                            : '未获资格'}
-                    </b>
-                  </header>
-                  <p>
-                    {v.actions.map((a) => actionText(a.action)).join('；') ||
-                      '没有向此目标报价'}
-                  </p>
-                  <div className="replay-verdict-path">
-                    <span>资格</span>
-                    <strong>
-                      {v.entitlement
-                        ? v.entitlement.sources
-                            .map((s) => entitlementNames[s] ?? s)
-                            .join(' / ')
-                        : v.status === 'occupied'
-                          ? '占位后不直接领奖'
-                          : '未取得'}
-                    </strong>
-                    <span>发放</span>
-                    <strong>
-                      {v.award ? '实际获得 ×' + v.award.copies : '未获得道具'}
-                    </strong>
-                  </div>
-                  {v.causes.map((e, i) => (
-                    <p className="replay-cause" key={i}>
-                      {replayEventText(e, name)}
-                    </p>
-                  ))}
-                  {v.reward.hidden && (
-                    <small>当时为未知奖励，结算后公开。</small>
-                  )}
-                </article>
-              );
-            })}
-          </div>
         </section>
-        <ReplayMarket
-          record={record}
-          playerId={playerId}
-          name={name}
-          radius={
-            defaultRules.floorStartingMoney[
-              record.settlement.room.floorIndex
-            ]! * defaultRules.cooperationZoneRatio
-          }
-        />
-      </div>
-      <ReplayEvents {...props} />
-      <details className="replay-inventory">
-        <summary>
-          {name(playerId)}的结算后完整库存 · {row.after.items.length}份
-        </summary>
-        <div className="replay-inventory-chips">
-          {[...new Set(row.after.items.map((i) => i.itemId))].map((id) => (
-            <span key={id}>
-              <ItemIcon itemId={id} size="small" />
-              {getItemDefinition(id).name} ×
-              {row.after.items.filter((i) => i.itemId === id).length}
+        <article className="replay-owned-items">
+          <div className="replay-section-heading">
+            <h3>现在拥有的道具</h3>
+            <span>
+              {name(playerId)} · 本房结算后快照 · {row.after.items.length}份
             </span>
-          ))}
-        </div>
-        <details>
-          <summary>实例与获得顺序</summary>
-          <ul>
-            {row.after.items.map((i) => (
-              <li key={i.instanceId}>
-                {getItemDefinition(i.itemId).name}
-                <code>
-                  {i.instanceId} · #{i.acquiredOrder}
-                </code>
-              </li>
-            ))}
-          </ul>
-        </details>
+          </div>
+          <div className="replay-inventory-chips">
+            {owned.length ? (
+              owned.map((item) => (
+                <span
+                  key={item.itemId}
+                  className={item.gained ? 'is-new-item' : ''}
+                  title={
+                    getItemDefinition(item.itemId).effectStacks
+                      ? undefined
+                      : '保留实际副本数量，效果不叠加'
+                  }
+                >
+                  <ItemIcon itemId={item.itemId} size="small" />
+                  <b>{getItemDefinition(item.itemId).name}</b>
+                  <span>×{item.copies}</span>
+                  {item.gained > 0 && <small>本房 +{item.gained}</small>}
+                </span>
+              ))
+            ) : (
+              <p className="replay-muted">本房结束时没有持有道具。</p>
+            )}
+          </div>
+        </article>
+      </div>
+      <ReplayMarket
+        record={record}
+        playerId={playerId}
+        name={name}
+        radius={props.cooperationRadius}
+      />
+      <details className="replay-event-details">
+        <summary>查看本房关键事件</summary>
+        <ReplayEvents {...props} />
       </details>
     </div>
   );
 }
-function ReplayEvents({ record, playerId, name }: ReplayPanelProps) {
-  const [allEvents, setAllEvents] = useState(false);
-  const stages = replayEventStages(record, playerId, allEvents);
+function ReplayEvents({
+  record,
+  playerId,
+  name,
+  allPlayers = false,
+}: ReplayPanelProps & { allPlayers?: boolean }) {
+  const stages = replayEventStages(record, playerId, allPlayers);
   const labels = {
     cost: '扣款',
     score: '积分',
@@ -306,18 +294,12 @@ function ReplayEvents({ record, playerId, name }: ReplayPanelProps) {
   return (
     <section className="replay-timeline-section">
       <div className="replay-section-heading">
-        <h3>关键事件时间线</h3>
-        <label className="replay-toggle">
-          <input
-            type="checkbox"
-            checked={allEvents}
-            onChange={(e) => setAllEvents(e.target.checked)}
-          />
-          显示全场原始事件
-        </label>
+        <h3>{allPlayers ? '本房全场事件' : '本房关键事件'}</h3>
       </div>
       <p className="replay-muted">
-        按原记录顺序展示；默认包含所选玩家及关联资金转移。
+        {allPlayers
+          ? '按原记录顺序展示全场已发生事件。'
+          : '按原记录顺序展示所选玩家及关联资金转移。'}
       </p>
       <div className="replay-events-grid">
         {stages.map((stage) => (
@@ -359,83 +341,173 @@ function ReplayEvents({ record, playerId, name }: ReplayPanelProps) {
     </section>
   );
 }
-export function ReplayFieldPanel({
+function ReplayRewardDestinations({
   record,
   playerId,
   name,
-  score,
   onInspect,
 }: ReplayPanelProps & { onInspect: (id: string) => void }) {
+  const s = record.settlement;
+  return (
+    <section className="replay-reward-destinations">
+      <div className="replay-section-heading">
+        <h3>奖励最终去了哪里</h3>
+        <span>本房全场实际发放，不只看当前玩家</span>
+      </div>
+      <div className="replay-reward-groups">
+        {s.room.rewards.map((reward) => {
+          const awards = s.awards.filter((a) => a.group === reward.group);
+          const causes = s.events.filter(
+            (e) =>
+              e.group === reward.group &&
+              (e.type === 'destroy' || e.type === 'duplicate'),
+          );
+          return (
+            <article key={reward.group}>
+              <header>
+                <span className="replay-group-letter">{reward.group}</span>
+                <ItemIcon itemId={reward.itemId} size="medium" />
+                <h4>{getItemDefinition(reward.itemId).name}</h4>
+                <span>
+                  {awards.length}人 · {awards.reduce((n, a) => n + a.copies, 0)}
+                  份
+                </span>
+              </header>
+              <div className="replay-award-recipients">
+                {awards.length ? (
+                  awards.map((a) => (
+                    <button
+                      key={a.playerId}
+                      type="button"
+                      className={a.playerId === playerId ? 'is-selected' : ''}
+                      onClick={() => onInspect(a.playerId)}
+                      aria-label={`查看${name(a.playerId)}的${reward.group}组获奖复盘`}
+                    >
+                      {name(a.playerId)} <b>×{a.copies}</b>
+                    </button>
+                  ))
+                ) : (
+                  <p className="replay-muted">此目标没有实际发放道具。</p>
+                )}
+              </div>
+              <small>
+                高价占位{' '}
+                {
+                  s.highPricePlacements.filter((p) => p.group === reward.group)
+                    .length
+                }{' '}
+                · 合作占位{' '}
+                {
+                  s.cooperationPlacements.filter(
+                    (p) => p.group === reward.group,
+                  ).length
+                }{' '}
+                · 最终资格{' '}
+                {s.entitlements.filter((e) => e.group === reward.group).length}
+              </small>
+              {causes.length > 0 && (
+                <ul className="replay-reward-causes">
+                  {causes.map((e, i) => (
+                    <li key={i}>
+                      <b>{name(e.playerId)}</b> · {replayEventText(e, name)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {reward.hidden && <small>当时为未知奖励，结算后公开。</small>}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+export function ReplayFieldPanel(
+  props: ReplayPanelProps & {
+    log: ReplayLog;
+    roomIndex: number;
+    onInspect: (id: string) => void;
+    onFocusPlayer: (id: string) => void;
+    onInspectAt: (id: string, index: number) => void;
+  },
+) {
+  const { record, playerId, name, score, onInspect } = props;
   const rows = replayPlayerRows(record);
   return (
     <section className="replay-field-panel">
-      <div className="replay-section-heading">
-        <h3>本房全场明细 · {rows.length}人</h3>
-        <span>点击玩家，返回个人复盘</span>
-      </div>
-      <div className="replay-table-wrap">
-        <table className="result-table replay-table">
-          <caption className="sr-only">本房全场玩家快照</caption>
-          <thead>
-            <tr>
-              {[
-                '玩家',
-                '实际行动',
-                '入房 → 结算资金',
-                '原始房分',
-                '追溯追加',
-                '最终房分',
-                '累计积分',
-                '实际获得',
-              ].map((t) => (
-                <th scope="col" key={t}>
-                  {t}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.after.id}
-                className={r.after.id === playerId ? 'ranking-row-self' : ''}
-              >
-                <th scope="row">
-                  <button
-                    type="button"
-                    className="replay-player-link"
-                    onClick={() => onInspect(r.after.id)}
-                  >
-                    {name(r.after.id)}
-                  </button>
-                </th>
-                <td>
-                  {record.settlement.resolvedActions
-                    .filter((a) => a.playerId === r.after.id)
-                    .map((a) => actionText(a.action))
-                    .join('；')}
-                </td>
-                <td>
-                  {r.before.money} → {r.after.money}
-                </td>
-                <td>{score(r.score.initialScore)}</td>
-                <td>{score(r.score.retroactiveScore)}</td>
-                <td>{score(r.score.finalScore)}</td>
-                <td>{score(r.after.score)}</td>
-                <td>
-                  {r.awards
-                    .map(
-                      (a) => getItemDefinition(a.itemId).name + ' ×' + a.copies,
-                    )
-                    .join('、') || '—'}
-                </td>
+      <ReplayFieldChart {...props} />
+      <ReplayScoreTimeline {...props} />
+      <ReplayRewardDestinations {...props} />
+      <section className="replay-field-table-section">
+        <div className="replay-section-heading">
+          <h3>全场行动与结算 · {rows.length}人</h3>
+          <span>点击玩家进入本房个人复盘</span>
+        </div>
+        <section className="replay-table-wrap" aria-label="本房全场明细表">
+          <table className="result-table replay-table">
+            <caption className="sr-only">本房全场玩家快照</caption>
+            <thead>
+              <tr>
+                {[
+                  '玩家',
+                  '实际行动',
+                  '入房 → 结算资金',
+                  '原始房分',
+                  '追溯追加',
+                  '最终房分',
+                  '累计积分',
+                  '实际获得',
+                ].map((t) => (
+                  <th scope="col" key={t}>
+                    {t}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.after.id}
+                  className={r.after.id === playerId ? 'ranking-row-self' : ''}
+                >
+                  <th scope="row">
+                    <button
+                      type="button"
+                      className="replay-player-link"
+                      onClick={() => onInspect(r.after.id)}
+                    >
+                      {name(r.after.id)}
+                    </button>
+                  </th>
+                  <td>
+                    {record.settlement.resolvedActions
+                      .filter((a) => a.playerId === r.after.id)
+                      .map((a) => actionText(a.action))
+                      .join('；')}
+                  </td>
+                  <td>
+                    {r.before.money} → {r.after.money}
+                  </td>
+                  <td>{score(r.score.initialScore)}</td>
+                  <td>{score(r.score.retroactiveScore)}</td>
+                  <td>{score(r.score.finalScore)}</td>
+                  <td>{score(r.after.score)}</td>
+                  <td>
+                    {r.awards
+                      .map(
+                        (a) =>
+                          getItemDefinition(a.itemId).name + ' ×' + a.copies,
+                      )
+                      .join('、') || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </section>
       <details className="replay-global-qualifications">
-        <summary>全场资格来源与实际发放</summary>
+        <summary>展开全场占位、资格与发放依据</summary>
         {record.settlement.room.rewards.map((reward) => (
           <section key={reward.group}>
             <h4>
@@ -448,18 +520,21 @@ export function ReplayFieldPanel({
                   <th>占位</th>
                   <th>最终资格</th>
                   <th>实际份数</th>
+                  <th>特殊结果</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const id = r.after.id;
-                  const entitlement = record.settlement.entitlements.find(
-                    (e) => e.playerId === id && e.group === reward.group,
+                  const v = replayRewardVerdict(
+                    record,
+                    r.after.id,
+                    reward.group,
                   );
                   const placements = [
                     ...record.settlement.highPricePlacements
                       .filter(
-                        (p) => p.group === reward.group && p.playerId === id,
+                        (p) =>
+                          p.group === reward.group && p.playerId === r.after.id,
                       )
                       .map(
                         (p) =>
@@ -468,7 +543,8 @@ export function ReplayFieldPanel({
                       ),
                     ...record.settlement.cooperationPlacements
                       .filter(
-                        (p) => p.group === reward.group && p.playerId === id,
+                        (p) =>
+                          p.group === reward.group && p.playerId === r.after.id,
                       )
                       .map(
                         (p) =>
@@ -477,17 +553,19 @@ export function ReplayFieldPanel({
                       ),
                   ];
                   return (
-                    <tr key={id}>
-                      <th scope="row">{name(id)}</th>
+                    <tr key={r.after.id}>
+                      <th scope="row">{name(r.after.id)}</th>
                       <td>{placements.join(' / ') || '—'}</td>
                       <td>
-                        {entitlement?.sources
+                        {v.entitlement?.sources
                           .map((s) => entitlementNames[s] ?? s)
                           .join(' / ') || '—'}
                       </td>
+                      <td>{v.award?.copies ?? 0}</td>
                       <td>
-                        {r.awards.find((a) => a.group === reward.group)
-                          ?.copies ?? 0}
+                        {v.causes
+                          .map((e) => replayEventText(e, name))
+                          .join('；') || '—'}
                       </td>
                     </tr>
                   );
@@ -497,6 +575,10 @@ export function ReplayFieldPanel({
           </section>
         ))}
       </details>
+      <details className="replay-event-details">
+        <summary>查看本房全场事件记录</summary>
+        <ReplayEvents {...props} allPlayers />
+      </details>
     </section>
   );
 }
@@ -505,22 +587,21 @@ export function ReplayOverviewPanel({
   playerId,
   name,
   score,
-  index,
   onRoom,
 }: {
   log: ReplayLog;
   playerId: string;
   name: (id: string) => string;
   score: (v: number) => string;
-  index: number;
   onRoom: (i: number) => void;
 }) {
   const overview = replayOverview(log, playerId);
+  const floors = replayFloorGroups(log, playerId);
   return (
     <section className="replay-overview-panel">
       <div className="replay-section-heading">
-        <h3>{name(playerId)} · 整局概览</h3>
-        <span>仅包含已结算房间</span>
+        <h3>整局汇总 · {name(playerId)}</h3>
+        <span>涵盖全部{log.rooms.length}个已结算房间</span>
       </div>
       <div className="replay-overview-metrics">
         {[
@@ -535,6 +616,22 @@ export function ReplayOverviewPanel({
           </article>
         ))}
       </div>
+      <section className="replay-floor-totals">
+        <h3>逐层表现</h3>
+        <div>
+          {floors.map((floor) => (
+            <article key={floor.floor}>
+              <span>
+                第{floor.floor + 1}层 · {floor.rooms.length}房
+              </span>
+              <strong>+{score(floor.total)}</strong>
+              <small>
+                获得{floor.rooms.reduce((n, r) => n + r.awards, 0)}份道具
+              </small>
+            </article>
+          ))}
+        </div>
+      </section>
       {(['score', 'money'] as const).map((metric) => (
         <div className="replay-trend" key={metric}>
           <h4>{metric === 'score' ? '累计积分轨迹' : '结算资金轨迹'}</h4>
@@ -548,7 +645,6 @@ export function ReplayOverviewPanel({
                 <button
                   key={p.location}
                   type="button"
-                  aria-current={p.index === index ? 'step' : undefined}
                   aria-label={
                     '查看' +
                     p.location +
@@ -634,7 +730,6 @@ export function ReplayFinalRanking({
           </tbody>
         </table>
       </div>
-      <small className="replay-muted">终局构建：{log.final.build}</small>
     </section>
   );
 }

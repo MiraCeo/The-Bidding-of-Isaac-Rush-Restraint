@@ -112,7 +112,7 @@ describe('specific data layouts and confirmation flows', () => {
     expect(button('查看对局').className).toContain('bg-secondary');
     expect(labels()).not.toContain('导出存档');
   });
-  it('verifies recent records on action and leaves tampered local bytes and the current game untouched', async () => {
+  it('rejects corrupted recent records during directory validation and leaves local bytes and the current game untouched', async () => {
     const raw = JSON.parse(serializeReplay(game(15, 12).replay!, 'original'));
     raw.replay.final.ranking[0].finalScore++;
     const source = JSON.stringify(raw);
@@ -121,8 +121,9 @@ describe('specific data layouts and confirmation flows', () => {
     await mount();
     await settings();
     const before = localStorage.getItem(gameSaveKey);
-    await click(button('查看对局', node('[data-record-source="recent"]')));
-    expect(node('.data-message').textContent).toContain('不一致');
+    expect(container.querySelector('[data-record-source="recent"]')).toBeNull();
+    expect(node('.data-records').textContent).toContain('原记录保留');
+    expect(node('.data-records').textContent).toContain('不一致');
     expect(localStorage.getItem(lastCompletedKey)).toBe(source);
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
     expect(node('#room-utilities-title').textContent).toBe('设置');
@@ -256,7 +257,7 @@ describe('specific data layouts and confirmation flows', () => {
     expect(node('#room-utilities-title').textContent).toBe('查看回放');
     expect(container.querySelector('.replay-page-content')).toBeNull();
     await click(button('打开回放'));
-    expect(node('#room-utilities-title').textContent).toBe('逐房回放');
+    expect(node('#room-utilities-title').textContent).toBe('对局回放');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
   });
   it.each([false, true])(

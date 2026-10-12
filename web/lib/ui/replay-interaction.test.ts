@@ -103,6 +103,241 @@ async function changeSelect(value: string) {
 }
 
 describe('read-only replay UI', () => {
+  it('renders one cumulative series per player over real room progression instead of a player-ranking polyline', async () => {
+    const game = gameWithRooms(7);
+    localStorage.setItem(gameSaveKey, serializeGameSave(game));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    expect(
+      container.querySelector('.replay-comparison-svg polyline'),
+    ).toBeNull();
+    expect(container.querySelectorAll('.replay-comparison-bar')).toHaveLength(
+      20,
+    );
+    const paths = container.querySelectorAll('.replay-player-series');
+    expect(paths).toHaveLength(20);
+    for (const path of paths)
+      expect(path.getAttribute('d')!.match(/ V /g)).toHaveLength(7);
+    expect(element('.replay-score-timeline').textContent).toContain(
+      '横轴是房间进程',
+    );
+    expect(element('.replay-timeline-svg').textContent).not.toContain('F2-R3');
+    expect(
+      container.querySelectorAll('.replay-timeline-leaderboard li'),
+    ).toHaveLength(20);
+  });
+  it('filters and focuses cumulative lines then inspects a real historical room without AI or storage writes', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
+    await mount();
+    const before = localStorage.getItem(gameSaveKey),
+      decide = vi.spyOn(decisions, 'decideAiTurn');
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await click(
+      element<HTMLInputElement>('input[aria-label="显示纸冠的积分线"]'),
+    );
+    expect(container.querySelectorAll('.replay-player-series')).toHaveLength(
+      19,
+    );
+    await click(button('显示全部', element('.replay-score-timeline')));
+    expect(container.querySelectorAll('.replay-player-series')).toHaveLength(
+      20,
+    );
+    await click(button('仅看关注', element('.replay-score-timeline')));
+    expect(container.querySelectorAll('.replay-player-series')).toHaveLength(1);
+    await click(
+      element<HTMLElement>('button[aria-label="关注守夜人的积分走势"]'),
+    );
+    expect(
+      element('.replay-player-series').getAttribute('data-player-id'),
+    ).toBe('ai-1');
+    await act(async () =>
+      element(
+        '.replay-timeline-inspect-point[aria-label^="查看守夜人在F2-R2"]',
+      ).dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(element('.replay-selected-heading').textContent).toContain('F2-R2');
+    expect(element('.replay-selected-heading').textContent).toContain('守夜人');
+    expect(container.querySelector('.replay-room-panel')).not.toBeNull();
+    expect(document.activeElement).toBe(element('.replay-selected-heading h3'));
+    expect(decide).not.toHaveBeenCalled();
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+  });
+  it('combines both eligibility guides into each target canvas and preserves distinct paired positions', async () => {
+    const game = gameWithRooms(2),
+      r = game.replay!.rooms[0]!;
+    localStorage.setItem(gameSaveKey, serializeGameSave(game));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    const plots = container.querySelectorAll('.replay-market svg');
+    expect(plots).toHaveLength(2);
+    for (const plot of plots)
+      expect(plot.querySelectorAll('.market-cooperation')).toHaveLength(1);
+    expect(
+      container.querySelectorAll('.replay-market [data-marker="market"]'),
+    ).toHaveLength(r.settlement.baseline!.participantCount);
+    const different = r.settlement.resolvedActions.filter(
+      (a) =>
+        a.marketEquivalent !== null &&
+        a.scoringEquivalent !== null &&
+        a.marketEquivalent !== a.scoringEquivalent,
+    );
+    expect(different.length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.market-equivalence-link')).toHaveLength(
+      different.length,
+    );
+    expect(
+      container.querySelectorAll('.market-cooperation-marker'),
+    ).toHaveLength(different.length);
+  });
+  it('separates whole-match scope from room navigation and restores the current room view', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
+    await mount();
+    const saved = localStorage.getItem(gameSaveKey),
+      decide = vi.spyOn(decisions, 'decideAiTurn');
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    await click(button('下一房'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
+    expect(container.querySelector('.replay-sidebar')).toBeNull();
+    expect(container.querySelector('nav[aria-label="本房视图"]')).toBeNull();
+    expect(element('.replay-selected-heading').textContent).not.toContain(
+      'F1-R2',
+    );
+    expect(
+      container.querySelectorAll('.replay-trend-bars button'),
+    ).toHaveLength(14);
+    expect(
+      container.querySelectorAll('.replay-floor-totals article'),
+    ).toHaveLength(2);
+    expect(element('.replay-toolbar').textContent).not.toContain('上一房');
+    await click(button('本房复盘', element('nav[aria-label="回放范围"]')));
+    expect(element('.replay-selected-heading').textContent).toContain('F1-R2');
+    expect(container.querySelector('.replay-field-panel')).not.toBeNull();
+    expect(decide).not.toHaveBeenCalled();
+    expect(localStorage.getItem(gameSaveKey)).toBe(saved);
+  });
+  it('embeds score explanation, exposes room-end inventory and puts reward allocation only in field detail', async () => {
+    const game = gameWithRooms(2),
+      recorded = game.replay!.rooms[0]!;
+    localStorage.setItem(gameSaveKey, serializeGameSave(game));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    expect(
+      element('.replay-score-toggle').closest('.replay-score-hero'),
+    ).not.toBeNull();
+    expect(container.querySelector('.replay-score-section')).toBeNull();
+    expect(container.querySelector('.replay-reward-destinations')).toBeNull();
+    expect(element('.replay-owned-items').closest('details')).toBeNull();
+    expect(element('.replay-owned-items').textContent).toContain(
+      '本房结算后快照',
+    );
+    expect(
+      container.querySelectorAll(
+        '.replay-owned-items .replay-inventory-chips > span',
+      ),
+    ).toHaveLength(
+      new Set(recorded.settlement.players[0]!.items.map((i) => i.itemId)).size,
+    );
+    expect(
+      container.querySelectorAll(
+        '.replay-market [data-market-chart="combined"]',
+      ),
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll('.replay-market .market-cooperation'),
+    ).toHaveLength(2);
+    expect(element('.market-own-actions').textContent).toContain(
+      '实际计分取值',
+    );
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    expect(
+      container.querySelectorAll('.replay-reward-groups > article'),
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll('.replay-award-recipients button'),
+    ).toHaveLength(recorded.settlement.awards.length);
+    expect(container.querySelector('.replay-score-hero')).toBeNull();
+  });
+  it('plots 20 factual player bars, changes units and retains the field metric on the next room', async () => {
+    const game = gameWithRooms(2);
+    localStorage.setItem(gameSaveKey, serializeGameSave(game));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    const saved = localStorage.getItem(gameSaveKey),
+      decide = vi.spyOn(decisions, 'decideAiTurn');
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    expect(container.querySelectorAll('.replay-comparison-svg a')).toHaveLength(
+      20,
+    );
+    expect(element('.replay-field-chart').textContent).toContain('不是时间');
+    expect(
+      container.querySelector('.replay-comparison-svg polyline'),
+    ).toBeNull();
+    expect(container.querySelectorAll('.replay-comparison-bar')).toHaveLength(
+      20,
+    );
+    await click(
+      button('结算资金', element('fieldset[aria-label="全场图表指标"]')),
+    );
+    expect(element('.replay-chart-readout b').textContent).toBe(
+      String(game.replay!.rooms[0]!.settlement.players[0]!.money),
+    );
+    await click(button('下一房'));
+    expect(element('.replay-selected-heading').textContent).toContain('F1-R2');
+    expect(
+      button(
+        '结算资金',
+        element('fieldset[aria-label="全场图表指标"]'),
+      ).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(element('.replay-chart-readout b').textContent).toBe(
+      String(game.replay!.rooms[1]!.settlement.players[0]!.money),
+    );
+    expect(decide).not.toHaveBeenCalled();
+    expect(localStorage.getItem(gameSaveKey)).toBe(saved);
+  });
+  it('supports mouse and keyboard point selection into the same room personal review', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2)));
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await act(async () =>
+      element(
+        '.replay-comparison-svg a[aria-label^="查看守夜人"]',
+      ).dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(element('.replay-selected-heading').textContent).toContain('F1-R1');
+    expect(element('.replay-selected-heading').textContent).toContain('守夜人');
+    expect(container.querySelector('.replay-room-panel')).not.toBeNull();
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await act(async () =>
+      element('.replay-comparison-svg a[aria-label^="查看纸冠"]').dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    expect(element('.replay-selected-heading').textContent).toContain('纸冠');
+    expect(document.activeElement).toBe(element('.replay-selected-heading h3'));
+    expect(
+      element<HTMLSelectElement>('select[aria-label="回放查看玩家"]').value,
+    ).toBe('ai-2');
+  });
   it('groups rooms by floor and switches the three views without changing saved data or AI state', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
     await mount();
@@ -111,7 +346,7 @@ describe('read-only replay UI', () => {
     await click(button('设置', element('nav')));
     await click(button('查看回放'));
     expect(container.querySelectorAll('.replay-floor-group')).toHaveLength(2);
-    await click(button('整局概览', element('nav[aria-label="回放视图"]')));
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     expect(element('.replay-overview-panel').textContent).toContain(
       '结算资金轨迹',
     );
@@ -122,11 +357,11 @@ describe('read-only replay UI', () => {
     await click(bar);
     expect(element('.replay-selected-heading').textContent).toContain('F2-R2');
     expect(container.querySelector('.replay-room-panel')).not.toBeNull();
-    await click(button('全场明细', element('nav[aria-label="回放视图"]')));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
     expect(
       element('.replay-field-panel .replay-table tbody').querySelectorAll('tr'),
     ).toHaveLength(20);
-    await click(button('守夜人', element('.replay-field-panel')));
+    await click(button('守夜人', element('.replay-field-table-section')));
     expect(element('.replay-selected-heading').textContent).toContain('守夜人');
     expect(
       element<HTMLSelectElement>('select[aria-label="回放查看玩家"]').value,
@@ -168,16 +403,25 @@ describe('read-only replay UI', () => {
     expect(element('.replay-main .replay-summary-grid').textContent).toContain(
       '实际获得',
     );
-    expect(element<HTMLDetailsElement>('.replay-location').open).toBe(false);
-    expect(
-      element<HTMLDetailsElement>('.replay-calculation-details').open,
-    ).toBe(false);
+    expect(container.querySelector('.replay-location')).toBeNull();
+    expect(element('.replay-score-hero .replay-score-toggle')).toBeDefined();
+    expect(element('.replay-owned-items').textContent).toContain(
+      '本房结算后快照',
+    );
+    expect(element<HTMLElement>('.replay-calculation-details').hidden).toBe(
+      true,
+    );
     expect(container.querySelectorAll('.replay-market svg')).toHaveLength(2);
     expect(element('.replay-score-chain').textContent).toContain('最终房分');
-    await click(element<HTMLElement>('.replay-calculation-details summary'));
-    expect(
-      element<HTMLDetailsElement>('.replay-calculation-details').open,
-    ).toBe(true);
+    await click(element<HTMLElement>('.replay-score-toggle'));
+    expect(element<HTMLElement>('.replay-calculation-details').hidden).toBe(
+      false,
+    );
+    expect(element('.replay-calculation-details').parentElement).toBe(
+      element('.replay-summary-grid'),
+    );
+    await click(button('收起', element('.replay-calculation-details')));
+    expect(document.activeElement).toBe(element('.replay-score-toggle'));
   });
   it('exports progression reserves in full backup and leaves them out of the lightweight continuation file', async () => {
     const profile = createPlayerProfile(new Date('2026-10-12'));
@@ -307,7 +551,7 @@ describe('read-only replay UI', () => {
     const decide = vi.spyOn(decisions, 'decideAiTurn');
     await click(button('设置', element('nav')));
     await click(button('查看回放'));
-    expect(element('#room-utilities-title').textContent).toBe('逐房回放');
+    expect(element('#room-utilities-title').textContent).toBe('对局回放');
     expect(element('.replay-selected-heading').textContent).toContain('F1-R1');
     expect(
       element('nav[aria-label="回放房间"]').querySelectorAll('button'),
@@ -318,7 +562,10 @@ describe('read-only replay UI', () => {
     expect(button('下一房').disabled).toBe(true);
     await changeSelect('ai-1');
     expect(element('.replay-selected-heading').textContent).toContain('守夜人');
-    await click(element<HTMLInputElement>('.replay-toggle input'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await click(
+      element<HTMLElement>('.replay-field-panel .replay-event-details summary'),
+    );
     expect(element('.replay-events-grid').textContent).toContain('提交与结算');
     expect(decide).not.toHaveBeenCalled();
     expect(localStorage.getItem(gameSaveKey)).toBe(stored);
@@ -338,7 +585,9 @@ describe('read-only replay UI', () => {
       serializeReplay(gameWithRooms(1, 777).replay!, 'external-build'),
     );
     expect(element('.replay-source-tabs').textContent).toContain('文件只读');
-    expect(element('.replay-identity').textContent).toContain('00000309');
+    expect(
+      element('.replay-identity').getAttribute('data-replay-id'),
+    ).toContain('00000309');
     expect(
       element('nav[aria-label="回放房间"]').querySelectorAll('button'),
     ).toHaveLength(1);
@@ -363,7 +612,7 @@ describe('read-only replay UI', () => {
     );
     await click(button('设置', element('nav')));
     await upload(serializeReplay(gameWithRooms(1).replay!, 'import-build'));
-    expect(element('#room-utilities-title').textContent).toBe('逐房回放');
+    expect(element('#room-utilities-title').textContent).toBe('对局回放');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
     await click(button('返回游戏'));
     expect(
@@ -392,7 +641,9 @@ describe('read-only replay UI', () => {
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
     await click(button('返回设置'));
     await click(button('查看对局'));
-    expect(element('.replay-identity').textContent).toContain('00000309');
+    expect(
+      element('.replay-identity').getAttribute('data-replay-id'),
+    ).toContain('00000309');
   });
   it('downloads the actual recorded replay as a separate blob with no network requests', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
@@ -416,22 +667,28 @@ describe('read-only replay UI', () => {
     expect(doc.replay.rooms[0]!.settlement.turns).toHaveLength(20);
     expect(doc.replay).not.toHaveProperty('draft');
   });
-  it('shows a selectable feedback locator even when clipboard access is unavailable', async () => {
+  it('removes locator and build UI without removing identity from the exported replay', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
     await click(button('设置', element('nav')));
     await click(button('查看回放'));
-    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
-      new Error('blocked'),
-    );
-    await click(button('复制房间定位'));
-    expect(element('.replay-page-content .save-message').textContent).toContain(
-      '手动复制',
-    );
-    expect(element<HTMLInputElement>('#replay-locator').value).toMatch(
+    const clipboard = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockRejectedValue(new Error('blocked'));
+    expect(container.querySelector('#replay-locator')).toBeNull();
+    expect(container.querySelector('.replay-location')).toBeNull();
+    expect(element('.replay-page-content').textContent).not.toContain('构建：');
+    expect(clipboard).not.toHaveBeenCalled();
+    let blob: Blob | undefined;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((v) => {
+      blob = v as Blob;
+      return 'blob:replay';
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await click(button('导出此回放'));
+    expect(parseReplay(await blob!.text()).replay.rooms[0]!.locator).toMatch(
       /^ISAAC-.*\/F1-R1#[0-9a-f]{8}$/,
     );
-    expect(element<HTMLInputElement>('#replay-locator').readOnly).toBe(true);
   });
   it('restores historical records on refresh and shows final ranking without a restart or advance button', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(15)));
@@ -444,6 +701,8 @@ describe('read-only replay UI', () => {
     ).querySelectorAll<HTMLButtonElement>('button');
     expect(roomButtons).toHaveLength(15);
     await click(roomButtons[14]!);
+    expect(container.querySelector('.replay-final-ranking')).toBeNull();
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     expect(container.textContent).toContain('整局终局倍率与排行');
     expect(element('.replay-page-content').textContent).not.toContain(
       '重新开始',

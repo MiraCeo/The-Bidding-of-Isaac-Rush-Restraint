@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { characterNames } from '@/lib/game';
-import { replayRoomLocator, type ReplayLog } from '@/lib/ui/replay-record';
+import type { ReplayLog } from '@/lib/ui/replay-record';
 import { replayFloorGroups } from '@/lib/ui/replay-view-model';
 import { replayRoomNames, replayStrategyNames } from '@/lib/ui/replay-display';
 import { serializeReplay } from '@/lib/ui/game-replay';
+import { replayRuleFacts } from '@/lib/ui/replay-facts-codec';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { downloadJsonFile } from '@/lib/ui/json-download';
 import { useSessionTools } from './session-context';
@@ -12,10 +13,8 @@ import {
   ReplayRoomPanel,
   ReplayOverviewPanel,
   ReplayFieldPanel,
-  ReplayFinalRanking,
 } from './replay-panels';
 
-type View = 'room' | 'overview' | 'field';
 export function ReplayViewer() {
   const tools = useSessionTools();
   if (!tools) return <p className="utility-notice">当前没有可读取的回放。</p>;
@@ -63,7 +62,9 @@ export function ReplayViewer() {
           scoreDecimals={tools.preferences.scoreDecimals}
         />
       ) : (
-        <p className="utility-notice">暂无回放，请从设置页读取v2回放JSON。</p>
+        <p className="utility-notice">
+          暂无回放，请从设置页读取v3或v2回放JSON。
+        </p>
       )}
     </div>
   );
@@ -77,29 +78,34 @@ export function ReplayArchive({
 }) {
   const [index, setIndex] = useState(0);
   const [playerId, setPlayerId] = useState('human');
-  const [view, setView] = useState<View>('room');
+  const [scope, setScope] = useState<'room' | 'match'>('room');
+  const [roomView, setRoomView] = useState<'personal' | 'field'>('personal');
   const [message, setMessage] = useState('');
-  const [locatorOpen, setLocatorOpen] = useState(false);
-  const activeIndex = Math.min(index, Math.max(0, log.rooms.length - 1));
-  const record = log.rooms[activeIndex];
-  const score = (v: number) => v.toFixed(scoreDecimals);
-  const name = (id: string) => log.playerNames[id] ?? id;
-  const locator = record ? replayRoomLocator(log, record) : log.id;
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusRequested = useRef(false);
+  const activeIndex = Math.min(index, Math.max(0, log.rooms.length - 1)),
+    record = log.rooms[activeIndex];
+  const score = (v: number) => v.toFixed(scoreDecimals),
+    name = (id: string) => log.playerNames[id] ?? id;
   const floors = replayFloorGroups(log, playerId);
   const strategy = record?.aiChoices.find((c) => c.playerId === playerId);
-  function chooseRoom(i: number) {
+  useEffect(() => {
+    if (focusRequested.current) {
+      heading.current?.focus();
+      focusRequested.current = false;
+    }
+  }, [scope, roomView, playerId, index]);
+  function chooseRoom(i: number, personal = false) {
+    if (personal) focusRequested.current = true;
     setIndex(i);
-    setView('room');
+    setScope('room');
+    if (personal) setRoomView('personal');
     setMessage('');
   }
-  async function copyLocator() {
-    try {
-      await navigator.clipboard.writeText(locator);
-      setMessage('房间定位已复制。');
-    } catch {
-      setLocatorOpen(true);
-      setMessage('定位详情已展开，可选中文字手动复制。');
-    }
+  function inspectPlayer(id: string) {
+    focusRequested.current = true;
+    setPlayerId(id);
+    setRoomView('personal');
   }
   function exportArchive() {
     try {
@@ -107,14 +113,14 @@ export function ReplayArchive({
         serializeReplay(log, readBuildVersion()),
         '以撒的竞合-回放-' + log.id + '.json',
       );
-      setMessage('已请求下载v2只读回放。');
+      setMessage('已请求下载v3只读回放。');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '无法导出。');
     }
   }
   return (
     <>
-      <div className="replay-identity">
+      <div className="replay-identity" data-replay-id={log.id}>
         <div>
           <strong>
             {characterNames[log.characterId]} ·{' '}
@@ -122,80 +128,132 @@ export function ReplayArchive({
           </strong>
           <span>已结算 {log.rooms.length} / 15 房间 · 只读复盘</span>
         </div>
-        <details>
-          <summary>档案详情</summary>
-          <code>{log.id}</code>
-          <p>
-            开始构建：{log.startedBuild} · 规则：{log.rulesVersion}
-          </p>
-          <p>显示记录中的实际结果，v2文件；不恢复历史房间，不修改行动。</p>
-        </details>
+        {record && (
+          <nav className="replay-scope-tabs" aria-label="回放范围">
+            <button
+              type="button"
+              aria-current={scope === 'room' ? 'page' : undefined}
+              onClick={() => {
+                setScope('room');
+                setMessage('');
+              }}
+            >
+              本房复盘
+            </button>
+            <button
+              type="button"
+              aria-current={scope === 'match' ? 'page' : undefined}
+              onClick={() => {
+                setScope('match');
+                setMessage('');
+              }}
+            >
+              整局概览
+            </button>
+          </nav>
+        )}
         <Button type="button" variant="secondary" onClick={exportArchive}>
           导出此回放
         </Button>
       </div>
+      {message && (
+        <output className="save-message replay-feedback">{message}</output>
+      )}
       {!record ? (
         <p className="empty-ranking-state">此回放尚无已结算房间。</p>
       ) : (
-        <div className="replay-workspace">
-          <aside className="replay-sidebar">
-            <div className="replay-directory-title">
-              <strong>房间目录</strong>
-              <span>{log.rooms.length} / 15</span>
-            </div>
-            <nav className="replay-room-nav" aria-label="回放房间">
-              {floors.map((floor) => (
-                <section className="replay-floor-group" key={floor.floor}>
-                  <div className="replay-floor-heading">
-                    <h3>第 {floor.floor + 1} 层</h3>
-                    <span>+{score(floor.total)}</span>
-                  </div>
-                  {floor.rooms.map((r) => (
-                    <button
-                      type="button"
-                      key={r.record.location}
-                      aria-current={
-                        activeIndex === r.index ? 'step' : undefined
-                      }
-                      onClick={() => chooseRoom(r.index)}
-                    >
-                      <span className="replay-room-number">
-                        {r.record.settlement.room.roomIndex + 1}
-                      </span>
-                      <span className="replay-room-label">
-                        {replayRoomNames[r.record.settlement.room.kind]}
-                        <small>
-                          {r.awards ? '获奖 ' + r.awards + '份' : '未获奖'}
-                        </small>
-                      </span>
-                      <b>+{score(r.score)}</b>
-                    </button>
-                  ))}
-                </section>
-              ))}
-            </nav>
-            <small>
-              显示{name(playerId)}的实际房分与获奖份数；未结算房间不显示。
-            </small>
-          </aside>
+        <div
+          className={
+            'replay-workspace' +
+            (scope === 'match' ? ' replay-workspace-overview' : '')
+          }
+        >
+          {scope === 'room' && (
+            <aside className="replay-sidebar">
+              <div className="replay-directory-title">
+                <strong>房间目录</strong>
+                <span>{log.rooms.length} / 15</span>
+              </div>
+              <nav className="replay-room-nav" aria-label="回放房间">
+                {floors.map((floor) => (
+                  <section className="replay-floor-group" key={floor.floor}>
+                    <div className="replay-floor-heading">
+                      <h3>第 {floor.floor + 1} 层</h3>
+                      <span>+{score(floor.total)}</span>
+                    </div>
+                    {floor.rooms.map((r) => (
+                      <button
+                        type="button"
+                        key={r.record.location}
+                        aria-current={
+                          activeIndex === r.index ? 'step' : undefined
+                        }
+                        onClick={() => chooseRoom(r.index)}
+                      >
+                        <span className="replay-room-number">
+                          {r.record.settlement.room.roomIndex + 1}
+                        </span>
+                        <span className="replay-room-label">
+                          {replayRoomNames[r.record.settlement.room.kind]}
+                          <small>
+                            {r.awards ? '获奖 ' + r.awards + '份' : '未获奖'}
+                          </small>
+                        </span>
+                        <b>+{score(r.score)}</b>
+                      </button>
+                    ))}
+                  </section>
+                ))}
+              </nav>
+              <small>
+                目录显示{name(playerId)}的房分与获奖；
+                {roomView === 'field'
+                  ? '右侧全场明细覆盖本房20人。'
+                  : '右侧查看这个房间的个人结果。'}
+              </small>
+            </aside>
+          )}
           <div className="replay-main">
-            <div className="replay-toolbar">
+            <div
+              className={
+                'replay-toolbar' +
+                (scope === 'match' ? ' replay-overview-toolbar' : '')
+              }
+            >
               <div className="replay-selected-heading">
                 <div>
-                  <p className="eyebrow">ROOM REVIEW</p>
-                  <h3>
-                    {record.location} ·{' '}
-                    {replayRoomNames[record.settlement.room.kind]} ·{' '}
-                    {name(playerId)}
+                  <p className="eyebrow">
+                    {scope === 'match'
+                      ? 'MATCH OVERVIEW'
+                      : roomView === 'field'
+                        ? 'ROOM · ALL PLAYERS'
+                        : 'ROOM · PERSONAL REVIEW'}
+                  </p>
+                  <h3 ref={heading} tabIndex={-1}>
+                    {scope === 'match'
+                      ? '整局概览 · ' + name(playerId)
+                      : record.location +
+                        ' · ' +
+                        replayRoomNames[record.settlement.room.kind] +
+                        ' · ' +
+                        (roomView === 'field' ? '全场20人' : name(playerId))}
                   </h3>
                   <span>
-                    {strategy
-                      ? replayStrategyNames[strategy.strategy]
-                      : '真人实际提交'}
+                    {scope === 'match'
+                      ? '汇总全部' +
+                        log.rooms.length +
+                        '个已结算房间，不受单房目录限制'
+                      : roomView === 'field'
+                        ? '全场行动、结果与奖励分配 · 当前关注' + name(playerId)
+                        : strategy
+                          ? replayStrategyNames[strategy.strategy]
+                          : '真人实际提交'}
                   </span>
                 </div>
                 <label>
-                  查看玩家
+                  {roomView === 'field' && scope === 'room'
+                    ? '关注玩家'
+                    : '查看玩家'}
                   <select
                     aria-label="回放查看玩家"
                     value={playerId}
@@ -210,125 +268,98 @@ export function ReplayArchive({
                   </select>
                 </label>
               </div>
-              <div className="replay-controls-row">
-                <div className="save-actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={activeIndex === 0}
-                    onClick={() => chooseRoom(activeIndex - 1)}
-                  >
-                    上一房
-                  </Button>
-                  <strong>
-                    {activeIndex + 1} / {log.rooms.length}
-                  </strong>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={activeIndex >= log.rooms.length - 1}
-                    onClick={() => chooseRoom(activeIndex + 1)}
-                  >
-                    下一房
-                  </Button>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void copyLocator()}
-                >
-                  复制房间定位
-                </Button>
-              </div>
-              <nav className="replay-view-tabs" aria-label="回放视图">
-                {(
-                  [
-                    { id: 'room', label: '房间复盘' },
-                    { id: 'overview', label: '整局概览' },
-                    { id: 'field', label: '全场明细' },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    type="button"
-                    key={tab.id}
-                    aria-current={view === tab.id ? 'page' : undefined}
-                    onClick={() => setView(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-              {message && (
-                <output className="save-message replay-feedback">
-                  {message}
-                </output>
+              {scope === 'room' && (
+                <>
+                  <div className="replay-controls-row">
+                    <div className="save-actions">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={activeIndex === 0}
+                        onClick={() => chooseRoom(activeIndex - 1)}
+                      >
+                        上一房
+                      </Button>
+                      <strong>
+                        {activeIndex + 1} / {log.rooms.length}
+                      </strong>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={activeIndex >= log.rooms.length - 1}
+                        onClick={() => chooseRoom(activeIndex + 1)}
+                      >
+                        下一房
+                      </Button>
+                    </div>
+                    <span className="replay-room-context">
+                      以下内容仅属于这个房间
+                    </span>
+                  </div>
+                  <nav className="replay-view-tabs" aria-label="本房视图">
+                    <button
+                      type="button"
+                      aria-current={
+                        roomView === 'personal' ? 'page' : undefined
+                      }
+                      onClick={() => setRoomView('personal')}
+                    >
+                      个人复盘
+                    </button>
+                    <button
+                      type="button"
+                      aria-current={roomView === 'field' ? 'page' : undefined}
+                      onClick={() => setRoomView('field')}
+                    >
+                      全场明细
+                    </button>
+                  </nav>
+                </>
               )}
             </div>
-            <details
-              className="replay-location"
-              open={locatorOpen}
-              onToggle={(e) => setLocatorOpen(e.currentTarget.open)}
-            >
-              <summary>定位与构建信息</summary>
-              <label htmlFor="replay-locator">反馈定位 · 可直接复制</label>
-              <input
-                id="replay-locator"
-                readOnly
-                value={locator}
-                onFocus={(e) => e.target.select()}
-              />
-              <small>
-                本房构建：{record.build}
-                {record.source === 'live'
-                  ? ' · 原局提交时记录'
-                  : record.source === 'checkpoint-reconstruction'
-                    ? ' · v2检查点核验重建'
-                    : ' · 保留的历史重建来源'}
-              </small>
-            </details>
             <div
               className="replay-view-content"
               aria-label={
-                view === 'room'
-                  ? '房间复盘内容'
-                  : view === 'overview'
-                    ? '整局概览内容'
+                scope === 'match'
+                  ? '整局概览内容'
+                  : roomView === 'personal'
+                    ? '个人复盘内容'
                     : '全场明细内容'
               }
             >
-              {view === 'room' ? (
-                <>
-                  <ReplayRoomPanel
-                    record={record}
-                    playerId={playerId}
-                    name={name}
-                    score={score}
-                  />
-                  {log.final && activeIndex === log.rooms.length - 1 && (
-                    <details className="replay-final-details">
-                      <summary>查看整局终局倍率与排行</summary>
-                      <ReplayFinalRanking log={log} name={name} score={score} />
-                    </details>
-                  )}
-                </>
-              ) : view === 'overview' ? (
+              {scope === 'match' ? (
                 <ReplayOverviewPanel
                   log={log}
                   playerId={playerId}
                   name={name}
                   score={score}
-                  index={activeIndex}
-                  onRoom={chooseRoom}
+                  onRoom={(i) => chooseRoom(i, true)}
+                />
+              ) : roomView === 'personal' ? (
+                <ReplayRoomPanel
+                  record={record}
+                  cooperationRadius={
+                    replayRuleFacts(log).cooperationRadii[
+                      record.settlement.room.floorIndex
+                    ]!
+                  }
+                  playerId={playerId}
+                  name={name}
+                  score={score}
                 />
               ) : (
                 <ReplayFieldPanel
+                  log={log}
+                  roomIndex={activeIndex}
                   record={record}
                   playerId={playerId}
                   name={name}
                   score={score}
-                  onInspect={(id) => {
+                  onInspect={inspectPlayer}
+                  onFocusPlayer={setPlayerId}
+                  onInspectAt={(id, i) => {
                     setPlayerId(id);
-                    setView('room');
+                    chooseRoom(i, true);
                   }}
                 />
               )}

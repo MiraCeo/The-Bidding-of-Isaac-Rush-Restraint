@@ -2,6 +2,76 @@ import type { RewardGroup } from '../game/types';
 import type { ReplayLog, ReplayRoomRecord } from './replay-record';
 import { replayEventRelatedTo, replayPlayerRows } from './replay-display';
 
+export type ReplayFieldMetric = 'roomScore' | 'score' | 'money';
+/** Each score is the recorded cumulative total at a real room boundary, not a recomputation. */
+export function replayAllPlayerTimeline(log: ReplayLog) {
+  const first = log.rooms[0];
+  if (!first) return { series: [], maximum: 1, rooms: [] };
+  const rooms = log.rooms.map((r, index) => ({
+    index,
+    location: r.location,
+    floor: r.settlement.room.floorIndex,
+  }));
+  const series = first.settlement.playersBefore.map((p) => ({
+    playerId: p.id,
+    points: [
+      { roomIndex: -1, location: '入场', value: p.score },
+      ...log.rooms.map((r, roomIndex) => ({
+        roomIndex,
+        location: r.location,
+        value: r.settlement.players.find((after) => after.id === p.id)!.score,
+      })),
+    ],
+  }));
+  return {
+    series,
+    rooms,
+    maximum: Math.max(
+      1,
+      ...series.flatMap((s) => s.points.map((p) => p.value)),
+    ),
+  };
+}
+/** One room, one unit, one point per player. Sorting is display-only, never a tie break. */
+export function replayFieldComparison(
+  record: ReplayRoomRecord,
+  metric: ReplayFieldMetric,
+) {
+  const points = record.settlement.players
+    .map((p, order) => ({
+      playerId: p.id,
+      value:
+        metric === 'roomScore'
+          ? record.settlement.roomScoreSummaries[p.id]!.finalScore
+          : p[metric],
+      order,
+    }))
+    .sort((a, b) => b.value - a.value || a.order - b.order);
+  return {
+    metric,
+    maximum: Math.max(1, ...points.map((p) => p.value)),
+    points: points.map((p) => ({
+      ...p,
+      rank: 1 + points.filter((other) => other.value > p.value).length,
+    })),
+  };
+}
+export function replayOwnedItems(record: ReplayRoomRecord, playerId: string) {
+  const after = record.settlement.players.find((p) => p.id === playerId)!;
+  const before = record.settlement.playersBefore.find(
+    (p) => p.id === playerId,
+  )!;
+  return [...new Set(after.items.map((i) => i.itemId))].map((itemId) => ({
+    itemId,
+    copies: after.items.filter((i) => i.itemId === itemId).length,
+    gained: after.items.filter(
+      (i) =>
+        i.itemId === itemId &&
+        !before.items.some((old) => old.instanceId === i.instanceId),
+    ).length,
+  }));
+}
+
 /** Display-only projections. No RNG, AI, settlement or live-session writes. */
 export function replayFloorGroups(log: ReplayLog, playerId: string) {
   const floors = new Map<

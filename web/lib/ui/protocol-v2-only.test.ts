@@ -21,7 +21,7 @@ function fixture() {
   });
   return s;
 }
-describe('v2-only match protocols without losing current data', () => {
+describe('v2/v3 match protocols without losing current data', () => {
   it.each(['save', 'replay'] as const)(
     'rejects v1 %s before running current algorithms',
     (kind) => {

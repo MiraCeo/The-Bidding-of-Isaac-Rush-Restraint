@@ -10,6 +10,7 @@ import type {
   SettlementEvent,
 } from '../game/item-types';
 import { countItem } from '../game/runtime';
+import { defaultRules } from '../game/config';
 import { readBuildVersion, saveCompatibility, shortHash } from './game-version';
 
 export interface ReplayRoomRecord {
@@ -17,6 +18,8 @@ export interface ReplayRoomRecord {
   location: string;
   build: string;
   source: 'live' | 'save-reconstruction' | 'checkpoint-reconstruction';
+  /** Original feedback identity survives storage-format migrations. */
+  locator?: string;
   previousPlayers: RuntimePlayerState[] | null;
   entryEvents: SettlementEvent[];
   aiChoices: Array<{ playerId: string; strategy: AiStrategy }>;
@@ -34,9 +37,15 @@ export interface ReplayLog {
   characterId: CharacterId;
   rulesVersion: string;
   startedBuild: string;
+  ruleFacts?: ReplayRuleFacts;
   playerNames: Record<string, string>;
   rooms: ReplayRoomRecord[];
   final: ReplayFinalRecord | null;
+}
+export interface ReplayRuleFacts {
+  floorStartingMoney: number[];
+  cooperationRadii: number[];
+  scoreStorageDecimals: number;
 }
 export function copySnapshot<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -61,6 +70,13 @@ export function createReplayLog(game: ActiveClientGameState): ReplayLog {
     characterId: game.selectedCharacter,
     rulesVersion: saveCompatibility,
     startedBuild: readBuildVersion(),
+    ruleFacts: {
+      floorStartingMoney: [...defaultRules.floorStartingMoney],
+      cooperationRadii: defaultRules.floorStartingMoney.map(
+        (money) => money * defaultRules.cooperationZoneRatio,
+      ),
+      scoreStorageDecimals: defaultRules.scoreStorageDecimals,
+    },
     playerNames: Object.fromEntries(
       game.players.map((p) => [
         p.id,
@@ -92,6 +108,7 @@ export function appendReplayRoom(
     })),
     settlement: game.roomSettlement,
   });
+  record.locator = replayRoomLocator(log, record);
   return { ...log, rooms: [...log.rooms, record] };
 }
 export function finalizeReplay(
@@ -121,6 +138,7 @@ export function replayRoomLocator(
   log: ReplayLog,
   record: ReplayRoomRecord,
 ): string {
+  if (record.locator) return record.locator;
   const fingerprint = shortHash(
     canonicalJson({
       entryEvents: record.entryEvents,

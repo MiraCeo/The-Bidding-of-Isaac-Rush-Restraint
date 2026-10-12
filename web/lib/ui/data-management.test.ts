@@ -78,14 +78,14 @@ describe('task-oriented data management', () => {
       ),
     );
   });
-  it('does not list partial or incompatible archives as recently completed games', () => {
+  it('does not list partial or corrupted archives as recently completed games', () => {
     expect(() =>
       previewCompletedReplay(serializeReplay(game(2).replay!, 'build')),
     ).toThrow('无效');
     const source = JSON.parse(serializeReplay(game(15).replay!, 'build'));
     source.replay.rulesVersion = 'other';
     expect(() => previewCompletedReplay(JSON.stringify(source))).toThrow(
-      '不兼容',
+      '不一致',
     );
   });
   it('deduplicates equal outcomes even if compatible historical provenance differs', () => {

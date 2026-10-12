@@ -1,7 +1,8 @@
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
-import { packReplay, unpackReplay } from './replay-codec';
+import { unpackReplay } from './replay-codec';
+import { packReplayFacts, unpackReplayFacts } from './replay-facts-codec';
 import { replayRoomLocator, type ReplayLog } from './replay-record';
 import { readBuildVersion, saveCompatibility, shortHash } from './game-version';
 import {
@@ -21,7 +22,7 @@ import {
   type RoomDraft,
 } from './game-session';
 
-// Historical key retained for already-written v2 autosaves; only v2 content is accepted.
+// Keep existing keys so already-written v2 saves survive; new content uses v3.
 export const gameSaveKey = 'bidding-game-save-v1';
 export const activeReplayKey = 'bidding-active-replay-v2';
 export const lastCompletedKey = 'bidding-last-completed-v2';
@@ -31,7 +32,7 @@ const format = 'the-bidding-of-isaac-save';
 
 export interface SaveDocument {
   format: typeof format;
-  version: 2;
+  version: 2 | 3;
   compatibility: string;
   savedAt: string;
   session: GameSession;
@@ -220,14 +221,14 @@ function restoreMetadata(value: unknown, expected: ReplayLog): ReplayLog {
   } else if (meta.finalBuild !== null) fail();
   return log;
 }
-function encodeV2(
+function encodeV3(
   session: GameSession,
   now: Date,
   profile?: PlayerProfile,
 ): string {
   const doc = {
     format,
-    version: 2,
+    version: 3,
     kind: profile ? 'backup' : 'checkpoint',
     compatibility: saveCompatibility,
     savedAt: now.toISOString(),
@@ -239,7 +240,7 @@ function encodeV2(
     },
     ...(profile
       ? {
-          replay: packReplay(session.replay!),
+          replay: packReplayFacts(session.replay!),
           profile: readPlayerProfile(profile),
         }
       : {}),
@@ -253,14 +254,14 @@ export function serializeGameCheckpoint(
   session: GameSession,
   now = new Date(),
 ): string {
-  return encodeV2(session, now);
+  return encodeV3(session, now);
 }
 export function serializeGameBackup(
   session: GameSession,
   profile: PlayerProfile,
   now = new Date(),
 ): string {
-  return encodeV2(session, now, profile);
+  return encodeV3(session, now, profile);
 }
 
 /** Validate on a detached state; never mutate or dispatch into the live game. */
@@ -274,8 +275,8 @@ export function parseGameSave(source: string): SaveDocument {
     fail('不是有效的 JSON 存档。');
   }
   const doc = object(value);
-  if (doc.format !== format || doc.version !== 2)
-    fail('只支持v2存档；不再读取v1或其他版本。');
+  if (doc.format !== format || (doc.version !== 2 && doc.version !== 3))
+    fail('支持v3与v2存档，不读取v1或未知版本。');
   if (doc.compatibility !== saveCompatibility)
     fail('存档的规则／数据版本与当前游戏不兼容。');
   if (
@@ -347,7 +348,12 @@ export function parseGameSave(source: string): SaveDocument {
     draft: readDraft(saved.draft, verified),
     replay:
       doc.kind === 'backup'
-        ? verifyReplayLog(unpackReplay(doc.replay), verified.replay!)
+        ? verifyReplayLog(
+            doc.version === 3
+              ? unpackReplayFacts(doc.replay)
+              : unpackReplay(doc.replay),
+            verified.replay!,
+          )
         : restoreMetadata(saved.metadata, verified.replay!),
   };
   if (

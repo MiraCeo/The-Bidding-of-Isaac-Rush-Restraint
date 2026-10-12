@@ -7,7 +7,11 @@ import {
   replayEventStages,
   replayRewardVerdict,
   replayOverview,
+  replayFieldComparison,
+  replayOwnedItems,
+  replayAllPlayerTimeline,
 } from './replay-view-model';
+import { replayMarketModel } from './replay-market';
 function log(count = 15) {
   let s = reduceGameSession(createGameSession(42), {
     type: 'start_game',
@@ -23,6 +27,156 @@ function log(count = 15) {
   return s.replay!;
 }
 describe('read-only replay projections', () => {
+  it('builds one chronological cumulative-score series per player across actual room boundaries', () => {
+    const l = log(7),
+      model = replayAllPlayerTimeline(l);
+    expect(model.series).toHaveLength(20);
+    expect(model.rooms.map((r) => r.location)).toEqual(
+      l.rooms.map((r) => r.location),
+    );
+    for (const series of model.series) {
+      expect(series.points).toHaveLength(8);
+      expect(series.points[0]!.value).toBe(
+        l.rooms[0]!.settlement.playersBefore.find(
+          (p) => p.id === series.playerId,
+        )!.score,
+      );
+      series.points.slice(1).forEach((p, i) => {
+        expect(p.roomIndex).toBe(i);
+        expect(p.value).toBe(
+          l.rooms[i]!.settlement.players.find((p) => p.id === series.playerId)!
+            .score,
+        );
+      });
+    }
+    expect(model.maximum).toBeGreaterThanOrEqual(1);
+  });
+  it('keeps the timeline empty before settlement and does not invent future rooms', () => {
+    expect(replayAllPlayerTimeline(log(0))).toEqual({
+      series: [],
+      rooms: [],
+      maximum: 1,
+    });
+    const model = replayAllPlayerTimeline(log(2));
+    expect(model.rooms).toHaveLength(2);
+    expect(
+      model.series.every((s) => s.points.at(-1)!.location === 'F1-R2'),
+    ).toBe(true);
+  });
+  it('reads the real entry total and excludes final crown adjustments from the cumulative timeline', () => {
+    const l = copySnapshot(log(15));
+    l.rooms[0]!.settlement.playersBefore[0]!.score = 23;
+    l.final!.ranking[0]!.finalScore += 1000;
+    const series = replayAllPlayerTimeline(l).series[0]!;
+    expect(series.points[0]!.value).toBe(23);
+    expect(series.points.at(-1)!.value).toBe(
+      l.rooms[14]!.settlement.players[0]!.score,
+    );
+  });
+  it.each(['roomScore', 'score', 'money'] as const)(
+    'compares each player once using only this room: %s',
+    (metric) => {
+      const r = log(2).rooms[0]!,
+        before = canonicalJson(r);
+      const model = replayFieldComparison(r, metric);
+      expect(model.points).toHaveLength(20);
+      expect(new Set(model.points.map((p) => p.playerId)).size).toBe(20);
+      for (const point of model.points)
+        expect(point.value).toBe(
+          metric === 'roomScore'
+            ? r.settlement.roomScoreSummaries[point.playerId]!.finalScore
+            : r.settlement.players.find((p) => p.id === point.playerId)![
+                metric
+              ],
+        );
+      expect(
+        model.points.every(
+          (p, i) => !i || model.points[i - 1]!.value >= p.value,
+        ),
+      ).toBe(true);
+      expect(canonicalJson(r)).toBe(before);
+    },
+  );
+  it('keeps exact ties tied and all-zero charts finite without a random tie-break', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    for (const s of Object.values(r.settlement.roomScoreSummaries))
+      s.finalScore = 0;
+    const zero = replayFieldComparison(r, 'roomScore');
+    expect(zero.maximum).toBe(1);
+    expect(zero.points.every((p) => p.rank === 1 && p.value === 0)).toBe(true);
+    r.settlement.roomScoreSummaries.human!.finalScore = 10;
+    r.settlement.roomScoreSummaries['ai-1']!.finalScore = 10;
+    const tied = replayFieldComparison(r, 'roomScore');
+    expect(tied.points.slice(0, 2).map((p) => [p.playerId, p.rank])).toEqual([
+      ['human', 1],
+      ['ai-1', 1],
+    ]);
+    expect(tied.points[2]!.rank).toBe(3);
+  });
+  it('groups end-of-room inventory, counts copies, and identifies genuinely new instances', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    const before = r.settlement.playersBefore[0]!;
+    const item = before.items[0]!;
+    r.settlement.players[0]!.items = [
+      ...before.items,
+      { ...item, instanceId: 'ui-new-instance', acquiredOrder: 50 },
+    ];
+    const grouped = replayOwnedItems(r, 'human').find(
+      (p) => p.itemId === item.itemId,
+    )!;
+    expect(grouped.copies).toBe(
+      before.items.filter((i) => i.itemId === item.itemId).length + 1,
+    );
+    expect(grouped.gained).toBe(1);
+  });
+  it('keeps market impact, raw cooperation input and adjusted scoring input distinct', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    const action = r.settlement.resolvedActions.find(
+      (a) => a.playerId === 'human',
+    )!;
+    action.action = { type: 'disrupt', group: 'A', amount: 30 };
+    action.marketEquivalent = 75;
+    action.scoringEquivalent = 37.5;
+    r.settlement.scoreBreakdowns.human!.actions[0]!.scoringValue = 5;
+    const p = replayMarketModel(r, 10)!.groups[0]!.points.find(
+      (p) => p.playerId === 'human',
+    )!;
+    expect([
+      p.nominalAmount,
+      p.value,
+      p.scoringEquivalent,
+      p.scoringValue,
+    ]).toEqual([30, 75, 37.5, 5]);
+  });
+  it('plots both genuine double actions and omits withdrawn turns instead of making zero bids', () => {
+    let s = reduceGameSession(createGameSession(42), {
+      type: 'start_game',
+      characterId: 'jacob_esau',
+    });
+    s = reduceGameSession(s, {
+      type: 'submit_player_turn',
+      turn: {
+        playerId: 'human',
+        actions: [
+          { type: 'bid', group: 'A', amount: 10 },
+          { type: 'bid', group: 'B', amount: 11 },
+        ],
+      },
+    });
+    const record = s.replay!.rooms[0]!,
+      model = replayMarketModel(record, 10)!;
+    expect(
+      model.groups
+        .flatMap((g) => g.points)
+        .filter((p) => p.playerId === 'human'),
+    ).toHaveLength(2);
+    expect(model.groups.flatMap((g) => g.points)).toHaveLength(
+      record.settlement.baseline!.participantCount,
+    );
+    const withdrawn = copySnapshot(record);
+    withdrawn.settlement.baseline = null;
+    expect(replayMarketModel(withdrawn, 10)).toBeNull();
+  });
   it('groups exactly the recorded rooms by floor, with stable flat indices', () => {
     const groups = replayFloorGroups(log(7), 'human');
     expect(groups.map((f) => f.rooms.length)).toEqual([5, 2]);
@@ -120,8 +274,13 @@ describe('read-only replay projections', () => {
     const random = vi.spyOn(Math, 'random');
     replayFloorGroups(l, 'human');
     replayOverview(l, 'ai-1');
+    replayAllPlayerTimeline(l);
     for (const r of l.rooms) {
       replaySelectedResult(r, 'human');
+      replayOwnedItems(r, 'human');
+      replayFieldComparison(r, 'roomScore');
+      replayFieldComparison(r, 'money');
+      replayMarketModel(r, 10);
       replayRewardVerdict(r, 'human', 'A');
       replayEventStages(r, 'human', true);
     }

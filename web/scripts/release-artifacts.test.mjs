@@ -66,7 +66,19 @@ describe('release identity and offline deliverables', () => {
         replayFormatVersion: 2,
       }).compatibility.saveFormatVersion,
     ).toBe(2);
-    expect(() => validateReleaseInputs({ version }, notes, { ...config, saveFormatVersion: 1 })).toThrow('协议');
+    expect(
+      validateReleaseInputs({ version }, notes, {
+        ...config,
+        saveFormatVersion: 3,
+        replayFormatVersion: 3,
+      }).compatibility.saveFormatVersion,
+    ).toBe(3);
+    expect(() =>
+      validateReleaseInputs({ version }, notes, {
+        ...config,
+        saveFormatVersion: 1,
+      }),
+    ).toThrow('协议');
     expect(() =>
       validateReleaseInputs(
         { version },

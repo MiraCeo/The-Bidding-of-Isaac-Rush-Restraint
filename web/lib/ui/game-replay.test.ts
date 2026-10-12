@@ -57,7 +57,11 @@ function fullGame(characterId: CharacterId) {
 function edited(doc: ReplayDocument, update: (doc: ReplayDocument) => void) {
   const clone = JSON.parse(JSON.stringify(doc)) as ReplayDocument;
   update(clone);
-  return JSON.stringify({ ...clone, replay: packReplay(clone.replay) });
+  return serializeReplay(
+    clone.replay,
+    clone.exportedBuild,
+    new Date(clone.exportedAt),
+  );
 }
 
 describe('recorded read-only replays', () => {
@@ -202,8 +206,18 @@ describe('recorded read-only replays', () => {
     ).not.toBe(replayRoomLocator(first.replay!, first.replay!.rooms[0]!));
   });
   it('rejects incompatible rules before invoking current algorithms', () => {
-    const doc = JSON.parse(serializeReplay(submit(start()).replay!, 'current'));
-    doc.replay.rulesVersion = 'older-rules';
+    const log = JSON.parse(JSON.stringify(submit(start()).replay!));
+    log.rulesVersion = 'older-rules';
+    log.id = log.id.replace(/-[^-]+$/, '-rules');
+    delete log.ruleFacts;
+    log.rooms.forEach((r: { locator?: string }) => delete r.locator);
+    const doc = {
+      format: 'the-bidding-of-isaac-replay',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      exportedBuild: 'current',
+      replay: packReplay(log),
+    };
     const generate = vi.spyOn(client, 'startClientGame');
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('不兼容');
     expect(generate).not.toHaveBeenCalled();
@@ -278,9 +292,9 @@ describe('recorded read-only replays', () => {
       },
     ],
     [
-      'fake names',
+      'invalid names',
       (d: ReplayDocument) => {
-        d.replay.playerNames.human = 'fake';
+        d.replay.playerNames.human = '';
       },
     ],
     [
@@ -302,7 +316,7 @@ describe('recorded read-only replays', () => {
     const doc = JSON.parse(serializeReplay(submit(start()).replay!, 'current'));
     doc.version = 999;
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('版本');
-    doc.version = 2;
+    doc.version = 3;
     doc.exportedBuild = '';
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('标识');
     expect(

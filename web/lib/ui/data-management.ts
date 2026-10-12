@@ -1,12 +1,11 @@
-import { characterCatalog } from '../game/characters';
 import { parseGameSave, maxSaveBytes, type SaveDocument } from './game-save';
 import {
   parseReplay,
   maxReplayBytes,
   type ReplayDocument,
 } from './game-replay';
-import { unpackReplay } from './replay-codec';
-import { canonicalJson, type ReplayLog } from './replay-record';
+import { type ReplayLog } from './replay-record';
+import { replayFactsIdentity } from './replay-facts-codec';
 import {
   createGameSession,
   reduceGameSession,
@@ -55,35 +54,14 @@ export function parseDataFile(source: string, filename: string): DataCandidate {
     const document = parseGameSave(source);
     return { kind: document.kind, document, filename };
   }
-  throw new Error('无法识别文件；请选择v2对局存档、回放或完整备份。');
+  throw new Error('无法识别文件；请选择v3或v2对局存档、回放或完整备份。');
 }
-/** Local directory metadata only. Actions must separately verify the full replay. No AI runs here. */
+/** Read-only factual validation, without running AI or changing storage. */
 export function previewCompletedReplay(source: string): ReplayDocument {
-  if (new TextEncoder().encode(source).length > maxReplayBytes)
-    throw new Error('最近对局文件过大。');
-  const doc = JSON.parse(source) as ReplayDocument;
-  if (
-    !doc ||
-    doc.format !== 'the-bidding-of-isaac-replay' ||
-    doc.version !== 2 ||
-    typeof doc.exportedBuild !== 'string' ||
-    typeof doc.exportedAt !== 'string' ||
-    !Number.isFinite(Date.parse(doc.exportedAt))
-  )
-    throw new Error('最近对局格式不支持。');
-  const replay = unpackReplay(doc.replay);
-  if (
-    replay.rulesVersion !== saveCompatibility ||
-    !replay.final ||
-    replay.rooms.length !== 15 ||
-    !characterCatalog.some((c) => c.id === replay.characterId) ||
-    typeof replay.id !== 'string' ||
-    !Number.isInteger(replay.seed) ||
-    replay.seed < 0 ||
-    replay.seed > 0xffffffff
-  )
-    throw new Error('最近对局记录无效或规则不兼容。');
-  return { ...doc, replay };
+  const doc = parseReplay(source);
+  if (!doc.replay.final || doc.replay.rooms.length !== 15)
+    throw new Error('最近对局记录无效，尚未完成。');
+  return doc;
 }
 /** Exact result equality, not just seed/role/id or a short hash. Compatible provenance may differ. */
 export function sameReplayResults(
@@ -99,20 +77,19 @@ export function sameReplayResults(
     !!a.final !== !!b.final
   )
     return false;
-  const content = (log: ReplayLog) => ({
-    seed: log.seed,
-    characterId: log.characterId,
-    playerNames: log.playerNames,
-    rooms: log.rooms.map(({ build: _build, source: _source, ...r }) => r),
-    final: log.final ? (({ build: _build, ...f }) => f)(log.final) : null,
-  });
-  return canonicalJson(content(a)) === canonicalJson(content(b));
+  try {
+    return replayFactsIdentity(a) === replayFactsIdentity(b);
+  } catch {
+    return false;
+  }
 }
 /** Used only for a user-requested backup of an already-verified completed archive. */
 export function completedReplaySession(document: ReplayDocument): GameSession {
   const log = document.replay;
   if (!log.final || log.rooms.length !== 15)
     throw new Error('只有已完成的对局可作为最近对局备份。');
+  if (log.rulesVersion !== saveCompatibility)
+    throw new Error('此历史回放可只读查看，但不能用当前规则恢复为完整备份。');
   let session = reduceGameSession(createGameSession(log.seed), {
     type: 'start_game',
     characterId: log.characterId,

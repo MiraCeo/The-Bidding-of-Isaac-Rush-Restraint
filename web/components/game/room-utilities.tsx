@@ -27,7 +27,7 @@ const panelNames: Readonly<Record<RoomUtilityPanel, string>> = {
   settings: '设置',
   rules: '规则',
   build: '构筑与当前状态',
-  replay: '逐房回放',
+  replay: '对局回放',
   tutorial: '新手教程',
 };
 
@@ -103,7 +103,7 @@ export function RoomUtilities({
             {panel === 'build'
               ? 'YOUR BUILD'
               : panel === 'replay'
-                ? 'ROOM REPLAY'
+                ? 'MATCH REPLAY'
                 : panel === 'tutorial'
                   ? 'LEARN BY PLAYING'
                   : 'GAME RULES'}
@@ -116,7 +116,7 @@ export function RoomUtilities({
           {panel === 'build'
             ? '已持有道具 · 实时状态 · 报价影响'
             : panel === 'replay'
-              ? '已结算记录 · 只读查看 · 问题定位'
+              ? '本房复盘 · 整局概览 · 只读查看'
               : panel === 'tutorial'
                 ? '独立练习 · 固定样本 · 不影响存档'
                 : '现行机制与道具说明'}

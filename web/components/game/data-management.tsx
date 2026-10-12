@@ -135,7 +135,8 @@ export function DataManagement({ data }: { data: DataManagementController }) {
             <details className="data-technical">
               <summary>文件技术信息</summary>
               <p>
-                v2对局文件 · 对局种子{replay?.seed.toString(16)}
+                v{data.candidate?.document.version}对局文件 · 对局种子
+                {replay?.seed.toString(16)}
                 ；校验结果不会写入当前对局。
               </p>
             </details>
@@ -445,7 +446,7 @@ export function DataManagement({ data }: { data: DataManagementController }) {
         <details className="data-technical">
           <summary>格式与技术信息</summary>
           <p>
-            仅支持v2对局文件；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
+            新文件使用v3，兼容读取v2；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
           </p>
           {data.activeSession && (
             <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>

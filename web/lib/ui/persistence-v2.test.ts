@@ -111,7 +111,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
   it('excludes historical snapshots and derived AI diagnostics from the continuation file', () => {
     const s = game(12);
     const doc = JSON.parse(serializeGameCheckpoint(s));
-    expect(doc.version).toBe(2);
+    expect(doc.version).toBe(3);
     expect(doc.kind).toBe('checkpoint');
     expect(doc).not.toHaveProperty('replay');
     expect(doc).not.toHaveProperty('profile');

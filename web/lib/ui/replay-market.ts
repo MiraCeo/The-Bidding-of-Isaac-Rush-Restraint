@@ -17,6 +17,24 @@ export function replayMarketModel(record: ReplayRoomRecord, radius: number) {
               actionIndex: a.actionIndex,
               type: a.action.type,
               value: a.marketEquivalent,
+              nominalAmount: a.action.amount,
+              scoringEquivalent: a.scoringEquivalent,
+              scoringValue:
+                s.scoreBreakdowns[a.playerId]?.actions.find(
+                  (detail) => detail.actionIndex === a.actionIndex,
+                )?.scoringValue ?? null,
+              highPlacement: s.highPricePlacements.some(
+                (p) =>
+                  p.playerId === a.playerId &&
+                  p.group === group &&
+                  p.actionType === a.action.type,
+              ),
+              cooperationPlacement: s.cooperationPlacements.some(
+                (p) =>
+                  p.playerId === a.playerId &&
+                  p.group === group &&
+                  p.actionType === a.action.type,
+              ),
             },
           ]
         : [],
@@ -46,5 +64,19 @@ export function replayMarketModel(record: ReplayRoomRecord, radius: number) {
         ...groups.flatMap((g) => g.points.map((p) => p.value)),
       ) * 1.06,
     groups,
+    cooperationMaximum:
+      Math.max(
+        1,
+        upper,
+        ...groups.flatMap((g) => g.points.map((p) => p.scoringEquivalent ?? 0)),
+      ) * 1.06,
+    combinedMaximum:
+      Math.max(
+        1,
+        upper,
+        ...groups.flatMap((g) =>
+          g.points.flatMap((p) => [p.value, p.scoringEquivalent ?? 0]),
+        ),
+      ) * 1.06,
   };
 }

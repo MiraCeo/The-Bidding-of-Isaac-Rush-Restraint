@@ -3,12 +3,14 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { createGameSession, reduceGameSession } from './game-session';
 import { canonicalJson, copySnapshot, type ReplayLog } from './replay-record';
 import { saveCompatibility } from './game-version';
-import { packReplay, unpackReplay } from './replay-codec';
+import { unpackReplay } from './replay-codec';
+import { packReplayFacts, unpackReplayFacts } from './replay-facts-codec';
+import { validateReplayFacts } from './replay-facts-validation';
 
 export const maxReplayBytes = 8 * 1024 * 1024;
 export interface ReplayDocument {
   format: 'the-bidding-of-isaac-replay';
-  version: 2;
+  version: 2 | 3;
   exportedAt: string;
   exportedBuild: string;
   replay: ReplayLog;
@@ -53,7 +55,7 @@ function humanTurn(value: unknown): PlayerTurn {
   };
 }
 
-/** Verify compatible files in a detached session; rendering always uses the recorded snapshots. */
+/** Strict current-engine verification for continuation/backup only, not read-only imports. */
 export function verifyReplayLog(
   value: unknown,
   alreadyVerified?: ReplayLog,
@@ -101,6 +103,11 @@ export function verifyReplayLog(
   }
   const normalized = copySnapshot(expected);
   normalized.startedBuild = build(input.startedBuild);
+  if (input.ruleFacts === undefined) delete normalized.ruleFacts;
+  else if (
+    canonicalJson(input.ruleFacts) !== canonicalJson(normalized.ruleFacts)
+  )
+    fail();
   if (normalized.rooms.length !== input.rooms.length) fail();
   for (let i = 0; i < normalized.rooms.length; i++) {
     const room = record(input.rooms[i]);
@@ -112,6 +119,8 @@ export function verifyReplayLog(
     )
       fail();
     normalized.rooms[i]!.source = room.source;
+    if (room.locator === undefined) delete normalized.rooms[i]!.locator;
+    else if (room.locator !== expected.rooms[i]!.locator) fail();
   }
   if (normalized.final)
     normalized.final.build = build(record(input.final).build);
@@ -125,10 +134,10 @@ export function serializeReplay(
 ): string {
   const source = JSON.stringify({
     format: 'the-bidding-of-isaac-replay',
-    version: 2,
+    version: 3,
     exportedAt: now.toISOString(),
     exportedBuild,
-    replay: packReplay(replay),
+    replay: packReplayFacts(replay),
   });
   if (new TextEncoder().encode(source).length > maxReplayBytes)
     fail('回放文件超过8 MiB，不能导出。');
@@ -144,18 +153,33 @@ export function parseReplay(source: string): ReplayDocument {
     fail('不是有效的JSON回放文件。');
   }
   const doc = record(value);
-  if (doc.format !== 'the-bidding-of-isaac-replay' || doc.version !== 2)
-    fail('只支持v2回放；不再读取v1或其他版本，存档与回放是不同文件。');
+  if (
+    doc.format !== 'the-bidding-of-isaac-replay' ||
+    (doc.version !== 2 && doc.version !== 3)
+  )
+    fail('支持v3与v2回放，不读取v1或未知版本；存档与回放是不同文件。');
   if (
     typeof doc.exportedAt !== 'string' ||
     !Number.isFinite(Date.parse(doc.exportedAt))
   )
     fail('回放导出时间无效。');
+  const exportedBuild = build(doc.exportedBuild);
+  let replay: ReplayLog;
+  try {
+    replay = validateReplayFacts(
+      doc.version === 3
+        ? unpackReplayFacts(doc.replay)
+        : unpackReplay(doc.replay),
+    );
+  } catch (error) {
+    if (error instanceof TypeError || error instanceof RangeError) fail();
+    throw error;
+  }
   return {
     format: 'the-bidding-of-isaac-replay',
     version: doc.version,
     exportedAt: doc.exportedAt,
-    exportedBuild: build(doc.exportedBuild),
-    replay: verifyReplayLog(unpackReplay(doc.replay)),
+    exportedBuild,
+    replay,
   };
 }

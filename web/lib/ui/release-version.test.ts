@@ -20,12 +20,12 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.2.8');
+    expect(appVersion).toBe('0.2.11');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
-    expect(saveFormatVersion).toBe(2);
-    expect(replayFormatVersion).toBe(2);
+    expect(saveFormatVersion).toBe(3);
+    expect(replayFormatVersion).toBe(3);
   });
   it('retains the 0.1.0 engine compatibility hash unchanged', () => {
     const engineVersion = '20-personality-client-1';
