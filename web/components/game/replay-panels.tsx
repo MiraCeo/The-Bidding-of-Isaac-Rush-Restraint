@@ -4,6 +4,8 @@ import { ItemIcon } from './item-icon';
 import { ReplayMarket } from './replay-market';
 import { ReplayFieldChart } from './replay-field-chart';
 import { ReplayScoreTimeline } from './replay-score-timeline';
+import { ReplayMoneyTimeline } from './replay-money-timeline';
+import { ReplayEvents } from './replay-events';
 import type { ReplayLog, ReplayRoomRecord } from '@/lib/ui/replay-record';
 import {
   replayPlayerRows,
@@ -14,7 +16,6 @@ import {
 import {
   replaySelectedResult,
   replayRewardVerdict,
-  replayEventStages,
   replayOverview,
   replayOwnedItems,
   replayFloorGroups,
@@ -273,74 +274,6 @@ export function ReplayRoomPanel(
     </div>
   );
 }
-function ReplayEvents({
-  record,
-  playerId,
-  name,
-  allPlayers = false,
-}: ReplayPanelProps & { allPlayers?: boolean }) {
-  const stages = replayEventStages(record, playerId, allPlayers);
-  const labels = {
-    cost: '扣款',
-    score: '积分',
-    entitlement: '资格',
-    refund: '返款',
-    destroy: '毁奖',
-    duplicate: '复制',
-    award: '获取',
-    money: '资金',
-    trigger: '触发',
-  };
-  return (
-    <section className="replay-timeline-section">
-      <div className="replay-section-heading">
-        <h3>{allPlayers ? '本房全场事件' : '本房关键事件'}</h3>
-      </div>
-      <p className="replay-muted">
-        {allPlayers
-          ? '按原记录顺序展示全场已发生事件。'
-          : '按原记录顺序展示所选玩家及关联资金转移。'}
-      </p>
-      <div className="replay-events-grid">
-        {stages.map((stage) => (
-          <div className="replay-event-stage" key={stage.title}>
-            <h4>
-              {stage.title}
-              <small>{stage.events.length}条</small>
-            </h4>
-            {stage.events.length ? (
-              <ol className="replay-events">
-                {stage.events.map((e, i) => (
-                  <li key={i}>
-                    <span className={'replay-event-badge event-' + e.type}>
-                      {labels[e.type]}
-                    </span>
-                    <div>
-                      <span className="replay-event-owner">
-                        {name(e.playerId)}
-                        {e.group ? ' · ' + e.group : ''}
-                        {e.effectItemId || e.itemId
-                          ? ' · ' +
-                            getItemDefinition(e.effectItemId ?? e.itemId!).name
-                          : ''}
-                      </span>
-                      <p>{replayEventText(e, name)}</p>
-                    </div>
-                    {e.amount !== undefined && (
-                      <b className="replay-event-amount">{number(e.amount)}</b>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="replay-muted">无相关事件。</p>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 function ReplayRewardDestinations({
   record,
   playerId,
@@ -424,11 +357,7 @@ function ReplayRewardDestinations({
 }
 export function ReplayFieldPanel(
   props: ReplayPanelProps & {
-    log: ReplayLog;
-    roomIndex: number;
     onInspect: (id: string) => void;
-    onFocusPlayer: (id: string) => void;
-    onInspectAt: (id: string, index: number) => void;
   },
 ) {
   const { record, playerId, name, score, onInspect } = props;
@@ -436,7 +365,6 @@ export function ReplayFieldPanel(
   return (
     <section className="replay-field-panel">
       <ReplayFieldChart {...props} />
-      <ReplayScoreTimeline {...props} />
       <ReplayRewardDestinations {...props} />
       <section className="replay-field-table-section">
         <div className="replay-section-heading">
@@ -584,16 +512,24 @@ export function ReplayFieldPanel(
 }
 export function ReplayOverviewPanel({
   log,
+  roomIndex,
   playerId,
   name,
   score,
   onRoom,
+  onFocusPlayer,
+  onInspectAt,
+  onReferenceRoom,
 }: {
   log: ReplayLog;
+  roomIndex: number;
   playerId: string;
   name: (id: string) => string;
   score: (v: number) => string;
   onRoom: (i: number) => void;
+  onFocusPlayer: (id: string) => void;
+  onInspectAt: (id: string, index: number) => void;
+  onReferenceRoom: (index: number) => void;
 }) {
   const overview = replayOverview(log, playerId);
   const floors = replayFloorGroups(log, playerId);
@@ -632,46 +568,23 @@ export function ReplayOverviewPanel({
           ))}
         </div>
       </section>
-      {(['score', 'money'] as const).map((metric) => (
-        <div className="replay-trend" key={metric}>
-          <h4>{metric === 'score' ? '累计积分轨迹' : '结算资金轨迹'}</h4>
-          <div className="replay-trend-bars">
-            {overview.points.map((p) => {
-              const maximum = Math.max(
-                1,
-                ...overview.points.map((v) => v[metric]),
-              );
-              return (
-                <button
-                  key={p.location}
-                  type="button"
-                  aria-label={
-                    '查看' +
-                    p.location +
-                    (metric === 'score' ? '积分' : '资金') +
-                    number(p[metric])
-                  }
-                  onClick={() => onRoom(p.index)}
-                >
-                  <span
-                    style={{
-                      height: Math.max(2, (p[metric] / maximum) * 100) + '%',
-                    }}
-                  />
-                  <small>{p.location}</small>
-                  <b>{metric === 'score' ? score(p.score) : p.money}</b>
-                </button>
-              );
-            })}
-          </div>
-          <p className="replay-muted">
-            {metric === 'score'
-              ? '结算后累计积分；不含终局王冠倍率。'
-              : '换层会重置资金，曲线变化不能直接解释为本房净收益。'}{' '}
-            点击柱条查看对应房间。
-          </p>
-        </div>
-      ))}
+      <ReplayScoreTimeline
+        log={log}
+        roomIndex={roomIndex}
+        playerId={playerId}
+        name={name}
+        score={score}
+        onFocusPlayer={onFocusPlayer}
+        onInspectAt={onInspectAt}
+        onReferenceRoom={onReferenceRoom}
+      />
+      <ReplayMoneyTimeline
+        log={log}
+        playerId={playerId}
+        roomIndex={roomIndex}
+        name={name}
+        onRoom={onRoom}
+      />
       <ReplayFinalRanking log={log} name={name} score={score} />
     </section>
   );

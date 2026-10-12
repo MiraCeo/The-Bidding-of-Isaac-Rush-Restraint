@@ -93,6 +93,49 @@ function numbers(group: 'a' | 'b') {
 }
 
 describe('room-wide compact mode and local previews', () => {
+  it('shows no actionable quote at zero funds while keeping a valid withdrawal', async () => {
+    const game = gameWith();
+    game.players.find((p) => p.isHuman)!.money = 0;
+    const before = structuredClone(game),
+      submit = await mount(game);
+    expect(
+      container.querySelectorAll('.action-quote-unavailable'),
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll('input[type="number"], input[type="range"]'),
+    ).toHaveLength(0);
+    expect(
+      element<HTMLButtonElement>('[aria-label="选择目标 A"]').disabled,
+    ).toBe(true);
+    expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(true);
+    expect(numbers('a')).toEqual(['—', '—', '—', '—']);
+    expect(element('.action-summary').textContent).toContain('无可用报价');
+    await click('.observe-button');
+    expect(element('#action-mode-hint').textContent).toContain(
+      '当前无可用报价',
+    );
+    expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(false);
+    await click('.confirm-button');
+    expect(submit).toHaveBeenCalledExactlyOnceWith({
+      playerId: 'human',
+      actions: [{ type: 'withdraw' }],
+    });
+    expect(game).toEqual(before);
+  });
+  it('disables disruption below its positive-integer limit without blocking a one-money bid', async () => {
+    const game = gameWith();
+    game.players.find((p) => p.isHuman)!.money = 1;
+    await mount(game);
+    expect(container.querySelectorAll('input[type="number"]')).toHaveLength(2);
+    await mode('扰乱');
+    expect(
+      container.querySelectorAll('.action-quote-unavailable'),
+    ).toHaveLength(2);
+    expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(true);
+    await mode('竞拍');
+    expect(container.querySelectorAll('input[type="number"]')).toHaveLength(2);
+    expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(false);
+  });
   it('renders one pair of inputs and retains all four amounts across repeated switches without submitting', async () => {
     const game = gameWith();
     const before = structuredClone(game);

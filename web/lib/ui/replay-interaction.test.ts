@@ -103,6 +103,82 @@ async function changeSelect(value: string) {
 }
 
 describe('read-only replay UI', () => {
+  it('keeps reference-time changes inside match overview and moves to personal view only on an explicit point', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
+    await mount();
+    const before = localStorage.getItem(gameSaveKey),
+      decide = vi.spyOn(decisions, 'decideAiTurn');
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    expect(container.querySelector('.replay-score-timeline')).toBeNull();
+    expect(container.querySelector('.replay-money-timeline')).toBeNull();
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
+    const select = element<HTMLSelectElement>(
+      'select[aria-label="走势参考房间"]',
+    );
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLSelectElement.prototype,
+        'value',
+      )!.set!.call(select, '6');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(element('.replay-selected-heading h3').textContent).toBe(
+      '整局概览 · 你',
+    );
+    expect(
+      element('.replay-timeline-leaderboard header').textContent,
+    ).toContain('F2-R2');
+    expect(container.querySelector('nav[aria-label="回放房间"]')).toBeNull();
+    expect(container.querySelector('.replay-trend-bars')).toBeNull();
+    await act(async () =>
+      element('.replay-money-point[aria-label^="查看F2-R2"]').dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    expect(element('.replay-selected-heading h3').textContent).toContain(
+      'F2-R2',
+    );
+    expect(document.activeElement).toBe(element('.replay-selected-heading h3'));
+    expect(decide).not.toHaveBeenCalled();
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+  });
+  it('measures the compact toolbar and positions navigation content below it without default focus scrolling', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2)));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 1000,
+      bottom: 86,
+      width: 1000,
+      height: 86,
+      toJSON() {},
+    });
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    await mount();
+    await click(button('设置', element('nav')));
+    await click(button('查看回放'));
+    expect(element('.replay-main').getAttribute('style')).toContain(
+      '--replay-toolbar-height: 86px',
+    );
+    expect(
+      element('.replay-selected-heading .replay-step-controls'),
+    ).toBeDefined();
+    expect(container.querySelector('.replay-toolbar .eyebrow')).toBeNull();
+    await click(button('下一房'));
+    expect(scroll).toHaveBeenLastCalledWith({
+      block: 'start',
+      behavior: 'instant',
+    });
+    expect(document.activeElement).toBe(element('.replay-selected-heading h3'));
+  });
   it('renders one cumulative series per player over real room progression instead of a player-ranking polyline', async () => {
     const game = gameWithRooms(7);
     localStorage.setItem(gameSaveKey, serializeGameSave(game));
@@ -116,10 +192,12 @@ describe('read-only replay UI', () => {
     expect(container.querySelectorAll('.replay-comparison-bar')).toHaveLength(
       20,
     );
+    expect(container.querySelector('.replay-score-timeline')).toBeNull();
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     const paths = container.querySelectorAll('.replay-player-series');
     expect(paths).toHaveLength(20);
     for (const path of paths)
-      expect(path.getAttribute('d')!.match(/ V /g)).toHaveLength(7);
+      expect(path.getAttribute('d')!.match(/ L /g)).toHaveLength(7);
     expect(element('.replay-score-timeline').textContent).toContain(
       '横轴是房间进程',
     );
@@ -135,7 +213,7 @@ describe('read-only replay UI', () => {
       decide = vi.spyOn(decisions, 'decideAiTurn');
     await click(button('设置', element('nav')));
     await click(button('查看回放'));
-    await click(button('全场明细', element('nav[aria-label="本房视图"]')));
+    await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     await click(
       element<HTMLInputElement>('input[aria-label="显示纸冠的积分线"]'),
     );
@@ -211,9 +289,10 @@ describe('read-only replay UI', () => {
     expect(element('.replay-selected-heading').textContent).not.toContain(
       'F1-R2',
     );
+    expect(container.querySelectorAll('.replay-money-point')).toHaveLength(7);
     expect(
-      container.querySelectorAll('.replay-trend-bars button'),
-    ).toHaveLength(14);
+      container.querySelectorAll('.replay-timeline-inspect-point'),
+    ).toHaveLength(7);
     expect(
       container.querySelectorAll('.replay-floor-totals article'),
     ).toHaveLength(2);
@@ -348,13 +427,15 @@ describe('read-only replay UI', () => {
     expect(container.querySelectorAll('.replay-floor-group')).toHaveLength(2);
     await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     expect(element('.replay-overview-panel').textContent).toContain(
-      '结算资金轨迹',
+      '结算资金走势',
     );
     expect(container.querySelector('.replay-room-panel')).toBeNull();
-    const bar = element<HTMLButtonElement>(
-      '.replay-trend-bars button[aria-label^="查看F2-R2积分"]',
+    const point = element('.replay-money-point[aria-label^="查看F2-R2资金"]');
+    await act(async () =>
+      point.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
     );
-    await click(bar);
     expect(element('.replay-selected-heading').textContent).toContain('F2-R2');
     expect(container.querySelector('.replay-room-panel')).not.toBeNull();
     await click(button('全场明细', element('nav[aria-label="本房视图"]')));
@@ -566,7 +647,9 @@ describe('read-only replay UI', () => {
     await click(
       element<HTMLElement>('.replay-field-panel .replay-event-details summary'),
     );
-    expect(element('.replay-events-grid').textContent).toContain('提交与结算');
+    expect(element('.replay-player-events').textContent).toContain(
+      '提交与结算',
+    );
     expect(decide).not.toHaveBeenCalled();
     expect(localStorage.getItem(gameSaveKey)).toBe(stored);
     await click(button('返回游戏'));

@@ -82,6 +82,8 @@ export function ReplayArchive({
   const [roomView, setRoomView] = useState<'personal' | 'field'>('personal');
   const [message, setMessage] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
+  const toolbar = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const focusRequested = useRef(false);
   const activeIndex = Math.min(index, Math.max(0, log.rooms.length - 1)),
     record = log.rooms[activeIndex];
@@ -89,14 +91,38 @@ export function ReplayArchive({
     name = (id: string) => log.playerNames[id] ?? id;
   const floors = replayFloorGroups(log, playerId);
   const strategy = record?.aiChoices.find((c) => c.playerId === playerId);
+  function focusContent() {
+    heading.current?.focus({ preventScroll: true });
+    content.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
+  useEffect(() => {
+    const element = toolbar.current;
+    if (!element) return;
+    const update = () =>
+      element.parentElement?.style.setProperty(
+        '--replay-toolbar-height',
+        (element.getBoundingClientRect().height || 96) + 'px',
+      );
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [scope, roomView]);
   useEffect(() => {
     if (focusRequested.current) {
-      heading.current?.focus();
+      focusContent();
       focusRequested.current = false;
     }
   }, [scope, roomView, playerId, index]);
   function chooseRoom(i: number, personal = false) {
-    if (personal) focusRequested.current = true;
+    if (
+      i === index &&
+      scope === 'room' &&
+      (!personal || roomView === 'personal')
+    )
+      focusContent();
+    else focusRequested.current = true;
     setIndex(i);
     setScope('room');
     if (personal) setRoomView('personal');
@@ -106,6 +132,17 @@ export function ReplayArchive({
     focusRequested.current = true;
     setPlayerId(id);
     setRoomView('personal');
+  }
+  function chooseScope(next: 'room' | 'match') {
+    if (next === scope) focusContent();
+    else focusRequested.current = true;
+    setScope(next);
+    setMessage('');
+  }
+  function chooseView(next: 'personal' | 'field') {
+    if (next === roomView) focusContent();
+    else focusRequested.current = true;
+    setRoomView(next);
   }
   function exportArchive() {
     try {
@@ -133,20 +170,14 @@ export function ReplayArchive({
             <button
               type="button"
               aria-current={scope === 'room' ? 'page' : undefined}
-              onClick={() => {
-                setScope('room');
-                setMessage('');
-              }}
+              onClick={() => chooseScope('room')}
             >
               本房复盘
             </button>
             <button
               type="button"
               aria-current={scope === 'match' ? 'page' : undefined}
-              onClick={() => {
-                setScope('match');
-                setMessage('');
-              }}
+              onClick={() => chooseScope('match')}
             >
               整局概览
             </button>
@@ -215,41 +246,45 @@ export function ReplayArchive({
           )}
           <div className="replay-main">
             <div
+              ref={toolbar}
               className={
                 'replay-toolbar' +
                 (scope === 'match' ? ' replay-overview-toolbar' : '')
               }
             >
               <div className="replay-selected-heading">
-                <div>
-                  <p className="eyebrow">
-                    {scope === 'match'
-                      ? 'MATCH OVERVIEW'
-                      : roomView === 'field'
-                        ? 'ROOM · ALL PLAYERS'
-                        : 'ROOM · PERSONAL REVIEW'}
-                  </p>
-                  <h3 ref={heading} tabIndex={-1}>
-                    {scope === 'match'
-                      ? '整局概览 · ' + name(playerId)
-                      : record.location +
-                        ' · ' +
-                        replayRoomNames[record.settlement.room.kind] +
-                        ' · ' +
-                        (roomView === 'field' ? '全场20人' : name(playerId))}
-                  </h3>
-                  <span>
-                    {scope === 'match'
-                      ? '汇总全部' +
-                        log.rooms.length +
-                        '个已结算房间，不受单房目录限制'
-                      : roomView === 'field'
-                        ? '全场行动、结果与奖励分配 · 当前关注' + name(playerId)
-                        : strategy
-                          ? replayStrategyNames[strategy.strategy]
-                          : '真人实际提交'}
-                  </span>
-                </div>
+                <h3 ref={heading} tabIndex={-1}>
+                  {scope === 'match'
+                    ? '整局概览 · ' + name(playerId)
+                    : record.location +
+                      ' · ' +
+                      replayRoomNames[record.settlement.room.kind] +
+                      ' · ' +
+                      (roomView === 'field' ? '全场20人' : name(playerId))}
+                </h3>
+                {scope === 'room' && (
+                  <div className="replay-step-controls">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={activeIndex === 0}
+                      onClick={() => chooseRoom(activeIndex - 1)}
+                    >
+                      上一房
+                    </Button>
+                    <strong>
+                      {activeIndex + 1} / {log.rooms.length}
+                    </strong>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={activeIndex >= log.rooms.length - 1}
+                      onClick={() => chooseRoom(activeIndex + 1)}
+                    >
+                      下一房
+                    </Button>
+                  </div>
+                )}
                 <label>
                   {roomView === 'field' && scope === 'room'
                     ? '关注玩家'
@@ -268,56 +303,40 @@ export function ReplayArchive({
                   </select>
                 </label>
               </div>
-              {scope === 'room' && (
-                <>
-                  <div className="replay-controls-row">
-                    <div className="save-actions">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={activeIndex === 0}
-                        onClick={() => chooseRoom(activeIndex - 1)}
-                      >
-                        上一房
-                      </Button>
-                      <strong>
-                        {activeIndex + 1} / {log.rooms.length}
-                      </strong>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={activeIndex >= log.rooms.length - 1}
-                        onClick={() => chooseRoom(activeIndex + 1)}
-                      >
-                        下一房
-                      </Button>
-                    </div>
-                    <span className="replay-room-context">
-                      以下内容仅属于这个房间
-                    </span>
-                  </div>
+              <div className="replay-toolbar-secondary">
+                {scope === 'room' && (
                   <nav className="replay-view-tabs" aria-label="本房视图">
                     <button
                       type="button"
                       aria-current={
                         roomView === 'personal' ? 'page' : undefined
                       }
-                      onClick={() => setRoomView('personal')}
+                      onClick={() => chooseView('personal')}
                     >
                       个人复盘
                     </button>
                     <button
                       type="button"
                       aria-current={roomView === 'field' ? 'page' : undefined}
-                      onClick={() => setRoomView('field')}
+                      onClick={() => chooseView('field')}
                     >
                       全场明细
                     </button>
                   </nav>
-                </>
-              )}
+                )}
+                <span className="replay-room-context">
+                  {scope === 'match'
+                    ? '全部' + log.rooms.length + '个已结算房间 · 只读查看'
+                    : roomView === 'field'
+                      ? '仅本房20人的行动与结算'
+                      : (strategy
+                          ? replayStrategyNames[strategy.strategy]
+                          : '真人实际提交') + ' · 仅本房个人结果'}
+                </span>
+              </div>
             </div>
             <div
+              ref={content}
               className="replay-view-content"
               aria-label={
                 scope === 'match'
@@ -330,10 +349,17 @@ export function ReplayArchive({
               {scope === 'match' ? (
                 <ReplayOverviewPanel
                   log={log}
+                  roomIndex={activeIndex}
                   playerId={playerId}
                   name={name}
                   score={score}
                   onRoom={(i) => chooseRoom(i, true)}
+                  onFocusPlayer={setPlayerId}
+                  onReferenceRoom={setIndex}
+                  onInspectAt={(id, i) => {
+                    setPlayerId(id);
+                    chooseRoom(i, true);
+                  }}
                 />
               ) : roomView === 'personal' ? (
                 <ReplayRoomPanel
@@ -349,18 +375,11 @@ export function ReplayArchive({
                 />
               ) : (
                 <ReplayFieldPanel
-                  log={log}
-                  roomIndex={activeIndex}
                   record={record}
                   playerId={playerId}
                   name={name}
                   score={score}
                   onInspect={inspectPlayer}
-                  onFocusPlayer={setPlayerId}
-                  onInspectAt={(id, i) => {
-                    setPlayerId(id);
-                    chooseRoom(i, true);
-                  }}
                 />
               )}
             </div>

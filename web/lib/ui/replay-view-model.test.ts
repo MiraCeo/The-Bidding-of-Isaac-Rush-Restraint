@@ -10,6 +10,8 @@ import {
   replayFieldComparison,
   replayOwnedItems,
   replayAllPlayerTimeline,
+  replayPlayerEventGroups,
+  replayMoneyTimeline,
 } from './replay-view-model';
 import { replayMarketModel } from './replay-market';
 function log(count = 15) {
@@ -27,6 +29,36 @@ function log(count = 15) {
   return s.replay!;
 }
 describe('read-only replay projections', () => {
+  it('uses one unconnected money segment per observed floor and preserves entry effects', () => {
+    const l = log(7),
+      before = canonicalJson(l),
+      model = replayMoneyTimeline(l, 'human');
+    expect(model.segments).toHaveLength(2);
+    expect(model.segments.map((s) => s.points.length)).toEqual([5, 2]);
+    for (const s of model.segments) {
+      const first = l.rooms[s.startIndex]!.settlement.playersBefore[0]!;
+      expect(s.startingMoney).toBe(first.characterFloorStartingMoney);
+      expect(s.entryMoney).toBe(first.money);
+      for (const p of s.points)
+        expect(p.money).toBe(l.rooms[p.index]!.settlement.players[0]!.money);
+    }
+    expect(model.segments[0]!.reset).toBe(false);
+    expect(model.segments[1]!.reset).toBe(true);
+    expect(canonicalJson(l)).toBe(before);
+  });
+  it('does not invent missing starting funds or future money segments', () => {
+    const l = copySnapshot(log(1));
+    l.rooms[0]!.settlement.playersBefore[0]!.characterFloorStartingMoney = null;
+    const model = replayMoneyTimeline(l, 'human');
+    expect(model.segments[0]!.initialKnown).toBe(false);
+    expect(model.segments[0]!.startingMoney).toBe(
+      l.rooms[0]!.settlement.playersBefore[0]!.money,
+    );
+    expect(replayMoneyTimeline(log(0), 'human')).toEqual({
+      segments: [],
+      maximum: 1,
+    });
+  });
   it('builds one chronological cumulative-score series per player across actual room boundaries', () => {
     const l = log(7),
       model = replayAllPlayerTimeline(l);
@@ -112,6 +144,88 @@ describe('read-only replay projections', () => {
       ['ai-1', 1],
     ]);
     expect(tied.points[2]!.rank).toBe(3);
+  });
+  it('splits saved cumulative totals into before and actual increase, including retroactive score', () => {
+    const r = copySnapshot(log(2).rooms[1]!);
+    const before = r.settlement.playersBefore[0]!,
+      after = r.settlement.players[0]!;
+    before.score = 88.99;
+    after.score = 226.45;
+    r.settlement.roomScoreSummaries.human!.initialScore = 125;
+    r.settlement.roomScoreSummaries.human!.retroactiveScore = 12.46;
+    const p = replayFieldComparison(r, 'score').points.find(
+      (p) => p.playerId === 'human',
+    )!;
+    expect(p.before).toBe(88.99);
+    expect(p.change).toBeCloseTo(137.46, 8);
+    expect(p.value).toBe(226.45);
+    expect(p.before + p.change).toBe(p.value);
+  });
+  it('uses actual entry money after floor reset and scales to both balances rather than their sum', () => {
+    const r = copySnapshot(log(6).rooms[5]!);
+    r.previousPlayers![0]!.money = 1;
+    r.settlement.playersBefore[0]!.money = 500;
+    r.settlement.players[0]!.money = 25;
+    const model = replayFieldComparison(r, 'money');
+    const p = model.points.find((p) => p.playerId === 'human')!;
+    expect([p.before, p.value, p.change]).toEqual([500, 25, -475]);
+    expect(model.maximum).toBe(
+      Math.max(1, ...model.points.flatMap((p) => [p.before, p.value])),
+    );
+  });
+  it('keeps money increases, refunds and zero changes separate from gross action cost', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    r.settlement.players[0]!.money = r.settlement.playersBefore[0]!.money + 7;
+    r.settlement.events.push({
+      type: 'refund',
+      playerId: 'human',
+      amount: 3,
+      message: '返款。',
+    });
+    const p = replayFieldComparison(r, 'money').points.find(
+      (p) => p.playerId === 'human',
+    )!;
+    expect(p.change).toBe(7);
+    expect(p.refund).toBe(3);
+    expect(p.before - p.cost + p.refund + p.otherMoneyChange).toBe(p.value);
+    expect(p.cost).not.toBe(-p.change);
+  });
+  it('groups every original event by affected players, retaining stage and shared transfer identity', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    r.entryEvents.push({
+      type: 'money',
+      itemId: 'money_bag',
+      playerId: 'ai-2',
+      amount: 4,
+      message: '偷钱袋从 ai-1 窃取 4 资金。',
+    });
+    const before = canonicalJson(r),
+      model = replayPlayerEventGroups(r);
+    expect(model.players).toHaveLength(20);
+    expect(model.total).toBe(r.entryEvents.length + r.settlement.events.length);
+    expect(
+      model.stages.flatMap((s) => s.events.map((e) => e.sequence)),
+    ).toEqual(Array.from({ length: model.total }, (_, i) => i + 1));
+    const transfer = model.stages[0]!.events.at(-1)!;
+    for (const playerId of ['ai-1', 'ai-2']) {
+      const p = model.players.find((p) => p.playerId === playerId)!;
+      expect(p.stages[0]!.events).toContain(transfer);
+      expect(p.count).toBe(p.stages.reduce((n, s) => n + s.events.length, 0));
+      for (const stage of p.stages)
+        expect(stage.events.map((e) => e.sequence)).toEqual(
+          stage.events.map((e) => e.sequence).sort((a, b) => a - b),
+        );
+    }
+    expect(canonicalJson(r)).toBe(before);
+  });
+  it('retains a compact zero-event player group instead of inventing events', () => {
+    const r = copySnapshot(log(1).rooms[0]!);
+    r.entryEvents = [];
+    r.settlement.events = [];
+    const model = replayPlayerEventGroups(r);
+    expect(model.total).toBe(0);
+    expect(model.players).toHaveLength(20);
+    expect(model.players.every((p) => p.count === 0)).toBe(true);
   });
   it('groups end-of-room inventory, counts copies, and identifies genuinely new instances', () => {
     const r = copySnapshot(log(1).rooms[0]!);
@@ -275,6 +389,7 @@ describe('read-only replay projections', () => {
     replayFloorGroups(l, 'human');
     replayOverview(l, 'ai-1');
     replayAllPlayerTimeline(l);
+    replayMoneyTimeline(l, 'human');
     for (const r of l.rooms) {
       replaySelectedResult(r, 'human');
       replayOwnedItems(r, 'human');
@@ -283,6 +398,7 @@ describe('read-only replay projections', () => {
       replayMarketModel(r, 10);
       replayRewardVerdict(r, 'human', 'A');
       replayEventStages(r, 'human', true);
+      replayPlayerEventGroups(r);
     }
     expect(canonicalJson(l)).toBe(before);
     expect(random).not.toHaveBeenCalled();

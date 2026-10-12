@@ -23,7 +23,23 @@ export function replayEventRelatedTo(
 export function replayEventText(
   event: SettlementEvent,
   name: (id: string) => string,
+  score?: (value: number) => string,
 ): string {
+  if (score && event.type === 'score' && event.amount !== undefined) {
+    if (event.message === `本房间获得 ${event.amount} 分。`)
+      return `本房间获得 ${score(event.amount)} 分。`;
+    const heart = /^(\d+) 份妈妈的心脏追溯增加 ([\d.-]+) 分。$/.exec(
+      event.message,
+    );
+    if (
+      event.itemId === 'moms_heart' &&
+      heart &&
+      Number(heart[2]) === event.amount
+    )
+      return displayItemText(
+        `${heart[1]} 份妈妈的心脏追溯增加 ${score(event.amount)} 分。`,
+      );
+  }
   if (event.type === 'award' && event.itemId)
     return `获得道具 ${getItemDefinition(event.itemId).name}。`;
   const target = legacyTransferTarget(event);

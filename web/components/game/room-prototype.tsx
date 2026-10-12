@@ -20,6 +20,7 @@ import { createRoomDraft, type RoomDraft } from '@/lib/ui/game-session';
 import {
   changeQuoteAmount,
   quoteMaximum,
+  quoteAvailableMaximum,
   selectQuoteTarget,
   switchQuoteKind,
 } from '@/lib/ui/room-action-draft';
@@ -104,6 +105,10 @@ export function RoomPrototype({
   const canDoubleBid = hasItem(human, 'more_options');
   const canDoubleDisrupt = hasItem(human, 'more_options_question');
   const humanMoney = human.money;
+  const hasQuoteFunds =
+    activeKind === 'bid'
+      ? humanMoney > 0
+      : Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio) > 0;
   const humanEntryEvents = game.roomEntryEvents.filter(
     (event) => event.playerId === human.id || event.message.includes(human.id),
   );
@@ -131,7 +136,11 @@ export function RoomPrototype({
           })),
   };
   const turnErrors = validateTurn(human, turn, defaultRules);
-  const resolvedPreviews = turn.actions
+  const previewTurn =
+    hasQuoteFunds || selectedAction.kind === 'withdraw'
+      ? turn
+      : { ...turn, actions: [] };
+  const resolvedPreviews = previewTurn.actions
     .filter((action) => action.type !== 'withdraw')
     .map((action) => ({
       action,
@@ -141,7 +150,7 @@ export function RoomPrototype({
     (sum, preview) => sum + preview.amounts.actualCost,
     0,
   );
-  const publicMarketEntries = (game.pendingRoomTurns ?? [turn]).flatMap(
+  const publicMarketEntries = (game.pendingRoomTurns ?? [previewTurn]).flatMap(
     (publicTurn) => {
       const player = game.players.find(
         (candidate) => candidate.id === publicTurn.playerId,
@@ -200,7 +209,9 @@ export function RoomPrototype({
   const actionDescription =
     selectedAction.kind === 'withdraw'
       ? '静观其变，保存全部资金'
-      : `${selectedAction.kind === 'bid' ? '竞拍' : '扰乱'} ${selectedAction.groups.join('、')} · 实际扣款 ${totalActualCost}`;
+      : !hasQuoteFunds
+        ? '无可用报价，请选择静观其变'
+        : `${selectedAction.kind === 'bid' ? '竞拍' : '扰乱'} ${selectedAction.groups.join('、')} · 实际扣款 ${totalActualCost}`;
   const confirmLabel = locked
     ? '行动已锁定'
     : selectedAction.kind === 'bid'
@@ -456,12 +467,16 @@ export function RoomPrototype({
             </fieldset>
             <p id="action-mode-hint">
               {selectedAction.kind === 'withdraw'
-                ? '已选择观望，确认后提交；点击模式或目标可恢复报价。'
-                : activeKind === 'bid'
-                  ? canDoubleBid
-                    ? `可选 A＋B · 双竞拍名义总额 ≤ ${Math.floor(humanMoney * 0.5)}`
-                    : '选择一个目标 · 争夺最高价与合作区奖励'
-                  : `${canDoubleDisrupt ? '可选 A＋B' : '选择一个目标'} · 每笔上限 ${Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio)} · 市场影响 ×2.5`}
+                ? hasQuoteFunds
+                  ? '已选择观望，确认后提交；点击模式或目标可恢复报价。'
+                  : '已选择观望，确认后提交；当前无可用报价。'
+                : !hasQuoteFunds
+                  ? '当前资金不足以提交正整数报价；可选择静观其变。'
+                  : activeKind === 'bid'
+                    ? canDoubleBid
+                      ? `可选 A＋B · 双竞拍名义总额 ≤ ${Math.floor(humanMoney * 0.5)}`
+                      : '选择一个目标 · 争夺最高价与合作区奖励'
+                    : `${canDoubleDisrupt ? '可选 A＋B' : '选择一个目标'} · 每笔上限 ${Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio)} · 市场影响 ×2.5`}
             </p>
           </div>
           <output className="action-mode-notice">{modeNotice}</output>
@@ -469,7 +484,14 @@ export function RoomPrototype({
             {room.rewards.map((reward) => {
               const definition = getItemDefinition(reward.itemId);
               const presentation = itemPresentations[reward.itemId];
+              const available = quoteAvailableMaximum(
+                currentDraft,
+                reward.group,
+                activeKind,
+                human,
+              );
               const groupSelected =
+                available > 0 &&
                 selectedAction.kind !== 'withdraw' &&
                 selectedAction.groups.includes(reward.group);
               const maximum = quoteMaximum(
@@ -491,7 +513,7 @@ export function RoomPrototype({
                       className="reward-target"
                       aria-label={`选择目标 ${reward.group}`}
                       aria-pressed={groupSelected}
-                      disabled={locked}
+                      disabled={locked || !hasQuoteFunds}
                       onClick={() => selectAction(activeKind, reward.group)}
                     >
                       目标 {reward.group}{' '}
@@ -531,6 +553,7 @@ export function RoomPrototype({
                       kind={activeKind}
                       amount={amounts[reward.group][activeKind]}
                       maximum={maximum}
+                      available={available}
                       selected={groupSelected}
                       multiple={canDouble(activeKind)}
                       onSelect={() => selectAction(activeKind, reward.group)}
@@ -541,7 +564,7 @@ export function RoomPrototype({
                   </fieldset>
                   <QuotePreview
                     game={game}
-                    turn={turn}
+                    turn={previewTurn}
                     group={reward.group}
                     compact
                   />
@@ -615,6 +638,7 @@ interface ActionOptionProps {
   kind: ActiveActionKind;
   amount: number;
   maximum: number;
+  available: number;
   selected: boolean;
   multiple: boolean;
   onSelect: () => void;
@@ -626,6 +650,7 @@ function ActionOption({
   kind,
   amount,
   maximum,
+  available,
   selected,
   multiple,
   onSelect,
@@ -649,6 +674,7 @@ function ActionOption({
           type={multiple ? 'checkbox' : 'radio'}
           name={multiple ? undefined : 'room-action'}
           checked={selected}
+          disabled={available < 1}
           onChange={onSelect}
         />
         <span>
@@ -656,59 +682,68 @@ function ActionOption({
             {group} · {isDisruption ? '扰乱报价' : '竞拍报价'}
           </strong>
           <small>
-            {selected
-              ? '已选择此目标'
-              : multiple
-                ? '可追加此目标'
-                : '选择此目标'}
+            {available < 1
+              ? '资金不足，无法报价'
+              : selected
+                ? '已选择此目标'
+                : multiple
+                  ? '可追加此目标'
+                  : '选择此目标'}
           </small>
         </span>
       </label>
-      <div className="action-control-row">
-        <div className="slider-block">
-          <input
-            type="range"
-            min="1"
-            max={maximum}
-            value={amount}
-            aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的出价`}
-            onFocus={() => !selected && onSelect()}
-            onPointerDown={() => !selected && onSelect()}
-            onChange={(event) => changeAmount(Number(event.target.value))}
-          />
-          <div className="range-limits">
-            <span>1</span>
-            <span>{maximum} 上限</span>
+      {available < 1 ? (
+        <output className="action-quote-unavailable">
+          <strong>无可用报价</strong>
+          <span>可切换为静观其变，不产生零元报价。</span>
+        </output>
+      ) : (
+        <div className="action-control-row">
+          <div className="slider-block">
+            <input
+              type="range"
+              min="1"
+              max={maximum}
+              value={amount}
+              aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的出价`}
+              onFocus={() => !selected && onSelect()}
+              onPointerDown={() => !selected && onSelect()}
+              onChange={(event) => changeAmount(Number(event.target.value))}
+            />
+            <div className="range-limits">
+              <span>1</span>
+              <span>{maximum} 上限</span>
+            </div>
+          </div>
+          <div className="number-stepper">
+            <button
+              type="button"
+              onClick={() => changeAmount(amount - 1)}
+              disabled={amount <= 1}
+              aria-label="出价减一"
+            >
+              −1
+            </button>
+            <input
+              type="number"
+              min="1"
+              max={maximum}
+              value={amount}
+              onFocus={() => !selected && onSelect()}
+              onChange={(event) => changeAmount(Number(event.target.value))}
+              aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的数值`}
+            />
+            <button
+              type="button"
+              onClick={() => changeAmount(amount + 1)}
+              disabled={amount >= maximum}
+              aria-label="出价加一"
+            >
+              +1
+            </button>
           </div>
         </div>
-        <div className="number-stepper">
-          <button
-            type="button"
-            onClick={() => changeAmount(amount - 1)}
-            disabled={amount <= 1}
-            aria-label="出价减一"
-          >
-            −1
-          </button>
-          <input
-            type="number"
-            min="1"
-            max={maximum}
-            value={amount}
-            onFocus={() => !selected && onSelect()}
-            onChange={(event) => changeAmount(Number(event.target.value))}
-            aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group} 的数值`}
-          />
-          <button
-            type="button"
-            onClick={() => changeAmount(amount + 1)}
-            disabled={amount >= maximum}
-            aria-label="出价加一"
-          >
-            +1
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

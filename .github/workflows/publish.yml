@@ -10,7 +10,7 @@ on:
       expected_version:
         description: Must match package.json; prevents publishing an unintended version
         required: true
-        default: 0.2.11
+        default: 0.2.13
         type: string
       target:
         description: Build-only by default; publishing is explicit

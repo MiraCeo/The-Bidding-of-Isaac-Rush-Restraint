@@ -38,18 +38,31 @@ export function replayFieldComparison(
   metric: ReplayFieldMetric,
 ) {
   const points = record.settlement.players
-    .map((p, order) => ({
-      playerId: p.id,
-      value:
+    .map((p, order) => {
+      const before = record.settlement.playersBefore.find(
+        (b) => b.id === p.id,
+      )!;
+      const result = replaySelectedResult(record, p.id);
+      const value =
         metric === 'roomScore'
           ? record.settlement.roomScoreSummaries[p.id]!.finalScore
-          : p[metric],
-      order,
-    }))
+          : p[metric];
+      const previous = metric === 'roomScore' ? 0 : before[metric];
+      return {
+        playerId: p.id,
+        value,
+        before: previous,
+        change: value - previous,
+        cost: result.cost,
+        refund: result.refund,
+        otherMoneyChange: result.otherMoneyChange,
+        order,
+      };
+    })
     .sort((a, b) => b.value - a.value || a.order - b.order);
   return {
     metric,
-    maximum: Math.max(1, ...points.map((p) => p.value)),
+    maximum: Math.max(1, ...points.flatMap((p) => [p.value, p.before])),
     points: points.map((p) => ({
       ...p,
       rank: 1 + points.filter((other) => other.value > p.value).length,
@@ -70,6 +83,49 @@ export function replayOwnedItems(record: ReplayRoomRecord, playerId: string) {
         !before.items.some((old) => old.instanceId === i.instanceId),
     ).length,
   }));
+}
+/** Money snapshots form separate floor segments; a reset is never connected as ordinary gain. */
+export function replayMoneyTimeline(log: ReplayLog, playerId: string) {
+  const segments = replayFloorGroups(log, playerId).map((floor) => {
+    const first = floor.rooms[0]!;
+    const before = first.record.settlement.playersBefore.find(
+      (p) => p.id === playerId,
+    )!;
+    const atEntry = first.record.settlement.room.roomIndex === 0;
+    return {
+      floor: floor.floor,
+      startIndex: first.index,
+      reset: atEntry && floor.floor > 0,
+      initialKnown: atEntry && before.characterFloorStartingMoney !== null,
+      startingMoney: atEntry
+        ? (before.characterFloorStartingMoney ?? before.money)
+        : before.money,
+      entryMoney: before.money,
+      points: floor.rooms.map(({ record, index }) => {
+        const row = replaySelectedResult(record, playerId);
+        return {
+          index,
+          location: record.location,
+          before: row.before.money,
+          money: row.after.money,
+          cost: row.cost,
+          refund: row.refund,
+          otherMoneyChange: row.otherMoneyChange,
+        };
+      }),
+    };
+  });
+  return {
+    segments,
+    maximum: Math.max(
+      1,
+      ...segments.flatMap((s) => [
+        s.startingMoney,
+        s.entryMoney,
+        ...s.points.flatMap((p) => [p.before, p.money]),
+      ]),
+    ),
+  };
 }
 
 /** Display-only projections. No RNG, AI, settlement or live-session writes. */
@@ -183,6 +239,32 @@ export function replayEventStages(
           (e.type !== 'score' || !!e.itemId || !!e.effectItemId)),
     ),
   }));
+}
+/** Shared events may appear for both parties, but retain one original sequence identity. */
+export function replayPlayerEventGroups(record: ReplayRoomRecord) {
+  let sequence = 0;
+  const stages = replayEventStages(record, '', true).map((stage) => ({
+    title: stage.title,
+    events: stage.events.map((event) => ({ event, sequence: ++sequence })),
+  }));
+  return {
+    total: sequence,
+    stages,
+    players: record.settlement.players.map((p) => {
+      const related = stages.map((stage) => ({
+        title: stage.title,
+        events: stage.events.filter(({ event }) =>
+          replayEventRelatedTo(event, p.id),
+        ),
+      }));
+      return {
+        playerId: p.id,
+        stages: related,
+        count: related.reduce((sum, s) => sum + s.events.length, 0),
+        result: replaySelectedResult(record, p.id),
+      };
+    }),
+  };
 }
 export function replayOverview(log: ReplayLog, playerId: string) {
   const points = log.rooms.map((r, index) => {

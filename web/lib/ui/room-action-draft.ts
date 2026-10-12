@@ -50,6 +50,15 @@ export function quoteMaximum(
   kind: QuoteKind,
   player: RuntimePlayerState,
 ) {
+  // Keep the remembered draft's positive-integer invariant; availability is a separate UI fact.
+  return Math.max(1, quoteAvailableMaximum(draft, group, kind, player));
+}
+export function quoteAvailableMaximum(
+  draft: RoomDraft,
+  group: RewardGroup,
+  kind: QuoteKind,
+  player: RuntimePlayerState,
+) {
   const general =
     kind === 'bid'
       ? player.money
@@ -62,11 +71,11 @@ export function quoteMaximum(
   ) {
     const other = group === 'A' ? 'B' : 'A';
     return Math.max(
-      1,
+      0,
       Math.floor(player.money * 0.5) - draft.amounts[other].bid,
     );
   }
-  return Math.max(1, general);
+  return Math.max(0, general);
 }
 
 export function selectQuoteTarget(
