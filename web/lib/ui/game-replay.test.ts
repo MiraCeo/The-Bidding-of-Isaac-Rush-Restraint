@@ -9,7 +9,8 @@ import {
   reduceGameSession,
   type GameSession,
 } from './game-session';
-import { parseGameSave, serializeGameSave, maxSaveBytes } from './game-save';
+import { parseGameSave, maxSaveBytes } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import {
   maxReplayBytes,
   parseReplay,
@@ -17,6 +18,8 @@ import {
   type ReplayDocument,
 } from './game-replay';
 import { canonicalJson, replayRoomLocator } from './replay-record';
+import { packReplay } from './replay-codec';
+import { serializeGameCheckpoint } from './game-save';
 import { replayOutcomeLabels, replayPlayerRows } from './replay-display';
 
 function start(characterId: CharacterId = 'lost', seed = 20261011) {
@@ -54,8 +57,7 @@ function fullGame(characterId: CharacterId) {
 function edited(doc: ReplayDocument, update: (doc: ReplayDocument) => void) {
   const clone = JSON.parse(JSON.stringify(doc)) as ReplayDocument;
   update(clone);
-  clone.version = 1; // Parsed documents expose full snapshots; exercise the legacy reader explicitly.
-  return JSON.stringify(clone);
+  return JSON.stringify({ ...clone, replay: packReplay(clone.replay) });
 }
 
 describe('recorded read-only replays', () => {
@@ -161,20 +163,19 @@ describe('recorded read-only replays', () => {
         .exportedBuild,
     ).toBe('new-export-build');
   });
-  it('reads legacy v1 saves without replay, marking reconstructed history instead of inventing an original build', () => {
+  it('restores lightweight v2 history with its recorded build and explicit reconstruction source', () => {
     const session = submit(start());
-    const old = JSON.parse(serializeGameSave(session));
-    delete old.session.replay;
+    const old = JSON.parse(serializeGameCheckpoint(session));
     const restored = parseGameSave(JSON.stringify(old)).session;
     expect(restored.game).toEqual(session.game);
-    expect(restored.replay!.rooms[0]!.source).toBe('save-reconstruction');
-    expect(restored.replay!.startedBuild).toContain('未记录');
+    expect(restored.replay!.rooms[0]!.source).toBe('checkpoint-reconstruction');
+    expect(restored.replay!.startedBuild).toBe(session.replay!.startedBuild);
     const next = submit(
       reduceGameSession(restored, { type: 'advance_room' }),
       1,
     );
     expect(next.replay!.rooms.map((r) => r.source)).toEqual([
-      'save-reconstruction',
+      'checkpoint-reconstruction',
       'live',
     ]);
     expect(
@@ -301,7 +302,7 @@ describe('recorded read-only replays', () => {
     const doc = JSON.parse(serializeReplay(submit(start()).replay!, 'current'));
     doc.version = 999;
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('版本');
-    doc.version = 1;
+    doc.version = 2;
     doc.exportedBuild = '';
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('标识');
     expect(

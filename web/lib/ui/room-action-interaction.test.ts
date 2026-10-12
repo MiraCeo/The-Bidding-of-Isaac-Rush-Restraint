@@ -13,7 +13,8 @@ import { grantItemInstance } from '../game/runtime';
 import * as aiDecision from '../game/ai-decision';
 import { defaultGamePreferences } from './game-preferences';
 import { createGameSession, reduceGameSession } from './game-session';
-import { gameSaveKey, loadAutoSave, serializeGameSave } from './game-save';
+import { gameSaveKey, loadAutoSave } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }

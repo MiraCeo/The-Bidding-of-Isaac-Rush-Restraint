@@ -1,0 +1,145 @@
+import type { RewardGroup } from '../game/types';
+import type { ReplayLog, ReplayRoomRecord } from './replay-record';
+import { replayEventRelatedTo, replayPlayerRows } from './replay-display';
+
+/** Display-only projections. No RNG, AI, settlement or live-session writes. */
+export function replayFloorGroups(log: ReplayLog, playerId: string) {
+  const floors = new Map<
+    number,
+    Array<{
+      record: ReplayRoomRecord;
+      index: number;
+      score: number;
+      awards: number;
+    }>
+  >();
+  log.rooms.forEach((record, index) => {
+    const floor = record.settlement.room.floorIndex;
+    const rooms = floors.get(floor) ?? [];
+    rooms.push({
+      record,
+      index,
+      score: record.settlement.roomScoreSummaries[playerId]?.finalScore ?? 0,
+      awards: record.settlement.awards
+        .filter((a) => a.playerId === playerId)
+        .reduce((sum, a) => sum + a.copies, 0),
+    });
+    floors.set(floor, rooms);
+  });
+  return [...floors].map(([floor, rooms]) => ({
+    floor,
+    rooms,
+    total: rooms.reduce((sum, r) => sum + r.score, 0),
+  }));
+}
+export function replaySelectedResult(
+  record: ReplayRoomRecord,
+  playerId: string,
+) {
+  const row = replayPlayerRows(record).find((r) => r.after.id === playerId);
+  if (!row) throw new Error('回放中没有这个玩家。');
+  const actions = record.settlement.resolvedActions.filter(
+    (a) => a.playerId === playerId,
+  );
+  const cost = actions.reduce((sum, a) => sum + a.actualCost, 0);
+  const refund = record.settlement.events
+    .filter((e) => e.playerId === playerId && e.type === 'refund')
+    .reduce((sum, e) => sum + (e.amount ?? 0), 0);
+  return {
+    ...row,
+    actions,
+    cost,
+    refund,
+    otherMoneyChange: row.moneyDelta + cost - refund,
+    entryChange: row.previous ? row.before.money - row.previous.money : null,
+    floorReset: !!row.previous && record.settlement.room.roomIndex === 0,
+    breakdown: record.settlement.scoreBreakdowns[playerId],
+  };
+}
+export function replayRewardVerdict(
+  record: ReplayRoomRecord,
+  playerId: string,
+  group: RewardGroup,
+) {
+  const s = record.settlement;
+  const reward = s.room.rewards.find((r) => r.group === group)!;
+  const actions = s.resolvedActions.filter(
+    (a) =>
+      a.playerId === playerId &&
+      a.action.type !== 'withdraw' &&
+      a.action.group === group,
+  );
+  const entitlement = s.entitlements.find(
+    (e) => e.playerId === playerId && e.group === group,
+  );
+  const award = s.awards.find(
+    (a) => a.playerId === playerId && a.group === group,
+  );
+  const placements = [
+    ...s.highPricePlacements,
+    ...s.cooperationPlacements,
+  ].filter((p) => p.playerId === playerId && p.group === group);
+  const causes = s.events.filter(
+    (e) =>
+      e.playerId === playerId &&
+      e.group === group &&
+      (e.type === 'destroy' || e.type === 'duplicate'),
+  );
+  const status = award
+    ? 'awarded'
+    : entitlement
+      ? 'undelivered'
+      : placements.some((p) => p.actionType === 'disrupt')
+        ? 'occupied'
+        : 'unqualified';
+  return { reward, actions, entitlement, award, causes, status };
+}
+export function replayEventStages(
+  record: ReplayRoomRecord,
+  playerId: string,
+  allEvents: boolean,
+) {
+  return [
+    { title: '进入本房', events: record.entryEvents },
+    { title: '提交与结算', events: record.settlement.events },
+  ].map((stage) => ({
+    ...stage,
+    events: stage.events.filter(
+      (e) =>
+        allEvents ||
+        (replayEventRelatedTo(e, playerId) &&
+          e.type !== 'cost' &&
+          e.type !== 'entitlement' &&
+          (e.type !== 'score' || !!e.itemId || !!e.effectItemId)),
+    ),
+  }));
+}
+export function replayOverview(log: ReplayLog, playerId: string) {
+  const points = log.rooms.map((r, index) => {
+    const row = replaySelectedResult(r, playerId);
+    return {
+      index,
+      location: r.location,
+      floor: r.settlement.room.floorIndex,
+      score: row.after.score,
+      money: row.after.money,
+      roomScore: row.score.finalScore,
+      cost: row.cost,
+      refund: row.refund,
+      awards: row.awards.reduce((sum, a) => sum + a.copies, 0),
+    };
+  });
+  const final = log.final?.ranking.find((p) => p.playerId === playerId);
+  return {
+    points,
+    cumulative: points.at(-1)?.score ?? 0,
+    cost: points.reduce((sum, p) => sum + p.cost, 0),
+    refund: points.reduce((sum, p) => sum + p.refund, 0),
+    awards: points.reduce((sum, p) => sum + p.awards, 0),
+    finalScore: final?.finalScore ?? null,
+    rank: final
+      ? 1 +
+        log.final!.ranking.filter((p) => p.finalScore > final.finalScore).length
+      : null,
+  };
+}

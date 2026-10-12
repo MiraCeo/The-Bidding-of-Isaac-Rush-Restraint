@@ -2,11 +2,7 @@ import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
 import { packReplay, unpackReplay } from './replay-codec';
-import {
-  reconstructLegacyReplay,
-  replayRoomLocator,
-  type ReplayLog,
-} from './replay-record';
+import { replayRoomLocator, type ReplayLog } from './replay-record';
 import { readBuildVersion, saveCompatibility, shortHash } from './game-version';
 import {
   createPlayerProfile,
@@ -25,6 +21,7 @@ import {
   type RoomDraft,
 } from './game-session';
 
+// Historical key retained for already-written v2 autosaves; only v2 content is accepted.
 export const gameSaveKey = 'bidding-game-save-v1';
 export const activeReplayKey = 'bidding-active-replay-v2';
 export const lastCompletedKey = 'bidding-last-completed-v2';
@@ -34,11 +31,11 @@ const format = 'the-bidding-of-isaac-save';
 
 export interface SaveDocument {
   format: typeof format;
-  version: 1 | 2;
+  version: 2;
   compatibility: string;
   savedAt: string;
   session: GameSession;
-  kind?: 'checkpoint' | 'backup';
+  kind: 'checkpoint' | 'backup';
   profile?: PlayerProfile;
 }
 export type SaveStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -266,25 +263,6 @@ export function serializeGameBackup(
   return encodeV2(session, now, profile);
 }
 
-/** Legacy v1 encoder retained for compatibility fixtures. New UI exports use the v2 encoders. */
-export function serializeGameSave(
-  session: GameSession,
-  now = new Date(),
-): string {
-  if (session.game.phase === 'character_selection')
-    fail('尚未开始对局，无需导出存档。');
-  const source = JSON.stringify({
-    format,
-    version: 1,
-    compatibility: saveCompatibility,
-    savedAt: now.toISOString(),
-    session,
-  } satisfies SaveDocument);
-  if (new TextEncoder().encode(source).length > maxSaveBytes)
-    fail('存档文件超过8 MiB，不能导出。');
-  return source;
-}
-
 /** Validate on a detached state; never mutate or dispatch into the live game. */
 export function parseGameSave(source: string): SaveDocument {
   if (new TextEncoder().encode(source).length > maxSaveBytes)
@@ -296,8 +274,8 @@ export function parseGameSave(source: string): SaveDocument {
     fail('不是有效的 JSON 存档。');
   }
   const doc = object(value);
-  if (doc.format !== format || (doc.version !== 1 && doc.version !== 2))
-    fail('不支持的存档格式或版本。');
+  if (doc.format !== format || doc.version !== 2)
+    fail('只支持v2存档；不再读取v1或其他版本。');
   if (doc.compatibility !== saveCompatibility)
     fail('存档的规则／数据版本与当前游戏不兼容。');
   if (
@@ -305,16 +283,14 @@ export function parseGameSave(source: string): SaveDocument {
     !Number.isFinite(Date.parse(doc.savedAt))
   )
     fail('存档时间无效。');
-  const modern = doc.version === 2;
-  if (modern && doc.kind !== 'checkpoint' && doc.kind !== 'backup')
+  if (doc.kind !== 'checkpoint' && doc.kind !== 'backup')
     fail('检查点类型无效。');
   if (
-    modern &&
     doc.kind === 'checkpoint' &&
     (doc.replay !== undefined || doc.profile !== undefined)
   )
     fail();
-  const saved = object(modern ? doc.checkpoint : doc.session);
+  const saved = object(doc.checkpoint);
   const game = object(saved.game);
   const seed = integer(game.seed, 0, 0xffffffff);
   if (!characterCatalog.some((c) => c.id === game.selectedCharacter))
@@ -360,11 +336,8 @@ export function parseGameSave(source: string): SaveDocument {
   }
   // JSON removes optional undefined properties; compare JSON-normalized snapshots.
   if (
-    canonical(
-      JSON.parse(
-        JSON.stringify(modern ? checkpointGame(verified.game) : verified.game),
-      ),
-    ) !== canonical(game)
+    canonical(JSON.parse(JSON.stringify(checkpointGame(verified.game)))) !==
+    canonical(game)
   )
     fail();
   if (canonical(turns) !== canonical(saved.turns)) fail();
@@ -372,16 +345,12 @@ export function parseGameSave(source: string): SaveDocument {
     game: verified.game,
     turns,
     draft: readDraft(saved.draft, verified),
-    replay: modern
-      ? doc.kind === 'backup'
+    replay:
+      doc.kind === 'backup'
         ? verifyReplayLog(unpackReplay(doc.replay), verified.replay!)
-        : restoreMetadata(saved.metadata, verified.replay!)
-      : saved.replay === undefined
-        ? reconstructLegacyReplay(verified.replay!)
-        : verifyReplayLog(saved.replay, verified.replay!),
+        : restoreMetadata(saved.metadata, verified.replay!),
   };
   if (
-    modern &&
     doc.kind === 'backup' &&
     canonical(checkpointMetadata(session.replay)) !== canonical(saved.metadata)
   )
@@ -392,13 +361,9 @@ export function parseGameSave(source: string): SaveDocument {
     compatibility: saveCompatibility,
     savedAt: doc.savedAt,
     session,
-    ...(modern
-      ? {
-          kind: doc.kind as 'checkpoint' | 'backup',
-          ...(doc.kind === 'backup'
-            ? { profile: readPlayerProfile(doc.profile) }
-            : {}),
-        }
+    kind: doc.kind,
+    ...(doc.kind === 'backup'
+      ? { profile: readPlayerProfile(doc.profile) }
       : {}),
   };
 }
@@ -423,7 +388,9 @@ const storageCache = new WeakMap<
     draft: RoomDraft | null;
   }
 >();
-export function loadPlayerProfile(storage: SaveStorage | null): {
+export function loadPlayerProfile(
+  storage: Pick<SaveStorage, 'getItem'> | null,
+): {
   profile: PlayerProfile;
   message: string;
 } {
@@ -508,7 +475,7 @@ export function persistGameSession(
     return false;
   }
 }
-export function loadAutoSave(storage: SaveStorage | null): {
+export function loadAutoSave(storage: Pick<SaveStorage, 'getItem'> | null): {
   session: GameSession | null;
   message: string;
 } {
@@ -524,7 +491,7 @@ export function loadAutoSave(storage: SaveStorage | null): {
     }
     const archive = storage?.getItem(activeReplayKey);
     let archiveMessage = '';
-    if (archive && JSON.parse(source).version === 2) {
+    if (archive) {
       try {
         session.replay = verifyReplayLog(
           parseReplay(archive).replay,

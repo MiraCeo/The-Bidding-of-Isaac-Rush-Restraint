@@ -15,8 +15,8 @@ const version = '0.2.0',
   buildId = 'abcdef123456';
 const config = {
   engineVersion: '20-personality-client-1',
-  saveFormatVersion: 1,
-  replayFormatVersion: 1,
+  saveFormatVersion: 2,
+  replayFormatVersion: 2,
 };
 const notes = [
   {
@@ -66,6 +66,7 @@ describe('release identity and offline deliverables', () => {
         replayFormatVersion: 2,
       }).compatibility.saveFormatVersion,
     ).toBe(2);
+    expect(() => validateReleaseInputs({ version }, notes, { ...config, saveFormatVersion: 1 })).toThrow('协议');
     expect(() =>
       validateReleaseInputs(
         { version },

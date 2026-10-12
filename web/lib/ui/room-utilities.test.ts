@@ -14,8 +14,8 @@ import {
   lastCompletedKey,
   loadAutoSave,
   parseGameSave,
-  serializeGameSave,
 } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { parseReplay } from './game-replay';
 import { createGameSession, reduceGameSession } from './game-session';
 import {

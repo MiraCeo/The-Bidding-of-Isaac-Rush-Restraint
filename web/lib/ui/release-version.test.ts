@@ -14,12 +14,13 @@ import { defaultRules } from '../game/config';
 import { itemCatalog } from '../game/item-catalog';
 import { characterCatalog } from '../game/characters';
 import { createGameSession, reduceGameSession } from './game-session';
-import { parseGameSave, serializeGameSave } from './game-save';
+import { parseGameSave } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.2.6');
+    expect(appVersion).toBe('0.2.7');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
@@ -32,7 +33,7 @@ describe('UI release version independent of save compatibility', () => {
     expect(releaseConfig.engineVersion).toBe(engineVersion);
     expect(saveCompatibility).toBe(old);
   });
-  it('continues old-build v1 saves/replays and preserves their historical build identity', () => {
+  it('continues v2 records and preserves their recorded historical build identity', () => {
     let session = reduceGameSession(createGameSession(42), {
       type: 'start_game',
       characterId: 'lost',

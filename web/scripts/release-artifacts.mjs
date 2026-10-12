@@ -30,8 +30,8 @@ export function validateReleaseInputs(packageInfo, notes, config) {
   if (
     typeof config.engineVersion !== 'string' ||
     !/^[a-z0-9-]+$/.test(config.engineVersion) ||
-    ![1, 2].includes(config.saveFormatVersion) ||
-    ![1, 2].includes(config.replayFormatVersion)
+    config.saveFormatVersion !== 2 ||
+    config.replayFormatVersion !== 2
   )
     throw new Error('发布兼容配置的文件协议不支持。');
   return {

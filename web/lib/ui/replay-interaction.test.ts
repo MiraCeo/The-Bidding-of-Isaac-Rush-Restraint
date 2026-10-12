@@ -6,13 +6,13 @@ import { GameApp } from '@/components/game/game-app';
 import { createGameSession, reduceGameSession } from './game-session';
 import {
   parseGameSave,
-  serializeGameSave,
   serializeGameCheckpoint,
   serializeGameBackup,
   persistGameSession,
   gameSaveKey,
   lastCompletedKey,
 } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { parseReplay, serializeReplay } from './game-replay';
 import { readBuildVersion } from './game-version';
@@ -94,6 +94,61 @@ async function changeSelect(value: string) {
 }
 
 describe('read-only replay UI', () => {
+  it('groups rooms by floor and switches the three views without changing saved data or AI state', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
+    await mount();
+    const before = localStorage.getItem(gameSaveKey);
+    const decide = vi.spyOn(decisions, 'decideAiTurn');
+    await click(button('设置', element('nav')));
+    await click(button('查看本局回放'));
+    expect(container.querySelectorAll('.replay-floor-group')).toHaveLength(2);
+    await click(button('整局概览', element('nav[aria-label="回放视图"]')));
+    expect(element('.replay-overview-panel').textContent).toContain(
+      '结算资金轨迹',
+    );
+    expect(container.querySelector('.replay-room-panel')).toBeNull();
+    const bar = element<HTMLButtonElement>(
+      '.replay-trend-bars button[aria-label^="查看F2-R2积分"]',
+    );
+    await click(bar);
+    expect(element('.replay-selected-heading').textContent).toContain('F2-R2');
+    expect(container.querySelector('.replay-room-panel')).not.toBeNull();
+    await click(button('全场明细', element('nav[aria-label="回放视图"]')));
+    expect(
+      element('.replay-field-panel .replay-table tbody').querySelectorAll('tr'),
+    ).toHaveLength(20);
+    await click(button('守夜人', element('.replay-field-panel')));
+    expect(element('.replay-selected-heading').textContent).toContain('守夜人');
+    expect(
+      element<HTMLSelectElement>('select[aria-label="回放查看玩家"]').value,
+    ).toBe('ai-1');
+    expect(decide).not.toHaveBeenCalled();
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+  });
+  it('rejects old v1 files without overwriting an active game or imported replay', async () => {
+    localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2)));
+    await mount();
+    const before = localStorage.getItem(gameSaveKey);
+    await click(button('设置', element('nav')));
+    const source = serializeReplay(gameWithRooms(1).replay!, 'known-v2');
+    await upload(source);
+    await click(button('设置', element('nav')));
+    await upload(
+      JSON.stringify({
+        format: 'the-bidding-of-isaac-replay',
+        version: 1,
+        replay: gameWithRooms(1).replay,
+      }),
+    );
+    expect(element('.replay-controls .save-message').textContent).toContain(
+      'v2',
+    );
+    expect(localStorage.getItem(gameSaveKey)).toBe(before);
+    await click(button('查看已读取回放'));
+    expect(
+      element('nav[aria-label="回放房间"]').querySelectorAll('button'),
+    ).toHaveLength(1);
+  });
   it('puts personal outcomes in the main pane and keeps technical and full-field details collapsed', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();

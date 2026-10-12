@@ -117,20 +117,6 @@ export function finalizeReplay(
     }),
   };
 }
-export function reconstructLegacyReplay(log: ReplayLog): ReplayLog {
-  return {
-    ...log,
-    startedBuild: '旧存档：原构建未记录',
-    rooms: log.rooms.map((r) => ({
-      ...r,
-      build: '旧存档：兼容规则核验重建',
-      source: 'save-reconstruction',
-    })),
-    final: log.final
-      ? { ...log.final, build: '旧存档：兼容规则核验重建' }
-      : null,
-  };
-}
 export function replayRoomLocator(
   log: ReplayLog,
   record: ReplayRoomRecord,

@@ -15,7 +15,8 @@ import {
   switchQuoteKind,
   type QuoteKind,
 } from './room-action-draft';
-import { parseGameSave, serializeGameSave } from './game-save';
+import { parseGameSave } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { createGameSession, reduceGameSession } from './game-session';
 
 function fixture(items: ItemId[] = []) {

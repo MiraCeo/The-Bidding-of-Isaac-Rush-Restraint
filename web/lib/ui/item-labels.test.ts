@@ -10,7 +10,8 @@ import {
   reduceGameSession,
   type GameSession,
 } from './game-session';
-import { parseGameSave, serializeGameSave } from './game-save';
+import { parseGameSave } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { parseReplay, serializeReplay } from './game-replay';
 import { replayRoomLocator } from './replay-record';
 import { RoomResult } from '@/components/game/room-result';
@@ -37,7 +38,7 @@ function finishedGame(): GameSession {
   }
   return session;
 }
-describe('cosmetic item rename without a v1 protocol change', () => {
+describe('cosmetic item rename without a rules compatibility change', () => {
   it('changes both visible catalog names, keeping original IDs, categories, stacking and descriptions', () => {
     expect(getItemDefinition('moms_heart')).toMatchObject({
       id: 'moms_heart',
@@ -69,7 +70,7 @@ describe('cosmetic item rename without a v1 protocol change', () => {
     expect(raw).toContain('妈妈的心脏');
     expect(displayItemText('福袋返还 75 资金。')).toBe('福袋返还 75 资金。');
   });
-  it('reads the unchanged v1 snapshots, raw heart traces and old replay locators across the complete game', () => {
+  it('reads v2 snapshots, preserved heart traces and replay locators across the complete game', () => {
     const session = finishedGame();
     const log = session.replay!;
     const rawHearts = log.rooms

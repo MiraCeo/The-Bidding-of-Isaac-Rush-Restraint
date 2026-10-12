@@ -15,9 +15,9 @@ import {
   persistGameSession,
   serializeGameBackup,
   serializeGameCheckpoint,
-  serializeGameSave,
   type SaveStorage,
 } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { parseReplay, serializeReplay } from './game-replay';
 import { packReplay, unpackReplay } from './replay-codec';
 import { canonicalJson, replayRoomLocator } from './replay-record';
@@ -136,13 +136,19 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
       expect(packed.rooms[0]!.settlement).not.toHaveProperty('players');
       expect(packed.rooms[0]!.settlement).not.toHaveProperty('playersBefore');
       const v2 = serializeReplay(s.replay!, 'origin-build', now);
-      const v1 = serializeReplay(s.replay!, 'origin-build', now, 1);
+      const v1 = JSON.stringify({
+        format: 'the-bidding-of-isaac-replay',
+        version: 1,
+        exportedAt: now.toISOString(),
+        exportedBuild: 'origin-build',
+        replay: s.replay,
+      });
       expect(Buffer.byteLength(v2)).toBeLessThan(Buffer.byteLength(v1) * 0.55);
       expect(parseReplay(v2).replay).toEqual(s.replay);
-      expect(parseReplay(v1).replay).toEqual(s.replay);
+      expect(() => parseReplay(v1)).toThrow('v2');
     },
   );
-  it('keeps v1 full save fixtures and original build identity readable', () => {
+  it('preserves v2 original build identity and independent profile version', () => {
     const s = game(3);
     s.replay!.startedBuild = 'old-origin';
     s.replay!.rooms[0]!.build = 'old-room';

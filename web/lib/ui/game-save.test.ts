@@ -14,10 +14,10 @@ import {
   maxSaveBytes,
   parseGameSave,
   persistGameSession,
-  serializeGameSave,
   type SaveDocument,
   type SaveStorage,
 } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 
 function start(characterId: CharacterId = 'lost', seed = 42) {
   return reduceGameSession(createGameSession(seed), {
@@ -52,9 +52,14 @@ function roundTrip(session: GameSession) {
   return restored;
 }
 function change(save: string, update: (doc: SaveDocument) => void) {
-  const doc = JSON.parse(save) as SaveDocument;
+  const doc = parseGameSave(save);
   update(doc);
-  return JSON.stringify(doc);
+  const wire = JSON.parse(
+    serializeGameSave(doc.session, new Date(doc.savedAt)),
+  );
+  wire.version = doc.version;
+  wire.compatibility = doc.compatibility;
+  return JSON.stringify(wire);
 }
 function storage(): SaveStorage {
   const data = new Map<string, string>();
@@ -240,8 +245,8 @@ describe('versioned complete-game saves', () => {
   });
   it('accepts a UTF-8 BOM and different JSON property order', () => {
     const doc = JSON.parse(serializeGameSave(start()));
-    doc.session.game = Object.fromEntries(
-      Object.entries(doc.session.game).reverse(),
+    doc.checkpoint.game = Object.fromEntries(
+      Object.entries(doc.checkpoint.game).reverse(),
     );
     expect(parseGameSave('\uFEFF' + JSON.stringify(doc)).session.game).toEqual(
       start().game,

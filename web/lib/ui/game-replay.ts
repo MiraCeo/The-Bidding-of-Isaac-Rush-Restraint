@@ -8,7 +8,7 @@ import { packReplay, unpackReplay } from './replay-codec';
 export const maxReplayBytes = 8 * 1024 * 1024;
 export interface ReplayDocument {
   format: 'the-bidding-of-isaac-replay';
-  version: 1 | 2;
+  version: 2;
   exportedAt: string;
   exportedBuild: string;
   replay: ReplayLog;
@@ -122,14 +122,13 @@ export function serializeReplay(
   replay: ReplayLog,
   exportedBuild: string,
   now = new Date(),
-  version: 1 | 2 = 2,
 ): string {
   const source = JSON.stringify({
     format: 'the-bidding-of-isaac-replay',
-    version,
+    version: 2,
     exportedAt: now.toISOString(),
     exportedBuild,
-    replay: version === 2 ? packReplay(replay) : replay,
+    replay: packReplay(replay),
   });
   if (new TextEncoder().encode(source).length > maxReplayBytes)
     fail('回放文件超过8 MiB，不能导出。');
@@ -145,11 +144,8 @@ export function parseReplay(source: string): ReplayDocument {
     fail('不是有效的JSON回放文件。');
   }
   const doc = record(value);
-  if (
-    doc.format !== 'the-bidding-of-isaac-replay' ||
-    (doc.version !== 1 && doc.version !== 2)
-  )
-    fail('不支持的回放格式或版本；存档与回放是不同文件。');
+  if (doc.format !== 'the-bidding-of-isaac-replay' || doc.version !== 2)
+    fail('只支持v2回放；不再读取v1或其他版本，存档与回放是不同文件。');
   if (
     typeof doc.exportedAt !== 'string' ||
     !Number.isFinite(Date.parse(doc.exportedAt))
@@ -160,8 +156,6 @@ export function parseReplay(source: string): ReplayDocument {
     version: doc.version,
     exportedAt: doc.exportedAt,
     exportedBuild: build(doc.exportedBuild),
-    replay: verifyReplayLog(
-      doc.version === 2 ? unpackReplay(doc.replay) : doc.replay,
-    ),
+    replay: verifyReplayLog(unpackReplay(doc.replay)),
   };
 }

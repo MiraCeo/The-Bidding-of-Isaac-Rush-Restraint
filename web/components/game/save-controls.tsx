@@ -79,7 +79,7 @@ export function SaveControls() {
     <section className="save-panel settings-group" aria-labelledby="save-title">
       <h3 id="save-title">对局存档</h3>
       <p>
-        续玩检查点用于接着玩；完整备份额外保留原始回放和玩家档案。两种JSON均可从原入口读取，界面偏好单独保留。
+        仅支持v2对局文件。续玩检查点用于接着玩；完整备份额外保留原始回放和玩家档案。两种JSON均可从原入口读取，界面偏好单独保留。
       </p>
       <div className="save-summary">
         <strong>{describeSave(tools.session)}</strong>

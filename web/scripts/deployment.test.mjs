@@ -48,8 +48,8 @@ async function fixture(base = '/', dirty = false) {
   const version = '0.2.5';
   const config = {
     engineVersion: '20-personality-client-1',
-    saveFormatVersion: 1,
-    replayFormatVersion: 1,
+    saveFormatVersion: 2,
+    replayFormatVersion: 2,
   };
   const notes = [
     {
@@ -418,7 +418,7 @@ describe('manual-only publication workflows', () => {
     expect(Object.keys(publish.on)).toEqual(['workflow_dispatch']);
     expect(publish.on.workflow_dispatch.inputs.target.default).toBe('package');
     expect(publish.on.workflow_dispatch.inputs.expected_version.default).toBe(
-      '0.2.6',
+      '0.2.7',
     );
     expect(publish.jobs.pages.permissions).toEqual({
       contents: 'read',

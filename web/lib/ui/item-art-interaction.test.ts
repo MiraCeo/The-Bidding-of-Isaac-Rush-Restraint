@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ItemIcon, ItemArtProvider } from '@/components/game/item-icon';
 import { GameApp } from '@/components/game/game-app';
 import { createGameSession, reduceGameSession } from './game-session';
-import { gameSaveKey, serializeGameSave } from './game-save';
+import { gameSaveKey } from './game-save';
+import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
