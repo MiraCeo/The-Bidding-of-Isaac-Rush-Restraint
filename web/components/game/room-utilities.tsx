@@ -69,6 +69,17 @@ export function RoomUtilities({
   }, [panel, onPanelChange]);
 
   if (!panel) return null;
+  if (panel === 'settings')
+    return (
+      <GameSettings
+        preferences={preferences}
+        saveStatus={saveStatus}
+        onChange={onPreferencesChange}
+        beforeGame={!game}
+        onOpenReplay={() => onPanelChange('replay')}
+        onReturnGame={() => onPanelChange(null)}
+      />
+    );
   if (panel === 'ranking') {
     return (
       <RoomRanking
@@ -89,42 +100,30 @@ export function RoomUtilities({
       <div className="ranking-page-heading">
         <div>
           <p className="eyebrow">
-            {panel === 'settings'
-              ? 'INTERFACE SETTINGS'
-              : panel === 'build'
-                ? 'YOUR BUILD'
-                : panel === 'replay'
-                  ? 'ROOM REPLAY'
-                  : panel === 'tutorial'
-                    ? 'LEARN BY PLAYING'
-                    : 'GAME RULES'}
+            {panel === 'build'
+              ? 'YOUR BUILD'
+              : panel === 'replay'
+                ? 'ROOM REPLAY'
+                : panel === 'tutorial'
+                  ? 'LEARN BY PLAYING'
+                  : 'GAME RULES'}
           </p>
           <h2 id="room-utilities-title" tabIndex={-1}>
             {panelNames[panel]}
           </h2>
         </div>
         <p>
-          {panel === 'settings'
-            ? '显示偏好 · 不改变对局规则'
-            : panel === 'build'
-              ? '已持有道具 · 实时状态 · 报价影响'
-              : panel === 'replay'
-                ? '已结算记录 · 只读查看 · 问题定位'
-                : panel === 'tutorial'
-                  ? '独立练习 · 固定样本 · 不影响存档'
-                  : '现行机制与道具说明'}
+          {panel === 'build'
+            ? '已持有道具 · 实时状态 · 报价影响'
+            : panel === 'replay'
+              ? '已结算记录 · 只读查看 · 问题定位'
+              : panel === 'tutorial'
+                ? '独立练习 · 固定样本 · 不影响存档'
+                : '现行机制与道具说明'}
         </p>
       </div>
       <div className="utility-page-content">
-        {panel === 'settings' ? (
-          <GameSettings
-            preferences={preferences}
-            saveStatus={saveStatus}
-            onChange={onPreferencesChange}
-            beforeGame={!game}
-            onOpenReplay={() => onPanelChange('replay')}
-          />
-        ) : panel === 'build' && game ? (
+        {panel === 'build' && game ? (
           <PlayerBuild game={game} turn={buildTurn} />
         ) : panel === 'replay' ? (
           <ReplayViewer />

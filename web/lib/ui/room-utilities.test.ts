@@ -90,7 +90,11 @@ function savedSession(characterId: 'lost' | 'jacob_esau' = 'lost', seed = 42) {
 }
 
 async function upload(source: string) {
-  const input = element<HTMLInputElement>('input[aria-label="读取 JSON 存档"]');
+  const entry = Array.from(container.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === '导入文件',
+  );
+  if (entry) await click(entry);
+  const input = element<HTMLInputElement>('input[aria-label="导入对局文件"]');
   const file = new File([source], 'save.json', { type: 'application/json' });
   Object.defineProperty(input, 'files', { configurable: true, value: [file] });
   await act(async () => {
@@ -118,7 +122,7 @@ function Harness({
 }
 
 describe('room utility interaction without a real browser', () => {
-  it('starts a new game only after the settings confirmation and leaves preferences separate', async () => {
+  it('reselects a character only after confirmation on the game page and leaves preferences separate', async () => {
     const source = serializeGameSave(savedSession());
     localStorage.setItem(gameSaveKey, source);
     localStorage.setItem(
@@ -130,12 +134,14 @@ describe('room utility interaction without a real browser', () => {
     );
     await mount(createElement(GameApp));
     await click(button('设置', element('nav')));
-    await click(button('开始新对局'));
+    expect(element('#room-utilities').textContent).not.toContain('重新选角');
+    await click(button('游戏', element('nav')));
+    await click(button('重新选角'));
     expect(localStorage.getItem(gameSaveKey)).not.toBeNull();
     await click(button('保留当前对局'));
-    expect(container.querySelector('.save-candidate')).toBeNull();
-    await click(button('开始新对局'));
-    await click(button('确认开始新对局'));
+    expect(container.querySelector('.match-restart-confirm')).toBeNull();
+    await click(button('重新选角'));
+    await click(button('确认重新选角'));
     expect(container.textContent).toContain('选择角色');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
     expect(
@@ -152,7 +158,7 @@ describe('room utility interaction without a real browser', () => {
     await click(button('设置', element('nav')));
     expect(element('.save-panel').textContent).toContain('自动存档未读取');
     await upload(serializeGameSave(savedSession()));
-    await click(button('载入此存档'));
+    await click(button('载入这局'));
     expect(
       parseGameSave(localStorage.getItem(gameSaveKey)!).session.game.phase,
     ).toBe('room_action');
@@ -230,11 +236,11 @@ describe('room utility interaction without a real browser', () => {
     await upload(serializeGameSave(candidate));
     expect(element('.save-candidate').textContent).toContain('雅阁和以扫');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    await click(button('取消读取'));
+    await click(button('取消'));
     expect(container.querySelector('.save-candidate')).toBeNull();
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
     await upload(serializeGameSave(candidate));
-    await click(button('载入此存档'));
+    await click(button('载入这局'));
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 B 的数值"]').value,
     ).toBe('22');
@@ -247,9 +253,13 @@ describe('room utility interaction without a real browser', () => {
   it('loads a file from initial settings without requiring a new game first', async () => {
     await mount(createElement(GameApp));
     await click(button('设置', element('nav')));
-    expect(button('导出续玩存档').disabled).toBe(true);
+    expect(
+      Array.from(container.querySelectorAll('button')).some(
+        (b) => b.textContent?.trim() === '导出存档',
+      ),
+    ).toBe(false);
     await upload(serializeGameSave(savedSession('jacob_esau')));
-    await click(button('载入此存档'));
+    await click(button('载入这局'));
     expect(element('.round-status').textContent).toContain('雅阁和以扫');
     expect(element('.game-stage').getAttribute('aria-label')).toBe(
       '房间行动区',
@@ -270,7 +280,7 @@ describe('room utility interaction without a real browser', () => {
       return 'blob:test-save';
     });
     const request = vi.spyOn(globalThis, 'fetch');
-    await click(button('导出续玩存档'));
+    await click(button('导出存档'));
     expect(download).toHaveBeenCalledOnce();
     expect(parseGameSave(await blob!.text()).session.draft!.amounts.B.bid).toBe(
       23,
@@ -287,8 +297,8 @@ describe('room utility interaction without a real browser', () => {
     await click(button('开始游戏'));
     await setInput('input[aria-label="竞拍奖励 A 的数值"]', '12');
     await click(button('设置', element('nav')));
-    expect(element('.save-panel').textContent).toContain('存储不可用');
-    expect(button('导出续玩存档').disabled).toBe(false);
+    expect(element('.save-panel').textContent).toContain('尚未保存到浏览器');
+    expect(button('导出存档').disabled).toBe(false);
     await click(button('恢复默认设置'));
     await click(button('返回游戏'));
     expect(
@@ -321,7 +331,13 @@ describe('room utility interaction without a real browser', () => {
       expect(container.querySelectorAll('.topbar')).toHaveLength(1);
       const before = localStorage.getItem(gameSaveKey)!;
       await click(button('设置', element('nav')));
-      expect(button('导出续玩存档').disabled).toBe(false);
+      if (phase === 'game_result')
+        expect(
+          Array.from(container.querySelectorAll('button')).some(
+            (b) => b.textContent?.trim() === '导出存档',
+          ),
+        ).toBe(false);
+      else expect(button('导出存档').disabled).toBe(false);
       await click(button('规则', element('nav')));
       await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
       await click(button('返回游戏'));
@@ -359,7 +375,7 @@ describe('room utility interaction without a real browser', () => {
     await click(button('设置', nav));
     expect(element('#room-utilities-title').textContent).toBe('设置');
     expect(container.querySelectorAll('fieldset.settings-group')).toHaveLength(
-      2,
+      1,
     );
     expect(container.querySelector('.save-panel')).not.toBeNull();
     await click(button('排行', nav));
@@ -525,7 +541,9 @@ describe('room utility interaction without a real browser', () => {
     );
     await click(button('规则', element('nav[aria-label="主导航"]')));
     await click(button('设置', element('nav[aria-label="主导航"]')));
-    await click(element<HTMLInputElement>('.setting-toggle input'));
+    await click(
+      element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input'),
+    );
     await click(button('排行', element('nav[aria-label="主导航"]')));
     await click(button('资金排行'));
     await click(button('返回游戏'));
@@ -663,11 +681,11 @@ describe('room utility interaction without a real browser', () => {
     );
     await click(button('开始游戏'));
     await click(button('设置', element('nav[aria-label="主导航"]')));
-    await click(element<HTMLInputElement>('.setting-toggle input'));
     await click(
-      element<HTMLInputElement>(
-        '.settings-group:nth-of-type(2) .setting-toggle input',
-      ),
+      element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input'),
+    );
+    await click(
+      element<HTMLInputElement>('label[aria-label="减少界面动效"] input'),
     );
     const precision = element<HTMLSelectElement>('.setting-select select');
     await act(async () => {
@@ -712,14 +730,17 @@ describe('room utility interaction without a real browser', () => {
     await click(button('开始游戏'));
     const statusBefore = element('.round-status').textContent;
     await click(button('设置', element('nav[aria-label="主导航"]')));
-    await click(element<HTMLInputElement>('.setting-toggle input'));
+    await click(
+      element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input'),
+    );
     expect(element('.settings-footer output').textContent).toContain(
       '当前会话',
     );
     await click(button('恢复默认设置'));
-    expect(element<HTMLInputElement>('.setting-toggle input').checked).toBe(
-      false,
-    );
+    expect(
+      element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input')
+        .checked,
+    ).toBe(false);
     await click(button('返回游戏'));
     expect(element('.round-status').textContent).toBe(statusBefore);
     expect(element('#ranking-drawer').getAttribute('aria-hidden')).toBe('true');

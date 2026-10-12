@@ -103,13 +103,17 @@ export function GameApp() {
       setProfileMessage('');
     }
     setSession(next);
-    setRestoreMessage('已载入文件存档，继续同一局。');
+    setRestoreMessage(
+      next.game.phase === 'game_result'
+        ? '已载入已结束的对局，可查看原结果与回放。'
+        : '已载入文件存档，继续同一局。',
+    );
     setRestoreRevision((current) => current + 1);
     window.scrollTo(0, 0);
   };
   const newGame = () => {
     setSession(createGameSession());
-    setRestoreMessage('已开始新对局；原有导出文件仍可读取。');
+    setRestoreMessage('已返回选角；玩家进度、最近完成记录及原有导出文件保留。');
     setRestoreRevision((current) => current + 1);
     window.scrollTo(0, 0);
   };

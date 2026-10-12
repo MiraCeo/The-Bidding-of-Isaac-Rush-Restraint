@@ -1,131 +1,188 @@
+import { useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SaveControls } from './save-controls';
-import { ReplayControls } from './replay-controls';
 import { AboutVersion } from './about-version';
+import { DataManagement, dataTaskTitle } from './data-management';
+import { useDataManagement } from './use-data-management';
 import {
   defaultGamePreferences,
   type GamePreferences,
 } from '@/lib/ui/game-preferences';
 
 export type PreferenceSaveStatus = 'unchanged' | 'saved' | 'session';
-
 interface GameSettingsProps {
   preferences: GamePreferences;
   saveStatus: PreferenceSaveStatus;
   onChange: (preferences: GamePreferences) => void;
   beforeGame?: boolean;
   onOpenReplay?: () => void;
+  onReturnGame?: () => void;
 }
-
 export function GameSettings({
   preferences,
   saveStatus,
   onChange,
   beforeGame = false,
-  onOpenReplay,
+  onOpenReplay = () => {},
+  onReturnGame = () => {},
 }: GameSettingsProps) {
+  const data = useDataManagement(onOpenReplay, onReturnGame);
+  const { task, cancel, candidate } = data;
+  useEffect(() => {
+    if (task === 'settings') return;
+    window.scrollTo(0, 0);
+    document
+      .getElementById('room-utilities-title')
+      ?.focus({ preventScroll: true });
+  }, [task, candidate]);
+  useEffect(() => {
+    if (task === 'settings') return;
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        cancel();
+      }
+    };
+    window.addEventListener('keydown', keydown, true);
+    return () => window.removeEventListener('keydown', keydown, true);
+  }, [task, cancel]);
   return (
-    <div className="game-settings-content">
-      <p className="utility-notice">
-        这里只调整显示与面板偏好，不修改资金、积分、角色、AI 或游戏规则。
-        {beforeGame
-          ? '侧栏默认状态会在开始游戏时应用。'
-          : '侧栏默认状态立即应用，并用于下一房间。'}
-      </p>
-      <fieldset className="settings-group">
-        <legend>面板默认状态</legend>
-        <label className="setting-toggle" aria-label="默认展开资金排行">
-          <span>
-            <strong>默认展开资金排行</strong>
-            <small>左侧资金面板；手动收起不修改这个默认值。</small>
-          </span>
-          <input
-            type="checkbox"
-            checked={preferences.rankingInitiallyOpen}
-            onChange={(event) =>
-              onChange({
-                ...preferences,
-                rankingInitiallyOpen: event.target.checked,
-              })
-            }
-          />
-        </label>
-        <label className="setting-toggle" aria-label="默认展开共同市场">
-          <span>
-            <strong>默认展开共同市场</strong>
-            <small>右侧仍只预览你的行动，不提前显示其他人的秘密报价。</small>
-          </span>
-          <input
-            type="checkbox"
-            checked={preferences.marketInitiallyOpen}
-            onChange={(event) =>
-              onChange({
-                ...preferences,
-                marketInitiallyOpen: event.target.checked,
-              })
-            }
-          />
-        </label>
-      </fieldset>
-      <fieldset className="settings-group">
-        <legend>数值与动效</legend>
-        <label className="setting-select" aria-label="积分显示小数位">
-          <span>
-            <strong>积分显示小数位</strong>
-            <small>
-              应用于当前积分排行、结算、房间榜单和最终排行；不改变实际精度。
-            </small>
-          </span>
-          <select
-            value={preferences.scoreDecimals}
-            onChange={(event) =>
-              onChange({
-                ...preferences,
-                scoreDecimals: event.target.value === '4' ? 4 : 2,
-              })
-            }
-          >
-            <option value="2">2 位 · 简洁</option>
-            <option value="4">4 位 · 精确</option>
-          </select>
-        </label>
-        <label className="setting-toggle" aria-label="减少界面动效">
-          <span>
-            <strong>减少界面动效</strong>
-            <small>
-              关闭卡片和侧栏的过渡动画；系统的减少动效设置仍优先生效。
-            </small>
-          </span>
-          <input
-            type="checkbox"
-            checked={preferences.reduceMotion}
-            onChange={(event) =>
-              onChange({ ...preferences, reduceMotion: event.target.checked })
-            }
-          />
-        </label>
-      </fieldset>
-      <div className="settings-footer">
-        <output>
-          {saveStatus === 'saved'
-            ? '界面偏好已保存到当前浏览器。'
-            : saveStatus === 'session'
-              ? '当前浏览器无法保存偏好，本次修改仍在当前会话生效。'
-              : beforeGame
-                ? '浏览器允许时会保存界面偏好；查看和修改设置不会自动开始对局。'
-                : '界面偏好与对局存档分别保存。'}
-        </output>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange({ ...defaultGamePreferences })}
-        >
-          恢复默认设置
-        </Button>
+    <section
+      id="room-utilities"
+      className="ranking-stage game-tools-stage"
+      aria-labelledby="room-utilities-title"
+    >
+      <div className="ranking-page-heading">
+        <div>
+          <p className="eyebrow">
+            {data.task === 'settings'
+              ? 'INTERFACE SETTINGS'
+              : data.task === 'import'
+                ? 'IMPORT DATA'
+                : 'BACKUP DATA'}
+          </p>
+          <h2 id="room-utilities-title" tabIndex={-1}>
+            {dataTaskTitle(data)}
+          </h2>
+        </div>
+        {data.task !== 'settings' ? (
+          <Button type="button" variant="secondary" onClick={data.cancel}>
+            <ArrowLeft aria-hidden="true" />
+            返回设置
+          </Button>
+        ) : !data.tools ? (
+          <Button type="button" variant="secondary" onClick={onReturnGame}>
+            返回游戏
+          </Button>
+        ) : (
+          <p>显示偏好 · 对局与文件</p>
+        )}
       </div>
-      <SaveControls />
-      <ReplayControls onOpen={onOpenReplay ?? (() => {})} />
-      <AboutVersion />
-    </div>
+      <div className="utility-page-content game-settings-content">
+        {data.task === 'settings' && (
+          <>
+            <fieldset className="settings-group settings-display">
+              <legend>显示</legend>
+              <div className="settings-display-grid">
+                <label className="setting-select" aria-label="积分显示小数位">
+                  <span>
+                    <strong>积分显示小数位</strong>
+                    <small>仅影响显示，不改变实际精度。</small>
+                  </span>
+                  <select
+                    value={preferences.scoreDecimals}
+                    onChange={(e) =>
+                      onChange({
+                        ...preferences,
+                        scoreDecimals: e.target.value === '4' ? 4 : 2,
+                      })
+                    }
+                  >
+                    <option value="2">2位 · 简洁</option>
+                    <option value="4">4位 · 精确</option>
+                  </select>
+                </label>
+                <label className="setting-toggle" aria-label="减少界面动效">
+                  <span>
+                    <strong>减少界面动效</strong>
+                    <small>关闭过渡；系统减少动效设置优先。</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.reduceMotion}
+                    onChange={(e) =>
+                      onChange({
+                        ...preferences,
+                        reduceMotion: e.target.checked,
+                      })
+                    }
+                  />
+                </label>
+                <label className="setting-toggle" aria-label="默认展开资金排行">
+                  <span>
+                    <strong>默认展开资金排行</strong>
+                    <small>
+                      {beforeGame
+                        ? '开始游戏时应用。'
+                        : '立即应用，并用于下一房间。'}
+                    </small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.rankingInitiallyOpen}
+                    onChange={(e) =>
+                      onChange({
+                        ...preferences,
+                        rankingInitiallyOpen: e.target.checked,
+                      })
+                    }
+                  />
+                </label>
+                <label className="setting-toggle" aria-label="默认展开共同市场">
+                  <span>
+                    <strong>默认展开共同市场</strong>
+                    <small>只预览自己的行动，不公开秘密报价。</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.marketInitiallyOpen}
+                    onChange={(e) =>
+                      onChange({
+                        ...preferences,
+                        marketInitiallyOpen: e.target.checked,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="settings-footer">
+                <output>
+                  {saveStatus === 'saved'
+                    ? '界面偏好已保存到当前浏览器。'
+                    : saveStatus === 'session'
+                      ? '浏览器存储不可用；修改仅在当前会话生效。'
+                      : '界面偏好与对局分别保存。'}
+                </output>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => onChange({ ...defaultGamePreferences })}
+                >
+                  恢复默认设置
+                </Button>
+              </div>
+            </fieldset>
+          </>
+        )}
+        <DataManagement data={data} />
+        {data.task === 'settings' && (
+          <details className="settings-version-details">
+            <summary>版本与更新</summary>
+            <AboutVersion />
+          </details>
+        )}
+      </div>
+    </section>
   );
 }

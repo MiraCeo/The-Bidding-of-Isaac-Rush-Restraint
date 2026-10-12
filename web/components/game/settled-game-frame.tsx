@@ -3,6 +3,7 @@ import { Coins } from 'lucide-react';
 import { characterNames, type ActiveClientGameState } from '@/lib/game';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
+import { MatchRestartControl } from './match-restart-control';
 import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
 
@@ -65,6 +66,7 @@ export function SettledGameFrame({
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
+        {utilityPanel === null && <MatchRestartControl />}
         {children}
       </div>
       <RoomUtilities

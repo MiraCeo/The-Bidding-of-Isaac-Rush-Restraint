@@ -71,7 +71,11 @@ function gameWithRooms(count = 2, seed = 42) {
   return session;
 }
 async function upload(source: string) {
-  const input = element<HTMLInputElement>('input[aria-label="读取回放 JSON"]');
+  const entry = Array.from(container.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === '导入文件',
+  );
+  if (entry) await click(entry);
+  const input = element<HTMLInputElement>('input[aria-label="导入对局文件"]');
   Object.defineProperty(input, 'files', {
     configurable: true,
     value: [new File([source], 'replay.json', { type: 'application/json' })],
@@ -79,6 +83,11 @@ async function upload(source: string) {
   await act(async () =>
     input.dispatchEvent(new Event('change', { bubbles: true })),
   );
+  // Reading only previews. This helper explicitly confirms a valid replay as the user would.
+  const open = Array.from(
+    container.querySelectorAll('.data-candidate button'),
+  ).find((b) => b.textContent?.trim() === '打开回放');
+  if (open) await click(open as HTMLButtonElement);
 }
 async function changeSelect(value: string) {
   const select = element<HTMLSelectElement>(
@@ -100,7 +109,7 @@ describe('read-only replay UI', () => {
     const before = localStorage.getItem(gameSaveKey);
     const decide = vi.spyOn(decisions, 'decideAiTurn');
     await click(button('设置', element('nav')));
-    await click(button('查看本局回放'));
+    await click(button('查看回放'));
     expect(container.querySelectorAll('.replay-floor-group')).toHaveLength(2);
     await click(button('整局概览', element('nav[aria-label="回放视图"]')));
     expect(element('.replay-overview-panel').textContent).toContain(
@@ -140,11 +149,12 @@ describe('read-only replay UI', () => {
         replay: gameWithRooms(1).replay,
       }),
     );
-    expect(element('.replay-controls .save-message').textContent).toContain(
-      'v2',
-    );
+    expect(
+      element('.game-settings-content .data-message').textContent,
+    ).toContain('v2');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    await click(button('查看已读取回放'));
+    await click(button('返回设置'));
+    await click(button('查看对局'));
     expect(
       element('nav[aria-label="回放房间"]').querySelectorAll('button'),
     ).toHaveLength(1);
@@ -153,7 +163,7 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
     await click(button('设置', element('nav')));
-    await click(button('查看本局回放'));
+    await click(button('查看回放'));
     expect(element('.replay-sidebar nav[aria-label="回放房间"]')).toBeDefined();
     expect(element('.replay-main .replay-summary-grid').textContent).toContain(
       '实际获得',
@@ -185,11 +195,12 @@ describe('read-only replay UI', () => {
       return 'blob:backup';
     });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await click(button('完整备份'));
     await click(button('导出完整备份'));
     const backup = parseGameSave(await blob!.text());
     expect(backup.kind).toBe('backup');
     expect(backup.profile).toEqual(profile);
-    await click(button('导出续玩存档'));
+    await click(button('导出存档'));
     expect(parseGameSave(await blob!.text()).profile).toBeUndefined();
     expect(JSON.parse(await blob!.text())).not.toHaveProperty('replay');
   });
@@ -199,10 +210,14 @@ describe('read-only replay UI', () => {
     localStorage.setItem(playerProfileKey, JSON.stringify(profile));
     await mount();
     await click(button('设置', element('nav')));
-    const input = element<HTMLInputElement>(
-      'input[aria-label="读取 JSON 存档"]',
-    );
     async function uploadSave(source: string) {
+      const entry = Array.from(container.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === '导入文件',
+      );
+      if (entry) await click(entry);
+      const input = element<HTMLInputElement>(
+        'input[aria-label="导入对局文件"]',
+      );
       Object.defineProperty(input, 'files', {
         configurable: true,
         value: [new File([source], 'save.json')],
@@ -217,9 +232,9 @@ describe('read-only replay UI', () => {
     expect(localStorage.getItem(playerProfileKey)).toBe(
       JSON.stringify(profile),
     );
-    await click(button('取消读取'));
+    await click(button('取消'));
     await uploadSave(serializeGameCheckpoint(gameWithRooms(1)));
-    await click(button('载入此存档'));
+    await click(button('载入这局'));
     expect(localStorage.getItem(playerProfileKey)).toBe(
       JSON.stringify(profile),
     );
@@ -230,7 +245,7 @@ describe('read-only replay UI', () => {
     const archive = localStorage.getItem(lastCompletedKey);
     await mount();
     await click(button('设置', element('nav')));
-    await click(button('查看最近完成对局'));
+    await click(button('查看对局'));
     expect(element('.replay-main').textContent).toContain('最终房间积分');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
     expect(localStorage.getItem(lastCompletedKey)).toBe(archive);
@@ -247,9 +262,9 @@ describe('read-only replay UI', () => {
     });
     vi.spyOn(File.prototype, 'text').mockReturnValue(reading);
     await upload(source);
-    expect(element('.replay-controls .save-message').textContent).toContain(
-      '校验',
-    );
+    expect(
+      element('.game-settings-content .data-message').textContent,
+    ).toContain('校验');
     await click(button('游戏', element('nav')));
     await act(async () => {
       resolveRead(source);
@@ -262,10 +277,18 @@ describe('read-only replay UI', () => {
   it('provides a home-page file entry without starting a game, while current replay remains disabled', async () => {
     await mount();
     await click(button('设置', element('nav')));
-    expect(button('查看本局回放').disabled).toBe(true);
-    expect(button('导出回放 JSON').disabled).toBe(true);
     expect(
-      element<HTMLInputElement>('input[aria-label="读取回放 JSON"]'),
+      Array.from(container.querySelectorAll('button')).some(
+        (b) => b.textContent?.trim() === '查看回放',
+      ),
+    ).toBe(false);
+    expect(
+      Array.from(container.querySelectorAll('button')).some(
+        (b) => b.textContent?.trim() === '导出回放',
+      ),
+    ).toBe(false);
+    expect(
+      element<HTMLInputElement>('input[aria-label="导入对局文件"]'),
     ).toBeDefined();
     expect(
       container.querySelectorAll('nav[aria-label="主导航"] button'),
@@ -283,7 +306,7 @@ describe('read-only replay UI', () => {
     const stored = localStorage.getItem(gameSaveKey)!;
     const decide = vi.spyOn(decisions, 'decideAiTurn');
     await click(button('设置', element('nav')));
-    await click(button('查看本局回放'));
+    await click(button('查看回放'));
     expect(element('#room-utilities-title').textContent).toBe('逐房回放');
     expect(element('.replay-selected-heading').textContent).toContain('F1-R1');
     expect(
@@ -363,11 +386,12 @@ describe('read-only replay UI', () => {
     );
     corrupt.replay.initialPlayers[0].money = -1;
     await upload(JSON.stringify(corrupt));
-    expect(element('.replay-controls .save-message').textContent).toContain(
-      '保持不变',
-    );
+    expect(
+      element('.game-settings-content .data-message').textContent,
+    ).toContain('保持不变');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    await click(button('查看已读取回放'));
+    await click(button('返回设置'));
+    await click(button('查看对局'));
     expect(element('.replay-identity').textContent).toContain('00000309');
   });
   it('downloads the actual recorded replay as a separate blob with no network requests', async () => {
@@ -383,7 +407,8 @@ describe('read-only replay UI', () => {
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => {});
     const fetch = vi.spyOn(globalThis, 'fetch');
-    await click(button('导出回放 JSON'));
+    await click(button('查看回放'));
+    await click(button('导出此回放'));
     expect(download).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
     const doc = parseReplay(await blob!.text());
@@ -395,7 +420,7 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
     await click(button('设置', element('nav')));
-    await click(button('查看本局回放'));
+    await click(button('查看回放'));
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
       new Error('blocked'),
     );
@@ -413,7 +438,7 @@ describe('read-only replay UI', () => {
     await mount();
     const before = localStorage.getItem(gameSaveKey)!;
     await click(button('设置', element('nav')));
-    await click(button('查看本局回放'));
+    await click(button('查看对局', element('[data-record-source="current"]')));
     const roomButtons = element(
       'nav[aria-label="回放房间"]',
     ).querySelectorAll<HTMLButtonElement>('button');

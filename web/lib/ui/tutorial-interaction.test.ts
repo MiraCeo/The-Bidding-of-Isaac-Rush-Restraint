@@ -200,6 +200,7 @@ describe('tutorial and version interface without a real browser', () => {
     document.head.append(meta);
     await mount();
     await click(button('设置', element('nav[aria-label="主导航"]')));
+    await click(element<HTMLElement>('.settings-version-details summary'));
     expect(element('.about-version').textContent).toContain(appVersion);
     expect(element('.version-values').textContent).toContain(meta.content);
     expect(element('.version-values').textContent).toContain(saveCompatibility);
@@ -219,6 +220,7 @@ describe('tutorial and version interface without a real browser', () => {
   it('keeps selectable version information when copying is blocked', async () => {
     await mount();
     await click(button('设置', element('nav[aria-label="主导航"]')));
+    await click(element<HTMLElement>('.settings-version-details summary'));
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
       new Error('blocked'),
     );

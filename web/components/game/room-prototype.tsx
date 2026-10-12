@@ -12,6 +12,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { RoomUtilities } from './room-utilities';
+import { MatchRestartControl } from './match-restart-control';
 import { GameNavigation } from './game-navigation';
 import { ItemBadges } from './item-badges';
 import { BuildStatus, QuotePreview } from './player-build';
@@ -417,10 +418,13 @@ export function RoomPrototype({
               </p>
               <h2>选择这一房间的目标</h2>
             </div>
-            <BuildStatus
-              game={game}
-              onOpen={() => changeUtilityPanel('build')}
-            />
+            <div className="room-intro-controls">
+              <BuildStatus
+                game={game}
+                onOpen={() => changeUtilityPanel('build')}
+              />
+              {utilityPanel === null && <MatchRestartControl />}
+            </div>
           </div>
           {humanEntryEvents.length > 0 && (
             <div
