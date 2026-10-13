@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { decodedDownload } from './file-export.test-helper';
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,7 +92,7 @@ function downloads() {
   const download = vi
     .spyOn(HTMLAnchorElement.prototype, 'click')
     .mockImplementation(() => {});
-  return { download, text: async () => blob!.text() };
+  return { download, text: async () => decodedDownload(() => blob) };
 }
 describe('specific data layouts and confirmation flows', () => {
   it('prioritizes replay export when a finished game could not be archived', async () => {

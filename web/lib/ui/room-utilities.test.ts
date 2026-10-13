@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { decodedDownload } from './file-export.test-helper';
 
 import { act, createElement, useState, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -281,10 +282,9 @@ describe('room utility interaction without a real browser', () => {
     });
     const request = vi.spyOn(globalThis, 'fetch');
     await click(button('导出存档'));
+    const source = await decodedDownload(() => blob);
     expect(download).toHaveBeenCalledOnce();
-    expect(parseGameSave(await blob!.text()).session.draft!.amounts.B.bid).toBe(
-      23,
-    );
+    expect(parseGameSave(source).session.draft!.amounts.B.bid).toBe(23);
     expect(request).not.toHaveBeenCalled();
   });
 

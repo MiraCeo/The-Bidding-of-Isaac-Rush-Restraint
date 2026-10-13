@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { decodedDownload } from './file-export.test-helper';
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -522,12 +523,16 @@ describe('read-only replay UI', () => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     await click(button('完整备份'));
     await click(button('导出完整备份'));
-    const backup = parseGameSave(await blob!.text());
+    const backup = parseGameSave(await decodedDownload(() => blob));
     expect(backup.kind).toBe('backup');
     expect(backup.profile).toEqual(profile);
     await click(button('导出存档'));
-    expect(parseGameSave(await blob!.text()).profile).toBeUndefined();
-    expect(JSON.parse(await blob!.text())).not.toHaveProperty('replay');
+    expect(
+      parseGameSave(await decodedDownload(() => blob)).profile,
+    ).toBeUndefined();
+    expect(JSON.parse(await decodedDownload(() => blob))).not.toHaveProperty(
+      'replay',
+    );
   });
   it('does not replace profile data while previewing a backup or loading a checkpoint', async () => {
     const profile = createPlayerProfile();
@@ -743,9 +748,10 @@ describe('read-only replay UI', () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     await click(button('查看回放'));
     await click(button('导出此回放'));
+    const source = await decodedDownload(() => blob);
     expect(download).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
-    const doc = parseReplay(await blob!.text());
+    const doc = parseReplay(source);
     expect(doc.replay.rooms).toHaveLength(2);
     expect(doc.replay.rooms[0]!.settlement.turns).toHaveLength(20);
     expect(doc.replay).not.toHaveProperty('draft');
@@ -769,9 +775,9 @@ describe('read-only replay UI', () => {
     });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     await click(button('导出此回放'));
-    expect(parseReplay(await blob!.text()).replay.rooms[0]!.locator).toMatch(
-      /^ISAAC-.*\/F1-R1#[0-9a-f]{8}$/,
-    );
+    expect(
+      parseReplay(await decodedDownload(() => blob)).replay.rooms[0]!.locator,
+    ).toMatch(/^ISAAC-.*\/F1-R1#[0-9a-f]{8}$/);
   });
   it('restores historical records on refresh and shows final ranking without a restart or advance button', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(15)));

@@ -8,7 +8,8 @@ import {
 } from '@/lib/ui/survival-replay-display';
 import { replayRoomNames, replayStrategyNames } from '@/lib/ui/replay-display';
 import { serializeSurvivalReplay } from '@/lib/ui/survival-persistence';
-import { downloadJsonFile } from '@/lib/ui/json-download';
+import { downloadPortableJsonFile } from '@/lib/ui/json-download';
+import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import type { SurvivalReplayLog } from '@/lib/ui/survival-record';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
@@ -153,6 +154,9 @@ export function SurvivalReplayViewer({
     [roomView, setRoomView] = useState<'personal' | 'field'>('personal');
   const [floorIndex, setFloorIndex] = useState(0),
     [message, setMessage] = useState('');
+  const [exporting, setExporting] = useState(false),
+    exportController = useRef<AbortController | null>(null);
+  useEffect(() => () => exportController.current?.abort(), []);
   const heading = useRef<HTMLHeadingElement>(null),
     content = useRef<HTMLDivElement>(null),
     toolbar = useRef<HTMLDivElement>(null),
@@ -161,8 +165,11 @@ export function SurvivalReplayViewer({
   const activeIndex = Math.min(index, Math.max(0, log.rooms.length - 1)),
     record = display.rooms[activeIndex],
     room = log.rooms[activeIndex];
-  const participating = !!room?.activePlayerIds.includes(playerId),
-    overview = survivalReplayOverview(log, playerId);
+  const participating = !!room?.activePlayerIds.includes(playerId);
+  const overview = useMemo(
+    () => survivalReplayOverview(log, playerId),
+    [log, playerId],
+  );
   const name = (id: string) => log.playerNames[id] ?? id,
     score = (n: number) => n.toFixed(decimals);
   const floors = Array.from(new Set(log.rooms.map((r) => r.room.floorIndex)));
@@ -208,15 +215,27 @@ export function SurvivalReplayViewer({
     setPlayerId(id);
     setRoomView('personal');
   }
-  function exportReplay() {
+  async function exportReplay() {
+    const controller = new AbortController();
+    exportController.current?.abort();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
     try {
-      downloadJsonFile(
+      const packed = await downloadPortableJsonFile(
         serializeSurvivalReplay(log, readBuildVersion()),
         `以撒的竞合-生存回放-${log.id}.json`,
+        { signal: controller.signal },
       );
-      setMessage('已请求下载v4生存只读回放。');
+      if (!controller.signal.aborted)
+        setMessage(
+          '已请求下载v4生存只读回放。' + compressedFileSummary(packed),
+        );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法导出。');
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '无法导出。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
   return (
@@ -265,7 +284,11 @@ export function SurvivalReplayViewer({
             </button>
           ))}
         </nav>
-        <Button variant="secondary" onClick={exportReplay}>
+        <Button
+          variant="secondary"
+          disabled={exporting}
+          onClick={() => void exportReplay()}
+        >
           导出此回放
         </Button>
       </div>

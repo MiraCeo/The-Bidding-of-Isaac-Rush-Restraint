@@ -164,7 +164,9 @@ export function DataManagement({ data }: { data: DataManagementController }) {
         ) : (
           <section className="settings-group data-file-prompt">
             <h3>{data.message ? '文件无法读取' : '选择要读取的文件'}</h3>
-            <p>对局存档、回放和完整备份使用同一个入口，选择后识别用途。</p>
+            <p>
+              对局存档、回放和完整备份使用同一个入口，自动识别压缩容器或原JSON，选择后识别用途。
+            </p>
             <div className="data-actions">
               <Button
                 type="button"
@@ -208,7 +210,11 @@ export function DataManagement({ data }: { data: DataManagementController }) {
           </p>
         )}
         <div className="data-actions">
-          <Button type="button" onClick={data.confirmBackup}>
+          <Button
+            type="button"
+            disabled={data.exporting}
+            onClick={() => void data.confirmBackup()}
+          >
             导出完整备份
           </Button>
           <Button type="button" variant="secondary" onClick={data.cancel}>
@@ -275,7 +281,8 @@ export function DataManagement({ data }: { data: DataManagementController }) {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => data.exportReplay(source)}
+            disabled={data.exporting}
+            onClick={() => void data.exportReplay(source)}
           >
             导出回放
           </Button>
@@ -339,7 +346,8 @@ export function DataManagement({ data }: { data: DataManagementController }) {
                         ? 'default'
                         : 'secondary'
                     }
-                    onClick={() => data.exportReplay('current')}
+                    disabled={data.exporting}
+                    onClick={() => void data.exportReplay('current')}
                   >
                     导出回放
                   </Button>
@@ -364,7 +372,8 @@ export function DataManagement({ data }: { data: DataManagementController }) {
                         ? 'default'
                         : 'secondary'
                     }
-                    onClick={data.exportCheckpoint}
+                    disabled={data.exporting}
+                    onClick={() => void data.exportCheckpoint()}
                   >
                     导出存档
                   </Button>
@@ -429,6 +438,9 @@ export function DataManagement({ data }: { data: DataManagementController }) {
       </section>
       <section className="settings-group data-files">
         <h3>数据管理</h3>
+        <p>
+          默认无损压缩导出为.json，读取兼容压缩容器和原JSON；自动保存格式不变。
+        </p>
         <div className="data-file-row">
           <div>
             <strong>导入文件</strong>
@@ -453,7 +465,7 @@ export function DataManagement({ data }: { data: DataManagementController }) {
             <Button
               type="button"
               variant="secondary"
-              disabled={!!tools.profileMessage}
+              disabled={!!tools.profileMessage || data.exporting}
               onClick={data.openBackup}
             >
               完整备份

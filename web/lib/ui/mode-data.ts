@@ -1,4 +1,5 @@
 import { parseDataFile, type DataCandidate } from './data-management';
+import { unpackDataFile, type FileCodecOptions } from './compressed-file';
 import {
   parseSurvivalCheckpoint,
   parseSurvivalReplay,
@@ -28,6 +29,15 @@ export type ModeDataCandidate =
       document: SurvivalReplayDocument;
       filename: string;
     };
+/** UI file imports accept both legacy raw JSON and the new lossless transport container. */
+export async function readModeDataFile(
+  source: string,
+  filename: string,
+  options: FileCodecOptions = {},
+): Promise<ModeDataCandidate> {
+  const unpacked = await unpackDataFile(source, options);
+  return parseModeDataFile(unpacked.source, filename);
+}
 /** Explicit mode dispatch, shared by both UI import previews; never converts one mode into another. */
 export function parseModeDataFile(
   source: string,

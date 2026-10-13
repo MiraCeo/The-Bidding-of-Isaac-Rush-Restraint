@@ -25,7 +25,11 @@ import {
   validateSurvivalReplayFacts,
   validateSurvivalRuleFacts,
 } from './survival-facts-validation';
-import { canonicalJson, copySnapshot } from '../shared/json-facts';
+import {
+  canonicalJson,
+  copySnapshot,
+  assertFiniteJsonNumbers,
+} from '../shared/json-facts';
 import {
   array,
   checkChecksum,
@@ -63,7 +67,7 @@ export interface SurvivalReplayDocument {
 }
 /** Large room facts and debug decisions are reconstructed for continuation, not duplicated in a checkpoint. */
 function checkpointSnapshot(game: SurvivalGameState) {
-  canonicalJson(game); // Reject non-finite facts before JSON normalization can turn them into null.
+  assertFiniteJsonNumbers(game); // Validate excluded diagnostics too, without allocating their canonical JSON.
   const {
     roomRecords: _rooms,
     roomSettlement: _settlement,

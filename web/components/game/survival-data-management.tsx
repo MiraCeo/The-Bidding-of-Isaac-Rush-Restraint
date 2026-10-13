@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ModeFilePreview } from './mode-file-preview';
-import { parseModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
+import { readModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { SurvivalClientSession } from '@/lib/ui/survival-client';
 import {
   serializeSurvivalCheckpoint,
@@ -14,7 +14,8 @@ import { serializeSurvivalBackup } from '@/lib/ui/survival-backup';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import { loadPlayerProfile } from '@/lib/ui/game-save';
-import { downloadJsonFile } from '@/lib/ui/json-download';
+import { downloadPortableJsonFile } from '@/lib/ui/json-download';
+import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { readBuildVersion } from '@/lib/ui/game-version';
 
 export function SurvivalDataManagement({
@@ -36,9 +37,14 @@ export function SurvivalDataManagement({
     null,
   );
   const request = useRef(0);
+  const readController = useRef<AbortController | null>(null),
+    exportController = useRef<AbortController | null>(null);
+  const [exporting, setExporting] = useState(false);
   useEffect(
     () => () => {
       request.current++;
+      readController.current?.abort();
+      exportController.current?.abort();
     },
     [],
   );
@@ -59,6 +65,9 @@ export function SurvivalDataManagement({
   });
   const cancel = () => {
     request.current++;
+    readController.current?.abort();
+    exportController.current?.abort();
+    setExporting(false);
     setCandidate(null);
     setBackup(null);
     setReading(false);
@@ -76,15 +85,18 @@ export function SurvivalDataManagement({
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
   }, [candidate, backup, reading]);
-  const run = (action: () => void) => {
+  const run = (action: () => void | Promise<void>) => {
     try {
-      action();
-      setMessage('操作完成。');
+      const result = action();
+      if (!(result instanceof Promise)) setMessage('操作完成。');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '文件操作未完成。');
     }
   };
   async function read(file?: File) {
+    readController.current?.abort();
+    const controller = new AbortController();
+    readController.current = controller;
     const id = ++request.current;
     setCandidate(null);
     setBackup(null);
@@ -100,12 +112,36 @@ export function SurvivalDataManagement({
         throw new Error('文件超过8 MiB，不能读取。');
       const source = await file.text();
       if (id !== request.current) return;
-      setCandidate(parseModeDataFile(source, file.name));
+      const parsed = await readModeDataFile(source, file.name, {
+        signal: controller.signal,
+      });
+      if (id !== request.current) return;
+      setCandidate(parsed);
     } catch (error) {
       if (id === request.current)
         setMessage(error instanceof Error ? error.message : '无法读取文件。');
     } finally {
       if (id === request.current) setReading(false);
+    }
+  }
+  async function exportFile(source: string, name: string, done?: () => void) {
+    exportController.current?.abort();
+    const controller = new AbortController();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
+    try {
+      const result = await downloadPortableJsonFile(source, name, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      setMessage(`已请求下载：${compressedFileSummary(result)}。`);
+      done?.();
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '文件导出未完成。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
   function confirm() {
@@ -136,13 +172,16 @@ export function SurvivalDataManagement({
     <section className="settings-group">
       <h3>生存模式 · 存档与文件</h3>
       <p>经典 v2/v3 与生存 v4 分开保存。导入先预览，确认后才载入；回放只读。</p>
+      <p>
+        默认无损压缩导出，仍使用.json文件，读取自动识别压缩或旧JSON。日常继续游戏用续玩存档；回放保存过程，完整备份还包含玩家档案。自动保存格式不变。
+      </p>
       <div className="data-actions">
         <Button
-          disabled={!session}
+          disabled={!session || exporting}
           onClick={() =>
             run(() => {
               if (session)
-                downloadJsonFile(
+                return exportFile(
                   serializeSurvivalCheckpoint(session.game, session.draft),
                   `生存续玩-${session.game.seed}.json`,
                 );
@@ -152,11 +191,11 @@ export function SurvivalDataManagement({
           导出生存续玩存档
         </Button>
         <Button
-          disabled={!session?.game.roomRecords.length}
+          disabled={!session?.game.roomRecords.length || exporting}
           onClick={() =>
             run(() => {
               if (session)
-                downloadJsonFile(
+                return exportFile(
                   serializeSurvivalReplay(
                     createSurvivalReplay(session.game),
                     readBuildVersion(),
@@ -168,7 +207,11 @@ export function SurvivalDataManagement({
         >
           导出生存回放
         </Button>
-        <Button variant="secondary" disabled={!session} onClick={prepareBackup}>
+        <Button
+          variant="secondary"
+          disabled={!session || exporting}
+          onClick={prepareBackup}
+        >
           完整备份
         </Button>
       </div>
@@ -176,6 +219,7 @@ export function SurvivalDataManagement({
         读取对局文件
         <input
           type="file"
+          disabled={exporting}
           accept=".json,application/json"
           onChange={(event) => {
             void read(event.target.files?.[0]);
@@ -243,10 +287,12 @@ export function SurvivalDataManagement({
             包含当前生存检查点、已结算事实回放和本机玩家进度。导入时默认不覆盖玩家进度。
           </p>
           <Button
+            disabled={exporting}
             onClick={() =>
               run(() => {
-                downloadJsonFile(backup.source, backup.name);
-                setBackup(null);
+                return exportFile(backup.source, backup.name, () =>
+                  setBackup(null),
+                );
               })
             }
           >
@@ -260,6 +306,7 @@ export function SurvivalDataManagement({
       {(phase === 'competition_complete' || recent.doc) && (
         <Button
           variant="secondary"
+          disabled={exporting}
           onClick={() =>
             run(() => {
               // Read on activation, not only at mount: AI may have finished while settings stayed open.
@@ -289,9 +336,10 @@ export function SurvivalDataManagement({
       {imported && (
         <Button
           variant="secondary"
+          disabled={exporting}
           onClick={() =>
             run(() =>
-              downloadJsonFile(
+              exportFile(
                 serializeSurvivalReplay(imported.replay, readBuildVersion()),
                 '生存只读回放.json',
               ),

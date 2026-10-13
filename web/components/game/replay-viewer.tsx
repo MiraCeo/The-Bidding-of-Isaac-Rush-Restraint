@@ -7,7 +7,8 @@ import { replayRoomNames, replayStrategyNames } from '@/lib/ui/replay-display';
 import { serializeReplay } from '@/lib/ui/game-replay';
 import { replayRuleFacts } from '@/lib/ui/replay-facts-codec';
 import { readBuildVersion } from '@/lib/ui/game-version';
-import { downloadJsonFile } from '@/lib/ui/json-download';
+import { downloadPortableJsonFile } from '@/lib/ui/json-download';
+import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { useSessionTools } from './session-context';
 import {
   ReplayRoomPanel,
@@ -81,6 +82,9 @@ export function ReplayArchive({
   const [scope, setScope] = useState<'room' | 'match'>('room');
   const [roomView, setRoomView] = useState<'personal' | 'field'>('personal');
   const [message, setMessage] = useState('');
+  const [exporting, setExporting] = useState(false),
+    exportController = useRef<AbortController | null>(null);
+  useEffect(() => () => exportController.current?.abort(), []);
   const heading = useRef<HTMLHeadingElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -144,15 +148,25 @@ export function ReplayArchive({
     else focusRequested.current = true;
     setRoomView(next);
   }
-  function exportArchive() {
+  async function exportArchive() {
+    const controller = new AbortController();
+    exportController.current?.abort();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
     try {
-      downloadJsonFile(
+      const packed = await downloadPortableJsonFile(
         serializeReplay(log, readBuildVersion()),
         '以撒的竞合-回放-' + log.id + '.json',
+        { signal: controller.signal },
       );
-      setMessage('已请求下载v3只读回放。');
+      if (!controller.signal.aborted)
+        setMessage('已请求下载v3只读回放。' + compressedFileSummary(packed));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法导出。');
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '无法导出。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
   return (
@@ -183,7 +197,12 @@ export function ReplayArchive({
             </button>
           </nav>
         )}
-        <Button type="button" variant="secondary" onClick={exportArchive}>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={exporting}
+          onClick={() => void exportArchive()}
+        >
           导出此回放
         </Button>
       </div>

@@ -1,4 +1,22 @@
 /** Stable factual JSON helpers, with no gameplay, browser storage or random dependencies. */
+/** Non-finite rejection without allocating/sorting a full canonical string just to validate. */
+export function assertFiniteJsonNumbers(value: unknown): void {
+  const visited = new WeakSet<object>(),
+    ancestors = new WeakSet<object>();
+  function inspect(node: unknown): void {
+    if (typeof node === 'number' && !Number.isFinite(node))
+      throw new Error('记录包含非法数值。');
+    if (!node || typeof node !== 'object') return;
+    if (ancestors.has(node)) throw new Error('记录包含循环引用。');
+    if (visited.has(node)) return;
+    ancestors.add(node);
+    for (const key of Object.keys(node))
+      inspect((node as Record<string, unknown>)[key]);
+    ancestors.delete(node);
+    visited.add(node);
+  }
+  inspect(value);
+}
 export function canonicalJson(value: unknown): string {
   if (typeof value === 'number' && !Number.isFinite(value))
     throw new Error('记录包含非法数值。');

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
   type Dispatch,
@@ -80,6 +81,7 @@ export interface SurvivalGameAppProps {
 export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const { session, preferences, setSession } = props;
   const game = session?.game;
+  const log = useMemo(() => (game ? createSurvivalReplay(game) : null), [game]);
   const [panel, setPanel] = useState<RoomUtilityPanel | null>(null);
   const [rankingView, setRankingView] = useState<
     'survival' | ClientRankingView
@@ -158,9 +160,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.clearTimeout(token);
   }, [session, setSession, message]);
   useEffect(() => {
-    if (!game || game.phase !== 'competition_complete') return;
+    if (!game || !log || game.phase !== 'competition_complete') return;
     let cancelled = false;
-    const log = createSurvivalReplay(game);
     void survivalCompletionKey(log)
       .then((key) => {
         if (cancelled) return;
@@ -182,7 +183,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => {
       cancelled = true;
     };
-  }, [game]);
+  }, [game, log]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && panel) {
@@ -193,7 +194,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [panel]);
-  const log = game ? createSurvivalReplay(game) : null;
   const decimals = preferences.scoreDecimals;
   const name = (id: string) =>
     id === 'human' ? '你' : (game?.aiProfiles[id]?.name ?? id);

@@ -10,14 +10,15 @@ import { parseReplay, serializeReplay } from '@/lib/ui/game-replay';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { copySnapshot } from '@/lib/ui/replay-record';
 import { readPlayerProfile, type PlayerProfile } from '@/lib/ui/player-profile';
-import { downloadJsonFile } from '@/lib/ui/json-download';
+import { downloadPortableJsonFile } from '@/lib/ui/json-download';
+import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import {
   completedReplaySession,
   maxDataBytes,
   previewCompletedReplay,
   sameReplayResults,
 } from '@/lib/ui/data-management';
-import { parseModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
+import { readModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { GameSession } from '@/lib/ui/game-session';
 
 export function useDataManagement(
@@ -54,9 +55,14 @@ export function useDataManagement(
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const request = useRef(0);
+  const readController = useRef<AbortController | null>(null);
+  const exportController = useRef<AbortController | null>(null);
+  const [exporting, setExporting] = useState(false);
   useEffect(
     () => () => {
       request.current++;
+      readController.current?.abort();
+      exportController.current?.abort();
     },
     [],
   );
@@ -77,6 +83,9 @@ export function useDataManagement(
     [log, importedReplay, recent.document],
   );
   function cancel() {
+    readController.current?.abort();
+    exportController.current?.abort();
+    setExporting(false);
     request.current++;
     setTask('settings');
     setCandidate(null);
@@ -86,6 +95,9 @@ export function useDataManagement(
     setMessage('');
   }
   async function readFile(file: File | undefined) {
+    readController.current?.abort();
+    const controller = new AbortController();
+    readController.current = controller;
     const id = ++request.current;
     setCandidate(null);
     setRestoreProfile(false);
@@ -100,7 +112,9 @@ export function useDataManagement(
         throw new Error('文件超过8 MiB，不能读取。');
       const source = await file.text();
       if (id !== request.current) return;
-      const value = parseModeDataFile(source, file.name);
+      const value = await readModeDataFile(source, file.name, {
+        signal: controller.signal,
+      });
       if (id === request.current) setCandidate(value);
     } catch (error) {
       if (id === request.current)
@@ -113,6 +127,9 @@ export function useDataManagement(
     }
   }
   function openImport() {
+    readController.current?.abort();
+    exportController.current?.abort();
+    setExporting(false);
     request.current++;
     setTask('import');
     setCandidate(null);
@@ -188,7 +205,12 @@ export function useDataManagement(
       onOpenReplay();
     }
   }
-  function exportReplay(source: 'current' | 'recent' | 'file') {
+  async function exportReplay(source: 'current' | 'recent' | 'file') {
+    const controller = new AbortController();
+    exportController.current?.abort();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
     try {
       const replay =
         source === 'current'
@@ -197,27 +219,46 @@ export function useDataManagement(
             ? validatedRecent().replay
             : tools?.importedReplay?.replay;
       if (!replay?.rooms.length) throw new Error('没有已结算房间。');
-      downloadJsonFile(
+      const packed = await downloadPortableJsonFile(
         serializeReplay(replay, readBuildVersion()),
         '以撒的竞合-回放-' + replay.id + '.json',
+        { signal: controller.signal },
       );
-      setMessage('已请求下载这局的只读回放，不是续玩存档。');
+      if (!controller.signal.aborted)
+        setMessage(
+          '已请求下载这局的只读回放，不是续玩存档。' +
+            compressedFileSummary(packed),
+        );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法导出回放。');
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '无法导出回放。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
-  function exportCheckpoint() {
+  async function exportCheckpoint() {
     if (!activeSession || !ongoing) return;
+    const controller = new AbortController();
+    exportController.current?.abort();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
     try {
-      downloadJsonFile(
+      const packed = await downloadPortableJsonFile(
         serializeGameCheckpoint(activeSession),
         '以撒的竞合-续玩-' + activeSession.game.seed.toString(16) + '.json',
+        { signal: controller.signal },
       );
-      setMessage(
-        '已请求下载存档，保存当前位置和未提交报价；玩家进度不随它覆盖。',
-      );
+      if (!controller.signal.aborted)
+        setMessage(
+          '已请求下载存档，保存当前位置和未提交报价；玩家进度不随它覆盖。' +
+            compressedFileSummary(packed),
+        );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法导出存档。');
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '无法导出存档。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
   function openBackup() {
@@ -238,20 +279,33 @@ export function useDataManagement(
       setMessage(error instanceof Error ? error.message : '无法准备备份。');
     }
   }
-  function confirmBackup() {
+  async function confirmBackup() {
     if (!backup) return;
+    const controller = new AbortController();
+    exportController.current?.abort();
+    exportController.current = controller;
+    setExporting(true);
+    setMessage('正在无损压缩文件…');
     try {
-      downloadJsonFile(
+      const packed = await downloadPortableJsonFile(
         serializeGameBackup(backup.session, backup.profile),
         '以撒的竞合-完整备份-' +
           backup.session.game.seed.toString(16) +
           '.json',
+        { signal: controller.signal },
       );
+      if (controller.signal.aborted) return;
       setTask('settings');
       setBackup(null);
-      setMessage('已请求下载完整备份：这局的进度、原始回放与玩家进度。');
+      setMessage(
+        '已请求下载完整备份：这局的进度、原始回放与玩家进度。' +
+          compressedFileSummary(packed),
+      );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法导出备份。');
+      if (!controller.signal.aborted)
+        setMessage(error instanceof Error ? error.message : '无法导出备份。');
+    } finally {
+      if (!controller.signal.aborted) setExporting(false);
     }
   }
   return {
@@ -263,6 +317,7 @@ export function useDataManagement(
     setRestoreProfile,
     message,
     reading,
+    exporting,
     activeSession,
     ongoing,
     recent,

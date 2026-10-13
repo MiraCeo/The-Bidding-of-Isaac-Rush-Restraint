@@ -8,7 +8,10 @@ import {
   parseSurvivalReplay,
   type SurvivalSaveDocument,
 } from './survival-persistence';
-import { createSurvivalReplay } from './survival-record';
+import {
+  createSurvivalReplay,
+  type SurvivalReplayLog,
+} from './survival-record';
 import {
   checkedJson,
   keys,
@@ -75,7 +78,7 @@ export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
   date(doc.savedAt);
   const checkpoint = parseSurvivalCheckpoint(JSON.stringify(doc.checkpoint));
   const replay = parseSurvivalReplay(JSON.stringify(doc.replay));
-  equal(replay.replay, createSurvivalReplay(checkpoint.game));
+  equalBackupReplay(replay.replay, createSurvivalReplay(checkpoint.game));
   return {
     format: 'the-bidding-of-isaac-save',
     version: 4,
@@ -85,4 +88,40 @@ export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
     checkpoint,
     profile: readPlayerProfile(doc.profile),
   };
+}
+/** Math.exp may differ in its last bits between JS runtimes. Only the unrounded
+ * knife explanation amount gets an eight-epsilon relative allowance. All
+ * authoritative scores, money, identities, ordering and other facts stay exact.
+ * The recorded document is never edited; expected is a fresh reconstruction. */
+function equalBackupReplay(
+  recorded: SurvivalReplayLog,
+  expected: SurvivalReplayLog,
+) {
+  for (const [roomIndex, room] of expected.rooms.entries()) {
+    for (const [playerId, score] of Object.entries(room.scoreBreakdowns)) {
+      for (const [index, trigger] of score.triggers.entries()) {
+        const original =
+          recorded.rooms[roomIndex]?.scoreBreakdowns[playerId]?.triggers[index];
+        if (
+          trigger.itemId !== 'moms_knife' ||
+          trigger.kind !== 'additive_score' ||
+          original?.itemId !== trigger.itemId ||
+          original.kind !== trigger.kind ||
+          typeof trigger.amount !== 'number' ||
+          typeof original.amount !== 'number' ||
+          !Number.isFinite(trigger.amount) ||
+          !Number.isFinite(original.amount)
+        )
+          continue;
+        if (
+          Math.abs(trigger.amount - original.amount) <=
+          8 *
+            Number.EPSILON *
+            Math.max(Math.abs(trigger.amount), Math.abs(original.amount))
+        )
+          trigger.amount = original.amount;
+      }
+    }
+  }
+  equal(recorded, expected);
 }
