@@ -3,7 +3,8 @@ import { decodedDownload } from './file-export.test-helper';
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ClassicGameApp as GameApp } from '@/components/game/classic-game-app';
+import { GameApp } from '@/components/game/game-app';
+import { activeModeKey } from './survival-client';
 import { createGameSession, reduceGameSession } from './game-session';
 import {
   parseGameSave,
@@ -25,6 +26,7 @@ import * as decisions from '../game/ai-decision';
 let root: Root, container: HTMLDivElement;
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(activeModeKey, 'classic');
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -71,6 +73,12 @@ function gameWithRooms(count = 2, seed = 42) {
   }
   return session;
 }
+async function openData() {
+  await click(
+    button('进度', container.querySelector('nav[aria-label="主导航"]')!),
+  );
+  await click(button('存档与备份'));
+}
 async function upload(source: string) {
   const entry = Array.from(container.querySelectorAll('button')).find(
     (b) => b.textContent?.trim() === '导入文件',
@@ -109,7 +117,7 @@ describe('read-only replay UI', () => {
     await mount();
     const before = localStorage.getItem(gameSaveKey),
       decide = vi.spyOn(decisions, 'decideAiTurn');
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     await click(button('全场明细', element('nav[aria-label="本房视图"]')));
     expect(container.querySelector('.replay-score-timeline')).toBeNull();
@@ -164,7 +172,7 @@ describe('read-only replay UI', () => {
     });
     const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     expect(element('.replay-main').getAttribute('style')).toContain(
       '--replay-toolbar-height: 86px',
@@ -184,7 +192,7 @@ describe('read-only replay UI', () => {
     const game = gameWithRooms(7);
     localStorage.setItem(gameSaveKey, serializeGameSave(game));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     await click(button('全场明细', element('nav[aria-label="本房视图"]')));
     expect(
@@ -212,7 +220,7 @@ describe('read-only replay UI', () => {
     await mount();
     const before = localStorage.getItem(gameSaveKey),
       decide = vi.spyOn(decisions, 'decideAiTurn');
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     await click(button('整局概览', element('nav[aria-label="回放范围"]')));
     await click(
@@ -252,7 +260,7 @@ describe('read-only replay UI', () => {
       r = game.replay!.rooms[0]!;
     localStorage.setItem(gameSaveKey, serializeGameSave(game));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     const plots = container.querySelectorAll('.replay-market svg');
     expect(plots).toHaveLength(2);
@@ -280,7 +288,7 @@ describe('read-only replay UI', () => {
     await mount();
     const saved = localStorage.getItem(gameSaveKey),
       decide = vi.spyOn(decisions, 'decideAiTurn');
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     await click(button('下一房'));
     await click(button('全场明细', element('nav[aria-label="本房视图"]')));
@@ -309,7 +317,7 @@ describe('read-only replay UI', () => {
       recorded = game.replay!.rooms[0]!;
     localStorage.setItem(gameSaveKey, serializeGameSave(game));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     expect(
       element('.replay-score-toggle').closest('.replay-score-hero'),
@@ -351,7 +359,7 @@ describe('read-only replay UI', () => {
     const game = gameWithRooms(2);
     localStorage.setItem(gameSaveKey, serializeGameSave(game));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     const saved = localStorage.getItem(gameSaveKey),
       decide = vi.spyOn(decisions, 'decideAiTurn');
@@ -389,7 +397,7 @@ describe('read-only replay UI', () => {
   it('supports mouse and keyboard point selection into the same room personal review', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2)));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     await click(button('全场明细', element('nav[aria-label="本房视图"]')));
     await act(async () =>
@@ -423,7 +431,7 @@ describe('read-only replay UI', () => {
     await mount();
     const before = localStorage.getItem(gameSaveKey);
     const decide = vi.spyOn(decisions, 'decideAiTurn');
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     expect(container.querySelectorAll('.replay-floor-group')).toHaveLength(2);
     await click(button('整局概览', element('nav[aria-label="回放范围"]')));
@@ -455,10 +463,10 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2)));
     await mount();
     const before = localStorage.getItem(gameSaveKey);
-    await click(button('设置', element('nav')));
+    await openData();
     const source = serializeReplay(gameWithRooms(1).replay!, 'known-v2');
     await upload(source);
-    await click(button('设置', element('nav')));
+    await openData();
     await upload(
       JSON.stringify({
         format: 'the-bidding-of-isaac-replay',
@@ -467,10 +475,10 @@ describe('read-only replay UI', () => {
       }),
     );
     expect(
-      element('.game-settings-content .data-message').textContent,
+      element('.progress-data-content .data-message').textContent,
     ).toContain('v2');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    await click(button('返回设置'));
+    await click(button('返回进度'));
     await click(button('查看对局'));
     expect(
       element('nav[aria-label="回放房间"]').querySelectorAll('button'),
@@ -479,7 +487,7 @@ describe('read-only replay UI', () => {
   it('puts personal outcomes in the main pane and keeps technical and full-field details collapsed', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     expect(element('.replay-sidebar nav[aria-label="回放房间"]')).toBeDefined();
     expect(element('.replay-main .replay-summary-grid').textContent).toContain(
@@ -514,7 +522,7 @@ describe('read-only replay UI', () => {
     localStorage.setItem(playerProfileKey, JSON.stringify(profile));
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     let blob: Blob | undefined;
     vi.spyOn(URL, 'createObjectURL').mockImplementation((v) => {
       blob = v as Blob;
@@ -539,7 +547,7 @@ describe('read-only replay UI', () => {
     profile.progression.statistics.futureWins = 4;
     localStorage.setItem(playerProfileKey, JSON.stringify(profile));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     async function uploadSave(source: string) {
       const entry = Array.from(container.querySelectorAll('button')).find(
         (b) => b.textContent?.trim() === '导入文件',
@@ -574,18 +582,19 @@ describe('read-only replay UI', () => {
     persistGameSession(localStorage, createGameSession(19));
     const archive = localStorage.getItem(lastCompletedKey);
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看对局'));
     expect(element('.replay-main').textContent).toContain('最终房间积分');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
     expect(localStorage.getItem(lastCompletedKey)).toBe(archive);
+    await click(button('返回进度'));
     await click(button('返回游戏'));
     expect(container.textContent).toContain('选择角色');
   });
   it('does not navigate back to replay when file reading finishes after the user left settings', async () => {
     const source = serializeReplay(gameWithRooms(1).replay!, 'file-build');
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     let resolveRead!: (value: string) => void;
     const reading = new Promise<string>((resolve) => {
       resolveRead = resolve;
@@ -593,7 +602,7 @@ describe('read-only replay UI', () => {
     vi.spyOn(File.prototype, 'text').mockReturnValue(reading);
     await upload(source);
     expect(
-      element('.game-settings-content .data-message').textContent,
+      element('.progress-data-content .data-message').textContent,
     ).toContain('校验');
     await click(button('游戏', element('nav')));
     await act(async () => {
@@ -606,7 +615,7 @@ describe('read-only replay UI', () => {
   });
   it('provides a home-page file entry without starting a game, while current replay remains disabled', async () => {
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     expect(
       Array.from(container.querySelectorAll('button')).some(
         (b) => b.textContent?.trim() === '查看回放',
@@ -622,7 +631,7 @@ describe('read-only replay UI', () => {
     ).toBeDefined();
     expect(
       container.querySelectorAll('nav[aria-label="主导航"] button'),
-    ).toHaveLength(4);
+    ).toHaveLength(5);
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
   });
   it('visits published room snapshots and another player without generating AI or modifying the current draft', async () => {
@@ -635,7 +644,7 @@ describe('read-only replay UI', () => {
     );
     const stored = localStorage.getItem(gameSaveKey)!;
     const decide = vi.spyOn(decisions, 'decideAiTurn');
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     expect(element('#room-utilities-title').textContent).toBe('对局回放');
     expect(element('.replay-selected-heading').textContent).toContain('F1-R1');
@@ -657,10 +666,11 @@ describe('read-only replay UI', () => {
     );
     expect(decide).not.toHaveBeenCalled();
     expect(localStorage.getItem(gameSaveKey)).toBe(stored);
+    await click(button('返回进度'));
     await click(button('返回游戏'));
-    expect(element('input[aria-label="竞拍奖励 A 的数值"]')).toBe(
-      originalInput,
-    );
+    expect(
+      element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe(originalInput.value);
     expect(originalInput.value).toBe('17');
     expect(parseGameSave(stored).session.game.phase).toBe('room_action');
   });
@@ -668,7 +678,7 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(2, 11)));
     await mount();
     const before = localStorage.getItem(gameSaveKey)!;
-    await click(button('设置', element('nav')));
+    await openData();
     await upload(
       serializeReplay(gameWithRooms(1, 777).replay!, 'external-build'),
     );
@@ -690,6 +700,8 @@ describe('read-only replay UI', () => {
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       ),
     );
+    expect(container.querySelector('#progress-title')).not.toBeNull();
+    await click(button('返回游戏'));
     expect(element('.round-status').textContent).toContain('房间 3/5');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
   });
@@ -698,10 +710,11 @@ describe('read-only replay UI', () => {
     await click(
       element<HTMLInputElement>('input[name="character"][value="lost"]'),
     );
-    await click(button('设置', element('nav')));
+    await openData();
     await upload(serializeReplay(gameWithRooms(1).replay!, 'import-build'));
     expect(element('#room-utilities-title').textContent).toBe('对局回放');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
+    await click(button('返回进度'));
     await click(button('返回游戏'));
     expect(
       element<HTMLInputElement>('input[name="character"][value="lost"]')
@@ -713,21 +726,21 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
     const before = localStorage.getItem(gameSaveKey)!;
-    await click(button('设置', element('nav')));
+    await openData();
     await upload(
       serializeReplay(gameWithRooms(1, 777).replay!, 'import-build'),
     );
-    await click(button('设置', element('nav')));
+    await openData();
     const corrupt = JSON.parse(
       serializeReplay(gameWithRooms(1).replay!, 'corrupt'),
     );
     corrupt.replay.initialPlayers[0].money = -1;
     await upload(JSON.stringify(corrupt));
     expect(
-      element('.game-settings-content .data-message').textContent,
+      element('.progress-data-content .data-message').textContent,
     ).toContain('保持不变');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    await click(button('返回设置'));
+    await click(button('返回进度'));
     await click(button('查看对局'));
     expect(
       element('.replay-identity').getAttribute('data-replay-id'),
@@ -736,7 +749,7 @@ describe('read-only replay UI', () => {
   it('downloads the actual recorded replay as a separate blob with no network requests', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     let blob: Blob | undefined;
     vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => {
       blob = value as Blob;
@@ -759,7 +772,7 @@ describe('read-only replay UI', () => {
   it('removes locator and build UI without removing identity from the exported replay', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms()));
     await mount();
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看回放'));
     const clipboard = vi
       .spyOn(navigator.clipboard, 'writeText')
@@ -783,7 +796,7 @@ describe('read-only replay UI', () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(15)));
     await mount();
     const before = localStorage.getItem(gameSaveKey)!;
-    await click(button('设置', element('nav')));
+    await openData();
     await click(button('查看对局', element('[data-record-source="current"]')));
     const roomButtons = element(
       'nav[aria-label="回放房间"]',

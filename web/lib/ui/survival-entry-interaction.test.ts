@@ -95,7 +95,8 @@ async function upload(source: string) {
   );
 }
 async function settings() {
-  await click(button('设置', node('nav[aria-label="主导航"]')));
+  await click(button('进度', node('nav[aria-label="主导航"]')));
+  await click(button('存档与备份'));
 }
 
 describe('formal independent survival entry', () => {
@@ -259,7 +260,8 @@ describe('formal independent survival entry', () => {
     const before = localStorage.getItem(survivalSaveKey);
     await upload(serializeReplay(classic.replay!, 'p0-test'));
     await click(button('确认打开回放'));
-    await click(button('返回生存对局'));
+    await click(button('返回进度'));
+    await click(button('返回游戏'));
     expect(container.querySelector('[aria-label="房间行动区"]')).not.toBeNull();
     expect(
       node<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
@@ -279,7 +281,7 @@ describe('formal independent survival entry', () => {
     );
     await click(button('打开生存回放'));
     expect(container.textContent).toContain('生存事实回放');
-    await click(button('返回经典对局'));
+    await click(button('返回进度'));
     expect(container.textContent).toContain('设置');
     expect(container.querySelector('.survival-replay')).toBeNull();
     expect(localStorage.getItem(activeModeKey)).toBe('classic');
@@ -582,7 +584,8 @@ describe('formal independent survival entry', () => {
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
     expect(localStorage.getItem(playerProfileKey)).toBe(profile);
     expect(spy).not.toHaveBeenCalled();
-    await click(button('返回生存对局'));
+    await click(button('返回进度'));
+    await click(button('返回游戏'));
     expect(container.querySelector('.game-stage')).not.toBeNull();
   });
   it('preserves corrupted survival storage while selection remains usable', async () => {
@@ -670,7 +673,7 @@ describe('formal independent survival entry', () => {
     const before = localStorage.getItem(survivalSaveKey);
     await upload(serializeReplay(classic.replay!, 'entry-ui-test'));
     await click(button('确认打开回放'));
-    expect(container.textContent).toContain('经典只读回放');
+    expect(container.textContent).toContain('文件只读查看，不替换当前对局');
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
     expect(localStorage.getItem(playerProfileKey)).toBeNull();
     await click(button('返回主菜单'));

@@ -1,9 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AboutVersion } from './about-version';
-import { DataManagement, dataTaskTitle } from './data-management';
-import { useDataManagement } from './use-data-management';
 import {
   defaultGamePreferences,
   type GamePreferences,
@@ -11,7 +8,6 @@ import {
 
 export type PreferenceSaveStatus = 'unchanged' | 'saved' | 'session';
 interface GameSettingsProps {
-  customData?: ReactNode;
   preferences: GamePreferences;
   saveStatus: PreferenceSaveStatus;
   onChange: (preferences: GamePreferences) => void;
@@ -20,35 +16,12 @@ interface GameSettingsProps {
   onReturnGame?: () => void;
 }
 export function GameSettings({
-  customData,
   preferences,
   saveStatus,
   onChange,
   beforeGame = false,
-  onOpenReplay = () => {},
   onReturnGame = () => {},
 }: GameSettingsProps) {
-  const data = useDataManagement(onOpenReplay, onReturnGame);
-  const { task, cancel, candidate } = data;
-  useEffect(() => {
-    if (task === 'settings') return;
-    window.scrollTo(0, 0);
-    document
-      .getElementById('room-utilities-title')
-      ?.focus({ preventScroll: true });
-  }, [task, candidate]);
-  useEffect(() => {
-    if (task === 'settings') return;
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        cancel();
-      }
-    };
-    window.addEventListener('keydown', keydown, true);
-    return () => window.removeEventListener('keydown', keydown, true);
-  }, [task, cancel]);
   return (
     <section
       id="room-utilities"
@@ -57,32 +30,18 @@ export function GameSettings({
     >
       <div className="ranking-page-heading">
         <div>
-          <p className="eyebrow">
-            {data.task === 'settings'
-              ? 'INTERFACE SETTINGS'
-              : data.task === 'import'
-                ? 'IMPORT DATA'
-                : 'BACKUP DATA'}
-          </p>
+          <p className="eyebrow">INTERFACE SETTINGS</p>
           <h2 id="room-utilities-title" tabIndex={-1}>
-            {dataTaskTitle(data)}
+            设置
           </h2>
         </div>
-        {data.task !== 'settings' ? (
-          <Button type="button" variant="secondary" onClick={data.cancel}>
-            <ArrowLeft aria-hidden="true" />
-            返回设置
-          </Button>
-        ) : !data.tools ? (
-          <Button type="button" variant="secondary" onClick={onReturnGame}>
-            返回游戏
-          </Button>
-        ) : (
-          <p>显示偏好 · 对局与文件</p>
-        )}
+        <Button type="button" variant="secondary" onClick={onReturnGame}>
+          <ArrowLeft aria-hidden="true" />
+          返回游戏
+        </Button>
       </div>
       <div className="utility-page-content game-settings-content">
-        {data.task === 'settings' && (
+        {
           <>
             <fieldset className="settings-group settings-display">
               <legend>显示</legend>
@@ -176,14 +135,13 @@ export function GameSettings({
               </div>
             </fieldset>
           </>
-        )}
-        {customData ?? <DataManagement data={data} />}
-        {data.task === 'settings' && (
+        }
+        {
           <details className="settings-version-details">
             <summary>版本与更新</summary>
             <AboutVersion />
           </details>
-        )}
+        }
       </div>
     </section>
   );

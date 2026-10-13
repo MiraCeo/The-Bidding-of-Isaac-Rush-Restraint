@@ -282,7 +282,7 @@ export function RoomPrototype({
           </div>
         </div>
       </header>
-      {extraStatus}
+      {utilityPanel === null && extraStatus}
 
       <div
         className="room-game-content"

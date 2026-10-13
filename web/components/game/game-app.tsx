@@ -36,6 +36,10 @@ import {
   type SurvivalDifficulty,
 } from '@/lib/game/survival-difficulty';
 import { restoreSurvivalBackupProgress } from '@/lib/ui/survival-restore';
+import { SessionContext, type SessionTools } from './session-context';
+import { ProgressNavigationContext } from './progress-navigation';
+import { ProgressCenter, type ProgressSelection } from './progress-center';
+import type { RoomUtilityPanel } from './room-utilities';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -58,8 +62,18 @@ export function GameApp() {
     return { survival, screen };
   });
   const [screen, setScreen] = useState(initial.screen);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [progressOrigin, setProgressOrigin] = useState(initial.screen);
+  const [progressSelection, setProgressSelection] =
+    useState<ProgressSelection>();
+  const [replayReturnToProgress, setReplayReturnToProgress] = useState(false);
+  const [pendingPage, setPendingPage] = useState<
+    RoomUtilityPanel | null | undefined
+  >();
+  const [classicTools, setClassicTools] = useState<SessionTools | null>(null);
+  const [survivalStatus, setSurvivalStatus] = useState('');
   const [replayOrigin, setReplayOrigin] = useState<
-    'menu' | 'classic' | 'survival'
+    'menu' | 'classic' | 'survival' | 'progress'
   >('survival');
   const [survivalRevision, setSurvivalRevision] = useState(0);
   const [selectedDifficulty, setSelectedDifficulty] =
@@ -97,6 +111,9 @@ export function GameApp() {
   const [status, setStatus] = useState<PreferenceSaveStatus>('unchanged');
   const select = useCallback((mode: 'classic' | 'survival') => {
     setScreen(mode);
+    setProgressOpen(false);
+    setReplayReturnToProgress(false);
+    setPendingPage(null);
     try {
       getPreferenceStorage()?.setItem(activeModeKey, mode);
     } catch {
@@ -104,32 +121,73 @@ export function GameApp() {
     }
   }, []);
   const activateClassic = useCallback(() => select('classic'), [select]);
-  function changePreferences(next: GamePreferences) {
+  const returnMenu = useCallback(() => setScreen('menu'), []);
+  const changePreferences = useCallback((next: GamePreferences) => {
     setPreferences(next);
     setStatus(
       saveGamePreferences(getPreferenceStorage(), next) ? 'saved' : 'session',
     );
+  }, []);
+  const restoreSurvival = useCallback(
+    (doc: SurvivalSaveDocument, profile?: PlayerProfile) => {
+      if (profile) {
+        const storage = getPreferenceStorage();
+        restoreSurvivalBackupProgress(storage, doc.game, doc.draft, profile);
+      }
+      setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
+      setSurvivalRevision((value) => value + 1);
+      setSurvival({
+        game: withSurvivalBuild(doc.game, readBuildVersion()),
+        draft: doc.draft ?? survivalDraft(doc.game),
+      });
+      setImportedSurvival(null);
+      setSurvivalMessage('已载入生存对局。经典存档保留。');
+      select('survival');
+    },
+    [select],
+  );
+  const replaySurvival = useCallback(
+    (doc: SurvivalReplayDocument | null) => {
+      if (doc && (!importedSurvival || screen !== 'survival'))
+        setReplayOrigin(progressOpen ? 'progress' : screen);
+      setImportedSurvival(doc);
+      if (doc) {
+        setScreen('survival');
+        setProgressOpen(false);
+      }
+    },
+    [importedSurvival, screen, progressOpen],
+  );
+  function returnReplay() {
+    if (replayOrigin === 'progress') {
+      setScreen(progressOrigin);
+      setProgressOpen(true);
+    } else setScreen(replayOrigin);
   }
-  function restoreSurvival(doc: SurvivalSaveDocument, profile?: PlayerProfile) {
-    if (profile) {
-      const storage = getPreferenceStorage();
-      restoreSurvivalBackupProgress(storage, doc.game, doc.draft, profile);
+  function replayClassic(doc: ReplayDocument) {
+    if (progressOpen && classicTools) {
+      classicTools.onReplayImport(doc);
+      currentClassicReplay(false);
+      return;
     }
-    setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
-    setSurvivalRevision((value) => value + 1);
-    setSurvival({
-      game: withSurvivalBuild(doc.game, readBuildVersion()),
-      draft: doc.draft ?? survivalDraft(doc.game),
-    });
-    setImportedSurvival(null);
-    setSurvivalMessage('已载入生存对局。经典存档保留。');
-    select('survival');
+    setReplayOrigin(progressOpen ? 'progress' : screen);
+    setClassicReplay(doc);
+    setScreen('classic');
+    setProgressOpen(false);
   }
-  function replaySurvival(doc: SurvivalReplayDocument | null) {
-    if (doc && (!importedSurvival || screen !== 'survival'))
-      setReplayOrigin(screen);
-    setImportedSurvival(doc);
-    if (doc) setScreen('survival');
+  function currentClassicReplay(current = true) {
+    if (current) classicTools?.onReplaySourceChange('current');
+    setScreen('classic');
+    setProgressOpen(false);
+    setReplayReturnToProgress(true);
+    setPendingPage('replay');
+  }
+  function openProgress() {
+    if (replayReturnToProgress) {
+      setScreen(progressOrigin);
+      setReplayReturnToProgress(false);
+    } else if (!progressOpen) setProgressOrigin(screen);
+    setProgressOpen(true);
   }
   function importCandidate(
     candidate: ModeDataCandidate,
@@ -151,9 +209,7 @@ export function GameApp() {
       return;
     }
     if (candidate.kind === 'replay') {
-      if (!classicReplay || screen !== 'classic') setReplayOrigin(screen);
-      setClassicReplay(candidate.document);
-      setScreen('classic');
+      replayClassic(candidate.document);
       return;
     }
     if (restoreProfile && candidate.document.profile) {
@@ -187,12 +243,20 @@ export function GameApp() {
     />
   );
   return (
-    <>
+    <ProgressNavigationContext.Provider
+      value={{
+        openProgress,
+        replayReturnToProgress,
+        pendingPage,
+        consumePage: () => setPendingPage(undefined),
+      }}
+    >
       <ClassicGameApp
-        inactive={screen === 'survival'}
+        inactive={screen === 'survival' || progressOpen}
+        onToolsChange={setClassicTools}
         menu={screen === 'menu'}
         menuContent={menu}
-        onReturnMenu={() => setScreen('menu')}
+        onReturnMenu={returnMenu}
         onActivateClassic={activateClassic}
         onSurvivalRestore={restoreSurvival}
         onSurvivalReplayImport={replaySurvival}
@@ -200,10 +264,14 @@ export function GameApp() {
         externalReplay={classicReplay}
         onCloseExternalReplay={() => {
           setClassicReplay(null);
-          setScreen(replayOrigin);
+          returnReplay();
         }}
         externalReplayReturnLabel={
-          replayOrigin === 'survival' ? '返回生存对局' : '返回经典对局'
+          replayOrigin === 'progress'
+            ? '返回进度'
+            : replayOrigin === 'survival'
+              ? '返回生存对局'
+              : '返回经典对局'
         }
         preferences={preferences}
         preferenceStatus={status}
@@ -213,7 +281,8 @@ export function GameApp() {
         selectedDifficulty={selectedDifficulty}
         onDifficultyChange={setSelectedDifficulty}
         key={`${survival?.game.seed ?? 'selection'}:${survivalRevision}`}
-        inactive={screen !== 'survival'}
+        inactive={screen !== 'survival' || progressOpen}
+        onSaveStatusChange={setSurvivalStatus}
         session={survival}
         setSession={setSurvival}
         onStart={(character) => {
@@ -238,7 +307,7 @@ export function GameApp() {
           setSurvivalMessage('');
           select('survival');
         }}
-        onReturnMenu={() => setScreen('menu')}
+        onReturnMenu={returnMenu}
         preferences={preferences}
         status={status}
         onPreferencesChange={changePreferences}
@@ -246,14 +315,39 @@ export function GameApp() {
         onReplay={replaySurvival}
         onReturnImported={() => {
           setImportedSurvival(null);
-          setScreen(replayOrigin);
+          returnReplay();
         }}
         importedReturnLabel={
-          replayOrigin === 'classic' ? '返回经典对局' : '返回生存对局'
+          replayOrigin === 'progress'
+            ? '返回进度'
+            : replayOrigin === 'classic'
+              ? '返回经典对局'
+              : '返回生存对局'
         }
         onImport={importCandidate}
         restoreMessage={survivalMessage}
       />
-    </>
+      {progressOpen && classicTools && (
+        <SessionContext.Provider value={classicTools}>
+          <ProgressCenter
+            initialSelection={progressSelection}
+            onSelectionChange={setProgressSelection}
+            onCurrentClassicReplay={currentClassicReplay}
+            survival={survival}
+            survivalStatus={survivalStatus}
+            origin={progressOrigin}
+            onNavigate={(page) => {
+              setPendingPage(page);
+              setProgressOpen(false);
+            }}
+            onClassic={() => select('classic')}
+            onSurvival={() => select('survival')}
+            onClassicReplay={replayClassic}
+            onSurvivalReplay={replaySurvival}
+            onImport={importCandidate}
+          />
+        </SessionContext.Provider>
+      )}
+    </ProgressNavigationContext.Provider>
   );
 }

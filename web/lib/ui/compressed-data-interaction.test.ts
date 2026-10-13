@@ -51,7 +51,8 @@ async function mount() {
     serializeSurvivalCheckpoint(session.game, session.draft),
   );
   await act(async () => root.render(createElement(GameApp)));
-  await click('设置');
+  await click('进度');
+  await click('存档与备份');
 }
 async function upload(source: string) {
   const input =

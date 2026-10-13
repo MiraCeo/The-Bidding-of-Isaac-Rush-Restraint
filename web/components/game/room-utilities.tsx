@@ -11,6 +11,7 @@ import type { PlayerTurn } from '@/lib/game/item-types';
 import { GameSettings, type PreferenceSaveStatus } from './game-settings';
 import { RoomRanking } from './room-ranking';
 import { Button } from '@/components/ui/button';
+import { useProgressNavigation } from './progress-navigation';
 import type { ActiveClientGameState } from '@/lib/game/client-session';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 
@@ -51,6 +52,7 @@ export function RoomUtilities({
   onPreferencesChange,
 }: RoomUtilitiesProps) {
   const tools = useSessionTools();
+  const progress = useProgressNavigation();
   const buildTurn =
     turn ??
     (game && tools?.session.draft
@@ -61,12 +63,14 @@ export function RoomUtilities({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onPanelChange(null);
+        if (panel === 'replay' && progress?.replayReturnToProgress)
+          progress.openProgress();
+        else onPanelChange(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [panel, onPanelChange]);
+  }, [panel, onPanelChange, progress]);
 
   if (!panel) return null;
   if (panel === 'settings')
@@ -141,9 +145,19 @@ export function RoomUtilities({
               : '返回当前结算阶段，不重新计算本房间。Esc 可返回。'
             : '返回后继续选择角色，不会自动开始对局。Esc 可返回。'}
         </p>
-        <Button type="button" size="lg" onClick={() => onPanelChange(null)}>
+        <Button
+          type="button"
+          size="lg"
+          onClick={() =>
+            panel === 'replay' && progress?.replayReturnToProgress
+              ? progress.openProgress()
+              : onPanelChange(null)
+          }
+        >
           <ArrowLeft aria-hidden="true" />
-          返回游戏
+          {panel === 'replay' && progress?.replayReturnToProgress
+            ? '返回进度'
+            : '返回游戏'}
         </Button>
       </footer>
     </section>

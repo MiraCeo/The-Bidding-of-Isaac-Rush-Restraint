@@ -23,11 +23,13 @@ export function SurvivalDataManagement({
   imported,
   onImport,
   onReplay,
+  recentOverride,
 }: {
   session: SurvivalClientSession | null;
   imported: SurvivalReplayDocument | null;
   onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
   onReplay: (doc: SurvivalReplayDocument) => void;
+  recentOverride?: { doc: SurvivalReplayDocument | null; error: string };
 }) {
   const [candidate, setCandidate] = useState<ModeDataCandidate | null>(null);
   const [restoreProfile, setRestoreProfile] = useState(false);
@@ -49,7 +51,7 @@ export function SurvivalDataManagement({
     [],
   );
   const phase = session?.game.phase;
-  const [recent] = useState(() => {
+  const [storedRecent] = useState(() => {
     try {
       const source = getPreferenceStorage()?.getItem(survivalLastCompletedKey);
       const doc = source ? parseSurvivalReplay(source) : null;
@@ -63,6 +65,7 @@ export function SurvivalDataManagement({
       };
     }
   });
+  const recent = recentOverride ?? storedRecent;
   const cancel = () => {
     request.current++;
     readController.current?.abort();
@@ -171,7 +174,7 @@ export function SurvivalDataManagement({
   return (
     <section className="settings-group">
       <h3>生存模式 · 存档与文件</h3>
-      <p>经典 v2/v3 与生存 v4 分开保存。导入先预览，确认后才载入；回放只读。</p>
+      <p>经典与生存分开保存。导入先预览，确认后才载入；回放只读。</p>
       <p>
         默认无损压缩导出，仍使用.json文件，读取自动识别压缩或旧JSON。日常继续游戏用续玩存档；回放保存过程，完整备份还包含玩家档案。自动保存格式不变。
       </p>

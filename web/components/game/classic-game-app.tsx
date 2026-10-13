@@ -2,10 +2,11 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
-import { SessionContext } from './session-context';
+import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
 import { ItemArtProvider } from './item-icon';
 import {
@@ -24,6 +25,7 @@ import {
   type PlayerProfile,
 } from '@/lib/ui/player-profile';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
+import type { CharacterId } from '@/lib/game/item-types';
 import { ReplayArchive } from './replay-viewer';
 
 import { CharacterSelection } from './character-selection';
@@ -44,6 +46,7 @@ import {
 } from '@/lib/game/client-session';
 
 export interface ClassicGameAppProps {
+  onToolsChange?: (tools: SessionTools) => void;
   inactive?: boolean;
   menu?: boolean;
   menuContent?: ReactNode;
@@ -64,6 +67,8 @@ export interface ClassicGameAppProps {
   onSharedPreferencesChange?: (next: GamePreferences) => void;
 }
 export function ClassicGameApp(props: ClassicGameAppProps = {}) {
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<CharacterId | null>(null);
   const [initial] = useState(() => loadAutoSave(getPreferenceStorage()));
   const [session, setSession] = useState(
     () => initial.session ?? createGameSession(),
@@ -87,6 +92,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   const hasActiveSession = useRef(initial.session !== null);
   const game = session.game;
   const dispatch = (action: ClientGameAction) => {
+    if (action.type === 'restart_game') setSelectedCharacter(null);
     if (action.type === 'start_game' || action.type === 'restart_game')
       setRestoreMessage('');
     setSession((current) => reduceGameSession(current, action));
@@ -143,13 +149,15 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     },
     [onActivateClassic],
   );
-  const newGame = () => {
+  const activate = props.onActivateClassic;
+  const newGame = useCallback(() => {
+    setSelectedCharacter(null);
     setSession(createGameSession());
-    props.onActivateClassic?.();
+    activate?.();
     setRestoreMessage('已返回选角；玩家进度、最近完成记录及原有导出文件保留。');
     setRestoreRevision((current) => current + 1);
     window.scrollTo(0, 0);
-  };
+  }, [activate]);
   const [storedPreferences, setPreferences] = useState(() =>
     loadGamePreferences(getPreferenceStorage()),
   );
@@ -157,13 +165,17 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     useState<PreferenceSaveStatus>('unchanged');
   const preferences = props.preferences ?? storedPreferences;
   const preferenceSaveStatus = props.preferenceStatus ?? storedPreferenceStatus;
-  const changePreferences = (next: GamePreferences) => {
-    props.onSharedPreferencesChange?.(next);
-    setPreferences(next);
-    setPreferenceSaveStatus(
-      saveGamePreferences(getPreferenceStorage(), next) ? 'saved' : 'session',
-    );
-  };
+  const sharedPreferences = props.onSharedPreferencesChange;
+  const changePreferences = useCallback(
+    (next: GamePreferences) => {
+      sharedPreferences?.(next);
+      setPreferences(next);
+      setPreferenceSaveStatus(
+        saveGamePreferences(getPreferenceStorage(), next) ? 'saved' : 'session',
+      );
+    },
+    [sharedPreferences],
+  );
   useEffect(() => {
     let cancelled = false;
     if (props.incoming)
@@ -201,6 +213,8 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   } else if (game.phase === 'character_selection') {
     page = (
       <CharacterSelection
+        selected={selectedCharacter}
+        onSelect={setSelectedCharacter}
         onReturnMenu={props.onReturnMenu}
         onStart={(characterId) => dispatch({ type: 'start_game', characterId })}
         preferences={preferences}
@@ -313,32 +327,61 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
         </section>
       </main>
     );
+  const {
+    onReturnMenu,
+    onSurvivalRestore,
+    onSurvivalReplayImport,
+    externalReplay,
+    onToolsChange,
+  } = props;
+  const tools = useMemo<SessionTools>(
+    () => ({
+      session,
+      onReturnMenu,
+      onSurvivalRestore,
+      onSurvivalReplayImport,
+      autoSaveStatus,
+      restoreMessage,
+      profile,
+      profileMessage,
+      onRestore: restore,
+      onNewGame: newGame,
+      importedReplay: externalReplay ?? importedReplay,
+      onReplayImport: (replay) => {
+        setImportedReplay(replay);
+        setReplaySource('file');
+      },
+      replaySource: externalReplay ? 'file' : replaySource,
+      onReplaySourceChange: setReplaySource,
+      preferences,
+      preferenceSaveStatus,
+      onPreferencesChange: changePreferences,
+    }),
+    [
+      session,
+      autoSaveStatus,
+      restoreMessage,
+      profile,
+      profileMessage,
+      restore,
+      newGame,
+      importedReplay,
+      replaySource,
+      preferences,
+      preferenceSaveStatus,
+      externalReplay,
+      changePreferences,
+      onReturnMenu,
+      onSurvivalRestore,
+      onSurvivalReplayImport,
+    ],
+  );
+  useEffect(() => {
+    onToolsChange?.(tools);
+  }, [onToolsChange, tools]);
   if (props.inactive) return null;
   return (
-    <SessionContext.Provider
-      value={{
-        session,
-        onReturnMenu: props.onReturnMenu,
-        onSurvivalRestore: props.onSurvivalRestore,
-        onSurvivalReplayImport: props.onSurvivalReplayImport,
-        autoSaveStatus,
-        restoreMessage,
-        profile,
-        profileMessage,
-        onRestore: restore,
-        onNewGame: newGame,
-        importedReplay: props.externalReplay ?? importedReplay,
-        onReplayImport: (replay) => {
-          setImportedReplay(replay);
-          setReplaySource('file');
-        },
-        replaySource: props.externalReplay ? 'file' : replaySource,
-        onReplaySourceChange: setReplaySource,
-        preferences,
-        preferenceSaveStatus,
-        onPreferencesChange: changePreferences,
-      }}
-    >
+    <SessionContext.Provider value={tools}>
       <ItemArtProvider>
         <div
           key={restoreRevision}

@@ -6,7 +6,11 @@ import {
   serializeGameBackup,
   serializeGameCheckpoint,
 } from '@/lib/ui/game-save';
-import { parseReplay, serializeReplay } from '@/lib/ui/game-replay';
+import {
+  parseReplay,
+  serializeReplay,
+  type ReplayDocument,
+} from '@/lib/ui/game-replay';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { copySnapshot } from '@/lib/ui/replay-record';
 import { readPlayerProfile, type PlayerProfile } from '@/lib/ui/player-profile';
@@ -24,8 +28,22 @@ import type { GameSession } from '@/lib/ui/game-session';
 export function useDataManagement(
   onOpenReplay: () => void,
   onReturnGame: () => void,
+  options: {
+    onImport?: (candidate: ModeDataCandidate, profile: boolean) => void;
+    onReplay?: (document: ReplayDocument) => void;
+    onCurrentReplay?: () => void;
+    profile?: { profile: PlayerProfile; message: string };
+  } = {},
 ) {
-  const tools = useSessionTools();
+  const originalTools = useSessionTools();
+  const tools =
+    originalTools && options.profile
+      ? {
+          ...originalTools,
+          profile: options.profile.profile,
+          profileMessage: options.profile.message,
+        }
+      : originalTools;
   const [recent] = useState(() => {
     try {
       const source = getPreferenceStorage()?.getItem(lastCompletedKey);
@@ -140,6 +158,10 @@ export function useDataManagement(
   function confirmImport() {
     if (!tools || !candidate) return;
     try {
+      if (options.onImport) {
+        options.onImport(candidate, restoreProfile);
+        return;
+      }
       if (candidate.kind === 'survival-replay') {
         if (!tools.onSurvivalReplayImport)
           throw new Error('当前入口不支持生存文件。');
@@ -182,6 +204,14 @@ export function useDataManagement(
   }
   function openCurrent() {
     if (tools && log?.rooms.length) {
+      if (options.onCurrentReplay) {
+        options.onCurrentReplay();
+        return;
+      }
+      if (options.onReplay) {
+        options.onReplay(parseReplay(serializeReplay(log, readBuildVersion())));
+        return;
+      }
       tools.onReplaySourceChange('current');
       onOpenReplay();
     }
@@ -193,6 +223,10 @@ export function useDataManagement(
   function openRecent() {
     if (!tools) return;
     try {
+      if (options.onReplay) {
+        options.onReplay(validatedRecent());
+        return;
+      }
       tools.onReplayImport(validatedRecent());
       onOpenReplay();
     } catch (error) {
@@ -201,6 +235,10 @@ export function useDataManagement(
   }
   function openImported() {
     if (tools?.importedReplay) {
+      if (options.onReplay) {
+        options.onReplay(tools.importedReplay);
+        return;
+      }
       tools.onReplaySourceChange('file');
       onOpenReplay();
     }

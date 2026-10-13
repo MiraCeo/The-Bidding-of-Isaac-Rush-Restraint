@@ -24,7 +24,8 @@ import {
   SurvivalTotalBoard,
   SurvivalReplayViewer,
 } from './survival-replay-viewer';
-import { SurvivalDataManagement } from './survival-data-management';
+import { useUtilityPages } from './use-utility-pages';
+import { progressChangedEvent } from './progress-center';
 import {
   reduceSurvivalClient,
   survivalRoomView,
@@ -60,6 +61,7 @@ import {
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 
 export interface SurvivalGameAppProps {
+  onSaveStatusChange?: (message: string) => void;
   selectedDifficulty: SurvivalDifficulty;
   onDifficultyChange: (difficulty: SurvivalDifficulty) => void;
   inactive: boolean;
@@ -79,10 +81,14 @@ export interface SurvivalGameAppProps {
   restoreMessage?: string;
 }
 export function SurvivalGameApp(props: SurvivalGameAppProps) {
-  const { session, preferences, setSession } = props;
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<CharacterId | null>(null);
+  const { session, preferences, setSession, onSaveStatusChange } = props;
   const game = session?.game;
   const log = useMemo(() => (game ? createSurvivalReplay(game) : null), [game]);
-  const [panel, setPanel] = useState<RoomUtilityPanel | null>(null);
+  const { utilityPanel: panel, changeUtilityPanel: setPanel } = useUtilityPages(
+    !props.inactive,
+  );
   const [rankingView, setRankingView] = useState<
     'survival' | ClientRankingView
   >('survival');
@@ -115,7 +121,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => {
       cancelled = true;
     };
-  }, [props.imported]);
+  }, [props.imported, setPanel]);
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
@@ -125,12 +131,16 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       session.draft,
     );
     queueMicrotask(() => {
-      if (!cancelled) setSaveStatus(survivalSaveMessage(saved));
+      if (!cancelled) {
+        const status = survivalSaveMessage(saved);
+        setSaveStatus(status);
+        onSaveStatusChange?.(status);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, onSaveStatusChange]);
   useEffect(() => {
     if (
       !session ||
@@ -172,6 +182,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         if (next === loaded.profile) return;
         if (!storage) throw new Error('玩家进度存储不可用。');
         storage.setItem(playerProfileKey, JSON.stringify(next));
+        window.dispatchEvent(new Event(progressChangedEvent));
         setProfileMessage('生存结果已登记，重复载入不会重复计局。');
       })
       .catch((error) => {
@@ -193,7 +204,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [panel]);
+  }, [panel, setPanel]);
   const decimals = preferences.scoreDecimals;
   const name = (id: string) =>
     id === 'human' ? '你' : (game?.aiProfiles[id]?.name ?? id);
@@ -215,14 +226,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           onChange={props.onPreferencesChange}
           beforeGame={!game}
           onReturnGame={close}
-          customData={
-            <SurvivalDataManagement
-              session={session}
-              imported={props.imported}
-              onImport={props.onImport}
-              onReplay={props.onReplay}
-            />
-          }
         />
       );
     let content: ReactNode;
@@ -468,6 +471,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   if (!session)
     page = (
       <CharacterSelection
+        selected={selectedCharacter}
+        onSelect={setSelectedCharacter}
         aiDifficulty={props.selectedDifficulty}
         onDifficultyChange={props.onDifficultyChange}
         mode="survival"
@@ -591,8 +596,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             />
           </div>
         </header>
-        {strip}
-        <div className="survival-tools">
+        {(panel === null || panel === 'ranking' || panel === 'build') && strip}
+        <div
+          className="survival-tools"
+          hidden={panel === 'settings' || panel === 'rules'}
+        >
           <Button variant="secondary" onClick={() => setPanel('build')}>
             构筑与当前状态
           </Button>

@@ -19,7 +19,13 @@ export function dataTaskTitle(data: DataManagementController) {
         ? '载入对局'
         : '导入文件';
 }
-export function DataManagement({ data }: { data: DataManagementController }) {
+export function DataManagement({
+  data,
+  scope = 'all',
+}: {
+  data: DataManagementController;
+  scope?: 'all' | 'records';
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const { tools } = data;
   if (!tools) return null;
@@ -176,7 +182,7 @@ export function DataManagement({ data }: { data: DataManagementController }) {
                 {data.message ? '重新选择文件' : '选择文件'}
               </Button>
               <Button type="button" variant="secondary" onClick={data.cancel}>
-                返回设置
+                返回进度
               </Button>
             </div>
           </section>
@@ -436,58 +442,60 @@ export function DataManagement({ data }: { data: DataManagementController }) {
           </details>
         )}
       </section>
-      <section className="settings-group data-files">
-        <h3>数据管理</h3>
-        <p>
-          默认无损压缩导出为.json，读取兼容压缩容器和原JSON；自动保存格式不变。
-        </p>
-        <div className="data-file-row">
-          <div>
-            <strong>导入文件</strong>
-            <small>选择后识别为对局、回放或备份，再确认操作。</small>
-          </div>
-          <Button type="button" variant="secondary" onClick={data.openImport}>
-            导入文件
-          </Button>
-        </div>
-        {canBackup && (
+      {scope !== 'records' && (
+        <section className="settings-group data-files">
+          <h3>数据管理</h3>
+          <p>
+            默认无损压缩导出为.json，读取兼容压缩容器和原JSON；自动保存格式不变。
+          </p>
           <div className="data-file-row">
             <div>
-              <strong>
-                {data.activeSession ? '本局完整备份' : '最近对局备份'}
-              </strong>
-              <small>
-                {data.activeSession
-                  ? '本局进度、回放和玩家进度一起保存。'
-                  : '最近对局与玩家进度一起保存。'}
-              </small>
+              <strong>导入文件</strong>
+              <small>选择后识别为对局、回放或备份，再确认操作。</small>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!!tools.profileMessage || data.exporting}
-              onClick={data.openBackup}
-            >
-              完整备份
+            <Button type="button" variant="secondary" onClick={data.openImport}>
+              导入文件
             </Button>
           </div>
-        )}
-        {tools.profileMessage && (
-          <output className="save-message">{tools.profileMessage}</output>
-        )}
-        <details className="data-technical">
-          <summary>格式与技术信息</summary>
-          <p>
-            新文件使用v3，兼容读取v2；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
-          </p>
-          {data.activeSession && (
-            <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>
+          {canBackup && (
+            <div className="data-file-row">
+              <div>
+                <strong>
+                  {data.activeSession ? '本局完整备份' : '最近对局备份'}
+                </strong>
+                <small>
+                  {data.activeSession
+                    ? '本局进度、回放和玩家进度一起保存。'
+                    : '最近对局与玩家进度一起保存。'}
+                </small>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!!tools.profileMessage || data.exporting}
+                onClick={data.openBackup}
+              >
+                完整备份
+              </Button>
+            </div>
           )}
-          <p>
-            玩家档案预留角色解锁、成就和扩展模块；当前不限制角色选择或发放成就。
-          </p>
-        </details>
-      </section>
+          {tools.profileMessage && (
+            <output className="save-message">{tools.profileMessage}</output>
+          )}
+          <details className="data-technical">
+            <summary>格式与技术信息</summary>
+            <p>
+              新文件使用v3，兼容读取v2；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
+            </p>
+            {data.activeSession && (
+              <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>
+            )}
+            <p>
+              玩家档案预留角色解锁、成就和扩展模块；当前不限制角色选择或发放成就。
+            </p>
+          </details>
+        </section>
+      )}
       {message}
     </div>
   );

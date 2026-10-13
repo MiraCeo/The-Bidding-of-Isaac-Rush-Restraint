@@ -1,12 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { RoomUtilityPanel } from './room-utilities';
+import { useProgressNavigation } from './progress-navigation';
 
 /** Interface navigation only: never creates a game or submits a turn. */
-export function useUtilityPages() {
+export function useUtilityPages(enabled = true) {
+  const navigation = useProgressNavigation();
   const [utilityPanel, setUtilityPanel] = useState<RoomUtilityPanel | null>(
-    null,
+    () => (enabled ? (navigation?.pendingPage ?? null) : null),
   );
+  useEffect(() => {
+    if (!enabled || !navigation || navigation.pendingPage === undefined) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setUtilityPanel(navigation.pendingPage ?? null);
+      navigation.consumePage();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, navigation]);
   const homeScrollRef = useRef(0);
   const previousPanelRef = useRef<RoomUtilityPanel | null>(null);
   useEffect(() => {
@@ -26,10 +40,13 @@ export function useUtilityPages() {
     previousPanelRef.current = utilityPanel;
   }, [utilityPanel]);
 
-  function changeUtilityPanel(next: RoomUtilityPanel | null) {
-    if (next && utilityPanel === null) homeScrollRef.current = window.scrollY;
-    setUtilityPanel(next);
-  }
+  const changeUtilityPanel = useCallback(
+    (next: RoomUtilityPanel | null) => {
+      if (next && utilityPanel === null) homeScrollRef.current = window.scrollY;
+      setUtilityPanel(next);
+    },
+    [utilityPanel],
+  );
 
   return { utilityPanel, changeUtilityPanel };
 }

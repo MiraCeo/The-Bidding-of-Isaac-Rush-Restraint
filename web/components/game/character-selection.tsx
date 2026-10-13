@@ -62,6 +62,8 @@ const characterPresentation: Readonly<
 };
 
 interface CharacterSelectionProps {
+  selected?: CharacterId | null;
+  onSelect?: (character: CharacterId) => void;
   aiDifficulty?: SurvivalDifficulty;
   onDifficultyChange?: (difficulty: SurvivalDifficulty) => void;
   mode?: 'classic' | 'survival';
@@ -77,6 +79,8 @@ interface CharacterSelectionProps {
 }
 
 export function CharacterSelection({
+  selected,
+  onSelect,
   aiDifficulty = 'standard',
   onDifficultyChange,
   mode = 'classic',
@@ -87,8 +91,11 @@ export function CharacterSelection({
   preferenceSaveStatus,
   onPreferencesChange,
 }: CharacterSelectionProps) {
-  const [selectedCharacter, setSelectedCharacter] =
+  const [localSelectedCharacter, setLocalSelectedCharacter] =
     useState<CharacterId | null>(null);
+  const selectedCharacter =
+    selected === undefined ? localSelectedCharacter : selected;
+  const setSelectedCharacter = onSelect ?? setLocalSelectedCharacter;
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
 
   return (

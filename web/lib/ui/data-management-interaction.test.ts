@@ -3,7 +3,8 @@ import { decodedDownload } from './file-export.test-helper';
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ClassicGameApp as GameApp } from '@/components/game/classic-game-app';
+import { GameApp } from '@/components/game/game-app';
+import { activeModeKey } from './survival-client';
 import { createGameSession, reduceGameSession } from './game-session';
 import {
   gameSaveKey,
@@ -24,6 +25,7 @@ import * as decisions from '../game/ai-decision';
 let root: Root, container: HTMLDivElement;
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(activeModeKey, 'classic');
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -70,7 +72,13 @@ async function mount() {
   );
 }
 async function settings() {
-  await click(button('设置', node('nav[aria-label="主导航"]')));
+  await openData();
+}
+async function openData() {
+  await click(
+    button('进度', container.querySelector('nav[aria-label="主导航"]')!),
+  );
+  await click(button('存档与备份'));
 }
 async function upload(source: string, filename = 'example.json') {
   if (labels().includes('导入文件')) await click(button('导入文件'));
@@ -127,7 +135,7 @@ describe('specific data layouts and confirmation flows', () => {
     expect(node('.data-records').textContent).toContain('不一致');
     expect(localStorage.getItem(lastCompletedKey)).toBe(source);
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-    expect(node('#room-utilities-title').textContent).toBe('设置');
+    expect(node('#progress-title').textContent).toBe('进度');
   });
   it('has one unified import and no empty backup/replay controls before any game', async () => {
     await mount();
@@ -163,7 +171,7 @@ describe('specific data layouts and confirmation flows', () => {
       '导出存档',
       '查看回放',
     ]);
-    expect(labels(node('#room-utilities'))).not.toContain('重新选角');
+    expect(labels(node('.progress-stage'))).not.toContain('重新选角');
     expect(labels()).not.toContain('开始新对局');
     expect(node('.data-autosave').textContent).toContain('已自动保存');
   });
@@ -225,15 +233,15 @@ describe('specific data layouts and confirmation flows', () => {
     await settings();
     const before = localStorage.getItem(gameSaveKey);
     await upload(serializeGameCheckpoint(game(1, 777)), '迁移.json');
-    expect(node('#room-utilities-title').textContent).toBe('载入对局');
+    expect(node('#progress-title').textContent).toBe('载入对局');
     expect(scroll).toHaveBeenCalledWith(0, 0);
-    expect(document.activeElement).toBe(node('#room-utilities-title'));
+    expect(document.activeElement).toBe(node('#progress-title'));
     expect(container.querySelector('.settings-display')).toBeNull();
     expect(container.querySelector('.data-records')).toBeNull();
     expect(node('.data-candidate').textContent).toContain('迁移.json');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
     await click(button('取消'));
-    expect(node('#room-utilities-title').textContent).toBe('设置');
+    expect(node('#progress-title').textContent).toBe('进度');
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
   });
   it('loads a checkpoint through the same entry without changing player progression', async () => {
@@ -255,7 +263,7 @@ describe('specific data layouts and confirmation flows', () => {
     await settings();
     const before = localStorage.getItem(gameSaveKey);
     await upload(serializeReplay(game(1, 99).replay!, 'origin'));
-    expect(node('#room-utilities-title').textContent).toBe('查看回放');
+    expect(node('#progress-title').textContent).toBe('查看回放');
     expect(container.querySelector('.replay-page-content')).toBeNull();
     await click(button('打开回放'));
     expect(node('#room-utilities-title').textContent).toBe('对局回放');
@@ -322,14 +330,14 @@ describe('specific data layouts and confirmation flows', () => {
     await settings();
     const file = downloads();
     await click(button('完整备份'));
-    expect(node('#room-utilities-title').textContent).toBe('完整备份');
+    expect(node('#progress-title').textContent).toBe('完整备份');
     expect(file.download).not.toHaveBeenCalled();
     await click(button('导出完整备份'));
     const raw = JSON.parse(await file.text());
     expect(raw.checkpoint).not.toHaveProperty('replay');
     expect(raw.replay.rooms).toHaveLength(3);
     expect(raw.profile).toHaveProperty('progression');
-    expect(node('#room-utilities-title').textContent).toBe('设置');
+    expect(node('#progress-title').textContent).toBe('进度');
   });
   it('backs up the recent completed archive on the home page without starting a live game', async () => {
     persistGameSession(localStorage, game(15));
@@ -393,12 +401,12 @@ describe('specific data layouts and confirmation flows', () => {
     vi.spyOn(File.prototype, 'text').mockReturnValue(reading);
     await upload('pending');
     expect(node('.data-message').textContent).toContain('校验');
-    await click(button('返回设置'));
+    await click(button('返回进度'));
     await act(async () => {
       resolve(serializeGameCheckpoint(game(1)));
       await reading;
     });
-    expect(node('#room-utilities-title').textContent).toBe('设置');
+    expect(node('#progress-title').textContent).toBe('进度');
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
   });
   it('returns to settings on Esc within an import page, preserving the live draft', async () => {
@@ -413,7 +421,7 @@ describe('specific data layouts and confirmation flows', () => {
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       ),
     );
-    expect(node('#room-utilities-title').textContent).toBe('设置');
+    expect(node('#progress-title').textContent).toBe('进度');
     expect(
       parseGameSave(localStorage.getItem(gameSaveKey)!).session.game.seed,
     ).toBe(42);

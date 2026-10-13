@@ -80,7 +80,7 @@ describe('tutorial and version interface without a real browser', () => {
     expect(element('#room-utilities-title').textContent).toBe('新手教程');
     expect(
       container.querySelectorAll('nav[aria-label="主导航"] button'),
-    ).toHaveLength(4);
+    ).toHaveLength(5);
     expect(container.querySelector('.tutorial-market-metrics')).toBeNull();
     await click(button('提交教学行动'));
     expect(element('.tutorial-market-metrics').textContent).toContain(
