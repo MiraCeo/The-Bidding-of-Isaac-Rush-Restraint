@@ -15,8 +15,8 @@ const version = '0.2.0',
   buildId = 'abcdef123456';
 const config = {
   engineVersion: '20-personality-client-1',
-  saveFormatVersion: 2,
-  replayFormatVersion: 2,
+  saveFormatVersion: 5,
+  replayFormatVersion: 5,
 };
 const notes = [
   {
@@ -60,19 +60,17 @@ describe('release identity and offline deliverables', () => {
       }),
     ).toThrow('协议');
     expect(
-      validateReleaseInputs({ version }, notes, {
-        ...config,
-        saveFormatVersion: 2,
-        replayFormatVersion: 2,
-      }).compatibility.saveFormatVersion,
-    ).toBe(2);
-    expect(
-      validateReleaseInputs({ version }, notes, {
-        ...config,
-        saveFormatVersion: 3,
-        replayFormatVersion: 3,
-      }).compatibility.saveFormatVersion,
-    ).toBe(3);
+      validateReleaseInputs({ version }, notes, config).compatibility
+        .saveFormatVersion,
+    ).toBe(5);
+    for (const old of [1, 2, 3, 4])
+      expect(() =>
+        validateReleaseInputs({ version }, notes, {
+          ...config,
+          saveFormatVersion: old,
+          replayFormatVersion: old,
+        }),
+      ).toThrow('协议');
     expect(() =>
       validateReleaseInputs({ version }, notes, {
         ...config,

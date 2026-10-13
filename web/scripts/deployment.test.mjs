@@ -48,8 +48,8 @@ async function fixture(base = '/', dirty = false) {
   const version = '0.2.5';
   const config = {
     engineVersion: '20-personality-client-1',
-    saveFormatVersion: 2,
-    replayFormatVersion: 2,
+    saveFormatVersion: 5,
+    replayFormatVersion: 5,
   };
   const notes = [
     {

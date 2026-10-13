@@ -15,10 +15,18 @@ import { createSurvivalReplay } from './survival-record';
 import { createPlayerProfile } from './player-profile';
 import { survivalGameReducer } from '../game/survival-session';
 import { survivalDraft } from './survival-client';
+import { createGameSession, reduceGameSession } from './game-session';
+import {
+  serializeGameCheckpoint,
+  serializeGameBackup,
+  parseGameSave,
+} from './game-save';
+import { serializeReplay } from './game-replay';
+import { sameReplayResults } from './data-management';
 it.skipIf(process.env.COMPRESSED_ROUNDTRIP_STUDY !== '1')(
-  'simulates six official matches, saves compressed data to disk, rereads and resumes them',
+  'simulates eleven current matches in both modes, saves to disk, rereads and resumes them',
   async () => {
-    const dir = resolve('work', 'compressed-roundtrip-v1');
+    const dir = resolve('work', 'protocol-v5-roundtrip');
     mkdirSync(dir, { recursive: true });
     const now = new Date('2026-10-13T12:00:00Z'),
       results = [];
@@ -134,6 +142,7 @@ it.skipIf(process.env.COMPRESSED_ROUNDTRIP_STUDY !== '1')(
         });
       }
       results.push({
+        mode: 'survival',
         ...scenario,
         floors: game.floorRecords.length,
         rooms: game.roomRecords.length,
@@ -143,15 +152,139 @@ it.skipIf(process.env.COMPRESSED_ROUNDTRIP_STUDY !== '1')(
         files,
       });
     }
+    const classicResults = [];
+    for (const [index, role] of (
+      ['isaac', 'lost', 'azazel', 'eden', 'jacob_esau'] as const
+    ).entries()) {
+      const seed = 20261013 + index;
+      let session = reduceGameSession(createGameSession(seed), {
+        type: 'start_game',
+        characterId: role,
+      });
+      const states = [session];
+      while (session.game.phase !== 'game_result') {
+        session = reduceGameSession(
+          session,
+          session.game.phase === 'room_action'
+            ? {
+                type: 'submit_player_turn',
+                turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+              }
+            : { type: 'advance_room' },
+        );
+        states.push(session);
+      }
+      const active = states.find(
+        (s) => s.game.phase === 'room_action' && s.turns.length === 1,
+      )!;
+      active.draft!.amounts.A.bid = 17;
+      const profile = createPlayerProfile(now);
+      profile.progression.statistics.roundtripExample = seed;
+      const files = [];
+      for (const [kind, source] of [
+        ['checkpoint', serializeGameCheckpoint(session, now)],
+        ['replay', serializeReplay(session.replay!, 'current-test', now)],
+        ['backup', serializeGameBackup(session, profile, now)],
+        ['resume', serializeGameCheckpoint(active, now)],
+      ] as const) {
+        const base = `classic-${seed}-${role}-${kind}`,
+          packed = await packDataFile(source);
+        expect(packed.compressed).toBe(true);
+        writeFileSync(resolve(dir, base + '.original.json'), source);
+        writeFileSync(resolve(dir, base + '.compressed.json'), packed.source);
+        const disk = readFileSync(
+            resolve(dir, base + '.compressed.json'),
+            'utf8',
+          ),
+          original = readFileSync(
+            resolve(dir, base + '.original.json'),
+            'utf8',
+          ),
+          unpacked = await unpackDataFile(disk);
+        expect(unpacked.source).toBe(original);
+        writeFileSync(resolve(dir, base + '.restored.json'), unpacked.source);
+        const restored = readFileSync(
+          resolve(dir, base + '.restored.json'),
+          'utf8',
+        );
+        expect(restored).toBe(original);
+        const candidate = await readModeDataFile(
+          disk,
+          base + '.compressed.json',
+        );
+        expect(candidate.document.mode).toBe('classic');
+        expect(candidate.document.version).toBe(5);
+        if (kind === 'replay') {
+          expect(candidate.kind).toBe('replay');
+          if (candidate.kind === 'replay')
+            expect(candidate.document.replay).toEqual(session.replay);
+        } else {
+          expect(candidate.kind).toBe(
+            kind === 'backup' ? 'backup' : 'checkpoint',
+          );
+          if (candidate.kind === 'checkpoint' || candidate.kind === 'backup') {
+            const expected = kind === 'resume' ? active : session;
+            expect(candidate.document.session.game).toEqual(expected.game);
+            expect(candidate.document.session.draft).toEqual(expected.draft);
+            expect(
+              sameReplayResults(
+                candidate.document.session.replay,
+                expected.replay,
+              ),
+            ).toBe(true);
+            if (kind === 'backup')
+              expect(candidate.document.profile).toEqual(profile);
+          }
+        }
+        if (kind === 'resume') {
+          let resumed = parseGameSave(unpacked.source).session;
+          while (resumed.game.phase !== 'game_result')
+            resumed = reduceGameSession(
+              resumed,
+              resumed.game.phase === 'room_action'
+                ? {
+                    type: 'submit_player_turn',
+                    turn: {
+                      playerId: 'human',
+                      actions: [{ type: 'withdraw' }],
+                    },
+                  }
+                : { type: 'advance_room' },
+            );
+          expect(resumed.game).toEqual(session.game);
+          expect(sameReplayResults(resumed.replay, session.replay)).toBe(true);
+        }
+        files.push({
+          kind,
+          filename: base + '.compressed.json',
+          originalFilename: base + '.original.json',
+          restoredFilename: base + '.restored.json',
+          originalBytes: packed.originalBytes,
+          compressedBytes: packed.fileBytes,
+          sha256: createHash('sha256').update(disk).digest('hex'),
+          originalSha256: createHash('sha256').update(original).digest('hex'),
+          restoredSha256: createHash('sha256').update(restored).digest('hex'),
+          verified: true,
+        });
+      }
+      classicResults.push({
+        mode: 'classic',
+        seed,
+        role,
+        rooms: session.replay!.rooms.length,
+        files,
+      });
+    }
     writeFileSync(
       resolve(dir, 'report.json'),
       JSON.stringify(
         {
-          kind: 'production-compression-roundtrip-1',
+          kind: 'production-current-v5-roundtrip-1',
           createdAt: new Date().toISOString(),
           native:
-            'CompressionStream/DecompressionStream gzip; inner v4 unchanged',
+            'CompressionStream/DecompressionStream gzip; current v5 both modes',
           results,
+          classicResults,
         },
         null,
         2,

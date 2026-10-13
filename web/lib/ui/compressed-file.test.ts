@@ -7,6 +7,7 @@ import {
 } from './compressed-file';
 import { readModeDataFile } from './mode-data';
 import { shortHash } from '../shared/json-facts';
+import { withChecksum } from './file-json';
 import { startSurvivalClient } from './survival-client';
 import {
   serializeSurvivalCheckpoint,
@@ -68,19 +69,12 @@ describe('lossless gzip transport preserves existing format validation', () => {
         .game,
     ).toEqual(session.game);
   });
-  it('accepts raw and compressed legacy classic v2 factual replay without converting its mode', async () => {
+  it('rejects raw and compressed old v2 files without converting their mode', async () => {
     const source = JSON.stringify(oldReplay);
-    expect((await readModeDataFile(source, 'old.json')).kind).toBe('replay');
-    expect(
-      (
-        await readModeDataFile(
-          (
-            await packDataFile(source)
-          ).source,
-          'small.json',
-        )
-      ).kind,
-    ).toBe('replay');
+    await expect(readModeDataFile(source, 'old.json')).rejects.toThrow('v5');
+    await expect(
+      readModeDataFile((await packDataFile(source)).source, 'old-small.json'),
+    ).rejects.toThrow('v5');
   });
   it('rejects unknown metadata, invalid Base64, truncation, gzip damage, size and checksum mismatch', async () => {
     const packed = await packDataFile(
@@ -127,7 +121,8 @@ describe('lossless gzip transport preserves existing format validation', () => {
       ),
       doc = JSON.parse(source);
     doc.snapshot.players[0].money++;
-    const packed = await packDataFile(JSON.stringify(doc));
+    const { checksum: _checksum, ...body } = doc;
+    const packed = await packDataFile(JSON.stringify(withChecksum(body)));
     await expect(
       readModeDataFile(packed.source, 'tampered.json'),
     ).rejects.toThrow();

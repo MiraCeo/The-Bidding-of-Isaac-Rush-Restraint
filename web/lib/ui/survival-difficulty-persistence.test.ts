@@ -18,7 +18,7 @@ import {
   serializeSurvivalBackup,
 } from './survival-backup';
 import { createPlayerProfile } from './player-profile';
-import { withChecksum } from './survival-json';
+import { withChecksum } from './file-json';
 
 describe('difficulty-specific facts and compatible continuation', () => {
   it('defaults new client matches to standard with distinct difficulty identities', () => {

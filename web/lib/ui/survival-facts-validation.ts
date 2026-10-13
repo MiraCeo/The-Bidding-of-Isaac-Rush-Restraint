@@ -26,7 +26,7 @@ import {
   near,
   number,
   text,
-} from './survival-json';
+} from './file-json';
 
 const rosterIds = [
   'human',

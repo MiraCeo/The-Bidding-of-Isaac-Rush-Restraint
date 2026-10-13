@@ -107,7 +107,7 @@ describe('explicit internal mode session boundary', () => {
       replay: null,
     } as unknown as GameSession;
     expect(() => serializeGameCheckpoint(invalid)).toThrow(
-      '带模式身份的对局尚未接入当前v3存档协议',
+      '不能将带生存模式身份的状态导出为经典存档',
     );
   });
 });

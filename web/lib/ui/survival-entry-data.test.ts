@@ -19,7 +19,7 @@ import {
   survivalCompletionKey,
 } from './survival-profile';
 import { parseModeDataFile } from './mode-data';
-import { withChecksum } from './survival-json';
+import { withChecksum } from './file-json';
 
 function finished() {
   let session = startSurvivalClient('isaac', 42);

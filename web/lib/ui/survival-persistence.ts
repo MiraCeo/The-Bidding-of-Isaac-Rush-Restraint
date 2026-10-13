@@ -1,3 +1,4 @@
+import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import { characterCatalog } from '../game/characters';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import {
@@ -42,14 +43,14 @@ import {
   object,
   stringifyChecked,
   text,
-} from './survival-json';
+} from './file-json';
 
-export const survivalSaveKey = 'bidding-survival-checkpoint-v4';
-export const survivalLastCompletedKey = 'bidding-survival-last-completed-v4';
+export const survivalSaveKey = 'bidding-survival-checkpoint-v5';
+export const survivalLastCompletedKey = 'bidding-survival-last-completed-v5';
 
 export interface SurvivalSaveDocument {
   format: 'the-bidding-of-isaac-save';
-  version: 4;
+  version: typeof currentFileVersion;
   mode: 'survival';
   kind: 'checkpoint';
   savedAt: string;
@@ -59,7 +60,8 @@ export interface SurvivalSaveDocument {
 }
 export interface SurvivalReplayDocument {
   format: 'the-bidding-of-isaac-replay';
-  version: 4;
+  kind: 'replay';
+  version: typeof currentFileVersion;
   mode: 'survival';
   exportedAt: string;
   exportedBuild: string;
@@ -198,7 +200,7 @@ export function serializeSurvivalCheckpoint(
   const facts = createSurvivalRuleFacts(survivalParameters(game));
   return stringifyChecked({
     format: 'the-bidding-of-isaac-save',
-    version: 4,
+    version: currentFileVersion,
     mode: 'survival',
     kind: 'checkpoint',
     savedAt: now.toISOString(),
@@ -217,6 +219,7 @@ export function serializeSurvivalCheckpoint(
 /** Replay accepted commands on detached state. Includes AI-only rooms after the human exits. */
 export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
   const doc = checkedJson(source);
+  assertCurrentFileHeader(doc, 'survival');
   keys(doc, [
     'format',
     'version',
@@ -236,11 +239,11 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
   ]);
   if (
     doc.format !== 'the-bidding-of-isaac-save' ||
-    doc.version !== 4 ||
+    doc.version !== currentFileVersion ||
     doc.mode !== 'survival' ||
     doc.kind !== 'checkpoint'
   )
-    fail('这不是v4生存续玩检查点。');
+    fail('这不是v5生存续玩检查点。');
   checkChecksum(doc);
   date(doc.savedAt);
   integer(doc.seed);
@@ -280,7 +283,7 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
   equal(checkpointSnapshot(game), doc.snapshot);
   return {
     format: 'the-bidding-of-isaac-save',
-    version: 4,
+    version: currentFileVersion,
     mode: 'survival',
     kind: 'checkpoint',
     savedAt: doc.savedAt as string,
@@ -299,7 +302,8 @@ export function serializeSurvivalReplay(
   validateSurvivalReplayFacts(replay);
   return stringifyChecked({
     format: 'the-bidding-of-isaac-replay',
-    version: 4,
+    kind: 'replay',
+    version: currentFileVersion,
     mode: 'survival',
     exportedAt: now.toISOString(),
     exportedBuild,
@@ -309,21 +313,24 @@ export function serializeSurvivalReplay(
 /** No startup, AI, random draws, scoring engine, continuation or localStorage writes. */
 export function parseSurvivalReplay(source: string): SurvivalReplayDocument {
   const doc = checkedJson(source);
+  assertCurrentFileHeader(doc, 'survival');
   keys(doc, [
     'format',
     'version',
     'mode',
+    'kind',
     'exportedAt',
     'exportedBuild',
     'replay',
     'checksum',
   ]);
   if (
+    doc.kind !== 'replay' ||
     doc.format !== 'the-bidding-of-isaac-replay' ||
-    doc.version !== 4 ||
+    doc.version !== currentFileVersion ||
     doc.mode !== 'survival'
   )
-    fail('这不是v4生存事实回放。');
+    fail('这不是v5生存事实回放。');
   checkChecksum(doc);
   date(doc.exportedAt);
   text(doc.exportedBuild);
@@ -336,7 +343,8 @@ export function parseSurvivalReplay(source: string): SurvivalReplayDocument {
   }
   return {
     format: 'the-bidding-of-isaac-replay',
-    version: 4,
+    kind: 'replay',
+    version: currentFileVersion,
     mode: 'survival',
     exportedAt: doc.exportedAt as string,
     exportedBuild: doc.exportedBuild,

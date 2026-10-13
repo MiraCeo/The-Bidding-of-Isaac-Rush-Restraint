@@ -4,7 +4,7 @@ import { canonicalJson, copySnapshot, type ReplayLog } from './replay-record';
 type PackedPlayer = Omit<RuntimePlayerState, 'items'> & { items: string[] };
 type PlayerChange = { id: string; fields: Partial<Omit<PackedPlayer, 'id'>> };
 type Room = ReplayLog['rooms'][number];
-export interface PackedReplay extends Omit<ReplayLog, 'rooms' | 'final'> {
+export interface PackedPlayerDeltas extends Omit<ReplayLog, 'rooms' | 'final'> {
   encoding: 'player-deltas-1';
   items: Record<string, ItemInstance>;
   initialPlayers: PackedPlayer[];
@@ -67,7 +67,7 @@ function apply(players: PackedPlayer[], delta: PlayerChange[]): PackedPlayer[] {
   return next;
 }
 /** Lossless storage encoding. Scores, events and random outcomes are never recomputed here. */
-export function packReplay(log: ReplayLog): PackedReplay {
+export function packPlayerDeltas(log: ReplayLog): PackedPlayerDeltas {
   const items: Record<string, ItemInstance> = {};
   function pack(players: RuntimePlayerState[]): PackedPlayer[] {
     return players.map((p) => ({
@@ -121,9 +121,9 @@ export function packReplay(log: ReplayLog): PackedReplay {
     final,
   };
 }
-export function unpackReplay(value: unknown): ReplayLog {
+export function unpackPlayerDeltas(value: unknown): ReplayLog {
   if (!value || typeof value !== 'object') invalid();
-  const input = value as PackedReplay;
+  const input = value as PackedPlayerDeltas;
   if (
     input.encoding !== 'player-deltas-1' ||
     !input.items ||
@@ -184,6 +184,6 @@ export function unpackReplay(value: unknown): ReplayLog {
   } = input;
   const log: ReplayLog = { ...identity, rooms, final };
   // Reject unused dictionaries, extra fields, missing checkpoints and noncanonical/no-op deltas.
-  if (canonicalJson(packReplay(log)) !== canonicalJson(input)) invalid();
+  if (canonicalJson(packPlayerDeltas(log)) !== canonicalJson(input)) invalid();
   return log;
 }

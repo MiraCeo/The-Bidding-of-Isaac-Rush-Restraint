@@ -43,8 +43,7 @@ export function AboutVersion() {
         <div>
           <dt>文件格式</dt>
           <dd>
-            经典：存档 v{saveFormatVersion} · 回放 v{replayFormatVersion}
-            ；生存：v4
+            经典／生存：存档 v{saveFormatVersion} · 回放 v{replayFormatVersion} · 压缩容器 v1
           </dd>
         </div>
       </dl>

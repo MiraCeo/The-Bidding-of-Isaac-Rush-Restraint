@@ -1,3 +1,4 @@
+import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import type { SurvivalGameState } from '../game/survival-session';
 import type { RoomDraft } from './game-session';
 import { readPlayerProfile, type PlayerProfile } from './player-profile';
@@ -20,11 +21,11 @@ import {
   stringifyChecked,
   equal,
   fail,
-} from './survival-json';
+} from './file-json';
 
 export interface SurvivalBackupDocument {
   format: 'the-bidding-of-isaac-save';
-  version: 4;
+  version: typeof currentFileVersion;
   mode: 'survival';
   kind: 'backup';
   savedAt: string;
@@ -39,7 +40,7 @@ export function serializeSurvivalBackup(
 ): string {
   return stringifyChecked({
     format: 'the-bidding-of-isaac-save',
-    version: 4,
+    version: currentFileVersion,
     mode: 'survival',
     kind: 'backup',
     savedAt: now.toISOString(),
@@ -56,6 +57,7 @@ export function serializeSurvivalBackup(
 }
 export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
   const doc = checkedJson(source);
+  assertCurrentFileHeader(doc, 'survival');
   keys(doc, [
     'format',
     'version',
@@ -69,11 +71,11 @@ export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
   ]);
   if (
     doc.format !== 'the-bidding-of-isaac-save' ||
-    doc.version !== 4 ||
+    doc.version !== currentFileVersion ||
     doc.mode !== 'survival' ||
     doc.kind !== 'backup'
   )
-    fail('不是v4生存完整备份。');
+    fail('不是v5生存完整备份。');
   checkChecksum(doc);
   date(doc.savedAt);
   const checkpoint = parseSurvivalCheckpoint(JSON.stringify(doc.checkpoint));
@@ -81,7 +83,7 @@ export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
   equalBackupReplay(replay.replay, createSurvivalReplay(checkpoint.game));
   return {
     format: 'the-bidding-of-isaac-save',
-    version: 4,
+    version: currentFileVersion,
     mode: 'survival',
     kind: 'backup',
     savedAt: doc.savedAt as string,

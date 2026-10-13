@@ -3,14 +3,22 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { createGameSession, reduceGameSession } from './game-session';
 import { canonicalJson, copySnapshot, type ReplayLog } from './replay-record';
 import { saveCompatibility } from './game-version';
-import { unpackReplay } from './replay-codec';
+import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
+import {
+  checkedJson,
+  keys,
+  checkChecksum,
+  stringifyChecked,
+} from './file-json';
 import { packReplayFacts, unpackReplayFacts } from './replay-facts-codec';
 import { validateReplayFacts } from './replay-facts-validation';
 
 export const maxReplayBytes = 8 * 1024 * 1024;
 export interface ReplayDocument {
   format: 'the-bidding-of-isaac-replay';
-  version: 2 | 3;
+  version: typeof currentFileVersion;
+  mode: 'classic';
+  kind: 'replay';
   exportedAt: string;
   exportedBuild: string;
   replay: ReplayLog;
@@ -103,10 +111,7 @@ export function verifyReplayLog(
   }
   const normalized = copySnapshot(expected);
   normalized.startedBuild = build(input.startedBuild);
-  if (input.ruleFacts === undefined) delete normalized.ruleFacts;
-  else if (
-    canonicalJson(input.ruleFacts) !== canonicalJson(normalized.ruleFacts)
-  )
+  if (canonicalJson(input.ruleFacts) !== canonicalJson(normalized.ruleFacts))
     fail();
   if (normalized.rooms.length !== input.rooms.length) fail();
   for (let i = 0; i < normalized.rooms.length; i++) {
@@ -119,8 +124,7 @@ export function verifyReplayLog(
     )
       fail();
     normalized.rooms[i]!.source = room.source;
-    if (room.locator === undefined) delete normalized.rooms[i]!.locator;
-    else if (room.locator !== expected.rooms[i]!.locator) fail();
+    if (room.locator !== expected.rooms[i]!.locator) fail();
   }
   if (normalized.final)
     normalized.final.build = build(record(input.final).build);
@@ -132,9 +136,11 @@ export function serializeReplay(
   exportedBuild: string,
   now = new Date(),
 ): string {
-  const source = JSON.stringify({
+  const source = stringifyChecked({
     format: 'the-bidding-of-isaac-replay',
-    version: 3,
+    version: currentFileVersion,
+    mode: 'classic',
+    kind: 'replay',
     exportedAt: now.toISOString(),
     exportedBuild,
     replay: packReplayFacts(replay),
@@ -144,20 +150,19 @@ export function serializeReplay(
   return source;
 }
 export function parseReplay(source: string): ReplayDocument {
-  if (new TextEncoder().encode(source).length > maxReplayBytes)
-    fail('回放文件超过8 MiB，不能读取。');
-  let value: unknown;
-  try {
-    value = JSON.parse(source.replace(/^\uFEFF/, ''));
-  } catch {
-    fail('不是有效的JSON回放文件。');
-  }
-  const doc = record(value);
-  if (
-    doc.format !== 'the-bidding-of-isaac-replay' ||
-    (doc.version !== 2 && doc.version !== 3)
-  )
-    fail('支持v3与v2回放，不读取v1或未知版本；存档与回放是不同文件。');
+  const doc = checkedJson(source);
+  assertCurrentFileHeader(doc, 'classic', 'replay');
+  keys(doc, [
+    'format',
+    'version',
+    'mode',
+    'kind',
+    'exportedAt',
+    'exportedBuild',
+    'replay',
+    'checksum',
+  ]);
+  checkChecksum(doc);
   if (
     typeof doc.exportedAt !== 'string' ||
     !Number.isFinite(Date.parse(doc.exportedAt))
@@ -166,18 +171,16 @@ export function parseReplay(source: string): ReplayDocument {
   const exportedBuild = build(doc.exportedBuild);
   let replay: ReplayLog;
   try {
-    replay = validateReplayFacts(
-      doc.version === 3
-        ? unpackReplayFacts(doc.replay)
-        : unpackReplay(doc.replay),
-    );
+    replay = validateReplayFacts(unpackReplayFacts(doc.replay));
   } catch (error) {
     if (error instanceof TypeError || error instanceof RangeError) fail();
     throw error;
   }
   return {
     format: 'the-bidding-of-isaac-replay',
-    version: doc.version,
+    version: currentFileVersion,
+    mode: 'classic',
+    kind: 'replay',
     exportedAt: doc.exportedAt,
     exportedBuild,
     replay,

@@ -18,6 +18,7 @@ import {
   type SaveStorage,
 } from './game-save';
 import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
+import { withChecksum } from './file-json';
 
 function start(characterId: CharacterId = 'lost', seed = 42) {
   return reduceGameSession(createGameSession(seed), {
@@ -59,7 +60,8 @@ function change(save: string, update: (doc: SaveDocument) => void) {
   );
   wire.version = doc.version;
   wire.compatibility = doc.compatibility;
-  return JSON.stringify(wire);
+  const { checksum: _checksum, ...body } = wire;
+  return JSON.stringify(withChecksum(body));
 }
 function storage(): SaveStorage {
   const data = new Map<string, string>();
@@ -215,7 +217,7 @@ describe('versioned complete-game saves', () => {
   });
   it('rejects malformed, oversized and illegal submitted actions', () => {
     expect(() => parseGameSave('{no')).toThrow('JSON');
-    expect(() => parseGameSave(' '.repeat(maxSaveBytes + 1))).toThrow('过大');
+    expect(() => parseGameSave(' '.repeat(maxSaveBytes + 1))).toThrow('8 MiB');
     const session = reduceGameSession(start(), {
       type: 'submit_player_turn',
       turn: {

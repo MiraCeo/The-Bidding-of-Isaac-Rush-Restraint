@@ -446,7 +446,7 @@ export function DataManagement({
         <section className="settings-group data-files">
           <h3>数据管理</h3>
           <p>
-            默认无损压缩导出为.json，读取兼容压缩容器和原JSON；自动保存格式不变。
+            当前文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
           </p>
           <div className="data-file-row">
             <div>
@@ -485,7 +485,7 @@ export function DataManagement({
           <details className="data-technical">
             <summary>格式与技术信息</summary>
             <p>
-              新文件使用v3，兼容读取v2；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
+              经典与生存文件统一使用v5，旧v2/v3/v4不读取或自动迁移；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
             </p>
             {data.activeSession && (
               <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>

@@ -15,10 +15,12 @@ import {
   maxReplayBytes,
   parseReplay,
   serializeReplay,
+  verifyReplayLog,
   type ReplayDocument,
 } from './game-replay';
 import { canonicalJson, replayRoomLocator } from './replay-record';
-import { packReplay } from './replay-codec';
+import { packReplayFacts } from './replay-facts-codec';
+import { withChecksum } from './file-json';
 import { serializeGameCheckpoint } from './game-save';
 import { replayOutcomeLabels, replayPlayerRows } from './replay-display';
 
@@ -209,17 +211,24 @@ describe('recorded read-only replays', () => {
     const log = JSON.parse(JSON.stringify(submit(start()).replay!));
     log.rulesVersion = 'older-rules';
     log.id = log.id.replace(/-[^-]+$/, '-rules');
-    delete log.ruleFacts;
-    log.rooms.forEach((r: { locator?: string }) => delete r.locator);
+    // Explicit rule context remains recorded even when its engine is not current.
+    log.rooms.forEach((r: Parameters<typeof replayRoomLocator>[1]) => {
+      r.locator = replayRoomLocator(log, { ...r, locator: undefined });
+    });
     const doc = {
       format: 'the-bidding-of-isaac-replay',
-      version: 2,
+      version: 5,
+      mode: 'classic',
+      kind: 'replay',
       exportedAt: new Date().toISOString(),
       exportedBuild: 'current',
-      replay: packReplay(log),
+      replay: packReplayFacts(log),
     };
     const generate = vi.spyOn(client, 'startClientGame');
-    expect(() => parseReplay(JSON.stringify(doc))).toThrow('不兼容');
+    expect(
+      parseReplay(JSON.stringify(withChecksum(doc))).replay.rulesVersion,
+    ).toBe('older-rules');
+    expect(() => verifyReplayLog(log)).toThrow('不兼容');
     expect(generate).not.toHaveBeenCalled();
     generate.mockRestore();
   });
@@ -312,13 +321,16 @@ describe('recorded read-only replays', () => {
   it('rejects invalid JSON, excessive size, future schema versions, missing metadata and save files', () => {
     expect(() => parseReplay('broken')).toThrow('JSON');
     expect(() => parseReplay(' '.repeat(maxReplayBytes + 1))).toThrow('8 MiB');
-    expect(() => parseReplay(serializeGameSave(start()))).toThrow('不同文件');
+    expect(() => parseReplay(serializeGameSave(start()))).toThrow('用途');
     const doc = JSON.parse(serializeReplay(submit(start()).replay!, 'current'));
     doc.version = 999;
     expect(() => parseReplay(JSON.stringify(doc))).toThrow('版本');
-    doc.version = 3;
+    doc.version = 5;
     doc.exportedBuild = '';
-    expect(() => parseReplay(JSON.stringify(doc))).toThrow('标识');
+    const { checksum: _checksum, ...body } = doc;
+    expect(() => parseReplay(JSON.stringify(withChecksum(body)))).toThrow(
+      '标识',
+    );
     expect(
       parseReplay(
         '\uFEFF' + serializeReplay(submit(start()).replay!, 'current'),

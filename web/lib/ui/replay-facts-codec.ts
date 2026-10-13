@@ -3,7 +3,7 @@ import type {
   ActionScoreBreakdown,
   TurnScoreBreakdown,
 } from '../game/item-scoring';
-import { packReplay, unpackReplay, type PackedReplay } from './replay-codec';
+import { packPlayerDeltas, unpackPlayerDeltas, type PackedPlayerDeltas } from './player-deltas-codec';
 import {
   canonicalJson,
   copySnapshot,
@@ -18,7 +18,7 @@ import {
   type EventFact,
 } from './replay-event-facts';
 
-type Room = PackedReplay['rooms'][number];
+type Room = PackedPlayerDeltas['rooms'][number];
 type Resolution = Omit<ResolvedAction, 'playerId' | 'actionIndex' | 'action'>;
 interface FactTurn extends PlayerTurn {
   resolutions: Resolution[];
@@ -56,7 +56,7 @@ type FactRoom = Omit<Room, 'seed' | 'entryEvents' | 'settlement'> & {
     events: EventEntry[];
   };
 };
-export interface FactsReplay extends Omit<PackedReplay, 'encoding' | 'rooms'> {
+export interface FactsReplay extends Omit<PackedPlayerDeltas, 'encoding' | 'rooms'> {
   encoding: 'settlement-facts-1';
   ruleFacts: ReplayRuleFacts;
   triggerCatalog: Array<{
@@ -66,18 +66,9 @@ export interface FactsReplay extends Omit<PackedReplay, 'encoding' | 'rooms'> {
   rooms: FactRoom[];
   checksum: string;
 }
-// Frozen reading context for v2. Do not substitute future defaultRules into old files.
-const legacyRuleFacts: Record<string, ReplayRuleFacts> = {
-  '20-personality-client-1-818e3e55': {
-    floorStartingMoney: [100, 500, 1000],
-    cooperationRadii: [10, 50, 100],
-    scoreStorageDecimals: 4,
-  },
-};
 export function replayRuleFacts(log: ReplayLog): ReplayRuleFacts {
-  const facts = log.ruleFacts ?? legacyRuleFacts[log.rulesVersion];
-  if (!facts) throw new Error('旧回放规则版本不兼容，缺少历史展示参数。');
-  return copySnapshot(facts);
+  if (!log.ruleFacts) throw new Error('回放缺少明确的计分参数。');
+  return copySnapshot(log.ruleFacts);
 }
 function fail(): never {
   throw new Error('回放事实记录损坏或参数不一致。');
@@ -96,7 +87,7 @@ function withChecksum(payload: Omit<FactsReplay, 'checksum'>): FactsReplay {
 }
 /** Lossless factual references, not a replay of rules, AI or random draws. */
 export function packReplayFacts(log: ReplayLog): FactsReplay {
-  const packed = packReplay(log);
+  const packed = packPlayerDeltas(log);
   const triggerCatalog: FactsReplay['triggerCatalog'] = [];
   function triggerIndex(
     trigger: TurnScoreBreakdown['triggers'][number],
@@ -449,7 +440,7 @@ export function unpackReplayFacts(value: unknown): ReplayLog {
       },
     };
   });
-  const log = unpackReplay({ ...identity, encoding: 'player-deltas-1', rooms });
+  const log = unpackPlayerDeltas({ ...identity, encoding: 'player-deltas-1', rooms });
   if (canonicalJson(packReplayFacts(log)) !== canonicalJson(input)) fail();
   return log;
 }

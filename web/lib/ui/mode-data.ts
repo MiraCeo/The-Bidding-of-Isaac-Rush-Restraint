@@ -6,7 +6,8 @@ import {
   type SurvivalSaveDocument,
   type SurvivalReplayDocument,
 } from './survival-persistence';
-import { checkedJson, fail } from './survival-json';
+import { checkedJson, fail } from './file-json';
+import { assertCurrentFileHeader } from './file-protocol';
 import {
   parseSurvivalBackup,
   type SurvivalBackupDocument,
@@ -29,7 +30,7 @@ export type ModeDataCandidate =
       document: SurvivalReplayDocument;
       filename: string;
     };
-/** UI file imports accept both legacy raw JSON and the new lossless transport container. */
+/** Current v5 JSON, raw or inside the lossless transport container. No legacy migration. */
 export async function readModeDataFile(
   source: string,
   filename: string,
@@ -44,8 +45,8 @@ export function parseModeDataFile(
   filename: string,
 ): ModeDataCandidate {
   const header = checkedJson(source);
-  if (header.version !== 4) return parseDataFile(source, filename);
-  if (header.mode !== 'survival') fail('v4文件缺少明确的生存模式身份。');
+  assertCurrentFileHeader(header);
+  if (header.mode === 'classic') return parseDataFile(source, filename);
   if (header.format === 'the-bidding-of-isaac-save' && header.kind === 'backup')
     return {
       kind: 'survival-backup',
@@ -64,5 +65,5 @@ export function parseModeDataFile(
       document: parseSurvivalReplay(source),
       filename,
     };
-  fail('无法识别v4生存文件。');
+  fail('无法识别当前v5生存文件。');
 }

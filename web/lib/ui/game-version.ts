@@ -38,5 +38,5 @@ export function readBuildVersion(): string {
   );
 }
 export function versionFeedbackText(): string {
-  return `游戏版本：${appVersion}\n实际构建：${readBuildVersion()}\n经典规则兼容：${saveCompatibility}\n存档格式：v${saveFormatVersion} · 回放格式：v${replayFormatVersion}\n生存：独立v4 · survival-client-4 · 角色适配策略 · 四档难度（默认标准，最高保留AI2；旧client2/3继续原策略） · 斩杀线${survivalOfficialCutLines.join('／')}`;
+  return `游戏版本：${appVersion}\n实际构建：${readBuildVersion()}\n经典规则兼容：${saveCompatibility}\n存档格式：v${saveFormatVersion} · 回放格式：v${replayFormatVersion}\n生存：v${saveFormatVersion} · survival-client-4 · 角色适配策略 · 四档难度（默认标准，最高保留AI2） · 斩杀线${survivalOfficialCutLines.join('／')}`;
 }

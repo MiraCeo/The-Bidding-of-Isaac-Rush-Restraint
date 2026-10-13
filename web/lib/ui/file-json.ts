@@ -1,6 +1,6 @@
 import { canonicalJson, shortHash } from '../shared/json-facts';
-export const maxSurvivalFileBytes = 8 * 1024 * 1024;
-export function fail(message = '生存文件损坏或结算事实不一致。'): never {
+export const maxFileBytes = 8 * 1024 * 1024;
+export function fail(message = '对局文件损坏或结算事实不一致。'): never {
   throw new Error(message);
 }
 export function object(value: unknown): Record<string, unknown> {
@@ -55,8 +55,8 @@ export function array(
   if (!Array.isArray(value) || value.length > maximum) fail();
 }
 export function checkedJson(source: string): Record<string, unknown> {
-  if (new TextEncoder().encode(source).length > maxSurvivalFileBytes)
-    fail('生存文件超过8 MiB。');
+  if (new TextEncoder().encode(source).length > maxFileBytes)
+    fail('对局文件超过8 MiB。');
   let value: unknown;
   try {
     value = JSON.parse(source.replace(/^\uFEFF/, ''));
@@ -65,8 +65,9 @@ export function checkedJson(source: string): Record<string, unknown> {
   }
   let nodes = 0;
   function inspect(node: unknown, depth = 0): void {
-    if (depth > 32 || ++nodes > 1_000_000) fail('生存文件结构过大或嵌套过深。');
-    if (typeof node === 'number' && !Number.isFinite(node)) fail();
+    if (depth > 32 || ++nodes > 1_000_000) fail('对局文件结构过大或嵌套过深。');
+    if (typeof node === 'number' && !Number.isFinite(node))
+      fail('对局文件包含非法数值。');
     if (node && typeof node === 'object') {
       for (const key of Object.keys(node)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) fail();
@@ -80,7 +81,10 @@ export function checkedJson(source: string): Record<string, unknown> {
 export function withChecksum<T extends object>(
   payload: T,
 ): T & { checksum: string } {
-  return { ...payload, checksum: shortHash(canonicalJson(payload)) };
+  // Re-signing a parsed document must not hash its previous checksum as data.
+  const clean = { ...payload };
+  delete (clean as { checksum?: unknown }).checksum;
+  return { ...clean, checksum: shortHash(canonicalJson(clean)) };
 }
 export function checkChecksum(document: Record<string, unknown>): void {
   const { checksum, ...payload } = document;
@@ -88,11 +92,11 @@ export function checkChecksum(document: Record<string, unknown>): void {
     typeof checksum !== 'string' ||
     checksum !== shortHash(canonicalJson(payload))
   )
-    fail('生存文件摘要不一致。');
+    fail('对局文件摘要不一致。');
 }
 export function stringifyChecked(payload: object): string {
   const source = JSON.stringify(withChecksum(payload));
-  if (new TextEncoder().encode(source).length > maxSurvivalFileBytes)
-    fail('生存文件超过8 MiB。');
+  if (new TextEncoder().encode(source).length > maxFileBytes)
+    fail('对局文件超过8 MiB。');
   return source;
 }

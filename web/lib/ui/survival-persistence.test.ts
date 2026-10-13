@@ -25,7 +25,7 @@ import {
   survivalLastCompletedKey,
 } from './survival-persistence';
 import { parseModeDataFile } from './mode-data';
-import { withChecksum } from './survival-json';
+import { withChecksum } from './file-json';
 import { canonicalJson, copySnapshot } from '../shared/json-facts';
 import { gameSaveKey } from './game-save';
 import { playerProfileKey } from './player-profile';
@@ -352,14 +352,9 @@ describe('v4 survival continuation and recorded-fact replay', () => {
     expect(loadSurvivalCheckpoint(null).document).toBeNull();
   });
 
-  it('dispatches old v2 classic samples and v4 survival files without converting their modes', () => {
-    expect(
-      parseModeDataFile(JSON.stringify(oldReplay), 'classic.json').kind,
-    ).toBe('replay');
-    expect(
-      parseModeDataFile(JSON.stringify(oldCheckpoint), 'classic-save.json')
-        .kind,
-    ).toBe('checkpoint');
+  it('rejects old v2 samples and dispatches current survival files without conversion', () => {
+    expect(()=>parseModeDataFile(JSON.stringify(oldReplay),'old.json')).toThrow('v5');
+    expect(()=>parseModeDataFile(JSON.stringify(oldCheckpoint),'old-save.json')).toThrow('v5');
     expect(
       parseModeDataFile(checkpoint(start()), 'survival-save.json').kind,
     ).toBe('survival-checkpoint');

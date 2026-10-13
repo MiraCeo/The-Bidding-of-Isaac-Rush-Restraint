@@ -229,7 +229,7 @@ export function SurvivalReplayViewer({
       );
       if (!controller.signal.aborted)
         setMessage(
-          '已请求下载v4生存只读回放。' + compressedFileSummary(packed),
+          '已请求下载v5生存只读回放。' + compressedFileSummary(packed),
         );
     } catch (error) {
       if (!controller.signal.aborted)

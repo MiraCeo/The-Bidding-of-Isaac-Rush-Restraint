@@ -29,7 +29,7 @@ export function ModeFilePreview({
   return (
     <section className="settings-group data-candidate">
       <h3>
-        生存模式 · v4{' '}
+        生存模式 · v5{' '}
         {candidate.kind === 'survival-replay'
           ? '只读回放'
           : candidate.kind === 'survival-backup'

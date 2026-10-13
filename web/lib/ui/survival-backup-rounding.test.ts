@@ -9,7 +9,7 @@ import {
   type SurvivalReplayDocument,
 } from './survival-persistence';
 import { createPlayerProfile } from './player-profile';
-import { withChecksum } from './survival-json';
+import { withChecksum } from './file-json';
 const game = playLongRun(3).game;
 const source = serializeSurvivalBackup(game, null, createPlayerProfile());
 interface BackupFixture {

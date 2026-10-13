@@ -248,7 +248,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               decimals={decimals}
             />
           ) : (
-            <p>暂无回放。从设置读取生存 v4 文件，或完成一个房间。</p>
+            <p>暂无回放。从进度读取当前v5文件，或完成一个房间。</p>
           )}
         </>
       );

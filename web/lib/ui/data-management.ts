@@ -12,6 +12,8 @@ import {
   type GameSession,
 } from './game-session';
 import { saveCompatibility } from './game-version';
+import { assertCurrentFileHeader } from './file-protocol';
+import { checkedJson } from './file-json';
 
 export type DataCandidate =
   | { kind: 'replay'; document: ReplayDocument; filename: string }
@@ -38,23 +40,16 @@ export function describeDataProgress(session: GameSession): string {
 export function parseDataFile(source: string, filename: string): DataCandidate {
   if (new TextEncoder().encode(source).length > maxDataBytes)
     throw new Error('文件超过8 MiB，不能读取。');
-  let header: unknown;
-  try {
-    header = JSON.parse(source.replace(/^\uFEFF/, ''));
-  } catch {
-    throw new Error('不是有效的JSON文件。');
-  }
-  const format =
-    header && typeof header === 'object'
-      ? (header as Record<string, unknown>).format
-      : null;
+  const header = checkedJson(source);
+  assertCurrentFileHeader(header, 'classic');
+  const format = header.format;
   if (format === 'the-bidding-of-isaac-replay')
     return { kind: 'replay', document: parseReplay(source), filename };
   if (format === 'the-bidding-of-isaac-save') {
     const document = parseGameSave(source);
     return { kind: document.kind, document, filename };
   }
-  throw new Error('无法识别文件；请选择v3或v2对局存档、回放或完整备份。');
+  throw new Error('无法识别文件；请选择当前v5存档、回放或完整备份。');
 }
 /** Read-only factual validation, without running AI or changing storage. */
 export function previewCompletedReplay(source: string): ReplayDocument {

@@ -53,12 +53,12 @@ describe('task-oriented data management', () => {
           }),
           'old.json',
         ),
-      ).toThrow('v2');
+      ).toThrow('v5');
     },
   );
   it('rejects invalid, unknown and oversized data without guessing another type', () => {
     expect(() => parseDataFile('broken', 'x.json')).toThrow('JSON');
-    expect(() => parseDataFile('{}', 'x.json')).toThrow('识别');
+    expect(() => parseDataFile('{}', 'x.json')).toThrow('v5');
     expect(() =>
       parseDataFile(' '.repeat(8 * 1024 * 1024 + 1), 'x.json'),
     ).toThrow('8 MiB');

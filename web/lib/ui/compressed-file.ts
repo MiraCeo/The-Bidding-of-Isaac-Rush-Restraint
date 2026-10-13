@@ -1,4 +1,4 @@
-import { checkedJson, maxSurvivalFileBytes } from './survival-json';
+import { checkedJson, maxFileBytes } from './file-json';
 import { shortHash } from '../shared/json-facts';
 
 export const compressedFileFormat = 'the-bidding-of-isaac-compressed';
@@ -111,7 +111,7 @@ export async function packDataFile(
     new CompressionStream('gzip'),
     // A valid near-limit raw file may grow slightly in gzip. Keep room for
     // codec overhead, then fall back to raw rather than rejecting that export.
-    maxSurvivalFileBytes + 64 * 1024,
+    maxFileBytes + 64 * 1024,
     options.signal,
   );
   const output = JSON.stringify({
@@ -125,7 +125,7 @@ export async function packDataFile(
   });
   const fileBytes = utf8.encode(output).length;
   checkAbort(options.signal);
-  if (fileBytes >= originalBytes || fileBytes > maxSurvivalFileBytes)
+  if (fileBytes >= originalBytes || fileBytes > maxFileBytes)
     return {
       source,
       compressed: false,
@@ -170,7 +170,7 @@ export async function unpackDataFile(
   if (
     !Number.isSafeInteger(header.originalBytes) ||
     Number(header.originalBytes) < 1 ||
-    Number(header.originalBytes) > maxSurvivalFileBytes
+    Number(header.originalBytes) > maxFileBytes
   )
     fail('压缩文件声明的解压大小无效或超过8 MiB。');
   if (

@@ -6,7 +6,7 @@ import * as ai from '../game/ai-decision';
 import * as room from '../game/room-engine';
 import * as client from '../game/client-session';
 import { parseReplay, serializeReplay } from './game-replay';
-import { packReplay, unpackReplay } from './replay-codec';
+import { unpackPlayerDeltas } from './player-deltas-codec';
 import {
   packReplayFacts,
   unpackReplayFacts,
@@ -33,21 +33,31 @@ import {
   persistGameSession,
   gameSaveKey,
   activeReplayKey,
-  lastCompletedKey,
   loadAutoSave,
 } from './game-save';
 import { createPlayerProfile } from './player-profile';
 import {
   parseDataFile,
-  sameReplayResults,
   completedReplaySession,
   previewCompletedReplay,
 } from './data-management';
 import { createGameSession, reduceGameSession } from './game-session';
+import type { PlayerTurn } from '../game/item-types';
+import { withChecksum } from './file-json';
 const oldSource = JSON.stringify(original);
 const now = new Date('2026-10-12T00:00:00Z');
 function legacyLog() {
-  return unpackReplay(copySnapshot(original.replay));
+  const log = unpackPlayerDeltas(copySnapshot(original.replay));
+  // Explicit context for a frozen test dataset, not a production legacy reader.
+  log.ruleFacts = {
+    floorStartingMoney: [100, 500, 1000],
+    cooperationRadii: [10, 50, 100],
+    scoreStorageDecimals: 4,
+  };
+  log.rooms.forEach((r) => {
+    r.locator = replayRoomLocator(log, { ...r, locator: undefined });
+  });
+  return log;
 }
 function alteredWire(
   update: (wire: ReturnType<typeof packReplayFacts>) => void,
@@ -56,7 +66,22 @@ function alteredWire(
   update(doc.replay);
   const { checksum: _checksum, ...facts } = doc.replay;
   doc.replay.checksum = shortHash(canonicalJson(facts));
-  return JSON.stringify(doc);
+  const { checksum: _outerChecksum, ...body } = doc;
+  return JSON.stringify(withChecksum(body));
+}
+function checkpointSession() {
+  let session = reduceGameSession(createGameSession(original.replay.seed), {
+    type: 'start_game',
+    characterId: 'lost',
+  });
+  for (const turn of originalCheckpoint.checkpoint.turns) {
+    session = reduceGameSession(session, {
+      type: 'submit_player_turn',
+      turn: turn as PlayerTurn,
+    });
+    session = reduceGameSession(session, { type: 'advance_room' });
+  }
+  return session;
 }
 function futureLog(): ReplayLog {
   const l = legacyLog();
@@ -64,9 +89,12 @@ function futureLog(): ReplayLog {
   l.ruleFacts.cooperationRadii = [17, 61, 113];
   l.rulesVersion = 'historical-test-engine-a1b2c3d4';
   l.id = l.id.replace(/-[^-]+$/, '-a1b2c3d4');
+  l.rooms.forEach((r) => {
+    r.locator = replayRoomLocator(l, { ...r, locator: undefined });
+  });
   return l;
 }
-describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
+describe('current factual persistence with explicit recorded context', () => {
   it.each([42, 87, 128, 20261011])(
     'roundtrips a further naturally generated complete match: seed %s',
     (seed) => {
@@ -101,24 +129,23 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
       ).toEqual(session.replay);
     },
   );
-  it('reads genuine v2 and v3 without invoking AI, RNG-driven startup or settlement', () => {
-    const old = legacyLog(),
-      newSource = serializeReplay(old, 'v3-test', now);
+  it('rejects archived v2 and reads current facts without AI, startup or settlement', () => {
     const decide = vi.spyOn(ai, 'decideAiTurn'),
       settle = vi.spyOn(room, 'settleRuntimeRoom'),
       start = vi.spyOn(client, 'startClientGame');
-    const v2 = parseReplay(oldSource),
-      v3 = parseReplay(newSource);
-    expect(v2.version).toBe(2);
-    expect(v3.version).toBe(3);
+    expect(() => parseReplay(oldSource)).toThrow('v5');
+    const input = legacyLog(),
+      current = parseReplay(serializeReplay(input, 'current-test', now));
+    expect(current.version).toBe(5);
+    expect(replayFactsIdentity(current.replay)).toBe(
+      replayFactsIdentity(input),
+    );
     expect(decide).not.toHaveBeenCalled();
     expect(settle).not.toHaveBeenCalled();
     expect(start).not.toHaveBeenCalled();
     decide.mockRestore();
     settle.mockRestore();
     start.mockRestore();
-    expect(replayFactsIdentity(v2.replay)).toBe(replayFactsIdentity(v3.replay));
-    expect(sameReplayResults(v2.replay, v3.replay)).toBe(true);
   });
   it('preserves all 300 player-room results, 600 reward verdicts and original room identities exactly', () => {
     const old = legacyLog(),
@@ -261,6 +288,10 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
       itemId: 'd6',
       message: '旧规则特殊触发：不能从最终状态反推。',
     });
+    l.rooms[0]!.locator = replayRoomLocator(l, {
+      ...l.rooms[0]!,
+      locator: undefined,
+    });
     const packed = packReplayFacts(l);
     const event = packed.rooms[0]!.settlement.events.at(-1)!;
     expect(event).toMatchObject({
@@ -309,9 +340,9 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
     },
   );
   it('continues the genuine v2 checkpoint with identical outcomes after a v3 re-export', () => {
-    const old = parseGameSave(JSON.stringify(originalCheckpoint));
+    const old = { session: checkpointSession() };
     const source = serializeGameCheckpoint(old.session, now);
-    expect(JSON.parse(source).version).toBe(3);
+    expect(JSON.parse(source).version).toBe(5);
     let resumed = parseGameSave(source).session;
     const l = legacyLog();
     for (let i = 11; i < 15; i++) {
@@ -331,7 +362,7 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
     );
   });
   it('restores v2 and v3 complete backups while preserving independent player profile namespaces', () => {
-    const s = parseGameSave(JSON.stringify(originalCheckpoint)).session;
+    const s = checkpointSession();
     const p = createPlayerProfile(now);
     p.progression.modules.future = {
       unlocked: ['example'],
@@ -339,26 +370,15 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
     };
     const source = serializeGameBackup(s, p, now);
     const v3 = parseGameSave(source);
-    expect(v3.version).toBe(3);
+    expect(v3.version).toBe(5);
     expect(v3.session).toEqual(s);
     expect(v3.profile).toEqual(p);
-    const oldLog = copySnapshot(s.replay!);
-    delete oldLog.ruleFacts;
-    oldLog.rooms.forEach((r) => delete r.locator);
-    const v2 = {
-      ...originalCheckpoint,
-      kind: 'backup',
-      replay: packReplay(oldLog),
-      profile: p,
-    };
-    const recovered = parseGameSave(JSON.stringify(v2));
-    expect(recovered.version).toBe(2);
-    expect(recovered.session.game).toEqual(s.game);
-    expect(recovered.profile).toEqual(p);
-    expect(sameReplayResults(recovered.session.replay, s.replay)).toBe(true);
+    expect(() => parseGameSave(JSON.stringify(originalCheckpoint))).toThrow(
+      'v5',
+    );
   });
   it('does not weaken backup restoration to the read-only replay validator', () => {
-    const s = parseGameSave(JSON.stringify(originalCheckpoint)).session;
+    const s = checkpointSession();
     const doc = JSON.parse(
       serializeGameBackup(s, createPlayerProfile(now), now),
     );
@@ -366,27 +386,30 @@ describe('v3 factual persistence and genuine pre-upgrade fixtures', () => {
     expect(() => parseGameSave(JSON.stringify(doc))).toThrow();
     doc.compatibility = 'different-engine';
     const start = vi.spyOn(client, 'startClientGame');
-    expect(() => parseGameSave(JSON.stringify(doc))).toThrow('不兼容');
+    const { checksum: _checksum, ...body } = doc;
+    expect(() => parseGameSave(JSON.stringify(withChecksum(body)))).toThrow(
+      '不兼容',
+    );
     expect(start).not.toHaveBeenCalled();
     start.mockRestore();
   });
-  it('retains old browser keys and upgrades bytes only on a successful game save', () => {
-    const source = JSON.stringify(originalCheckpoint),
-      storageData = new Map([[gameSaveKey, source]]);
+  it('does not read or migrate old browser caches, and writes only current keys', () => {
+    const oldKey = 'bidding-game-save-v1',
+      source = JSON.stringify(originalCheckpoint),
+      data = new Map([[oldKey, source]]);
     const storage = {
-      getItem: (k: string) => storageData.get(k) ?? null,
-      setItem: (k: string, v: string) => storageData.set(k, v),
-      removeItem: (k: string) => storageData.delete(k),
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => data.set(k, v),
+      removeItem: (k: string) => data.delete(k),
     };
-    const s = loadAutoSave(storage).session!;
-    expect(storageData.get(gameSaveKey)).toBe(source);
-    expect(persistGameSession(storage, s)).toBe(true);
-    expect(JSON.parse(storageData.get(gameSaveKey)!).version).toBe(3);
-    expect(JSON.parse(storageData.get(activeReplayKey)!).version).toBe(3);
-    expect(storageData.has(lastCompletedKey)).toBe(false);
-    expect(
-      parseDataFile(storageData.get(activeReplayKey)!, 'not-a-replay-name.txt')
-        .kind,
-    ).toBe('replay');
+    expect(loadAutoSave(storage).session).toBeNull();
+    expect(data.get(oldKey)).toBe(source);
+    expect(persistGameSession(storage, checkpointSession())).toBe(true);
+    expect(data.get(oldKey)).toBe(source);
+    expect(JSON.parse(data.get(gameSaveKey)!).version).toBe(5);
+    expect(JSON.parse(data.get(activeReplayKey)!).version).toBe(5);
+    expect(parseDataFile(data.get(activeReplayKey)!, 'current.json').kind).toBe(
+      'replay',
+    );
   });
 });

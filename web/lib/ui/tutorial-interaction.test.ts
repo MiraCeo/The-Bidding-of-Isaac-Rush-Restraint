@@ -227,7 +227,7 @@ describe('tutorial and version interface without a real browser', () => {
     await click(button('复制版本信息'));
     expect(element('.about-version output').textContent).toContain('手动复制');
     expect(element<HTMLTextAreaElement>('#version-feedback').value).toContain(
-      '存档格式：v3',
+      '存档格式：v5',
     );
   });
 });

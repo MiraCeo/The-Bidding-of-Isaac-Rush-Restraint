@@ -20,6 +20,7 @@ import { readBuildVersion } from '@/lib/ui/game-version';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
+import { currentFileVersion } from '@/lib/ui/file-protocol';
 
 type ProgressTab = 'overview' | 'records' | 'files';
 export interface ProgressSelection {
@@ -335,7 +336,8 @@ export function ProgressCenter({
                           onClick={() =>
                             onSurvivalReplay({
                               format: 'the-bidding-of-isaac-replay',
-                              version: 4,
+                              version: currentFileVersion,
+                              kind: 'replay',
                               mode: 'survival',
                               exportedAt: new Date().toISOString(),
                               exportedBuild: readBuildVersion(),

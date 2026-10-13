@@ -17,6 +17,7 @@ import { loadPlayerProfile } from '@/lib/ui/game-save';
 import { downloadPortableJsonFile } from '@/lib/ui/json-download';
 import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { readBuildVersion } from '@/lib/ui/game-version';
+import { currentFileVersion } from '@/lib/ui/file-protocol';
 
 export function SurvivalDataManagement({
   session,
@@ -176,7 +177,7 @@ export function SurvivalDataManagement({
       <h3>生存模式 · 存档与文件</h3>
       <p>经典与生存分开保存。导入先预览，确认后才载入；回放只读。</p>
       <p>
-        默认无损压缩导出，仍使用.json文件，读取自动识别压缩或旧JSON。日常继续游戏用续玩存档；回放保存过程，完整备份还包含玩家档案。自动保存格式不变。
+        当前文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。日常继续游戏用续玩存档；回放保存过程，完整备份包含玩家档案。
       </p>
       <div className="data-actions">
         <Button
@@ -316,7 +317,8 @@ export function SurvivalDataManagement({
               if (session?.game.phase === 'competition_complete')
                 onReplay({
                   format: 'the-bidding-of-isaac-replay',
-                  version: 4,
+                  version: currentFileVersion,
+                  kind: 'replay',
                   mode: 'survival',
                   exportedAt: new Date().toISOString(),
                   exportedBuild: readBuildVersion(),

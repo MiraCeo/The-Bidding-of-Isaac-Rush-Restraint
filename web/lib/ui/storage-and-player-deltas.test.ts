@@ -1,3 +1,4 @@
+import { withChecksum } from './file-json';
 import { describe, expect, it, vi } from 'vitest';
 import {
   createGameSession,
@@ -19,7 +20,7 @@ import {
 } from './game-save';
 import { serializeSessionFixture as serializeGameSave } from './save-fixture.test-helper';
 import { parseReplay, serializeReplay } from './game-replay';
-import { packReplay, unpackReplay } from './replay-codec';
+import { packPlayerDeltas, unpackPlayerDeltas } from './player-deltas-codec';
 import { canonicalJson, replayRoomLocator } from './replay-record';
 import {
   createPlayerProfile,
@@ -59,7 +60,7 @@ function store() {
   };
   return { data, writes, storage };
 }
-describe('v2 checkpoint, replay and extensible profile separation', () => {
+describe('current checkpoint, replay and extensible profile separation', () => {
   it('shows both sides of recorded legacy transfers without changing the underlying event', () => {
     const e = {
       type: 'money' as const,
@@ -111,7 +112,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
   it('excludes historical snapshots and derived AI diagnostics from the continuation file', () => {
     const s = game(12);
     const doc = JSON.parse(serializeGameCheckpoint(s));
-    expect(doc.version).toBe(3);
+    expect(doc.version).toBe(5);
     expect(doc.kind).toBe('checkpoint');
     expect(doc).not.toHaveProperty('replay');
     expect(doc).not.toHaveProperty('profile');
@@ -119,7 +120,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
     expect(doc.checkpoint.game).not.toHaveProperty('pendingRoomTurns');
     expect(doc.checkpoint.metadata.rooms).toHaveLength(12);
     expect(Buffer.byteLength(JSON.stringify(doc))).toBeLessThan(100000);
-    const restored = parseGameSave(JSON.stringify(doc)).session;
+    const restored = parseGameSave(JSON.stringify(withChecksum(doc))).session;
     expect(restored.replay!.rooms[0]!.source).toBe('checkpoint-reconstruction');
     expect(
       replayRoomLocator(restored.replay!, restored.replay!.rooms[0]!),
@@ -129,8 +130,8 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
     'losslessly encodes all %s results, inventory, events and locations',
     (role) => {
       const s = game(15, role);
-      const packed = packReplay(s.replay!);
-      expect(unpackReplay(packed)).toEqual(s.replay);
+      const packed = packPlayerDeltas(s.replay!);
+      expect(unpackPlayerDeltas(packed)).toEqual(s.replay);
       expect(packed.rooms.filter((r) => r.checkpoint)).toHaveLength(3);
       expect(packed.rooms[0]).not.toHaveProperty('previousPlayers');
       expect(packed.rooms[0]!.settlement).not.toHaveProperty('players');
@@ -145,10 +146,10 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
       });
       expect(Buffer.byteLength(v2)).toBeLessThan(Buffer.byteLength(v1) * 0.55);
       expect(parseReplay(v2).replay).toEqual(s.replay);
-      expect(() => parseReplay(v1)).toThrow('v2');
+      expect(() => parseReplay(v1)).toThrow('v5');
     },
   );
-  it('preserves v2 original build identity and independent profile version', () => {
+  it('preserves current original build identity and independent profile version', () => {
     const s = game(3);
     s.replay!.startedBuild = 'old-origin';
     s.replay!.rooms[0]!.build = 'old-room';
@@ -175,7 +176,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
       if (field === 'metadata')
         doc.checkpoint.metadata.rooms[0].locator = 'fake';
       if (field === 'kind') doc.kind = 'other';
-      expect(() => parseGameSave(JSON.stringify(doc))).toThrow();
+      expect(() => parseGameSave(JSON.stringify(withChecksum(doc)))).toThrow();
     },
   );
   it.each([
@@ -187,7 +188,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
     'source',
     'event',
     'final',
-  ] as const)('rejects corrupted v2 replay %s', (field) => {
+  ] as const)('rejects corrupted current replay %s', (field) => {
     const doc = JSON.parse(serializeReplay(game(15).replay!, 'build'));
     const r = doc.replay.rooms[0];
     if (field === 'cash') doc.replay.initialPlayers[0].money++;
@@ -205,7 +206,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
     if (field === 'source') r.source = 'invented';
     if (field === 'event') r.entryEvents[0].message = 'fake';
     if (field === 'final') doc.replay.final.ranking[0].finalScore++;
-    expect(() => parseReplay(JSON.stringify(doc))).toThrow();
+    expect(() => parseReplay(JSON.stringify(withChecksum(doc)))).toThrow();
   });
   it('roundtrips empty partial replays without invented players or final results', () => {
     const log = game().replay!;
@@ -346,7 +347,7 @@ describe('v2 checkpoint, replay and extensible profile separation', () => {
     const s = game(15);
     const original = canonicalJson(s.replay);
     const random = vi.spyOn(Math, 'random');
-    const decoded = unpackReplay(packReplay(s.replay!));
+    const decoded = unpackPlayerDeltas(packPlayerDeltas(s.replay!));
     expect(canonicalJson(decoded)).toBe(original);
     expect(random).not.toHaveBeenCalled();
     random.mockRestore();

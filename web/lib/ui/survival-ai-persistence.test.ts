@@ -13,7 +13,7 @@ import {
   loadSurvivalCheckpoint,
   survivalSaveKey,
 } from './survival-persistence';
-import { withChecksum } from './survival-json';
+import { withChecksum } from './file-json';
 import {
   startSurvivalGame,
   createSurvivalResearchReducer,
@@ -51,7 +51,7 @@ describe('survival AI2 engine boundary and retained historical facts', () => {
     );
     expect(doc.game.cutLines).toEqual([200, 325, 500, 750, 1050, 1500, 2500]);
     expect(doc.compatibility).toMatch(/^survival-client-4-/);
-    expect(doc.version).toBe(4);
+    expect(doc.version).toBe(5);
   });
   it('reads client1 factual replay without invoking either AI policy', () => {
     const old = oldTranscript();

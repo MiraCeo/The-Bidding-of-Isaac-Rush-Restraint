@@ -17,6 +17,9 @@ import {
 } from './survival-persistence';
 import { playLongRun } from './survival-long-run';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
+import { packDataFile } from './compressed-file';
+import { waitForFileUi } from './file-export.test-helper';
+import oldCheckpoint from './fixtures/checkpoint-v2-lost-20261012.json';
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
@@ -244,4 +247,41 @@ it('cancels a classic read on a mode change and discards a late result without a
   expect(container.querySelector('.data-candidate')).toBeNull();
   expect(localStorage.getItem(gameSaveKey)).toBe(beforeClassic);
   expect(localStorage.getItem(survivalSaveKey)).toBe(beforeSurvival);
+});
+it('rejects old raw and compressed development files from the shared entry without replacing either game or profile', async () => {
+  classic();
+  survival();
+  localStorage.setItem(activeModeKey, 'classic');
+  const profile = JSON.stringify(createPlayerProfile());
+  localStorage.setItem(playerProfileKey, profile);
+  await mount();
+  await click('进度');
+  await click('存档与备份');
+  await click('导入文件');
+  const beforeClassic = localStorage.getItem(gameSaveKey),
+    beforeSurvival = localStorage.getItem(survivalSaveKey),
+    input = container.querySelector<HTMLInputElement>(
+      'input[aria-label="导入对局文件"]',
+    )!;
+  const oldSurvival = JSON.parse(beforeSurvival!);
+  oldSurvival.version = 4;
+  for (const source of [
+    JSON.stringify(oldCheckpoint),
+    (await packDataFile(JSON.stringify(oldSurvival))).source,
+  ]) {
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [new File([source], 'old.json')],
+    });
+    await act(async () =>
+      input.dispatchEvent(new Event('change', { bubbles: true })),
+    );
+    await waitForFileUi(() =>
+      expect(container.textContent).toContain('仅支持当前v5'),
+    );
+    expect(container.querySelector('.data-candidate')).toBeNull();
+    expect(localStorage.getItem(gameSaveKey)).toBe(beforeClassic);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(beforeSurvival);
+    expect(localStorage.getItem(playerProfileKey)).toBe(profile);
+  }
 });

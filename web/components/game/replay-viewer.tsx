@@ -64,7 +64,7 @@ export function ReplayViewer() {
         />
       ) : (
         <p className="utility-notice">
-          暂无回放，请从设置页读取v3或v2回放JSON。
+          暂无回放，请从设置页读取当前v5回放文件。
         </p>
       )}
     </div>
@@ -161,7 +161,7 @@ export function ReplayArchive({
         { signal: controller.signal },
       );
       if (!controller.signal.aborted)
-        setMessage('已请求下载v3只读回放。' + compressedFileSummary(packed));
+        setMessage('已请求下载v5只读回放。' + compressedFileSummary(packed));
     } catch (error) {
       if (!controller.signal.aborted)
         setMessage(error instanceof Error ? error.message : '无法导出。');
