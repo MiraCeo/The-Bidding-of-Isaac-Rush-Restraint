@@ -1,3 +1,5 @@
+import { shortHash } from '../shared/json-facts';
+export { shortHash } from '../shared/json-facts';
 import { characterCatalog } from '../game/characters';
 import { defaultRules } from '../game/config';
 import { itemCatalog } from '../game/item-catalog';
@@ -5,13 +7,8 @@ import releaseConfig from '../../release-config.json';
 import packageInfo from '../../package.json';
 import releaseNotes from '../../release-notes.json';
 import { persistedItemNames } from './item-labels';
+import { survivalOfficialCutLines } from '../game/survival-rules';
 
-export function shortHash(value: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i++)
-    hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
 // Bump when runtime/RNG/AI behavior changes. UI-only releases remain compatible.
 const engineVersion = releaseConfig.engineVersion;
 export const appVersion = packageInfo.version;
@@ -41,5 +38,5 @@ export function readBuildVersion(): string {
   );
 }
 export function versionFeedbackText(): string {
-  return `游戏版本：${appVersion}\n实际构建：${readBuildVersion()}\n规则兼容：${saveCompatibility}\n存档格式：v${saveFormatVersion} · 回放格式：v${replayFormatVersion}`;
+  return `游戏版本：${appVersion}\n实际构建：${readBuildVersion()}\n经典规则兼容：${saveCompatibility}\n存档格式：v${saveFormatVersion} · 回放格式：v${replayFormatVersion}\n生存：独立v4 · survival-client-3 · 四档难度（默认标准，最高保留AI2） · 斩杀线${survivalOfficialCutLines.join('／')}`;
 }

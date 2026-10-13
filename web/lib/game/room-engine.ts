@@ -119,7 +119,13 @@ export function settleRuntimeRoom(
   turns: readonly PlayerTurn[],
   rules: RulesConfig,
   random: RandomSource,
+  options: { minimumAcquisitionOrder?: number } = {},
 ): RoomSettlementResult {
+  if (options.minimumAcquisitionOrder !== undefined && (
+    !Number.isSafeInteger(options.minimumAcquisitionOrder) || options.minimumAcquisitionOrder < 1
+  )) {
+    throw new RangeError('Minimum acquisition order must be a positive safe integer.');
+  }
   const nextPlayers = players.map(cloneRuntimePlayer);
   const playerById = new Map(nextPlayers.map((player) => [player.id, player]));
   const turnByPlayer = new Map(turns.map((turn) => [turn.playerId, turn]));
@@ -345,7 +351,8 @@ export function settleRuntimeRoom(
     awards.push({ playerId: player.id, group: entitlement.group, itemId: reward.itemId, copies });
   }
 
-  let acquisitionOrder = nextAcquisitionOrder(nextPlayers);
+  // A survival caller keeps the all-game order even after its highest owner is eliminated.
+  let acquisitionOrder = Math.max(nextAcquisitionOrder(nextPlayers), options.minimumAcquisitionOrder ?? 1);
   for (const award of awards) {
     const player = playerById.get(award.playerId)!;
     for (let copy = 0; copy < award.copies; copy += 1) {

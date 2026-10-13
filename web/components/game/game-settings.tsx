@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AboutVersion } from './about-version';
@@ -11,6 +11,7 @@ import {
 
 export type PreferenceSaveStatus = 'unchanged' | 'saved' | 'session';
 interface GameSettingsProps {
+  customData?: ReactNode;
   preferences: GamePreferences;
   saveStatus: PreferenceSaveStatus;
   onChange: (preferences: GamePreferences) => void;
@@ -19,6 +20,7 @@ interface GameSettingsProps {
   onReturnGame?: () => void;
 }
 export function GameSettings({
+  customData,
   preferences,
   saveStatus,
   onChange,
@@ -175,7 +177,7 @@ export function GameSettings({
             </fieldset>
           </>
         )}
-        <DataManagement data={data} />
+        {customData ?? <DataManagement data={data} />}
         {data.task === 'settings' && (
           <details className="settings-version-details">
             <summary>版本与更新</summary>

@@ -226,6 +226,7 @@ function encodeV3(
   now: Date,
   profile?: PlayerProfile,
 ): string {
+  if ('mode' in session.game) fail('带模式身份的对局尚未接入当前v3存档协议。');
   const doc = {
     format,
     version: 3,

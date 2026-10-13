@@ -33,9 +33,10 @@ export function ReplayFieldChart({
   );
   const format = (v: number) => (metric === 'money' ? String(v) : score(v));
   const signed = (v: number) => (v > 0 ? '+' : '') + format(v);
-  const selected = model.points.find(
-    (p) => p.playerId === (hovered ?? playerId),
-  )!;
+  // Dynamic survivor rosters may no longer contain the previously focused player.
+  const selected =
+    model.points.find((p) => p.playerId === (hovered ?? playerId)) ??
+    model.points[0]!;
   const label = metrics.find((m) => m.id === metric)!.label;
   const describe = (p: (typeof model.points)[number]) =>
     metric === 'roomScore'

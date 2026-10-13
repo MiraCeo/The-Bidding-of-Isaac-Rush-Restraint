@@ -10,11 +10,13 @@ import { ItemBadges } from './item-badges';
 export function BuildStatus({
   game,
   onOpen,
+  rules,
 }: {
   game: ActiveClientGameState;
   onOpen: () => void;
+  rules?: import('@/lib/game/types').RulesConfig;
 }) {
-  const summary = getBuildSummary(game);
+  const summary = getBuildSummary(game, rules);
   return (
     <button
       type="button"

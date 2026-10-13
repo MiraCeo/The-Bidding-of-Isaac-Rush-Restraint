@@ -4,7 +4,7 @@ import { act, createElement, useState, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GameApp } from '@/components/game/game-app';
+import { ClassicGameApp as GameApp } from '@/components/game/classic-game-app';
 import { RoomPrototype } from '@/components/game/room-prototype';
 import * as roomGeneration from '../game/rooms';
 import * as aiDecision from '../game/ai-decision';

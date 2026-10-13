@@ -6,6 +6,7 @@ import {
 } from '../game/client-session';
 import { defaultRules } from '../game/config';
 import type { RewardGroup } from '../game/types';
+import type { RulesConfig } from '../game/types';
 import type { PlayerTurn } from '../game/item-types';
 import {
   appendReplayRoom,
@@ -29,9 +30,9 @@ export interface GameSession {
   replay: ReplayLog | null;
 }
 
-export function createRoomDraft(game: ClientGameState): RoomDraft | null {
+export function createRoomDraft(game: ClientGameState, rules: RulesConfig = defaultRules): RoomDraft | null {
   if (game.phase !== 'room_action') return null;
-  const floorMoney = defaultRules.floorStartingMoney[game.floorIndex]!;
+  const floorMoney = rules.floorStartingMoney[game.floorIndex]!;
   const money = game.players.find((p) => p.isHuman)!.money;
   const amounts = {
     bid: Math.max(1, Math.min(money, Math.round(floorMoney * 0.25))),

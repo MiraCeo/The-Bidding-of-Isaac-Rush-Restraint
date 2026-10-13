@@ -1,29 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { SessionContext } from './session-context';
-import { SettledGameFrame } from './settled-game-frame';
-import { ItemArtProvider } from './item-icon';
-import {
-  createGameSession,
-  reduceGameSession,
-  type GameSession,
-} from '@/lib/ui/game-session';
-import {
-  loadAutoSave,
-  loadPlayerProfile,
-  persistGameSession,
-} from '@/lib/ui/game-save';
-import {
-  playerProfileKey,
-  readPlayerProfile,
-  type PlayerProfile,
-} from '@/lib/ui/player-profile';
-import type { ReplayDocument } from '@/lib/ui/game-replay';
-
-import { CharacterSelection } from './character-selection';
-import { GameResult } from './game-result';
-import { RoomRanking } from './room-ranking';
-import { RoomResult } from './room-result';
-import { RoomPrototype } from './room-prototype';
+import { useState, useCallback } from 'react';
+import { ClassicGameApp, type ClassicGameAppProps } from './classic-game-app';
+import { SurvivalGameApp } from './survival-game-app';
+import { GameModeMenu } from './game-mode-menu';
 import type { PreferenceSaveStatus } from './game-settings';
 import {
   getPreferenceStorage,
@@ -31,198 +9,228 @@ import {
   saveGamePreferences,
   type GamePreferences,
 } from '@/lib/ui/game-preferences';
+import { loadAutoSave } from '@/lib/ui/game-save';
 import {
-  type ClientGameAction,
-  createSessionSeed,
-} from '@/lib/game/client-session';
+  activeModeKey,
+  survivalDraft,
+  startSurvivalClient,
+  type SurvivalClientSession,
+} from '@/lib/ui/survival-client';
+import {
+  loadSurvivalCheckpoint,
+  survivalSaveKey,
+  type SurvivalSaveDocument,
+  type SurvivalReplayDocument,
+} from '@/lib/ui/survival-persistence';
+import { withSurvivalBuild } from '@/lib/game/survival-session';
+import { readBuildVersion } from '@/lib/ui/game-version';
+import {
+  playerProfileKey,
+  readPlayerProfile,
+  type PlayerProfile,
+} from '@/lib/ui/player-profile';
+import type { ReplayDocument } from '@/lib/ui/game-replay';
+import type { ModeDataCandidate } from '@/lib/ui/mode-data';
+import {
+  defaultSurvivalDifficulty,
+  type SurvivalDifficulty,
+} from '@/lib/game/survival-difficulty';
 
 export function GameApp() {
-  const [initial] = useState(() => loadAutoSave(getPreferenceStorage()));
-  const [session, setSession] = useState(
-    () => initial.session ?? createGameSession(),
+  const [initial] = useState(() => {
+    const storage = getPreferenceStorage();
+    const survival = loadSurvivalCheckpoint(storage);
+    let marker: string | null = null;
+    try {
+      marker = storage?.getItem(activeModeKey) ?? null;
+    } catch {
+      /* unavailable storage */
+    }
+    const screen: 'menu' | 'classic' | 'survival' =
+      marker === 'survival' && survival.document
+        ? 'survival'
+        : marker === 'classic'
+          ? 'classic'
+          : !marker && loadAutoSave(storage).session
+            ? 'classic'
+            : 'menu';
+    return { survival, screen };
+  });
+  const [screen, setScreen] = useState(initial.screen);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<SurvivalDifficulty>(() =>
+      initial.survival.document
+        ? (initial.survival.document.game.aiDifficulty ?? 'highest')
+        : defaultSurvivalDifficulty,
+    );
+  const [survival, setSurvival] = useState<SurvivalClientSession | null>(() =>
+    initial.survival.document
+      ? {
+          game: withSurvivalBuild(
+            initial.survival.document.game,
+            readBuildVersion(),
+          ),
+          draft:
+            initial.survival.document.draft ??
+            survivalDraft(initial.survival.document.game),
+        }
+      : null,
   );
-  const [restoreMessage, setRestoreMessage] = useState(initial.message);
-  const [initialProfile] = useState(() =>
-    loadPlayerProfile(getPreferenceStorage()),
+  const [survivalMessage, setSurvivalMessage] = useState(
+    initial.survival.message,
   );
-  const [profile, setProfile] = useState(initialProfile.profile);
-  const [profileMessage, setProfileMessage] = useState(initialProfile.message);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<
-    'idle' | 'saved' | 'session'
-  >('idle');
-  const [restoreRevision, setRestoreRevision] = useState(0);
-  const [importedReplay, setImportedReplay] = useState<ReplayDocument | null>(
+  const [importedSurvival, setImportedSurvival] =
+    useState<SurvivalReplayDocument | null>(null);
+  const [classicIncoming, setClassicIncoming] =
+    useState<ClassicGameAppProps['incoming']>();
+  const [classicReplay, setClassicReplay] = useState<ReplayDocument | null>(
     null,
   );
-  const [replaySource, setReplaySource] = useState<'current' | 'file'>(
-    'current',
-  );
-  const hasActiveSession = useRef(initial.session !== null);
-  const game = session.game;
-  const dispatch = (action: ClientGameAction) => {
-    if (action.type === 'start_game' || action.type === 'restart_game')
-      setRestoreMessage('');
-    setSession((current) => reduceGameSession(current, action));
-  };
-  useEffect(() => {
-    // Retain unreadable automatic files until the user starts/imports a valid game.
-    if (game.phase !== 'character_selection') hasActiveSession.current = true;
-    if (
-      game.phase === 'character_selection' &&
-      initial.message &&
-      !hasActiveSession.current &&
-      restoreRevision === 0
-    )
-      return;
-    const saved = persistGameSession(getPreferenceStorage(), session);
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setAutoSaveStatus(
-          saved
-            ? game.phase === 'character_selection'
-              ? 'idle'
-              : 'saved'
-            : 'session',
-        );
-        if (saved && game.phase === 'game_result')
-          setProfile(loadPlayerProfile(getPreferenceStorage()).profile);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, game.phase, initial, restoreRevision]);
-  const restore = (next: GameSession, incomingProfile?: PlayerProfile) => {
-    if (incomingProfile) {
-      const validated = readPlayerProfile(incomingProfile);
-      const storage = getPreferenceStorage();
-      if (!storage) throw new Error('浏览器存储不可用，未覆盖玩家档案。');
-      storage.setItem(playerProfileKey, JSON.stringify(validated));
-      setProfile(validated);
-      setProfileMessage('');
-    }
-    setSession(next);
-    setRestoreMessage(
-      next.game.phase === 'game_result'
-        ? '已载入已结束的对局，可查看原结果与回放。'
-        : '已载入文件存档，继续同一局。',
-    );
-    setRestoreRevision((current) => current + 1);
-    window.scrollTo(0, 0);
-  };
-  const newGame = () => {
-    setSession(createGameSession());
-    setRestoreMessage('已返回选角；玩家进度、最近完成记录及原有导出文件保留。');
-    setRestoreRevision((current) => current + 1);
-    window.scrollTo(0, 0);
-  };
   const [preferences, setPreferences] = useState(() =>
     loadGamePreferences(getPreferenceStorage()),
   );
-  const [preferenceSaveStatus, setPreferenceSaveStatus] =
-    useState<PreferenceSaveStatus>('unchanged');
-  const changePreferences = (next: GamePreferences) => {
+  const [status, setStatus] = useState<PreferenceSaveStatus>('unchanged');
+  const select = useCallback((mode: 'classic' | 'survival') => {
+    setScreen(mode);
+    try {
+      getPreferenceStorage()?.setItem(activeModeKey, mode);
+    } catch {
+      /* in-memory session remains usable */
+    }
+  }, []);
+  const activateClassic = useCallback(() => select('classic'), [select]);
+  function changePreferences(next: GamePreferences) {
     setPreferences(next);
-    setPreferenceSaveStatus(
+    setStatus(
       saveGamePreferences(getPreferenceStorage(), next) ? 'saved' : 'session',
     );
-  };
-  let page: ReactNode;
-
-  if (game.phase === 'character_selection') {
-    page = (
-      <CharacterSelection
-        onStart={(characterId) => dispatch({ type: 'start_game', characterId })}
-        preferences={preferences}
-        preferenceSaveStatus={preferenceSaveStatus}
-        onPreferencesChange={changePreferences}
-      />
-    );
-  } else if (game.phase === 'room_result') {
-    page = (
-      <RoomResult
-        embedded
-        game={game}
-        onShowRanking={(view) => dispatch({ type: 'show_room_ranking', view })}
-        onAdvance={() => dispatch({ type: 'advance_room' })}
-        scoreDecimals={preferences.scoreDecimals}
-      />
-    );
-  } else if (game.phase === 'room_ranking') {
-    page = (
-      <RoomRanking
-        embedded
-        game={game}
-        onSwitch={(view) => dispatch({ type: 'switch_room_ranking', view })}
-        onAdvance={() => dispatch({ type: 'advance_room' })}
-        scoreDecimals={preferences.scoreDecimals}
-      />
-    );
-  } else if (game.phase === 'game_result') {
-    page = (
-      <GameResult
-        embedded
-        game={game}
-        onRestart={() =>
-          dispatch({ type: 'restart_game', seed: createSessionSeed() })
-        }
-        scoreDecimals={preferences.scoreDecimals}
-      />
-    );
-  } else {
-    page = (
-      <RoomPrototype
-        key={`${game.floorIndex}:${game.roomIndex}`}
-        game={game}
-        draft={session.draft!}
-        onDraftChange={(update) =>
-          setSession((current) =>
-            current.draft
-              ? { ...current, draft: update(current.draft) }
-              : current,
-          )
-        }
-        onSubmit={(turn) => dispatch({ type: 'submit_player_turn', turn })}
-        preferences={preferences}
-        preferenceSaveStatus={preferenceSaveStatus}
-        onPreferencesChange={changePreferences}
-      />
-    );
   }
-  if (game.phase !== 'character_selection' && game.phase !== 'room_action')
-    page = <SettledGameFrame game={game}>{page}</SettledGameFrame>;
-  return (
-    <SessionContext.Provider
-      value={{
-        session,
-        autoSaveStatus,
-        restoreMessage,
-        profile,
-        profileMessage,
-        onRestore: restore,
-        onNewGame: newGame,
-        importedReplay,
-        onReplayImport: (replay) => {
-          setImportedReplay(replay);
-          setReplaySource('file');
-        },
-        replaySource,
-        onReplaySourceChange: setReplaySource,
-        preferences,
-        preferenceSaveStatus,
-        onPreferencesChange: changePreferences,
+  function restoreSurvival(doc: SurvivalSaveDocument, profile?: PlayerProfile) {
+    if (profile) {
+      const validated = readPlayerProfile(profile);
+      const storage = getPreferenceStorage();
+      if (!storage) throw new Error('存储不可用，未覆盖玩家进度。');
+      storage.setItem(playerProfileKey, JSON.stringify(validated));
+    }
+    setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
+    setSurvival({
+      game: withSurvivalBuild(doc.game, readBuildVersion()),
+      draft: doc.draft ?? survivalDraft(doc.game),
+    });
+    setImportedSurvival(null);
+    setSurvivalMessage('已载入生存对局。经典存档保留。');
+    select('survival');
+  }
+  function replaySurvival(doc: SurvivalReplayDocument | null) {
+    setImportedSurvival(doc);
+    if (doc) setScreen('survival');
+  }
+  function importCandidate(
+    candidate: ModeDataCandidate,
+    restoreProfile: boolean,
+  ) {
+    if (candidate.kind === 'survival-replay') {
+      replaySurvival(candidate.document);
+      return;
+    }
+    if (candidate.kind === 'survival-checkpoint') {
+      restoreSurvival(candidate.document);
+      return;
+    }
+    if (candidate.kind === 'survival-backup') {
+      restoreSurvival(
+        candidate.document.checkpoint,
+        restoreProfile ? candidate.document.profile : undefined,
+      );
+      return;
+    }
+    if (candidate.kind === 'replay') {
+      setClassicReplay(candidate.document);
+      setScreen('classic');
+      return;
+    }
+    if (restoreProfile && candidate.document.profile) {
+      const profile = readPlayerProfile(candidate.document.profile);
+      const storage = getPreferenceStorage();
+      if (!storage) throw new Error('存储不可用，未覆盖玩家进度。');
+      storage.setItem(playerProfileKey, JSON.stringify(profile));
+    }
+    setClassicReplay(null);
+    setClassicIncoming({
+      session: candidate.document.session,
+      revision: Date.now(),
+    });
+    select('classic');
+  }
+  const menu = (
+    <GameModeMenu
+      onClassic={() => {
+        setClassicReplay(null);
+        select('classic');
       }}
-    >
-      <ItemArtProvider>
-        <div
-          key={restoreRevision}
-          className="game-client"
-          data-reduce-motion={preferences.reduceMotion}
-        >
-          {page}
-        </div>
-      </ItemArtProvider>
-    </SessionContext.Provider>
+      onSurvival={() => {
+        setImportedSurvival(null);
+        select('survival');
+      }}
+      hasSurvival={!!survival}
+      survivalNotice={survivalMessage}
+      preferences={preferences}
+      status={status}
+      onPreferencesChange={changePreferences}
+    />
+  );
+  return (
+    <>
+      <ClassicGameApp
+        inactive={screen === 'survival'}
+        menu={screen === 'menu'}
+        menuContent={menu}
+        onReturnMenu={() => setScreen('menu')}
+        onActivateClassic={activateClassic}
+        onSurvivalRestore={restoreSurvival}
+        onSurvivalReplayImport={replaySurvival}
+        incoming={classicIncoming}
+        externalReplay={classicReplay}
+        onCloseExternalReplay={() => setClassicReplay(null)}
+        preferences={preferences}
+        preferenceStatus={status}
+        onSharedPreferencesChange={changePreferences}
+      />
+      <SurvivalGameApp
+        selectedDifficulty={selectedDifficulty}
+        onDifficultyChange={setSelectedDifficulty}
+        key={survival?.game.seed ?? 'selection'}
+        inactive={screen !== 'survival'}
+        session={survival}
+        setSession={setSurvival}
+        onStart={(character) => {
+          setSurvival(
+            startSurvivalClient(character, undefined, selectedDifficulty),
+          );
+          setImportedSurvival(null);
+          setSurvivalMessage('');
+          select('survival');
+        }}
+        onNew={() => {
+          try {
+            getPreferenceStorage()?.removeItem(survivalSaveKey);
+          } catch {
+            /* only current session cleared */
+          }
+          setSurvival(null);
+          setImportedSurvival(null);
+          setSurvivalMessage('');
+          select('survival');
+        }}
+        onReturnMenu={() => setScreen('menu')}
+        preferences={preferences}
+        status={status}
+        onPreferencesChange={changePreferences}
+        imported={importedSurvival}
+        onReplay={replaySurvival}
+        onImport={importCandidate}
+        restoreMessage={survivalMessage}
+      />
+    </>
   );
 }

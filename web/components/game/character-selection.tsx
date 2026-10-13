@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Check, Coins, PackageOpen } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { survivalOfficialCutLines } from '@/lib/game/survival-rules';
+import {
+  survivalDifficulties,
+  survivalDifficultyProfiles,
+  type SurvivalDifficulty,
+} from '@/lib/game/survival-difficulty';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
 import { useUtilityPages } from './use-utility-pages';
@@ -56,6 +62,14 @@ const characterPresentation: Readonly<
 };
 
 interface CharacterSelectionProps {
+  aiDifficulty?: SurvivalDifficulty;
+  onDifficultyChange?: (difficulty: SurvivalDifficulty) => void;
+  mode?: 'classic' | 'survival';
+  onReturnMenu?: () => void;
+  renderUtilities?: (
+    panel: import('./room-utilities').RoomUtilityPanel | null,
+    onReturn: () => void,
+  ) => ReactNode;
   onStart: (characterId: CharacterId) => void;
   preferences: GamePreferences;
   preferenceSaveStatus: PreferenceSaveStatus;
@@ -63,6 +77,11 @@ interface CharacterSelectionProps {
 }
 
 export function CharacterSelection({
+  aiDifficulty = 'standard',
+  onDifficultyChange,
+  mode = 'classic',
+  onReturnMenu,
+  renderUtilities,
   onStart,
   preferences,
   preferenceSaveStatus,
@@ -85,7 +104,7 @@ export function CharacterSelection({
             onPageChange={changeUtilityPanel}
           />
           <div className="character-step" aria-label="当前步骤">
-            <span>新游戏</span>
+            <span>{mode === 'survival' ? '生存模式' : '经典模式'}</span>
             <strong>{utilityPanel ? '未开始对局' : '选择角色'}</strong>
           </div>
         </div>
@@ -102,9 +121,37 @@ export function CharacterSelection({
             <p className="eyebrow">CHOOSE YOUR CHARACTER</p>
             <h2 id="character-title">选择角色</h2>
           </div>
-          <p>角色决定初始道具与每层资金特性。</p>
+          <p>
+            角色决定初始道具与每层资金特性。
+            {mode === 'survival' &&
+              `每层基础资金1000，斩杀线${survivalOfficialCutLines.join('／')}；伊甸不抽取福袋和黑王子之冠。`}
+          </p>
         </div>
 
+        {mode === 'survival' && (
+          <section className="survival-difficulty-picker">
+            <label>
+              生存AI难度{' '}
+              <select
+                aria-label="生存AI难度"
+                value={aiDifficulty}
+                onChange={(event) =>
+                  onDifficultyChange?.(event.target.value as SurvivalDifficulty)
+                }
+              >
+                {survivalDifficulties.map((value) => (
+                  <option key={value} value={value}>
+                    {survivalDifficultyProfiles[value].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p>
+              {survivalDifficultyProfiles[aiDifficulty].description}{' '}
+              难度开局后锁定，不改变斩杀线、角色或道具。
+            </p>
+          </section>
+        )}
         <div className="character-grid" role="radiogroup" aria-label="可选角色">
           {characterCatalog.map((character) => {
             const presentation = characterPresentation[character.id];
@@ -134,7 +181,9 @@ export function CharacterSelection({
                   <PackageOpen aria-hidden="true" />
                   <span>
                     <small>初始道具</small>
-                    {presentation.startingItems}
+                    {mode === 'survival' && character.id === 'eden'
+                      ? '两件不相同的随机道具（不含福袋与黑王子之冠）'
+                      : presentation.startingItems}
                   </span>
                 </span>
                 <span className="character-detail">
@@ -150,6 +199,11 @@ export function CharacterSelection({
         </div>
 
         <footer className="character-footer">
+          {onReturnMenu && (
+            <Button type="button" variant="secondary" onClick={onReturnMenu}>
+              返回主菜单
+            </Button>
+          )}
           <div>
             <span>当前选择</span>
             <strong>
@@ -184,13 +238,17 @@ export function CharacterSelection({
           </Button>
         </footer>
       </section>
-      <RoomUtilities
-        panel={utilityPanel}
-        preferences={preferences}
-        saveStatus={preferenceSaveStatus}
-        onPanelChange={changeUtilityPanel}
-        onPreferencesChange={onPreferencesChange}
-      />
+      {renderUtilities ? (
+        renderUtilities(utilityPanel, () => changeUtilityPanel(null))
+      ) : (
+        <RoomUtilities
+          panel={utilityPanel}
+          preferences={preferences}
+          saveStatus={preferenceSaveStatus}
+          onPanelChange={changeUtilityPanel}
+          onPreferencesChange={onPreferencesChange}
+        />
+      )}
     </main>
   );
 }

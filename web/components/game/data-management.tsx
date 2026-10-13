@@ -6,6 +6,7 @@ import { describeSave } from '@/lib/ui/game-save';
 import { describeDataProgress } from '@/lib/ui/data-management';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { DataManagementController } from './use-data-management';
+import { ModeFilePreview } from './mode-file-preview';
 
 export function dataTaskTitle(data: DataManagementController) {
   if (data.task === 'backup') return '完整备份';
@@ -45,6 +46,25 @@ export function DataManagement({ data }: { data: DataManagementController }) {
   const chooseFile = () => fileInput.current?.click();
   if (data.task === 'import') {
     const candidate = data.candidate;
+    if (
+      candidate &&
+      (candidate.kind === 'survival-checkpoint' ||
+        candidate.kind === 'survival-replay' ||
+        candidate.kind === 'survival-backup')
+    )
+      return (
+        <div className="data-task-page">
+          {picker}
+          <ModeFilePreview
+            candidate={candidate}
+            restoreProfile={data.restoreProfile}
+            onProfileChange={data.setRestoreProfile}
+            onConfirm={data.confirmImport}
+            onCancel={data.cancel}
+          />
+          {message}
+        </div>
+      );
     const save =
       candidate && candidate.kind !== 'replay' ? candidate.document : null;
     const replay =

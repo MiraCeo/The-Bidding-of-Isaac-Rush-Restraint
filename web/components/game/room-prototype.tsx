@@ -1,6 +1,6 @@
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
-import { useState } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -46,6 +46,13 @@ type ActionKind = 'bid' | 'disrupt' | 'withdraw';
 type ActiveActionKind = Exclude<ActionKind, 'withdraw'>;
 
 interface RoomPrototypeProps {
+  rules?: import('@/lib/game/types').RulesConfig;
+  extraStatus?: ReactNode;
+  renderUtilities?: (
+    panel: import('./room-utilities').RoomUtilityPanel | null,
+    turn: PlayerTurn,
+    onReturn: () => void,
+  ) => ReactNode;
   draft?: RoomDraft;
   onDraftChange?: (update: (current: RoomDraft) => RoomDraft) => void;
   game: ActiveClientGameState;
@@ -68,6 +75,9 @@ function actionLabel(action: PlayerAction): string {
 }
 
 export function RoomPrototype({
+  rules = defaultRules,
+  extraStatus,
+  renderUtilities,
   draft,
   onDraftChange,
   game,
@@ -76,14 +86,32 @@ export function RoomPrototype({
   preferenceSaveStatus,
   onPreferencesChange,
 }: RoomPrototypeProps) {
-  const floorMoney = defaultRules.floorStartingMoney[game.floorIndex]!;
+  const floorMoney = rules.floorStartingMoney[game.floorIndex]!;
   const [rankingOpen, setRankingOpen] = useState(
     preferences.rankingInitiallyOpen,
   );
   const [marketOpen, setMarketOpen] = useState(preferences.marketInitiallyOpen);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setRankingOpen(preferences.rankingInitiallyOpen);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [preferences.rankingInitiallyOpen]);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setMarketOpen(preferences.marketInitiallyOpen);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [preferences.marketInitiallyOpen]);
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
   const [localDraft, setLocalDraft] = useState(() =>
-    createRoomDraft({ ...game, phase: 'room_action' })!,
+    createRoomDraft({ ...game, phase: 'room_action' }, rules)!,
   );
   const currentDraft = draft ?? localDraft;
   const { selectedAction, amounts } = currentDraft;
@@ -108,7 +136,7 @@ export function RoomPrototype({
   const hasQuoteFunds =
     activeKind === 'bid'
       ? humanMoney > 0
-      : Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio) > 0;
+      : Math.floor(humanMoney * rules.disruptionMaxMoneyRatio) > 0;
   const humanEntryEvents = game.roomEntryEvents.filter(
     (event) => event.playerId === human.id || event.message.includes(human.id),
   );
@@ -135,7 +163,7 @@ export function RoomPrototype({
             amount: amounts[group][selectedAction.kind],
           })),
   };
-  const turnErrors = validateTurn(human, turn, defaultRules);
+  const turnErrors = validateTurn(human, turn, rules);
   const previewTurn =
     hasQuoteFunds || selectedAction.kind === 'withdraw'
       ? turn
@@ -144,7 +172,7 @@ export function RoomPrototype({
     .filter((action) => action.type !== 'withdraw')
     .map((action) => ({
       action,
-      amounts: getRuntimeActionAmounts(human, action, defaultRules),
+      amounts: getRuntimeActionAmounts(human, action, rules),
     }));
   const totalActualCost = resolvedPreviews.reduce(
     (sum, preview) => sum + preview.amounts.actualCost,
@@ -164,7 +192,7 @@ export function RoomPrototype({
                 player,
                 action,
                 actionIndex,
-                amounts: getRuntimeActionAmounts(player, action, defaultRules),
+                amounts: getRuntimeActionAmounts(player, action, rules),
               },
             ],
       );
@@ -254,6 +282,7 @@ export function RoomPrototype({
           </div>
         </div>
       </header>
+      {extraStatus}
 
       <div
         className="room-game-content"
@@ -432,6 +461,7 @@ export function RoomPrototype({
             <div className="room-intro-controls">
               <BuildStatus
                 game={game}
+                rules={rules}
                 onOpen={() => changeUtilityPanel('build')}
               />
               {utilityPanel === null && <MatchRestartControl />}
@@ -476,7 +506,7 @@ export function RoomPrototype({
                     ? canDoubleBid
                       ? `可选 A＋B · 双竞拍名义总额 ≤ ${Math.floor(humanMoney * 0.5)}`
                       : '选择一个目标 · 争夺最高价与合作区奖励'
-                    : `${canDoubleDisrupt ? '可选 A＋B' : '选择一个目标'} · 每笔上限 ${Math.floor(humanMoney * defaultRules.disruptionMaxMoneyRatio)} · 市场影响 ×2.5`}
+                    : `${canDoubleDisrupt ? '可选 A＋B' : '选择一个目标'} · 每笔上限 ${Math.floor(humanMoney * rules.disruptionMaxMoneyRatio)} · 市场影响 ×2.5`}
             </p>
           </div>
           <output className="action-mode-notice">{modeNotice}</output>
@@ -614,21 +644,25 @@ export function RoomPrototype({
           </footer>
         </section>
       </div>
-      <RoomUtilities
-        panel={utilityPanel}
-        game={game}
-        turn={turn}
-        preferences={preferences}
-        saveStatus={preferenceSaveStatus}
-        onPanelChange={changeUtilityPanel}
-        onPreferencesChange={(next) => {
-          if (next.rankingInitiallyOpen !== preferences.rankingInitiallyOpen)
-            setRankingOpen(next.rankingInitiallyOpen);
-          if (next.marketInitiallyOpen !== preferences.marketInitiallyOpen)
-            setMarketOpen(next.marketInitiallyOpen);
-          onPreferencesChange(next);
-        }}
-      />
+      {renderUtilities ? (
+        renderUtilities(utilityPanel, turn, () => changeUtilityPanel(null))
+      ) : (
+        <RoomUtilities
+          panel={utilityPanel}
+          game={game}
+          turn={turn}
+          preferences={preferences}
+          saveStatus={preferenceSaveStatus}
+          onPanelChange={changeUtilityPanel}
+          onPreferencesChange={(next) => {
+            if (next.rankingInitiallyOpen !== preferences.rankingInitiallyOpen)
+              setRankingOpen(next.rankingInitiallyOpen);
+            if (next.marketInitiallyOpen !== preferences.marketInitiallyOpen)
+              setMarketOpen(next.marketInitiallyOpen);
+            onPreferencesChange(next);
+          }}
+        />
+      )}
     </main>
   );
 }

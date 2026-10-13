@@ -9,6 +9,8 @@ import type {
 } from './item-types';
 import type { RandomSource, RewardGroup } from './types';
 
+export type BossRewardPolicy = 'classic_final_hearts' | 'standard';
+
 interface WeightedValue<T> {
   value: T;
   weight: number;
@@ -118,11 +120,12 @@ export function generateRoom(
   roomIndex: number,
   random: RandomSource,
   catalog: readonly ItemDefinition[] = itemCatalog,
+  bossRewards: BossRewardPolicy = 'classic_final_hearts',
 ): GeneratedRoom {
   let kind = baseRoomKind(roomIndex);
   if (kind === 'normal' && random.next() < 0.25) kind = 'hidden';
 
-  if (floorIndex === 2 && roomIndex === 4) {
+  if (bossRewards === 'classic_final_hearts' && floorIndex === 2 && roomIndex === 4) {
     return {
       floorIndex,
       roomIndex,
@@ -154,8 +157,9 @@ export function generateFloor(
   floorIndex: number,
   random: RandomSource,
   catalog: readonly ItemDefinition[] = itemCatalog,
+  bossRewards: BossRewardPolicy = 'classic_final_hearts',
 ): GeneratedRoom[] {
   return Array.from({ length: 5 }, (_, roomIndex) =>
-    generateRoom(floorIndex, roomIndex, random, catalog),
+    generateRoom(floorIndex, roomIndex, random, catalog, bossRewards),
   );
 }

@@ -38,7 +38,7 @@ export const actionText = (
     : a.group + ' · ' + (a.type === 'bid' ? '竞拍 ' : '扰乱 ') + a.amount;
 
 export function ReplayRoomPanel(
-  props: ReplayPanelProps & { cooperationRadius: number },
+  props: ReplayPanelProps & { cooperationRadius: number; scoreNote?: string },
 ) {
   const { record, playerId, name, score } = props;
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -65,7 +65,10 @@ export function ReplayRoomPanel(
         <article className="replay-score-hero">
           <span>最终房间积分</span>
           <strong>{score(row.score.finalScore)}</strong>
-          <small>结算后累计 {score(row.after.score)} · 不含终局王冠倍率</small>
+          <small>
+            {props.scoreNote ??
+              `结算后累计 ${score(row.after.score)} · 不含终局王冠倍率`}
+          </small>
           <div className="replay-score-brief">
             <span>
               原始房分 <b>{score(row.score.initialScore)}</b>

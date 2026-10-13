@@ -1,0 +1,281 @@
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ModeFilePreview } from './mode-file-preview';
+import { parseModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
+import type { SurvivalClientSession } from '@/lib/ui/survival-client';
+import {
+  serializeSurvivalCheckpoint,
+  serializeSurvivalReplay,
+  parseSurvivalReplay,
+  survivalLastCompletedKey,
+} from '@/lib/ui/survival-persistence';
+import type { SurvivalReplayDocument } from '@/lib/ui/survival-persistence';
+import { serializeSurvivalBackup } from '@/lib/ui/survival-backup';
+import { createSurvivalReplay } from '@/lib/ui/survival-record';
+import { getPreferenceStorage } from '@/lib/ui/game-preferences';
+import { loadPlayerProfile } from '@/lib/ui/game-save';
+import { downloadJsonFile } from '@/lib/ui/json-download';
+import { readBuildVersion } from '@/lib/ui/game-version';
+
+export function SurvivalDataManagement({
+  session,
+  imported,
+  onImport,
+  onReplay,
+}: {
+  session: SurvivalClientSession | null;
+  imported: SurvivalReplayDocument | null;
+  onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
+  onReplay: (doc: SurvivalReplayDocument) => void;
+}) {
+  const [candidate, setCandidate] = useState<ModeDataCandidate | null>(null);
+  const [restoreProfile, setRestoreProfile] = useState(false);
+  const [message, setMessage] = useState('');
+  const [reading, setReading] = useState(false);
+  const [backup, setBackup] = useState<{ source: string; name: string } | null>(
+    null,
+  );
+  const request = useRef(0);
+  useEffect(
+    () => () => {
+      request.current++;
+    },
+    [],
+  );
+  const [recent] = useState(() => {
+    try {
+      const source = getPreferenceStorage()?.getItem(survivalLastCompletedKey);
+      const doc = source ? parseSurvivalReplay(source) : null;
+      if (doc && !doc.replay.final) throw new Error('最近生存记录未完成。');
+      return { doc, error: '' };
+    } catch (error) {
+      return {
+        doc: null,
+        error:
+          error instanceof Error ? error.message : '最近生存回放读取失败。',
+      };
+    }
+  });
+  const cancel = () => {
+    request.current++;
+    setCandidate(null);
+    setBackup(null);
+    setReading(false);
+    setRestoreProfile(false);
+    setMessage('');
+  };
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && (candidate || backup || reading)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        cancel();
+      }
+    };
+    window.addEventListener('keydown', listener, true);
+    return () => window.removeEventListener('keydown', listener, true);
+  }, [candidate, backup, reading]);
+  const run = (action: () => void) => {
+    try {
+      action();
+      setMessage('操作完成。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '文件操作未完成。');
+    }
+  };
+  async function read(file?: File) {
+    const id = ++request.current;
+    setCandidate(null);
+    setBackup(null);
+    setRestoreProfile(false);
+    setMessage('');
+    if (!file) return;
+    setReading(true);
+    try {
+      if (file.size > 8 * 1024 * 1024)
+        throw new Error('文件超过8 MiB，不能读取。');
+      const source = await file.text();
+      if (id !== request.current) return;
+      setCandidate(parseModeDataFile(source, file.name));
+    } catch (error) {
+      if (id === request.current)
+        setMessage(error instanceof Error ? error.message : '无法读取文件。');
+    } finally {
+      if (id === request.current) setReading(false);
+    }
+  }
+  function confirm() {
+    if (!candidate) return;
+    try {
+      onImport(candidate, restoreProfile);
+      cancel();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '未载入文件。');
+    }
+  }
+  function prepareBackup() {
+    run(() => {
+      if (!session) throw new Error('尚未开始生存对局。');
+      const loaded = loadPlayerProfile(getPreferenceStorage());
+      if (loaded.message) throw new Error(loaded.message);
+      setBackup({
+        source: serializeSurvivalBackup(
+          session.game,
+          session.draft,
+          loaded.profile,
+        ),
+        name: `生存完整备份-${session.game.seed}.json`,
+      });
+    });
+  }
+  return (
+    <section className="settings-group">
+      <h3>生存模式 · 存档与文件</h3>
+      <p>经典 v2/v3 与生存 v4 分开保存。导入先预览，确认后才载入；回放只读。</p>
+      <div className="data-actions">
+        <Button
+          disabled={!session}
+          onClick={() =>
+            run(() => {
+              if (session)
+                downloadJsonFile(
+                  serializeSurvivalCheckpoint(session.game, session.draft),
+                  `生存续玩-${session.game.seed}.json`,
+                );
+            })
+          }
+        >
+          导出生存续玩存档
+        </Button>
+        <Button
+          disabled={!session?.game.roomRecords.length}
+          onClick={() =>
+            run(() => {
+              if (session)
+                downloadJsonFile(
+                  serializeSurvivalReplay(
+                    createSurvivalReplay(session.game),
+                    readBuildVersion(),
+                  ),
+                  `生存回放-${session.game.seed}.json`,
+                );
+            })
+          }
+        >
+          导出生存回放
+        </Button>
+        <Button variant="secondary" disabled={!session} onClick={prepareBackup}>
+          完整备份
+        </Button>
+      </div>
+      <label className="survival-file-picker">
+        读取对局文件
+        <input
+          type="file"
+          accept=".json,application/json"
+          onChange={(event) => {
+            void read(event.target.files?.[0]);
+            event.target.value = '';
+          }}
+        />
+      </label>
+      {reading && (
+        <output>
+          正在验证文件…{' '}
+          <Button variant="secondary" onClick={cancel}>
+            取消读取
+          </Button>
+        </output>
+      )}
+      {candidate &&
+      (candidate.kind === 'survival-replay' ||
+        candidate.kind === 'survival-checkpoint' ||
+        candidate.kind === 'survival-backup') ? (
+        <ModeFilePreview
+          candidate={candidate}
+          restoreProfile={restoreProfile}
+          onProfileChange={setRestoreProfile}
+          onConfirm={confirm}
+          onCancel={cancel}
+        />
+      ) : (
+        candidate && (
+          <section className="data-candidate">
+            <h4>
+              经典模式 · v{candidate.document.version} ·{' '}
+              {candidate.kind === 'replay' ? '只读回放' : '载入对局'}
+            </h4>
+            <p>{candidate.filename}</p>
+            <p>
+              {candidate.kind === 'replay'
+                ? '只读查看，不改变当前生存对局或玩家进度。'
+                : '确认后切换并载入经典对局。生存存档独立保留。'}
+            </p>
+            {candidate.kind === 'backup' && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={restoreProfile}
+                  onChange={(e) => setRestoreProfile(e.target.checked)}
+                />
+                同时恢复文件中的玩家进度
+              </label>
+            )}
+            <div className="data-actions">
+              <Button onClick={confirm}>
+                确认{candidate.kind === 'replay' ? '打开回放' : '载入经典对局'}
+              </Button>
+              <Button variant="secondary" onClick={cancel}>
+                取消
+              </Button>
+            </div>
+          </section>
+        )
+      )}
+      {backup && (
+        <section className="data-candidate">
+          <h4>完整备份预览</h4>
+          <p>
+            包含当前生存检查点、已结算事实回放和本机玩家进度。导入时默认不覆盖玩家进度。
+          </p>
+          <Button
+            onClick={() =>
+              run(() => {
+                downloadJsonFile(backup.source, backup.name);
+                setBackup(null);
+              })
+            }
+          >
+            确认导出完整备份
+          </Button>
+          <Button variant="secondary" onClick={cancel}>
+            取消
+          </Button>
+        </section>
+      )}
+      {recent.doc && (
+        <Button variant="secondary" onClick={() => onReplay(recent.doc!)}>
+          查看最近完成的生存回放
+        </Button>
+      )}
+      {imported && (
+        <Button
+          variant="secondary"
+          onClick={() =>
+            run(() =>
+              downloadJsonFile(
+                serializeSurvivalReplay(imported.replay, readBuildVersion()),
+                '生存只读回放.json',
+              ),
+            )
+          }
+        >
+          导出读取的生存回放
+        </Button>
+      )}
+      {(message || recent.error) && (
+        <output className="save-message">{message || recent.error}</output>
+      )}
+    </section>
+  );
+}

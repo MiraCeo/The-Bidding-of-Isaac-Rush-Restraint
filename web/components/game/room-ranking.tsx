@@ -17,6 +17,11 @@ import {
 type RoomRankingProps = {
   embedded?: boolean;
   scoreDecimals?: ScoreDisplayDecimals;
+  finalRoom?: boolean;
+  advanceLabel?: string;
+  scoreDescription?: string;
+  hideViewTabs?: boolean;
+  hideFooter?: boolean;
 } & (
   | {
       variant?: 'settled';
@@ -83,8 +88,9 @@ export function RoomRanking(props: RoomRankingProps) {
       ? '你'
       : (game.aiProfiles[playerId]?.name ?? playerId);
   const isFinalRoom =
-    game.floorIndex === game.rooms.length - 1 &&
-    game.roomIndex === game.rooms[game.floorIndex]!.length - 1;
+    props.finalRoom ??
+    (game.floorIndex === game.rooms.length - 1 &&
+      game.roomIndex === game.rooms[game.floorIndex]!.length - 1);
 
   return (
     <Container className="ranking-page">
@@ -136,37 +142,46 @@ export function RoomRanking(props: RoomRankingProps) {
           </div>
           <p>
             {game.roomRankingView === 'score'
-              ? '本轮行动、得分和道具变化已经计入排行。'
+              ? (props.scoreDescription ??
+                '本轮行动、得分和道具变化已经计入排行。')
               : '按照市场等价出价从高到低排列，扰乱者同样参与名额争夺。'}
           </p>
         </div>
 
-        <div className="ranking-view-tabs" role="tablist" aria-label="排行类型">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={game.roomRankingView === 'score'}
-            className={
-              game.roomRankingView === 'score' ? 'ranking-view-tab-active' : ''
-            }
-            onClick={() => onSwitch('score')}
+        {!props.hideViewTabs && (
+          <div
+            className="ranking-view-tabs"
+            role="tablist"
+            aria-label="排行类型"
           >
-            积分排行
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={game.roomRankingView === 'contest'}
-            className={
-              game.roomRankingView === 'contest'
-                ? 'ranking-view-tab-active'
-                : ''
-            }
-            onClick={() => onSwitch('contest')}
-          >
-            争夺榜
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={game.roomRankingView === 'score'}
+              className={
+                game.roomRankingView === 'score'
+                  ? 'ranking-view-tab-active'
+                  : ''
+              }
+              onClick={() => onSwitch('score')}
+            >
+              积分排行
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={game.roomRankingView === 'contest'}
+              className={
+                game.roomRankingView === 'contest'
+                  ? 'ranking-view-tab-active'
+                  : ''
+              }
+              onClick={() => onSwitch('contest')}
+            >
+              争夺榜
+            </button>
+          </div>
+        )}
 
         {game.roomRankingView === 'score' ? (
           <ScoreRanking
@@ -188,22 +203,25 @@ export function RoomRanking(props: RoomRankingProps) {
           </div>
         )}
 
-        <footer className="result-actions ranking-actions">
-          <div>
-            <span>
-              {isFinalRoom ? '三层挑战已经结束' : '榜单可随时切换查看'}
-            </span>
-            <strong>
-              {isFinalRoom
-                ? '进入整局最终排行'
-                : `下一房间 · ${game.roomIndex === 4 ? `第 ${game.floorIndex + 2} 层` : `${game.roomIndex + 2}/5`}`}
-            </strong>
-          </div>
-          <Button type="button" size="lg" onClick={onAdvance}>
-            {isFinalRoom ? '最终排行' : '进入下一房间'}
-            <ArrowRight aria-hidden="true" />
-          </Button>
-        </footer>
+        {!props.hideFooter && (
+          <footer className="result-actions ranking-actions">
+            <div>
+              <span>
+                {isFinalRoom ? '三层挑战已经结束' : '榜单可随时切换查看'}
+              </span>
+              <strong>
+                {isFinalRoom
+                  ? '进入整局最终排行'
+                  : `下一房间 · ${game.roomIndex === 4 ? `第 ${game.floorIndex + 2} 层` : `${game.roomIndex + 2}/5`}`}
+              </strong>
+            </div>
+            <Button type="button" size="lg" onClick={onAdvance}>
+              {props.advanceLabel ??
+                (isFinalRoom ? '最终排行' : '进入下一房间')}
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </footer>
+        )}
       </section>
     </Container>
   );

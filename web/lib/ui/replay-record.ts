@@ -1,3 +1,5 @@
+import { canonicalJson, copySnapshot } from '../shared/json-facts';
+export { canonicalJson, copySnapshot } from '../shared/json-facts';
 import type {
   ActiveClientGameState,
   ClientFinalRankingEntry,
@@ -46,22 +48,6 @@ export interface ReplayRuleFacts {
   floorStartingMoney: number[];
   cooperationRadii: number[];
   scoreStorageDecimals: number;
-}
-export function copySnapshot<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-export function canonicalJson(value: unknown): string {
-  if (typeof value === 'number' && !Number.isFinite(value))
-    throw new Error('记录包含非法数值。');
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    return `{${Object.keys(record)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
 }
 export function createReplayLog(game: ActiveClientGameState): ReplayLog {
   return {

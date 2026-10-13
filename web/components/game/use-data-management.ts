@@ -14,11 +14,10 @@ import { downloadJsonFile } from '@/lib/ui/json-download';
 import {
   completedReplaySession,
   maxDataBytes,
-  parseDataFile,
   previewCompletedReplay,
   sameReplayResults,
-  type DataCandidate,
 } from '@/lib/ui/data-management';
+import { parseModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { GameSession } from '@/lib/ui/game-session';
 
 export function useDataManagement(
@@ -45,7 +44,7 @@ export function useDataManagement(
   const [task, setTask] = useState<'settings' | 'import' | 'backup'>(
     'settings',
   );
-  const [candidate, setCandidate] = useState<DataCandidate | null>(null);
+  const [candidate, setCandidate] = useState<ModeDataCandidate | null>(null);
   const [backup, setBackup] = useState<{
     session: GameSession;
     profile: PlayerProfile;
@@ -101,7 +100,7 @@ export function useDataManagement(
         throw new Error('文件超过8 MiB，不能读取。');
       const source = await file.text();
       if (id !== request.current) return;
-      const value = parseDataFile(source, file.name);
+      const value = parseModeDataFile(source, file.name);
       if (id === request.current) setCandidate(value);
     } catch (error) {
       if (id === request.current)
@@ -124,6 +123,28 @@ export function useDataManagement(
   function confirmImport() {
     if (!tools || !candidate) return;
     try {
+      if (candidate.kind === 'survival-replay') {
+        if (!tools.onSurvivalReplayImport)
+          throw new Error('当前入口不支持生存文件。');
+        tools.onSurvivalReplayImport(candidate.document);
+        return;
+      }
+      if (
+        candidate.kind === 'survival-checkpoint' ||
+        candidate.kind === 'survival-backup'
+      ) {
+        if (!tools.onSurvivalRestore)
+          throw new Error('当前入口不支持生存文件。');
+        tools.onSurvivalRestore(
+          candidate.kind === 'survival-backup'
+            ? candidate.document.checkpoint
+            : candidate.document,
+          candidate.kind === 'survival-backup' && restoreProfile
+            ? candidate.document.profile
+            : undefined,
+        );
+        return;
+      }
       if (candidate.kind === 'replay') {
         tools.onReplayImport(candidate.document);
         onOpenReplay();

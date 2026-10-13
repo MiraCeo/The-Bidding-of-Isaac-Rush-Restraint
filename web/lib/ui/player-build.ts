@@ -11,6 +11,7 @@ import type {
   RuntimePlayerState,
 } from '../game/item-types';
 import type { RoomDraft } from './game-session';
+import type { RulesConfig } from '../game/types';
 
 export function draftTurn(playerId: string, draft: RoomDraft): PlayerTurn {
   const selected = draft.selectedAction;
@@ -36,7 +37,7 @@ export function inventoryEntries(player: RuntimePlayerState) {
     effectiveCopies: getItemDefinition(id).effectStacks ? count : 1,
   }));
 }
-export function getBuildSummary(game: ActiveClientGameState) {
+export function getBuildSummary(game: ActiveClientGameState, rules: RulesConfig = defaultRules) {
   const human = game.players.find((p) => p.id === game.humanPlayerId)!;
   const room = game.rooms[game.floorIndex]![game.roomIndex]!;
   const count = (id: ItemId) => countItem(human, id);
@@ -95,7 +96,7 @@ export function getBuildSummary(game: ActiveClientGameState) {
             {
               label: '穷人护符条件加算',
               value: `+${5 * count('poor_charm')} / +${20 * count('poor_charm')}`,
-              note: `计分时资金低于 ${defaultRules.floorStartingMoney[game.floorIndex]! * 0.3} 时取高档，否则取低档；扣款与项圈恢复可能改变档位。`,
+              note: `计分时资金低于 ${rules.floorStartingMoney[game.floorIndex]! * 0.3} 时取高档，否则取低档；扣款与项圈恢复可能改变档位。`,
             },
           ]
         : []),

@@ -6,6 +6,14 @@ import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { PlayerProfile } from '@/lib/ui/player-profile';
 
 export interface SessionTools {
+  onReturnMenu?: () => void;
+  onSurvivalRestore?: (
+    document: import('@/lib/ui/survival-persistence').SurvivalSaveDocument,
+    profile?: PlayerProfile,
+  ) => void;
+  onSurvivalReplayImport?: (
+    document: import('@/lib/ui/survival-persistence').SurvivalReplayDocument,
+  ) => void;
   session: GameSession;
   autoSaveStatus: 'saved' | 'session' | 'idle';
   restoreMessage: string;

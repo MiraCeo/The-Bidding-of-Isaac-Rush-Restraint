@@ -2,6 +2,80 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* Mode menu and independent survival screens. */
+.survival-replay .replay-identity { flex-wrap:wrap; gap:16px; }
+.survival-replay .replay-scope-tabs { flex-wrap:wrap; }
+.survival-replay .replay-scope-tabs button:disabled { opacity:.4; cursor:not-allowed; }
+.survival-replay .replay-toolbar { margin-top:0; }
+.survival-replay .replay-workspace { margin-top:20px; }
+.survival-replay .replay-sidebar { min-width:0; }
+.survival-replay .replay-room-label { min-width:0; }
+.survival-replay .replay-room-label small { color:var(--muted-foreground); }
+.survival-replay .replay-selected-heading label select { max-width:180px; }
+.survival-replay .replay-table-wrap { overflow-x:auto; }
+.survival-replay .replay-scope-tabs button[aria-current="page"] { background:var(--primary); color:var(--primary-foreground); }
+.survival-replay-provenance { font-size:.75rem; margin:6px 0 18px; }
+.survival-replay-floor-card { border:1px solid var(--border); border-radius:14px; padding:24px; background:var(--card); }
+.survival-replay-floor-card .survival-table td { font-variant-numeric:tabular-nums; }
+.survival-floor-stats { margin:16px 0; }
+.survival-replay .survival-overview-metrics { grid-template-columns:repeat(5,minmax(0,1fr)); }
+@media(max-width:850px) { .survival-replay .survival-overview-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.survival-replay .utility-notice,.survival-replay .replay-muted { font-size:.78rem; }
+.survival-replay .replay-identity strong { font-size:1rem; }
+.survival-replay .replay-identity span { font-size:.75rem; }
+.survival-ranking-tabs { margin:18px 0 26px; }
+.survival-ranking-tabs button:disabled { opacity:.4; cursor:not-allowed; }
+.survival-score-board { border:1px solid var(--border); border-radius:16px; background:linear-gradient(145deg,#292117,#15120f 45%); overflow:hidden; }
+.survival-board-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:26px 28px 6px; }
+.survival-board-heading h2 { margin:6px 0; font-size:1.5rem; }
+.survival-board-heading .eyebrow { margin:0; color:var(--primary); font-size:.7rem; }
+.survival-board-summary { border:1px solid #edaf3d33; border-radius:24px; padding:8px 14px; color:var(--primary); font-size:.78rem; white-space:nowrap; }
+.survival-score-board .survival-board-note { font-size:.78rem; color:var(--muted-foreground); padding:0 28px 18px; margin:6px 0 0; line-height:1.8; }
+.survival-board-scroll { overflow:auto; max-height:70vh; outline-offset:-3px; }
+.survival-board-table { width:100%; border-collapse:separate; border-spacing:0; font-size:.82rem; font-variant-numeric:tabular-nums; }
+.survival-board-table th,.survival-board-table td { padding:14px 20px; border-bottom:1px solid var(--border); white-space:nowrap; text-align:right; }
+.survival-board-table thead th { position:sticky; top:0; z-index:2; background:#201a13; color:var(--muted-foreground); font-size:.75rem; }
+.survival-board-table th:first-child { position:sticky; left:0; z-index:1; text-align:left; background:#1b1712; min-width:160px; }
+.survival-board-table thead th:first-child { z-index:3; background:#201a13; }
+.survival-board-table th:nth-child(2),.survival-board-table td:nth-child(2) { text-align:left; }
+.survival-board-table small { display:block; color:var(--muted-foreground); font-size:.65rem; font-weight:400; margin-top:5px; }
+.survival-board-table td strong { font-weight:650; }
+.survival-board-table tbody tr:hover td,.survival-board-table tbody tr:hover th { background-color:#edaf3d0b; }
+.survival-board-table tr[data-human="true"] td,.survival-board-table tr[data-human="true"] th { background-color:#322615; color:#f4bd51; }
+.survival-board-table tr[data-human="true"] th { box-shadow:inset 3px 0 var(--primary); }
+.survival-board-table tr[data-eliminated="true"] td:not(.survival-board-total) { color:#a49c92; }
+.survival-board-player { display:flex; align-items:center; gap:12px; }
+.survival-board-position { display:grid; place-items:center; min-width:26px; height:26px; border-radius:7px; color:#e9bd6a; background:#44331c; font-size:.72rem; }
+.survival-board-status { display:inline-block; border-radius:5px; padding:5px 9px; font-size:.72rem; }
+.survival-board-status.is-alive { color:#a8d9ae; background:#456d3e25; }
+.survival-board-status.is-out { color:#c49a91; background:#7b493e25; }
+.survival-board-table .survival-board-live-column { background-color:#edaf3d06; }
+.survival-board-table .survival-board-total { color:#f4bd51; background-color:#edaf3d08; border-left:1px solid var(--border); }
+.survival-ranking-actions { margin-top:24px; }
+.ranking-stage.survival-utility { width:min(1140px,86vw); padding:24px 0 48px; }
+.survival-utility .ranking-stage { width:100%; padding:24px 0; }
+.survival-utility .ranking-page { min-height:0; }
+@media(max-width:700px) { .survival-board-heading { flex-wrap:wrap; padding:20px 16px 6px; }.survival-score-board .survival-board-note { padding:0 16px 16px; }.survival-board-table th,.survival-board-table td { padding:12px 14px; } }
+.mode-menu-stage { width:min(1100px,86vw); margin:64px auto; }
+.survival-difficulty-picker { margin:20px 0 28px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:18px 22px; }.survival-difficulty-picker label {font-weight:800;color:var(--primary)}.survival-difficulty-picker select {margin-left:14px;padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#100e0c;color:var(--foreground)}.survival-difficulty-picker p {margin-top:12px;font-size:.85rem;color:var(--muted-foreground);line-height:1.8}
+.mode-menu-stage[hidden],.survival-stage[hidden] { display:none!important; }
+.mode-menu-stage>h2 { font-size:2rem; font-weight:900; margin:12px 0; }
+.mode-menu-stage>p { color:var(--muted-foreground); line-height:1.8; }
+.mode-menu-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:32px; }
+.mode-menu-grid article { display:flex; flex-direction:column; align-items:flex-start; padding:28px; border:1px solid var(--border); border-radius:16px; background:var(--card); gap:14px; }
+.mode-menu-grid .mode-survival { border-color:#edaf3d80; background:linear-gradient(150deg,#392a16,#211c17); }
+.mode-menu-grid h3 { font-size:1.4rem; font-weight:900; }.mode-menu-grid p { line-height:1.8; color:#c7b6a0; min-height:5.4em; }.mode-menu-grid small { color:var(--muted-foreground); flex:1; line-height:1.7; }.mode-menu-grid button { width:100%; margin-top:14px; }.mode-symbol { font-size:2.3rem; color:var(--primary); }
+.survival-menu-return { color:var(--primary); border:1px solid var(--border); padding:8px 14px; border-radius:8px; }
+.survival-status { display:flex; flex-wrap:wrap; align-items:center; gap:12px 22px; width:min(1140px,86vw); margin:20px auto; padding:16px 20px; border:1px solid var(--border); border-radius:12px; background:#211c17; font-size:.8rem; }.survival-status b { color:var(--primary); }.survival-status button { margin-left:auto; }
+.survival-tools { width:min(1140px,86vw); margin:12px auto; display:flex; flex-wrap:wrap; gap:12px; }
+.survival-stage,.survival-utility { width:min(1140px,86vw); margin:24px auto 64px; padding:28px; }.survival-stage h2,.survival-utility h2 { font-size:1.5rem; font-weight:900; margin:16px 0; }.survival-stage p,.survival-utility p { line-height:1.9; margin:12px 0; color:#c7b6a0; }
+.survival-table-wrap { overflow-x:auto; margin:24px 0; }.survival-table { width:100%; text-align:left; font-size:.85rem; border-collapse:collapse; font-variant-numeric:tabular-nums; }.survival-table caption { text-align:left; margin-bottom:14px; color:var(--muted-foreground); }.survival-table th,.survival-table td { padding:12px 16px; border-bottom:1px solid var(--border); white-space:nowrap; }.survival-table thead { color:var(--muted-foreground); background:#100e0c; }.survival-table tr[data-human=true] { background:#edaf3d15; color:var(--primary); }
+.survival-items { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:18px 0; }.survival-items article { background:var(--card); border:1px solid var(--border); padding:18px; border-radius:10px; }.survival-items b { display:block; margin-top:10px; }.survival-items p { font-size:.82rem; }
+.survival-utility details { padding:12px 0; border-bottom:1px solid var(--border); }.survival-utility summary { cursor:pointer; color:var(--primary); }.survival-replay pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.75rem; max-height:450px; overflow:auto; border:1px solid var(--border); padding:16px; margin-top:14px; background:#100e0c; }.survival-replay-controls { display:flex; gap:24px; flex-wrap:wrap; margin:24px 0; }.survival-replay-controls select { padding:8px; background:var(--card); border:1px solid var(--border); border-radius:6px; margin-left:10px; }.survival-id { overflow-wrap:anywhere; font-size:.75rem; }
+.survival-file-picker { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin:18px 0; }.survival-file-picker input { max-width:100%; }.survival-save-message { display:block; text-align:center; padding:14px; font-size:.8rem; color:var(--muted-foreground); }
+.survival-confirm { position:fixed; z-index:100; inset:30% max(10vw,calc((100vw - 640px)/2)) auto; background:#211c17; padding:32px; border:2px solid var(--primary); border-radius:16px; box-shadow:0 0 0 100vmax #000a; }.survival-confirm h2 { font-size:1.2rem; font-weight:900; }.survival-confirm p { margin:16px 0; }.survival-confirm button { margin:6px; }
+@media(max-width:850px) { .mode-menu-grid { grid-template-columns:1fr; }.mode-menu-grid p { min-height:0; }.mode-menu-stage { margin:28px auto; }.survival-stage,.survival-utility { padding:16px; }.survival-status { gap:10px; }.survival-confirm { inset:20% 5vw auto; } }
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

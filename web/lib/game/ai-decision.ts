@@ -1,5 +1,13 @@
-import { analyzeAiDecision, type AiAnalysisResult, type AiDecisionContext } from './ai-analysis';
-import { analyzeAiQuote, type AiQuoteAnalysis, type AiQuoteProfile } from './ai-quote';
+import {
+  analyzeAiDecision,
+  type AiAnalysisResult,
+  type AiDecisionContext,
+} from './ai-analysis';
+import {
+  analyzeAiQuote,
+  type AiQuoteAnalysis,
+  type AiQuoteProfile,
+} from './ai-quote';
 import { getDoubleActionScoreMultiplier } from './characters';
 import {
   calculatePersonalityGroupMultipliers,
@@ -17,6 +25,12 @@ import { getRoomScoreMultiplier } from './room-modifiers';
 import { countItem, hasItem } from './runtime';
 import { getRuntimeActionAmounts } from './turns';
 import type { RandomSource, RewardGroup, RulesConfig } from './types';
+import type { SurvivalDifficulty } from './survival-difficulty';
+import {
+  estimateSurvivalTurnScore,
+  type SurvivalAiPlan,
+  type SurvivalAiPublicContext,
+} from './survival-ai-plan';
 
 export type AiStrategy =
   | 'high_bid'
@@ -35,6 +49,11 @@ export interface AiDecisionExperiments {
 }
 
 export interface AiDecisionOptions {
+  survivalDifficulty?: SurvivalDifficulty;
+  survivalDifficultyRandom?: RandomSource;
+  survivalExecutionFactor?: number;
+  survivalContext?: SurvivalAiPublicContext;
+  survivalPlan?: SurvivalAiPlan;
   strategyMultipliers?: Partial<Record<AiStrategy, number>>;
   groupWeights?: Partial<Record<RewardGroup, number>>;
   context?: AiDecisionContext;
@@ -53,6 +72,7 @@ export interface AiDecisionOptions {
 }
 
 export interface AiDecision {
+  survivalAnalysis?: SurvivalAiPlan;
   strategy: AiStrategy;
   finalWeights: AiStrategyWeights;
   baseQuote: number | null;
@@ -97,7 +117,9 @@ const doubleActionNominalMoneyRatio = 0.4;
 const doubleActionFloorActualCostRatio = 0.17;
 const doubleActionStopWeight = 3;
 
-export const aiDoctrineWeights: Readonly<Record<AiDoctrine, Readonly<AiStrategyWeights>>> = {
+export const aiDoctrineWeights: Readonly<
+  Record<AiDoctrine, Readonly<AiStrategyWeights>>
+> = {
   balanced: {
     high_bid: 20,
     cooperate: 50,
@@ -131,7 +153,11 @@ const strategyOrder: readonly AiStrategy[] = [
   'withdraw',
 ];
 
-export type AiLiquidityBand = 'comfortable' | 'slightly_tight' | 'tight' | 'critical';
+export type AiLiquidityBand =
+  | 'comfortable'
+  | 'slightly_tight'
+  | 'tight'
+  | 'critical';
 
 export const liquidityStrategyMultipliers: Readonly<
   Record<AiLiquidityBand, Readonly<AiStrategyWeights>>
@@ -203,15 +229,24 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function predictedBaseScore(value: number, target: number, sigma: number): number {
+function predictedBaseScore(
+  value: number,
+  target: number,
+  sigma: number,
+): number {
   return 100 * Math.exp(-Math.abs(value - target) / sigma);
 }
 
 function quoteNoiseRatio(options: AiDecisionOptions): number {
   const personalities = options.personalities ?? [];
   const override = options.experiments?.gamblerQuoteNoiseRatio;
-  if (override !== undefined && (!Number.isFinite(override) || override < 0 || override > 0.25)) {
-    throw new RangeError('Experimental quote noise must be between 0 and 0.25.');
+  if (
+    override !== undefined &&
+    (!Number.isFinite(override) || override < 0 || override > 0.25)
+  ) {
+    throw new RangeError(
+      'Experimental quote noise must be between 0 and 0.25.',
+    );
   }
   return personalities.includes('gambler') && override !== undefined
     ? override
@@ -232,45 +267,78 @@ function considerSecondaryAction(
   analysis: AiAnalysisResult | null,
   finalWeights: AiStrategyWeights,
 ): AiSecondaryActionAnalysis | undefined {
-  const mode = primaryStrategy === 'high_bid' || primaryStrategy === 'cooperate' ? 'bid' : 'disrupt';
-  if (mode === 'bid' ? !hasItem(player, 'more_options') : !hasItem(player, 'more_options_question')) {
+  const mode =
+    primaryStrategy === 'high_bid' || primaryStrategy === 'cooperate'
+      ? 'bid'
+      : 'disrupt';
+  if (
+    mode === 'bid'
+      ? !hasItem(player, 'more_options')
+      : !hasItem(player, 'more_options_question')
+  ) {
     return undefined;
   }
   const remainingGroup: RewardGroup = primaryGroup === 'A' ? 'B' : 'A';
   const primaryAmount = primaryQuote.amount;
   const floorMoney = rules.floorStartingMoney[floorIndex]!;
   const conservativeRemainingMoney = Math.max(0, player.money - primaryAmount);
-  const nextRoomReserve = remainingRooms > 1
-    ? Math.ceil(Math.max(player.money / remainingRooms, floorMoney * 0.1))
-    : 0;
-  const totalNominalCap = Math.floor(player.money * doubleActionNominalMoneyRatio);
-  const budgetBasis = options.experiments?.doubleActionBudgetBasis ?? 'public';
-  const budgetFloorStartingMoney = budgetBasis === 'character'
-    ? player.characterFloorStartingMoney ?? floorMoney
-    : floorMoney;
-  const totalActualCostCap = roundMoney(Math.min(
+  const nextRoomReserve =
+    options.survivalPlan?.reservedFutureMoney ??
+    (remainingRooms > 1
+      ? Math.ceil(Math.max(player.money / remainingRooms, floorMoney * 0.1))
+      : 0);
+  const totalNominalCap = Math.floor(
     player.money * doubleActionNominalMoneyRatio,
-    budgetFloorStartingMoney * doubleActionFloorActualCostRatio,
-  ));
-  const primaryAction = mode === 'bid'
-    ? { type: 'bid' as const, group: primaryGroup, amount: primaryAmount }
-    : { type: 'disrupt' as const, group: primaryGroup, amount: primaryAmount };
+  );
+  const budgetBasis = options.experiments?.doubleActionBudgetBasis ?? 'public';
+  const budgetFloorStartingMoney =
+    budgetBasis === 'character'
+      ? (player.characterFloorStartingMoney ?? floorMoney)
+      : floorMoney;
+  const totalActualCostCap = roundMoney(
+    Math.min(
+      player.money * doubleActionNominalMoneyRatio,
+      options.survivalPlan?.maximumActualCost ??
+        budgetFloorStartingMoney * doubleActionFloorActualCostRatio,
+    ),
+  );
+  const primaryAction =
+    mode === 'bid'
+      ? { type: 'bid' as const, group: primaryGroup, amount: primaryAmount }
+      : {
+          type: 'disrupt' as const,
+          group: primaryGroup,
+          amount: primaryAmount,
+        };
   const primaryAmounts = getRuntimeActionAmounts(player, primaryAction, rules);
-  const remainingActualCostBudget = Math.max(0, totalActualCostCap - primaryAmounts.actualCost);
-  const secondaryActualCostRatio = mode === 'bid' ? 0.7 ** countItem(player, 'steam_sale') : 1;
-  const maximumByActualCost = Math.floor(remainingActualCostBudget / secondaryActualCostRatio);
-  const maximumByReserve = Math.max(0, conservativeRemainingMoney - nextRoomReserve);
+  const remainingActualCostBudget = Math.max(
+    0,
+    totalActualCostCap - primaryAmounts.actualCost,
+  );
+  const secondaryActualCostRatio =
+    mode === 'bid' ? 0.7 ** countItem(player, 'steam_sale') : 1;
+  const maximumByActualCost = Math.floor(
+    remainingActualCostBudget / secondaryActualCostRatio,
+  );
+  const maximumByReserve = Math.max(
+    0,
+    conservativeRemainingMoney - nextRoomReserve,
+  );
   const maximumByNominalCap = Math.max(0, totalNominalCap - primaryAmount);
-  const rulesMaximum = mode === 'bid'
-    ? Math.floor(player.money * 0.5) - primaryAmount
-    : Math.floor(player.money * rules.disruptionMaxMoneyRatio);
-  const legalSecondaryMaximum = Math.max(0, Math.min(
-    conservativeRemainingMoney,
-    maximumByReserve,
-    maximumByNominalCap,
-    maximumByActualCost,
-    rulesMaximum,
-  ));
+  const rulesMaximum =
+    mode === 'bid'
+      ? Math.floor(player.money * 0.5) - primaryAmount
+      : Math.floor(player.money * rules.disruptionMaxMoneyRatio);
+  const legalSecondaryMaximum = Math.max(
+    0,
+    Math.min(
+      conservativeRemainingMoney,
+      maximumByReserve,
+      maximumByNominalCap,
+      maximumByActualCost,
+      rulesMaximum,
+    ),
+  );
   if (legalSecondaryMaximum <= 0) {
     return {
       considered: true,
@@ -289,9 +357,10 @@ function considerSecondaryAction(
     };
   }
 
-  const strategies: readonly Exclude<AiStrategy, 'withdraw'>[] = mode === 'bid'
-    ? ['high_bid', 'cooperate']
-    : ['disrupt_high', 'disrupt_cooperate'];
+  const strategies: readonly Exclude<AiStrategy, 'withdraw'>[] =
+    mode === 'bid'
+      ? ['high_bid', 'cooperate']
+      : ['disrupt_high', 'disrupt_cooperate'];
   const doctrineWeights = aiDoctrineWeights[options.doctrine ?? 'balanced'];
   const allowedStrategies = strategies.filter(
     (strategy) => doctrineWeights[strategy] > 0 && finalWeights[strategy] > 0,
@@ -305,107 +374,188 @@ function considerSecondaryAction(
   const estimatedParticipants = Math.max(
     1,
     Math.round(
-      (options.context?.recentMarkets.at(-1)?.participationRate ?? 0.8) * rules.playerCount,
+      (options.context?.recentMarkets.at(-1)?.participationRate ?? 0.8) *
+        rules.playerCount,
     ),
   );
   const predictedMean = Math.max(
     0,
-    (primaryQuote.prediction.predictedTarget - floorMoney * rules.targetConstantRatio) /
+    (primaryQuote.prediction.predictedTarget -
+      floorMoney * rules.targetConstantRatio) /
       rules.baselineMeanMultiplier,
   );
-  const groupValue = clamp(analysis?.groupValues[remainingGroup] ?? 0.5, 0, 1.25);
+  const groupValue = clamp(
+    analysis?.groupValues[remainingGroup] ?? 0.5,
+    0,
+    1.25,
+  );
 
-  const candidateBundles = allowedStrategies.map((strategy) => {
-    const rawQuote = analyzeAiQuote({
-      player,
-      strategy,
-      group: remainingGroup,
-      floorIndex,
-      remainingRooms,
-      liquidityRatio,
-      rules,
-      random,
-      analysis,
-      context: options.context,
-      profile: options.quoteProfile,
-      cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
-      randomNoiseRatio: quoteNoiseRatio(options),
-      forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
-    });
-    const amount = Math.min(rawQuote.amount, legalSecondaryMaximum);
-    const action = mode === 'bid'
-      ? { type: 'bid' as const, group: remainingGroup, amount }
-      : { type: 'disrupt' as const, group: remainingGroup, amount };
-    const amounts = getRuntimeActionAmounts(player, action, rules);
-    const predictedDoubleMean = (
-      predictedMean * estimatedParticipants +
-      (primaryAmounts.marketEquivalent ?? 0) +
-      (amounts.marketEquivalent ?? 0)
-    ) / (estimatedParticipants + 2);
-    const predictedTarget = rules.baselineMeanMultiplier * predictedDoubleMean +
-      floorMoney * rules.targetConstantRatio;
-    const firstDoubleScore = predictedBaseScore(
-      primaryAmounts.scoringEquivalent ?? 0,
-      predictedTarget,
-      sigma,
-    );
-    const secondScore = predictedBaseScore(amounts.scoringEquivalent ?? 0, predictedTarget, sigma);
-    const expectedScoreDelta = getRoomScoreMultiplier(
-      options.context?.room.kind,
-      rules.roomScoreMultipliers,
-    ) * (
-      getDoubleActionScoreMultiplier(player) * (firstDoubleScore + secondScore) - primarySingleScore
-    );
-    const highProbability = 1 / (
-      1 + Math.exp(-((amounts.marketEquivalent ?? 0) - rawQuote.prediction.predictedHighPriceQualificationEquivalent) / sigma)
-    );
-    const cooperationProbability = 0.5 * Math.exp(
-      -Math.abs((amounts.scoringEquivalent ?? 0) - predictedTarget) / sigma,
-    );
-    const qualificationProbability = strategy === 'high_bid' || strategy === 'disrupt_high'
-      ? highProbability
-      : cooperationProbability;
-    const canRedeem = mode === 'bid' || hasItem(player, 'transcendence');
-    const expectedItemUtility = groupValue * 85 * qualificationProbability *
-      (mode === 'disrupt' ? (canRedeem ? 0.5 : 0) : 1);
-    const expectedSabotageUtility = strategy === 'disrupt_high'
-      ? clamp(
-          (amounts.marketEquivalent ?? 0) /
-            Math.max(rawQuote.prediction.predictedHighestMarketEquivalent, 1),
-          0,
-          1.5,
-        ) * 35
-      : 0;
-    const reservePressure = 1 + Math.max(0, 1 - liquidityRatio) * 0.8 + Math.max(0, remainingRooms - 1) * 0.04;
-    const costPenalty = (amount / floorMoney) * 45 * reservePressure;
-    const expectedUtility = expectedScoreDelta + expectedItemUtility + expectedSabotageUtility - costPenalty;
-    const strategyShare = finalWeights[strategy] /
-      Math.max(1, allowedStrategies.reduce((sum, value) => sum + finalWeights[value], 0));
-    const weight = Math.exp(clamp(expectedUtility / 28, -4, 4)) * (0.45 + strategyShare * 2.2);
-    const selectedQuote: AiQuoteAnalysis = {
-      ...rawQuote,
-      amount,
-      legalMaximum: Math.min(rawQuote.legalMaximum, legalSecondaryMaximum),
-      expectedActualCost: amounts.actualCost,
-      wasClamped: rawQuote.wasClamped || amount < rawQuote.amount,
-    };
-    return {
-      quote: selectedQuote,
-      analysis: {
+  const candidateBundles = allowedStrategies
+    .map((strategy) => {
+      const rawQuote = analyzeAiQuote({
+        player,
         strategy,
-        amount,
+        group: remainingGroup,
+        floorIndex,
+        remainingRooms,
+        liquidityRatio,
+        rules,
+        random,
+        analysis,
+        context: options.context,
+        profile: options.quoteProfile,
+        cooperationPositionOverride: personalityCooperationPosition(
+          options.personalities ?? [],
+        ),
+        randomNoiseRatio: quoteNoiseRatio(options),
+        forceLegalMaximum: personalityForcesMaximumQuote(
+          options.personalities ?? [],
+          floorIndex,
+        ),
+        survivalPlan: options.survivalPlan,
+        survivalExecutionFactor: options.survivalExecutionFactor,
+      });
+      const amount = Math.min(rawQuote.amount, legalSecondaryMaximum);
+      const action =
+        mode === 'bid'
+          ? { type: 'bid' as const, group: remainingGroup, amount }
+          : { type: 'disrupt' as const, group: remainingGroup, amount };
+      const amounts = getRuntimeActionAmounts(player, action, rules);
+      const predictedDoubleMean =
+        (predictedMean * estimatedParticipants +
+          (primaryAmounts.marketEquivalent ?? 0) +
+          (amounts.marketEquivalent ?? 0)) /
+        (estimatedParticipants + 2);
+      const predictedTarget =
+        rules.baselineMeanMultiplier * predictedDoubleMean +
+        floorMoney * rules.targetConstantRatio;
+      const firstDoubleScore = predictedBaseScore(
+        primaryAmounts.scoringEquivalent ?? 0,
         predictedTarget,
-        expectedScoreDelta,
-        expectedItemUtility,
-        expectedSabotageUtility,
-        expectedUtility,
-        weight,
-      } satisfies AiSecondaryCandidateAnalysis,
-    };
-  }).filter((candidate) => candidate.analysis.amount > 0);
+        sigma,
+      );
+      const secondScore = predictedBaseScore(
+        amounts.scoringEquivalent ?? 0,
+        predictedTarget,
+        sigma,
+      );
+      const expectedScoreDelta = options.survivalPlan
+        ? estimateSurvivalTurnScore(
+            player,
+            [primaryAction, action],
+            predictedTarget,
+            rawQuote.prediction.predictedHighestMarketEquivalent,
+            floorMoney,
+            options.context!.room.kind,
+            rules,
+          ) -
+          estimateSurvivalTurnScore(
+            player,
+            [primaryAction],
+            primaryQuote.prediction.predictedTarget,
+            primaryQuote.prediction.predictedHighestMarketEquivalent,
+            floorMoney,
+            options.context!.room.kind,
+            rules,
+          )
+        : getRoomScoreMultiplier(
+            options.context?.room.kind,
+            rules.roomScoreMultipliers,
+          ) *
+          (getDoubleActionScoreMultiplier(player) *
+            (firstDoubleScore + secondScore) -
+            primarySingleScore);
+      const highProbability =
+        1 /
+        (1 +
+          Math.exp(
+            -(
+              (amounts.marketEquivalent ?? 0) -
+              rawQuote.prediction.predictedHighPriceQualificationEquivalent
+            ) / sigma,
+          ));
+      const cooperationProbability =
+        0.5 *
+        Math.exp(
+          -Math.abs((amounts.scoringEquivalent ?? 0) - predictedTarget) / sigma,
+        );
+      const qualificationProbability =
+        strategy === 'high_bid' || strategy === 'disrupt_high'
+          ? highProbability
+          : cooperationProbability;
+      const canRedeem = mode === 'bid' || hasItem(player, 'transcendence');
+      const expectedItemUtility =
+        groupValue *
+        85 *
+        qualificationProbability *
+        (mode === 'disrupt' ? (canRedeem ? 0.5 : 0) : 1);
+      const expectedSabotageUtility =
+        strategy === 'disrupt_high'
+          ? clamp(
+              (amounts.marketEquivalent ?? 0) /
+                Math.max(
+                  rawQuote.prediction.predictedHighestMarketEquivalent,
+                  1,
+                ),
+              0,
+              1.5,
+            ) * 35
+          : 0;
+      const reservePressure =
+        1 +
+        Math.max(0, 1 - liquidityRatio) * 0.8 +
+        Math.max(0, remainingRooms - 1) * 0.04;
+      const costPenalty = (amount / floorMoney) * 45 * reservePressure;
+      const expectedUtility =
+        expectedScoreDelta +
+        expectedItemUtility +
+        expectedSabotageUtility -
+        costPenalty -
+        (options.survivalPlan
+          ? amounts.actualCost * options.survivalPlan.moneyExchangeRatio
+          : 0);
+      const strategyShare =
+        finalWeights[strategy] /
+        Math.max(
+          1,
+          allowedStrategies.reduce(
+            (sum, value) => sum + finalWeights[value],
+            0,
+          ),
+        );
+      const weight =
+        Math.exp(clamp(expectedUtility / 28, -4, 4)) *
+        (0.45 + strategyShare * 2.2);
+      const selectedQuote: AiQuoteAnalysis = {
+        ...rawQuote,
+        amount,
+        legalMaximum: Math.min(rawQuote.legalMaximum, legalSecondaryMaximum),
+        expectedActualCost: amounts.actualCost,
+        wasClamped: rawQuote.wasClamped || amount < rawQuote.amount,
+      };
+      return {
+        quote: selectedQuote,
+        analysis: {
+          strategy,
+          amount,
+          predictedTarget,
+          expectedScoreDelta,
+          expectedItemUtility,
+          expectedSabotageUtility,
+          expectedUtility,
+          weight,
+        } satisfies AiSecondaryCandidateAnalysis,
+      };
+    })
+    .filter((candidate) => candidate.analysis.amount > 0);
 
   const stopWeight = doubleActionStopWeight * (0.9 + random.next() * 0.2);
-  const totalWeight = stopWeight + candidateBundles.reduce((sum, candidate) => sum + candidate.analysis.weight, 0);
+  const totalWeight =
+    stopWeight +
+    candidateBundles.reduce(
+      (sum, candidate) => sum + candidate.analysis.weight,
+      0,
+    );
   let cursor = random.next() * totalWeight;
   if ((cursor -= stopWeight) < 0 || candidateBundles.length === 0) {
     return {
@@ -424,10 +574,11 @@ function considerSecondaryAction(
       candidates: candidateBundles.map((candidate) => candidate.analysis),
     };
   }
-  const selected = candidateBundles.find((candidate) => {
-    cursor -= candidate.analysis.weight;
-    return cursor < 0;
-  }) ?? candidateBundles[candidateBundles.length - 1]!;
+  const selected =
+    candidateBundles.find((candidate) => {
+      cursor -= candidate.analysis.weight;
+      return cursor < 0;
+    }) ?? candidateBundles[candidateBundles.length - 1]!;
   return {
     considered: true,
     mode,
@@ -453,15 +604,22 @@ export function decideAiTurn(
   options: AiDecisionOptions = {},
 ): AiDecision {
   const floorMoney = rules.floorStartingMoney[floorIndex];
-  if (floorMoney === undefined) throw new RangeError(`Unknown floor index: ${floorIndex}`);
+  if (floorMoney === undefined)
+    throw new RangeError(`Unknown floor index: ${floorIndex}`);
   const remainingRooms = Math.max(1, Math.floor(options.remainingRooms ?? 5));
   const expectedPaceMoney = (floorMoney * remainingRooms) / 5;
-  const liquidityRatio = expectedPaceMoney > 0 ? player.money / expectedPaceMoney : 0;
+  const liquidityRatio =
+    expectedPaceMoney > 0 ? player.money / expectedPaceMoney : 0;
   const roomBudget = player.money / remainingRooms;
-  const liquidityMultipliers = liquidityStrategyMultipliers[getAiLiquidityBand(liquidityRatio)];
+  const liquidityMultipliers =
+    liquidityStrategyMultipliers[getAiLiquidityBand(liquidityRatio)];
   const doctrineWeights = aiDoctrineWeights[options.doctrine ?? 'balanced'];
-  const analysis = options.context ? analyzeAiDecision(player, options.context) : null;
-  const analysisInfluence = personalityAnalysisInfluence(options.personalities ?? []);
+  const analysis = options.context
+    ? analyzeAiDecision(player, options.context)
+    : null;
+  const analysisInfluence = personalityAnalysisInfluence(
+    options.personalities ?? [],
+  );
   const personalityMultipliers = calculatePersonalityMultipliers(
     options.personalities ?? [],
     options.context,
@@ -471,14 +629,20 @@ export function decideAiTurn(
 
   let finalWeights = Object.fromEntries(
     strategyOrder.map((strategy) => {
-      const modifier = Math.max(0, options.strategyMultipliers?.[strategy] ?? 1);
-      const rawSituationModifier = options.enableSituationAnalysis === false
-        ? 1
-        : analysis?.situationMultipliers[strategy] ?? 1;
-      const rawItemModifier = options.enableItemAnalysis === false
-        ? 1
-        : analysis?.itemMultipliers[strategy] ?? 1;
-      const situationModifier = rawSituationModifier ** analysisInfluence.situation;
+      const modifier = Math.max(
+        0,
+        options.strategyMultipliers?.[strategy] ?? 1,
+      );
+      const rawSituationModifier =
+        options.enableSituationAnalysis === false
+          ? 1
+          : (analysis?.situationMultipliers[strategy] ?? 1);
+      const rawItemModifier =
+        options.enableItemAnalysis === false
+          ? 1
+          : (analysis?.itemMultipliers[strategy] ?? 1);
+      const situationModifier =
+        rawSituationModifier ** analysisInfluence.situation;
       const itemModifier = rawItemModifier ** analysisInfluence.items;
       const decisionNoise = 0.9 + random.next() * 0.2;
       return [
@@ -503,11 +667,16 @@ export function decideAiTurn(
     rules.roomScoreMultipliers,
   );
   for (const strategy of strategyOrder) {
-    if (strategy !== 'withdraw') finalWeights[strategy] *= roomParticipationMultiplier;
+    if (strategy !== 'withdraw')
+      finalWeights[strategy] *= roomParticipationMultiplier;
   }
 
-  if (player.money <= 0) finalWeights.withdraw = Math.max(finalWeights.withdraw, 1);
-  const strategy = player.money <= 0 ? 'withdraw' : weightedPick(strategyOrder, finalWeights, random);
+  if (player.money <= 0)
+    finalWeights.withdraw = Math.max(finalWeights.withdraw, 1);
+  const strategy =
+    player.money <= 0
+      ? 'withdraw'
+      : weightedPick(strategyOrder, finalWeights, random);
   if (strategy === 'withdraw') {
     return {
       strategy,
@@ -523,12 +692,13 @@ export function decideAiTurn(
     };
   }
 
-  const groupWeights = analysis && options.enableItemAnalysis !== false
-    ? {
-        A: analysis.groupWeights.A * (options.groupWeights?.A ?? 1),
-        B: analysis.groupWeights.B * (options.groupWeights?.B ?? 1),
-      }
-    : options.groupWeights;
+  const groupWeights =
+    analysis && options.enableItemAnalysis !== false
+      ? {
+          A: analysis.groupWeights.A * (options.groupWeights?.A ?? 1),
+          B: analysis.groupWeights.B * (options.groupWeights?.B ?? 1),
+        }
+      : options.groupWeights;
   const personalityGroupMultipliers = calculatePersonalityGroupMultipliers(
     options.personalities ?? [],
     options.context,
@@ -549,9 +719,16 @@ export function decideAiTurn(
     analysis,
     context: options.context,
     profile: options.quoteProfile,
-    cooperationPositionOverride: personalityCooperationPosition(options.personalities ?? []),
+    cooperationPositionOverride: personalityCooperationPosition(
+      options.personalities ?? [],
+    ),
     randomNoiseRatio: quoteNoiseRatio(options),
-    forceLegalMaximum: personalityForcesMaximumQuote(options.personalities ?? [], floorIndex),
+    forceLegalMaximum: personalityForcesMaximumQuote(
+      options.personalities ?? [],
+      floorIndex,
+    ),
+    survivalPlan: options.survivalPlan,
+    survivalExecutionFactor: options.survivalExecutionFactor,
   });
   const { baseQuote, randomFactor: quoteFactor, amount } = quoteAnalysis;
 
@@ -571,36 +748,42 @@ export function decideAiTurn(
   }
 
   const primaryStrategy = strategy as Exclude<AiStrategy, 'withdraw'>;
-  const secondaryActionAnalysis = options.enableDoubleActions === false ? undefined : considerSecondaryAction(
-    player,
-    primaryStrategy,
-    group,
-    quoteAnalysis,
-    floorIndex,
-    remainingRooms,
-    liquidityRatio,
-    rules,
-    options.quoteRandom ?? random,
-    options,
-    analysis,
-    finalWeights,
-  );
-  const primaryAction = strategy === 'disrupt_high' || strategy === 'disrupt_cooperate'
-    ? { type: 'disrupt' as const, group, amount }
-    : { type: 'bid' as const, group, amount };
-  const secondaryAction = secondaryActionAnalysis?.selectedQuote && secondaryActionAnalysis.selectedStrategy
-    ? secondaryActionAnalysis.mode === 'bid'
-      ? {
-          type: 'bid' as const,
-          group: secondaryActionAnalysis.remainingGroup,
-          amount: secondaryActionAnalysis.selectedQuote.amount,
-        }
-      : {
-          type: 'disrupt' as const,
-          group: secondaryActionAnalysis.remainingGroup,
-          amount: secondaryActionAnalysis.selectedQuote.amount,
-        }
-    : null;
+  const secondaryActionAnalysis =
+    options.enableDoubleActions === false
+      ? undefined
+      : considerSecondaryAction(
+          player,
+          primaryStrategy,
+          group,
+          quoteAnalysis,
+          floorIndex,
+          remainingRooms,
+          liquidityRatio,
+          rules,
+          options.quoteRandom ?? random,
+          options,
+          analysis,
+          finalWeights,
+        );
+  const primaryAction =
+    strategy === 'disrupt_high' || strategy === 'disrupt_cooperate'
+      ? { type: 'disrupt' as const, group, amount }
+      : { type: 'bid' as const, group, amount };
+  const secondaryAction =
+    secondaryActionAnalysis?.selectedQuote &&
+    secondaryActionAnalysis.selectedStrategy
+      ? secondaryActionAnalysis.mode === 'bid'
+        ? {
+            type: 'bid' as const,
+            group: secondaryActionAnalysis.remainingGroup,
+            amount: secondaryActionAnalysis.selectedQuote.amount,
+          }
+        : {
+            type: 'disrupt' as const,
+            group: secondaryActionAnalysis.remainingGroup,
+            amount: secondaryActionAnalysis.selectedQuote.amount,
+          }
+      : null;
 
   return {
     strategy,
@@ -615,7 +798,9 @@ export function decideAiTurn(
     secondaryActionAnalysis,
     turn: {
       playerId: player.id,
-      actions: secondaryAction ? [primaryAction, secondaryAction] : [primaryAction],
+      actions: secondaryAction
+        ? [primaryAction, secondaryAction]
+        : [primaryAction],
     },
   };
 }

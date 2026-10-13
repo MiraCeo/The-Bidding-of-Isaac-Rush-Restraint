@@ -43,6 +43,9 @@ export function ReplayScoreTimeline({
   onFocusPlayer,
   onInspectAt,
   onReferenceRoom,
+  timelineModel,
+  referenceRanking,
+  footnote,
 }: {
   log: ReplayLog;
   roomIndex: number;
@@ -52,6 +55,9 @@ export function ReplayScoreTimeline({
   onFocusPlayer: (id: string) => void;
   onInspectAt: (id: string, index: number) => void;
   onReferenceRoom?: (index: number) => void;
+  timelineModel?: ReturnType<typeof replayAllPlayerTimeline>;
+  referenceRanking?: Array<{ playerId: string; value: number; rank: number }>;
+  footnote?: string;
 }) {
   const id = useId();
   const svg = useRef<SVGSVGElement>(null);
@@ -112,11 +118,16 @@ export function ReplayScoreTimeline({
     chart.addEventListener('wheel', wheel, { passive: false });
     return () => chart.removeEventListener('wheel', wheel);
   }, [total]);
-  const model = useMemo(() => replayAllPlayerTimeline(log), [log]);
+  const model = useMemo(
+    () => timelineModel ?? replayAllPlayerTimeline(log),
+    [log, timelineModel],
+  );
   const record = log.rooms[roomIndex];
   const ranking = useMemo(
-    () => (record ? replayFieldComparison(record, 'score').points : []),
-    [record],
+    () =>
+      referenceRanking ??
+      (record ? replayFieldComparison(record, 'score').points : []),
+    [record, referenceRanking],
   );
   if (!record) return null;
   const visible = (pid: string) =>
@@ -604,7 +615,8 @@ export function ReplayScoreTimeline({
         </aside>
       </div>
       <p className="replay-muted">
-        各真实结算点直线相连，连线不代表房间之间有额外结算。滚轮缩放、拖动左右平移，Shift＋滚轮平移；按钮和起止滑杆同样可用。纵轴按可见曲线自动适配。点击关注线上的房间点进入复盘，累计积分不含终局王冠倍率。
+        {footnote ??
+          '各真实结算点直线相连，连线不代表房间之间有额外结算。滚轮缩放、拖动左右平移，Shift＋滚轮平移；按钮和起止滑杆同样可用。纵轴按可见曲线自动适配。点击关注线上的房间点进入复盘，累计积分不含终局王冠倍率。'}
       </p>
     </section>
   );

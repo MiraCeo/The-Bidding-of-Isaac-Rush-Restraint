@@ -1,4 +1,8 @@
 import type { CharacterId } from '../game/item-types';
+import {
+  isSurvivalDifficulty,
+  type SurvivalDifficulty,
+} from '../game/survival-difficulty';
 import { canonicalJson, type ReplayLog } from './replay-record';
 
 export const playerProfileKey = 'bidding-player-profile-v1';
@@ -34,6 +38,10 @@ export interface PlayerProfile {
     completedAt: string;
     finalScore: number;
     rank: number;
+    mode?: 'classic' | 'survival';
+    aiDifficulty?: SurvivalDifficulty;
+    status?: 'survived' | 'eliminated';
+    eliminationFloorIndex?: number | null;
   }>;
 }
 export function createPlayerProfile(now = new Date()): PlayerProfile {
@@ -105,6 +113,29 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
   for (const v of p.history) {
     const h = object(v);
     date(h.completedAt);
+    if (
+      h.aiDifficulty !== undefined &&
+      (h.mode !== 'survival' || !isSurvivalDifficulty(h.aiDifficulty))
+    )
+      fail();
+    if (h.mode !== undefined && h.mode !== 'classic' && h.mode !== 'survival')
+      fail();
+    if (
+      h.mode === 'survival' &&
+      h.status !== 'survived' &&
+      h.status !== 'eliminated'
+    )
+      fail();
+    if (
+      h.mode === 'survival' &&
+      (h.status === 'survived'
+        ? h.eliminationFloorIndex !== null
+        : typeof h.eliminationFloorIndex !== 'number' ||
+          !Number.isInteger(h.eliminationFloorIndex) ||
+          h.eliminationFloorIndex < 0 ||
+          h.eliminationFloorIndex > 6)
+    )
+      fail();
     if (
       typeof h.key !== 'string' ||
       h.key.length > 240 ||

@@ -14,6 +14,9 @@ import {
 } from '@/lib/game';
 
 interface RoomResultProps {
+  rules?: import('@/lib/game/types').RulesConfig;
+  advanceLabel?: string;
+  finalRoom?: boolean;
   embedded?: boolean;
   game: ActiveClientGameState;
   onShowRanking: (view: ClientRankingView) => void;
@@ -35,6 +38,9 @@ function actionLabel(action: PlayerAction): string {
 }
 
 export function RoomResult({
+  rules = defaultRules,
+  advanceLabel,
+  finalRoom,
   game,
   onShowRanking,
   onAdvance,
@@ -69,11 +75,12 @@ export function RoomResult({
   const humanAwards = settlement.awards.filter(
     (award) => award.playerId === game.humanPlayerId,
   );
-  const floorMoney = defaultRules.floorStartingMoney[game.floorIndex]!;
-  const cooperationRadius = floorMoney * defaultRules.cooperationZoneRatio;
+  const floorMoney = rules.floorStartingMoney[game.floorIndex]!;
+  const cooperationRadius = floorMoney * rules.cooperationZoneRatio;
   const isFinalRoom =
-    game.floorIndex === game.rooms.length - 1 &&
-    game.roomIndex === game.rooms[game.floorIndex]!.length - 1;
+    finalRoom ??
+    (game.floorIndex === game.rooms.length - 1 &&
+      game.roomIndex === game.rooms[game.floorIndex]!.length - 1);
 
   return (
     <Container className="result-page">
@@ -354,7 +361,7 @@ export function RoomResult({
               争夺榜
             </Button>
             <Button type="button" size="lg" onClick={onAdvance}>
-              {isFinalRoom ? '最终排行' : '进入下一房间'}
+              {advanceLabel ?? (isFinalRoom ? '最终排行' : '进入下一房间')}
               <ArrowRight aria-hidden="true" />
             </Button>
           </div>

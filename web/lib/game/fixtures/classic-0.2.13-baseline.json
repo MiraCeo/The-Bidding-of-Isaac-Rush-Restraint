@@ -1,0 +1,2619 @@
+{
+  "capturedBefore": "0.3 step two",
+  "classicFunctionalCommit": "8ea001f40d6476c7e75e9bf99a5c538e79f447e4",
+  "sourceHead": "a688ca3",
+  "compatibility": "20-personality-client-1-818e3e55",
+  "hash": "sha256-json-normalized-canonical-state",
+  "matches": [
+    {
+      "characterId": "isaac",
+      "seed": 42,
+      "selectionHash": "76e5b808b93a7c2483797a7bbe600f4f1ff76b4602d45b8d6dfd57ff84a5d511",
+      "startHash": "eaab99e7249f22f9727ad2b70f8e40b52b19decb5b0b4145cb0e5aa1777f660a",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 22
+              }
+            ]
+          },
+          "entryHash": "eaab99e7249f22f9727ad2b70f8e40b52b19decb5b0b4145cb0e5aa1777f660a",
+          "resultHash": "78b18e081af54b0b5ff5e1dd70a3f1d0908de441b0f5e7bbff465d283dc9f81e",
+          "rankingHash": "b58db08f6de54612b74ce5a57f828832871498a2fabb6c52380940131d991474",
+          "contestHash": "f15e5d7f4e596b679d8407555411e61af08ca1aa7bcb9f0038ee4b565802dbfd",
+          "advancedHash": "a86674d32b682b6c64f3e127433867f5c3d7c961fbfa75a0a8cd0e7362a62758"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 17
+              }
+            ]
+          },
+          "entryHash": "a86674d32b682b6c64f3e127433867f5c3d7c961fbfa75a0a8cd0e7362a62758",
+          "resultHash": "a71e5484aa765aca75c0cacbc6315cde43117c52a77f3010d29ec160f902e884",
+          "rankingHash": "aca1e5eb876da116e43918683fef37a3af6ad813f49aa23451553f7d174d5a77",
+          "contestHash": "fed583790e26ec1385bd5abd2ed78984c2ac5ccd18fc398622a52d46af671f54",
+          "advancedHash": "1265c6325cb5e00930ec476e052842becf7ee7f13fa5683e7cc4b0ec29d39ac7"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 14
+              }
+            ]
+          },
+          "entryHash": "1265c6325cb5e00930ec476e052842becf7ee7f13fa5683e7cc4b0ec29d39ac7",
+          "resultHash": "e56824a00415ca302a906e048d3d411546a8a3d9800507a6fec5f176cb91cb9b",
+          "rankingHash": "f44cc838a6d30eee3dbc5649c92fbdedb432a9f42401a5079b730a3a703df5bb",
+          "contestHash": "1cae1d506fc6bb25970ea8a63d2d6bdbf48b218e3ed6365e6d67ff21d2317396",
+          "advancedHash": "bdba346142c9f8fb9381f3b718ca101bce19197001911b235dc696b3853862c7"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "bdba346142c9f8fb9381f3b718ca101bce19197001911b235dc696b3853862c7",
+          "resultHash": "b3b5a4a8905528d2ce4a0f9aee68c7ce6b44b6a19260a3d40a5f7008cc907d00",
+          "rankingHash": "38b8b0d03338f8d5c2a99fa3c5159c8e07eda6563de96ec9259165be0f58c751",
+          "contestHash": "58675b8e19079d3dde19b093f04e960631fdb634739f81050c4e2f63a3aaaeed",
+          "advancedHash": "178a4d3a7c750ad2b8fb965b382631387926aa59444a253103bfb769ae35b0aa"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "178a4d3a7c750ad2b8fb965b382631387926aa59444a253103bfb769ae35b0aa",
+          "resultHash": "7dc515369774f85a4e2c802ef71647c0e021bdd1f3f4306ce859daceee7c363d",
+          "rankingHash": "85cf556ba64c8f24ffdfbf1bb30c696046bcd623fa01e04f8956e8e64447ee23",
+          "contestHash": "72a8f91d2e2bc16ffc9daf974029037c0b16dabd494b59b3f73d27b11081789c",
+          "advancedHash": "f07455ab51896aba12f1626de8a77bba1c87a839d8667ec57eb22af7489390c2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 110
+              }
+            ]
+          },
+          "entryHash": "f07455ab51896aba12f1626de8a77bba1c87a839d8667ec57eb22af7489390c2",
+          "resultHash": "52098f49405a9898713dab542fc1e4c77f35d150975f84971017fcde43627807",
+          "rankingHash": "3aa4e860482d77a9dc0aed4a361257d443fbda1cae7397f3062400573d437821",
+          "contestHash": "942c82dc13075d356b58c705687d8ac0701db5e0f518f3d50998b3d35f711475",
+          "advancedHash": "d4a202967a30538d7b560861dfe598d0cb779badca3fda2e43c47adaed865e67"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 88
+              }
+            ]
+          },
+          "entryHash": "d4a202967a30538d7b560861dfe598d0cb779badca3fda2e43c47adaed865e67",
+          "resultHash": "a451942caa61ad03ca4eb78b2d4f6993a5de14c2c9da22e5422187c3dfb301af",
+          "rankingHash": "1ec28e9d9df73fb119e301ccff33d9f75394de3cade660ef1e5a447a4b684dd7",
+          "contestHash": "d50d3d09c4dd612cc13e61cb72690673a1e190a584f1c94928817af829f8bd19",
+          "advancedHash": "a28f92d05d38c302cea1ccd41afbe7753fb3a6dc713d48ceda64d8119a36f4af"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 70
+              }
+            ]
+          },
+          "entryHash": "a28f92d05d38c302cea1ccd41afbe7753fb3a6dc713d48ceda64d8119a36f4af",
+          "resultHash": "d59adada8d066bf55c42c771c625b2b296602f606fc5c4ece43525c2bd74750b",
+          "rankingHash": "897d8fbab6aacaabd94bb66e972f181880fec8b8a2f43c831ff12601366cda16",
+          "contestHash": "5d99164441a5131c74d201c47e94e926382d86230331c70537bdc0cf78a9cef1",
+          "advancedHash": "14885d5547c4dab638b573b1085214653b2c6d8f9c28bf90f81a20df36aaf527"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "14885d5547c4dab638b573b1085214653b2c6d8f9c28bf90f81a20df36aaf527",
+          "resultHash": "ddac18d9ac05295f766c3ffa006b9fb58a3cff7a50262728840091f694ac1a4a",
+          "rankingHash": "aa682152392ceb691d1e8325fd80dd755d819b4b46373cad655b84e1dd306c97",
+          "contestHash": "11332aec5e4aeb319241f80053ef45898e9b0e7b534b1ea80bdbd41f7282248c",
+          "advancedHash": "c8875ec781e0c225aff375c0a87ef5d241e2ddc599435dd9b62b1b29abda8aaa"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 93
+              }
+            ]
+          },
+          "entryHash": "c8875ec781e0c225aff375c0a87ef5d241e2ddc599435dd9b62b1b29abda8aaa",
+          "resultHash": "4aba7905aea177755ea094c690b96b6544ceb2e48fda6671c9c139d749720c65",
+          "rankingHash": "4051509e932dbc5dec0d1d2498dfa8bf1dd15366465639f9be7a92d8d9a0dff4",
+          "contestHash": "f510eaf5d7f8a2caeabeba80df6683ad8fdd4f83f8eebd4a1c5604c6563b57ad",
+          "advancedHash": "c1d9ef5c05dabf0823813ec58d7164afa7c1ee248362de272c6ffeb4163d8341"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 220
+              }
+            ]
+          },
+          "entryHash": "c1d9ef5c05dabf0823813ec58d7164afa7c1ee248362de272c6ffeb4163d8341",
+          "resultHash": "86f22036b6e4751a27f510317ae8da3331ad5c7a4329db99fe383c68efc7e5bf",
+          "rankingHash": "792024cfe1b7de869ce276c7029a997f17da5e4f9b48ce935d19cce546eb5e83",
+          "contestHash": "e5c4b7d6574cfa053e8a659f5c1a3e257a574b9709aac8c0c4f2225e3301b48d",
+          "advancedHash": "84ad328086ff76b881021bb22211f48900a59c73feafc4ed13317894fdc9933b"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 176
+              }
+            ]
+          },
+          "entryHash": "84ad328086ff76b881021bb22211f48900a59c73feafc4ed13317894fdc9933b",
+          "resultHash": "ed33494dbf35edfa52aba1c297f556b0f54107af16fbbb75d592e7e0c9d1086d",
+          "rankingHash": "463478c22e7673a077368fbd15a5963246e11413910e50d6df8a8ffd299b1932",
+          "contestHash": "300869d882472dbb5d7c9c28a06dfcc8b56aec18c82947148756fe2d45709a41",
+          "advancedHash": "ace6a59e73314e3ebd4052f6af29f21654e3dc430c311a8c47a9d653fd281b6c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 140
+              }
+            ]
+          },
+          "entryHash": "ace6a59e73314e3ebd4052f6af29f21654e3dc430c311a8c47a9d653fd281b6c",
+          "resultHash": "df201ff061a2d50c30d3f0dafcd2c62844ed54b4882fe1d24a4b8f6aedd73941",
+          "rankingHash": "0e0cc1588fe93e82b35654ca711eaea04f647b430f1d3bca919f4c651bcead5d",
+          "contestHash": "669dbb188a1c42f3e2667a689530993ee34d8a8edca52af64adb1ac3050afdda",
+          "advancedHash": "92f3fb2f2bd4dca507876c46706db8c51a9683fc3941278d767371a1539eec2a"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "92f3fb2f2bd4dca507876c46706db8c51a9683fc3941278d767371a1539eec2a",
+          "resultHash": "617eb369f52f47099558a6144e68ece2562985e70b41fc4d2244bb1b174f3a9c",
+          "rankingHash": "f9f396c93cc302b1264d1282272bda380b8007573f7f23528412b05c5a97c044",
+          "contestHash": "71e70190597e2a1cd2210a33a01b405b59877f575a0c77308ba7e189f35bb6a2",
+          "advancedHash": "9077f3e3c474104d0c269f4f0590225912bce91dd644179057200a64838a1ebb"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 187
+              }
+            ]
+          },
+          "entryHash": "9077f3e3c474104d0c269f4f0590225912bce91dd644179057200a64838a1ebb",
+          "resultHash": "1429c3fb0fde4eb89bd93218ee1b241e33af3e122d9734d00739b9550262ef5d",
+          "rankingHash": "75bd15af5a98b3dd77646d5a44388d8b34b97f0020dba4589a1c3928538a37ca",
+          "contestHash": "2e4cb44cd93b73f304573b3e9541d0aeb6920eb78a73f82271e6931d5719cc88",
+          "advancedHash": "6e6abdfc6c559b1a3f01483ba12914b25690e0207708bf453c0599a201564d1e"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "isaac",
+      "seed": 424242,
+      "selectionHash": "a423340d1a9ecdd2c3b4d0daad318ce0aec387d78578f43c2bf6dfd914a71b10",
+      "startHash": "c2be23a05ac70f0ff915cf58a4efc109138812545617208ca35c8dab74e8b7af",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 22
+              }
+            ]
+          },
+          "entryHash": "c2be23a05ac70f0ff915cf58a4efc109138812545617208ca35c8dab74e8b7af",
+          "resultHash": "d406e9e0fcde8e14fff280840c917a2a93554bac6f3eb667b6db2e0edcff30a4",
+          "rankingHash": "d023663eec83609fdc936e0bca3d8e7841b2168386effd2544b5cb81f978b695",
+          "contestHash": "ed0781c95c5bac6e0d46fc74fc175f396894ba8331155c31cf50beb3e583b456",
+          "advancedHash": "45b228bd5f22a59cc7c316f7deac76b8dddaa48d5ca7c0289ad44e9eb03431bc"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 17
+              }
+            ]
+          },
+          "entryHash": "45b228bd5f22a59cc7c316f7deac76b8dddaa48d5ca7c0289ad44e9eb03431bc",
+          "resultHash": "98671f530c5b304cd219c1a2981c65ed0893d30b6587adeb43bb8a9e6cb0706f",
+          "rankingHash": "f900af63bd5a5491ad6c155f7f458b1200c81339cfa33fbb03d740041ae0ab32",
+          "contestHash": "3182c5a2da0972f0f745df908a4916b91edf2793ae229537d902286f4da89215",
+          "advancedHash": "22f9772301453726cec21d90618d8d48d6e284e4b214f6496124d022d70483bb"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 14
+              }
+            ]
+          },
+          "entryHash": "22f9772301453726cec21d90618d8d48d6e284e4b214f6496124d022d70483bb",
+          "resultHash": "8071df2de7afd94f301859ae0089a08cfa3293da9b2adcb5da3ea314f04302a7",
+          "rankingHash": "27d3977792a161a61befb7d569bbf4c30a06ae67f10b379d5b338ec466eb0c0b",
+          "contestHash": "5c4f0ab7e1cf93e22bcf487d5d99175815d004b5f8ce0fa3256d84e7dc5b4d68",
+          "advancedHash": "3f7231e52db945fb6b882703d09df21370101e404f7b8d1a9feaec9c47b19f6d"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "3f7231e52db945fb6b882703d09df21370101e404f7b8d1a9feaec9c47b19f6d",
+          "resultHash": "c1daf67bc168ef3f8be9950bfdfd32dd9bdbb4f49a224ee5e95a756bc6618b03",
+          "rankingHash": "ced09e3536dba460483bcb70285887afbc5acd31e0f1ad25c933b90225974cb4",
+          "contestHash": "03438230337ef4a1633046bdf49d191cc002217f4cb0d09224db7a0bbab6d880",
+          "advancedHash": "c5c2b8b772c8faa56cce9649096e9a6a5c87533a059bb05ebf3cc81aa5948533"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "c5c2b8b772c8faa56cce9649096e9a6a5c87533a059bb05ebf3cc81aa5948533",
+          "resultHash": "80b1725300fddcb483131c6c399af356181ea6d756da685e6ea2b7f9bf277ec3",
+          "rankingHash": "7c8e5a0041cb724a7178d99e016fbbe91d83e68ec2fe044d244107cd21ba004f",
+          "contestHash": "048672e72273a8d41dee587d61ac2ce4f785b864b066f95d26b94cb463fe27b4",
+          "advancedHash": "ed8bbbbbe65ed3a395616bf175da3b057fed72288ea2145f2f239d4f6e4d12f9"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 110
+              }
+            ]
+          },
+          "entryHash": "ed8bbbbbe65ed3a395616bf175da3b057fed72288ea2145f2f239d4f6e4d12f9",
+          "resultHash": "90fa706c3fbda4c876b692d0b3e53bb1231f9b0957fc8c49e7055b7d3c1a1409",
+          "rankingHash": "a8bb872e70b6198f59a682c03da46b05430d1d8d20f7f5e30ff98ae72c46cfaf",
+          "contestHash": "c7bd6d892a87f1c65a58eea6f17ab55eabdcdfbda115536a18976100e05d7f5a",
+          "advancedHash": "e2b5043f2a8dde38277cce08dd27e37ffc20840841db20845dbfac24a1712f5d"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 88
+              }
+            ]
+          },
+          "entryHash": "e2b5043f2a8dde38277cce08dd27e37ffc20840841db20845dbfac24a1712f5d",
+          "resultHash": "ae2b871fb37c310caf2e74d927f9389c389e76008a428ebac215c97fbda6b1e0",
+          "rankingHash": "3e7fba6981f2c8d45248390d145834c0f1362f073a21966d900f2ef71906fe75",
+          "contestHash": "957ffe801dfb0e1e2eec67730daa2bca51e28d1d429a8a16bace23b625c994e7",
+          "advancedHash": "cba05811912318ddc01695d0795211dd71192f5d754bd2b6dc1507cf7e1b81ec"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 70
+              }
+            ]
+          },
+          "entryHash": "cba05811912318ddc01695d0795211dd71192f5d754bd2b6dc1507cf7e1b81ec",
+          "resultHash": "b708de8e8e2cc797311eeb3ff1fbbcf1b3bb9738eee1ab661a478643da4feefc",
+          "rankingHash": "045d02d37e856b99d625eceaefee2a9fee61c7f66f4fe30b0143fdfedeaac4f1",
+          "contestHash": "fb5e7bde61732bb7736d7a981a9a9f23b8211da8996b6f237753a082abceaf6b",
+          "advancedHash": "8e6b1bbd71c52ce5ab6772c207b3a08543b3454f142004d1fec5b98d3210e51c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "8e6b1bbd71c52ce5ab6772c207b3a08543b3454f142004d1fec5b98d3210e51c",
+          "resultHash": "08b5170cfc8bb1aa711f1a0c3b41971184dabe8b5b7da8f4b99b7dd9d2a69167",
+          "rankingHash": "ac6e1be0aa946dabf0e6803927d246e83574007220009a2de0cd86993825a395",
+          "contestHash": "e6f960368fd0678bcf030279732958d8bf6b868b3e97b3a32f0d2306788ff5bf",
+          "advancedHash": "95cd2a3c74182beef91a2e2c4dc5b603e2dd2dc3ce480c7586c98956958fc059"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 98
+              }
+            ]
+          },
+          "entryHash": "95cd2a3c74182beef91a2e2c4dc5b603e2dd2dc3ce480c7586c98956958fc059",
+          "resultHash": "6d043ec4be50b86734cd4b6d6fe82a82bc10b527258dd135d926ce3d0b839239",
+          "rankingHash": "3ede3d277d9b33a3c960d4ea1501bf71a8f2fbcbabb401ed637f3223b6f93b6d",
+          "contestHash": "2212c905c1d1da1a6890ecacfafb0037ce727eae68d397b1e3f50a0612d25391",
+          "advancedHash": "8d6aa68552984fcefe4cebb2d37df89264ea8f3f597c71502bbe6e06a59bbedc"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 220
+              }
+            ]
+          },
+          "entryHash": "8d6aa68552984fcefe4cebb2d37df89264ea8f3f597c71502bbe6e06a59bbedc",
+          "resultHash": "7c36ecfbfe9bf0e7a8d7a35045d6af3c13f9d8a2aa0db87d3d80fc824fbd7bcf",
+          "rankingHash": "21537ab1bfa33c68c2bd8a1f25291db19cfc1448b9e222d58f4c3a9f359a9b08",
+          "contestHash": "b51862ed775af5f80de691e314fd7addac896434aa91c233faff998608d701df",
+          "advancedHash": "dd972ec3aae0e840e556a6f7276fb903674920fdad51341817332e032756dbc4"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 176
+              }
+            ]
+          },
+          "entryHash": "dd972ec3aae0e840e556a6f7276fb903674920fdad51341817332e032756dbc4",
+          "resultHash": "55e07d526846e2aa1e2bc7e749ae1e39c31ca2e0df4da520b359fee16a6030d7",
+          "rankingHash": "c3e278af53e29ec276f0a884e3bf3e6e0a6e72c44dcad8814549df017d53bf5e",
+          "contestHash": "f2c0338dd1c8ba87bf1524740e2ca6cbd5013b1a961df3763460984ad53745e6",
+          "advancedHash": "f34dde319631e2bc9e837ab7e8ba6774242bf11f9d1ab316772cabea9a6c0805"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 133
+              }
+            ]
+          },
+          "entryHash": "f34dde319631e2bc9e837ab7e8ba6774242bf11f9d1ab316772cabea9a6c0805",
+          "resultHash": "8907769a489c7ea28eee02cc91f90be861980231fca5c47c185e9ffc80dadd0c",
+          "rankingHash": "814f0698050de75936945dfe066d9ec67d4735513383deb5a2f15bc093742f79",
+          "contestHash": "3bbcaf2f561a3a386ad41f641859c0e5f046f797e7760914384aa93434e302c1",
+          "advancedHash": "afc61c80b0294180357acd7f8fa709dc6fa9b2cf30daf13b75cda9467d61b0f2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "afc61c80b0294180357acd7f8fa709dc6fa9b2cf30daf13b75cda9467d61b0f2",
+          "resultHash": "45d96e09d9a3b41608f02c4be05006dead3f70281166988689e397b7ef37c4a3",
+          "rankingHash": "ec7f160546466f59b848c977a47c2a7c363b456eaa0082d056f8a223b83ff590",
+          "contestHash": "40a2ad39727c72d33d6c48a52d752955ad92b9f9196212fc9b515fc1a8a99b26",
+          "advancedHash": "925b77343101bc04731d481b3b75eb856bccb48202e534427cfe10348cbcedce"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 187
+              }
+            ]
+          },
+          "entryHash": "925b77343101bc04731d481b3b75eb856bccb48202e534427cfe10348cbcedce",
+          "resultHash": "f12089b662b1cb215149090a5d71c2128a4786743df3256a0506b0495b356d99",
+          "rankingHash": "b0a76b2fdee9e51999613e23e5b5bde6e43cdcae0d6901616063b75026f22b01",
+          "contestHash": "b452b39f5c2952ea01ae574946bc8a8d2b42aaba1110a0a1216cb551fef8a13c",
+          "advancedHash": "8f51a5c4208b55fcc977b29b8f5c63cf66e8f09dbe32ca995e8d673deb43a4a5"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "lost",
+      "seed": 42,
+      "selectionHash": "76e5b808b93a7c2483797a7bbe600f4f1ff76b4602d45b8d6dfd57ff84a5d511",
+      "startHash": "f277632c47263c9618c0777fec673368f04be571bfba523c16f8996f8622b69a",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "f277632c47263c9618c0777fec673368f04be571bfba523c16f8996f8622b69a",
+          "resultHash": "125565e04d40b2add889dd2b8aedea2fefa202b77a7311f318c1108549e3d43a",
+          "rankingHash": "e88e13163dbc016042e09c5d8983f25d56e75cb111bffc0d2ebb59f4264280ad",
+          "contestHash": "4381937a6b29ed47ffe6f4c5965b75c91816ccfdff73f81d601039f5994fe10f",
+          "advancedHash": "47e36e56cec726dddf2d4cfc6a49e10ca37717a5f3581a382b87e096c5a82d44"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "47e36e56cec726dddf2d4cfc6a49e10ca37717a5f3581a382b87e096c5a82d44",
+          "resultHash": "9e15b02673a2afefae03f9d38c9c796a5ba30d085476e182ee84c28939fd209d",
+          "rankingHash": "cb83109b09084b7789966c284094a1965436559b3d8580cc8a45249189fed169",
+          "contestHash": "cd2075df23aa53c64f655c7124adcc0a48c5166b4bfd987bfaec5ebdafe966d9",
+          "advancedHash": "eb65a755c22b93a4f9fa65733d27a0b02e038cc7550ee369fe2fcddcc409aaa9"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 15
+              }
+            ]
+          },
+          "entryHash": "eb65a755c22b93a4f9fa65733d27a0b02e038cc7550ee369fe2fcddcc409aaa9",
+          "resultHash": "03734f8eb8eac3856c571b6c5d5b1b9a0739385c46f9682ab63be554e060a49e",
+          "rankingHash": "15d126ce2b3ccfb9a19e21212d6c1f7a556df4e10ea87c9f61207d55e19bee48",
+          "contestHash": "f7c4920d9a3933b1c58ec5ca9e0f34c7d22eb374eb6c66b73326b93e6a573241",
+          "advancedHash": "9df92c7f63281c289b7e151c4a01d6a9940d975cd03fcd92ed07cd25481895fd"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "9df92c7f63281c289b7e151c4a01d6a9940d975cd03fcd92ed07cd25481895fd",
+          "resultHash": "f4e665934e2a637fef736b157c82ad18f219c987b98229ad8b68241205640607",
+          "rankingHash": "a24f8a50408aa852dfa6f7dc11316c28cc1e308666d9503d58b16c32f7fac078",
+          "contestHash": "e79ba949d4f0c9a2f2fb88d92ceb74151736e86654cb5925fab05c679bb3043b",
+          "advancedHash": "17dc4982c73113e9935e2ef90671b714be78fd15786dc34e581c5ab7abd23e2c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "17dc4982c73113e9935e2ef90671b714be78fd15786dc34e581c5ab7abd23e2c",
+          "resultHash": "bf447e6aef8b764a1b8815ec932c38fedd049c5ad7dc3dc82bd4e4a3080dfb93",
+          "rankingHash": "d81cc667a7162285a3995e953b73af51150338771cb01a3adaa070215a9a4a11",
+          "contestHash": "47c463c315c66db4beb5df87c33d046c9fc95f4d348921fd03d9d29c4d874d81",
+          "advancedHash": "30d80b849db2689e8963104d9b5c2d09ca3dce8fa44c3044e416c951a72ce6a1"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 100
+              }
+            ]
+          },
+          "entryHash": "30d80b849db2689e8963104d9b5c2d09ca3dce8fa44c3044e416c951a72ce6a1",
+          "resultHash": "385428f087c6c2ed96ec31fafe713536f36f3518ba0acfde52a15fd21c44e7f5",
+          "rankingHash": "855175edb9601f8158c3617cd583e6a37794a43a97eb5dfe16874efdaf72bf6a",
+          "contestHash": "28e03fa9d747d3a44ee9dbf7536e57d171765c61a2997b047fdfda27448d952b",
+          "advancedHash": "99c07664cc747b9cb0d98db86f5a522ca438a7b77f89f776fb2e283692c41cbc"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 95
+              }
+            ]
+          },
+          "entryHash": "99c07664cc747b9cb0d98db86f5a522ca438a7b77f89f776fb2e283692c41cbc",
+          "resultHash": "93b58a24f7bac7d229de9cc955c9785c43ef1cc7a4b281be5e57b6cf196581e3",
+          "rankingHash": "a0a19ccd79932c48b1b83c94caee950452d575c8183ad96131106668c1753f06",
+          "contestHash": "0acf7eac243e28f0f8afea15e8e8cb10b8d5c5fdac853bcb61ee9b642fc4210b",
+          "advancedHash": "bab3878a3139f0d8a1b46ca3baa3fb933d7bb68f4a1841ef89976d5103a3def1"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 76
+              }
+            ]
+          },
+          "entryHash": "bab3878a3139f0d8a1b46ca3baa3fb933d7bb68f4a1841ef89976d5103a3def1",
+          "resultHash": "f44929c11a3239fd2c161364a52d86e6bbb122aee80a41347093685a0fe939f8",
+          "rankingHash": "ec5fa67d87bd521ee1f2405e52c559f24a84e92ef75d3e15d864da9639d19876",
+          "contestHash": "fe66180a506e68c16b3c17841c101ab39bab0fae86239d286bc3faf8e1e0ae2f",
+          "advancedHash": "adc32702c7e6afcd8754867df0d58149fa02a45b20fb6713be9c5daf8304bbc7"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "adc32702c7e6afcd8754867df0d58149fa02a45b20fb6713be9c5daf8304bbc7",
+          "resultHash": "794da15133f4de76acb48baaacb22ba6245dabd385dee9aaca745498e789c3ee",
+          "rankingHash": "11d4050c872a0fc65b14ea736e7157afdc5bc6c9ed6e57988246d618cd0998e4",
+          "contestHash": "77b1b7902b7809d77893ce0bbe8347462f6869064848f3f7693f64919991819d",
+          "advancedHash": "93b6db94ea2b54a5c14e73935e20130778f42ecc6948c77c08d5cb758f0f554c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 101
+              }
+            ]
+          },
+          "entryHash": "93b6db94ea2b54a5c14e73935e20130778f42ecc6948c77c08d5cb758f0f554c",
+          "resultHash": "a1ef8da7048e44aa95909aca61bc67831c6dd96d5e647ebf5dd0d38fb4b7301d",
+          "rankingHash": "c723518995f9b299ab14dd704aa96a91f6af905d7576e353d9d8b81d38c5f193",
+          "contestHash": "597f124ded40fd7d55860bd82fa2f4ddd4a405140d6a0babf38d4697a63ba6b3",
+          "advancedHash": "d0f063e3773877c599f325fbdc4df0ff04281e04ef6a473ab51521e33e3d0728"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 200
+              }
+            ]
+          },
+          "entryHash": "d0f063e3773877c599f325fbdc4df0ff04281e04ef6a473ab51521e33e3d0728",
+          "resultHash": "6e5a285c41414ee6333e6de992c19b459da7f5bc9c5f56fffa8b62794f7420c0",
+          "rankingHash": "efb102a763c2afb33f56d1098b79ba62b87e1d1e8c94d88aa905b13d901c98b2",
+          "contestHash": "b66e0c16dc99307cb33258537a12962f68c19004709d08ae3e09e88319f1c71f",
+          "advancedHash": "601206a9de3fafb2c61fc3f484785c6305caf6b37a2cc18a6b7efa04fa04e4b2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 200
+              }
+            ]
+          },
+          "entryHash": "601206a9de3fafb2c61fc3f484785c6305caf6b37a2cc18a6b7efa04fa04e4b2",
+          "resultHash": "2a204b6021d4f8d32caf7e18225c67573f0cf9bf566613d7ec30382adff05325",
+          "rankingHash": "55a9e521568d0bd3c0787fc671649265442a7638267432ecceb3dac7c28814ad",
+          "contestHash": "3c278cbdc1e6db4f84619111ebc6a6f5ed1dc8300bd04b95e1bf09b3b0f162d2",
+          "advancedHash": "de5b86c75cca17e58f06cad99e06fef56092ad6584de867e6554285e2d9ebc46"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 160
+              }
+            ]
+          },
+          "entryHash": "de5b86c75cca17e58f06cad99e06fef56092ad6584de867e6554285e2d9ebc46",
+          "resultHash": "43aa5f9168e882df661d00a329e760e7ca2241219ee53b885314706795e550c8",
+          "rankingHash": "d10f2b60ccf375a0bfc01b52d1aa655b59dd84bd7b0c642e5b6204bdaba912e4",
+          "contestHash": "a7bdc81034b0fb111727fc6dcc002c816844d32d1a5aa9da366d80e1591aed68",
+          "advancedHash": "f3b024ef0aacb18246fdfc84b952cd50a5fed4df13f310adef8225ce34933e81"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "f3b024ef0aacb18246fdfc84b952cd50a5fed4df13f310adef8225ce34933e81",
+          "resultHash": "849a1239e7989752181b8ff8f6f50b87c8ffc10d26984ceed2adb769eef4654b",
+          "rankingHash": "2271f5eec5cbf4026bfc3bcd8c7b9fd3432987f1c9181dc36ddd0a7a536bf6e8",
+          "contestHash": "18d00fe054888a18e2995d4c80649d8ea18dfc7a839a0a29e0318dd479f0bbb3",
+          "advancedHash": "d64339fa3978a8004ee83443efb11f1d3d6931e7ec58a96387102ed4906f86ec"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 202
+              }
+            ]
+          },
+          "entryHash": "d64339fa3978a8004ee83443efb11f1d3d6931e7ec58a96387102ed4906f86ec",
+          "resultHash": "755ef4c4c80b984bc45396af7b11b26a4acf46b19c6537c675e426a6ebcad737",
+          "rankingHash": "4e3d52aefb98f5de7a33a1319219ebcee27161ecdb127a55984d2997b720e005",
+          "contestHash": "fa995d8b1018ebbf6419e4ba125e905a17380570b6a4405374d905b16d969523",
+          "advancedHash": "39b60f3d67849ec7363313e19b1d2a77ce933f0f69a33a937a283d65ecd86bc2"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "lost",
+      "seed": 424242,
+      "selectionHash": "a423340d1a9ecdd2c3b4d0daad318ce0aec387d78578f43c2bf6dfd914a71b10",
+      "startHash": "53a3386ba1c58d703d1dfad206276b98104eb575beab092016a4840e0436c38d",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "53a3386ba1c58d703d1dfad206276b98104eb575beab092016a4840e0436c38d",
+          "resultHash": "b60b63c0a9da06fb4f91cd003ff374336d183749d49421d9269d48d61930a495",
+          "rankingHash": "60b19889f01f581b9f2856c00a8d399eb683c77cd4b8277800820e58031a663c",
+          "contestHash": "7f0559845f93663ecd25adfd40eed62acf653c7e106eefabfb4a36913737cfe3",
+          "advancedHash": "9824985622df876a7667c45dce85ab34f81e8252bbed828d2b5f70518de559aa"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "9824985622df876a7667c45dce85ab34f81e8252bbed828d2b5f70518de559aa",
+          "resultHash": "3aef6da38c88b5b3a5ce7bd5e382415a924d949db8523661c8f10ae5fdc6268e",
+          "rankingHash": "2417ebd940abed6f97ba2c789f195d472cf6d3495399e689ad42d0e9cc974501",
+          "contestHash": "f44c41bff1cf2fabc86df7359cc56b1d237ff1c51f36fb53c3ce706f427eba9f",
+          "advancedHash": "fab5f04dc51ebd05792b2a567417eafbf0d1da4dbd7ce4f888fde9d037f7b152"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 16
+              }
+            ]
+          },
+          "entryHash": "fab5f04dc51ebd05792b2a567417eafbf0d1da4dbd7ce4f888fde9d037f7b152",
+          "resultHash": "91994635744b95ae9e1855a7e89aca3eecbc28ec6a3923da68f5207105c4c622",
+          "rankingHash": "4fe9d0fb3667cdf62229aecd27c7b0b9dc81b39cfe8c33783f4e4862d36176ef",
+          "contestHash": "1cd06df3fe1fb33b916d5f6ba7a08897801f54b8d0490f8ba6ea994259eeacdc",
+          "advancedHash": "6a5fa97b002f55738e44d093ae98e81b58523483f0c93ed50c42ad84c14cb44d"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "6a5fa97b002f55738e44d093ae98e81b58523483f0c93ed50c42ad84c14cb44d",
+          "resultHash": "fbb171cf139f53869597f6c411ba8fd2884282634a6782fde1a9f6d324bc7730",
+          "rankingHash": "9f64ee09b118f91e0df62a308e617597e9dbf0ed6252a16ef44fa701c77f0f08",
+          "contestHash": "1e8a7035cbe6cb25035384c03a042f96bf39a40a2c3a5c78e5e4b7ea8fe61bb9",
+          "advancedHash": "638de8b6be60ab592a0050f477ba5be6810a2f5cd949c42330645a71bf522f62"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 22
+              }
+            ]
+          },
+          "entryHash": "638de8b6be60ab592a0050f477ba5be6810a2f5cd949c42330645a71bf522f62",
+          "resultHash": "a58c74042090b2dcef371f6115f38b309eabb6de40755c87fc87444d89c59919",
+          "rankingHash": "f3f742a1ec78bda710201e5b9bac2ac37b4d3c6a7e68d2352b301697d3343400",
+          "contestHash": "66fe0fc34ee150c61969c9df19da4b9e12ffa388e95defe742d2f239f1e71457",
+          "advancedHash": "124c79b46fc1bc4404a64f78362dfe7eb4e36956aa94c8f4958aa29da780f496"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 95
+              }
+            ]
+          },
+          "entryHash": "124c79b46fc1bc4404a64f78362dfe7eb4e36956aa94c8f4958aa29da780f496",
+          "resultHash": "36ab5f0eacf2167f14787ed306aca6307a64d1d927e298a5e39aa922ebea9701",
+          "rankingHash": "7359973e4ab5ede573a0f1ef3e2bfc1b659c9a1e902580e5fc158c0a587c285f",
+          "contestHash": "8e5d9dfb321a26ca46941c060ea8de2d8c6116c6a17dbbb9afed8978dfdd44d9",
+          "advancedHash": "1761a4d403309e8062497cfad775442072e28890fe43c95ce19229eebdfd809c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 90
+              }
+            ]
+          },
+          "entryHash": "1761a4d403309e8062497cfad775442072e28890fe43c95ce19229eebdfd809c",
+          "resultHash": "a76564f50de21d2efed3c6b6cdfbf362bcb96f3cc5dd9d7a357e342146c0bdff",
+          "rankingHash": "af6b02cecfa16a57674cf5e6cb0d9faef76f5730c0eecf702dbdc2c71ca616ca",
+          "contestHash": "f74b81c3352b3e0174e1cc916e3e0bf6d5854230e6d762855ec7d54f6b5add0e",
+          "advancedHash": "013925c22ca6f9fd11a4ce8c89c1f5612deca28ed8d1536cac089a20dcf669a3"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 72
+              }
+            ]
+          },
+          "entryHash": "013925c22ca6f9fd11a4ce8c89c1f5612deca28ed8d1536cac089a20dcf669a3",
+          "resultHash": "44b1575f1de944d187714120d67b44d502496fffbbc92a92785b9f256d9e87e3",
+          "rankingHash": "7af4e59c61b434afe806f2b6032e796c477d06a8feb430b90059c9217ec7be3a",
+          "contestHash": "776e3fffd35e32c59b16c7ccf27b1335148cb64ee247bff8d47d2ebfbbfe95ed",
+          "advancedHash": "d86a9e1ad6884a84a963599bd4688145a5871d1b5c9aa3233fae15a2ec10a8be"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "d86a9e1ad6884a84a963599bd4688145a5871d1b5c9aa3233fae15a2ec10a8be",
+          "resultHash": "5b8625db7cd3a325ac8533bdd66f737190e2f65ac97bdc38fb5b9046037480fe",
+          "rankingHash": "88a6ba42bbfde7422c3f9c6216df68042c4044678c9a9e24870b80f5bdfdfe15",
+          "contestHash": "504e1babc2bfd364de7bb9a532522f6b4ca4035386b1be274edd27b59dee3de1",
+          "advancedHash": "263796531e619b706f3c077ed4d84f3a23d4d111467afcd68943c30b19f334e0"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 96
+              }
+            ]
+          },
+          "entryHash": "263796531e619b706f3c077ed4d84f3a23d4d111467afcd68943c30b19f334e0",
+          "resultHash": "64a1f410bb46bf64a0b38696bb1e41a7145f176ec794fd0a8aa05886c32d8ba2",
+          "rankingHash": "d4be7dc2ecbc8209d292d4a43732c1cf60cebbfdb2126128118372174f6c0b8f",
+          "contestHash": "606e4519c1eb458ff75083c5245d417d714b619c623903d96ff5694a3d5f3f22",
+          "advancedHash": "c39e68569e4eafb71b0f142dfbe3746ad2ba5f02617ef3e5b442ad85fa5d26de"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 200
+              }
+            ]
+          },
+          "entryHash": "c39e68569e4eafb71b0f142dfbe3746ad2ba5f02617ef3e5b442ad85fa5d26de",
+          "resultHash": "a19ffcbb08564d2c25e2a08cd12c201b7a21d12bdfef8b0ca9f0b996633eb33a",
+          "rankingHash": "bf619d57dfa296a8dc39c4a8081b7ba74d2887b064f6a4bc17fdcc4c701998a8",
+          "contestHash": "7d6602bd98b2cd8dddde68c2084acffc9744b18257f1535057f551e491d4dd67",
+          "advancedHash": "c5dc6a3e5beb0fa00fdffd9111b1f8897b61785ed6c2ca7c1d81adec7d72e8be"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 190
+              }
+            ]
+          },
+          "entryHash": "c5dc6a3e5beb0fa00fdffd9111b1f8897b61785ed6c2ca7c1d81adec7d72e8be",
+          "resultHash": "be9a3582ce7cfd49d972be7e1ba070d8b98eb075ca943f2b3c575ebf9a30b54b",
+          "rankingHash": "ccdcebd194ed1bdaa97544d5feedf5ff399a78c8d8f48e188685cb4c8f3ac4f8",
+          "contestHash": "90cc51fe2bb0456528fd7952b97a83986179ed46ca91c12a0e126f7748f207dc",
+          "advancedHash": "c6f63ff68f9edffaea447b2c1276f2577f605c798a946d4d566b28a17d4e1a82"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 144
+              }
+            ]
+          },
+          "entryHash": "c6f63ff68f9edffaea447b2c1276f2577f605c798a946d4d566b28a17d4e1a82",
+          "resultHash": "1f6264adcd9bd201667054cea9c1e94098224b05f7300f8b7b9f99c87573e137",
+          "rankingHash": "d2a98a3b17df005cf0ad94d3e36d4cec0fd1af76034e99f60931bb5f5a3b46c9",
+          "contestHash": "05ae0e5783bc722f056d6896139a3346eaf4a6e2f7b9ef8e9244fca3fab6e8de",
+          "advancedHash": "c18ac0af623792df0fe9e5ec14f943b3e96701c3df2a3a08dadb03628bf2e669"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "c18ac0af623792df0fe9e5ec14f943b3e96701c3df2a3a08dadb03628bf2e669",
+          "resultHash": "fb7ab2fb664ccc39658702f1a2198fb077d8bbc2960d115111ce59c6b930ff64",
+          "rankingHash": "023fc4d244833fd92d4ed7998cef6ca5af7e4fe1a8964b3c8e044d1a31430958",
+          "contestHash": "51fd3e829c6340f27d0f3d9b032c91a2c89a8e1ade8efb89e13ca06b5239550e",
+          "advancedHash": "a171081f4aa42372a91375aa53e2e46092bbd185441f7d205d04475efba49618"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 202
+              }
+            ]
+          },
+          "entryHash": "a171081f4aa42372a91375aa53e2e46092bbd185441f7d205d04475efba49618",
+          "resultHash": "a1095672bbeec9c3080a9c37b16b874eab9534fa27b12a3ed046c9fc7361ad41",
+          "rankingHash": "944641cdc7106147ac861e3d5d4ce6d93fb6b415895a9f172ddb0cb8893aa18f",
+          "contestHash": "7bcfc8fac469faff4d41de73920b1cfcf8bc3cc4a168be52f983e31fddfa1c04",
+          "advancedHash": "5c650cabeb05a53f54aa89f3d9fe90af7990ada6c9723a8d3682f40527885abc"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "azazel",
+      "seed": 42,
+      "selectionHash": "76e5b808b93a7c2483797a7bbe600f4f1ff76b4602d45b8d6dfd57ff84a5d511",
+      "startHash": "7dc0298e218412b853a1ee2a7670dbe469cd25ed3d340a09e2068ab4e2c913eb",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "7dc0298e218412b853a1ee2a7670dbe469cd25ed3d340a09e2068ab4e2c913eb",
+          "resultHash": "e48f7495a9104819ee9469633c8122c2aeb67ff190a8f6cb850d13afb81502f2",
+          "rankingHash": "005fc4c7d0582a13f17b204a24ffe2bb4a04c7767b5215b09bbb6a2364a108b7",
+          "contestHash": "6b44cf0236391d3a505e97bc6e238704678bc06c6421279674ab3111a0befc62",
+          "advancedHash": "c34b6802a52518864f66dc1e26dd5ce583ee0ed8860c03cbc5e2900c52113519"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 15
+              }
+            ]
+          },
+          "entryHash": "c34b6802a52518864f66dc1e26dd5ce583ee0ed8860c03cbc5e2900c52113519",
+          "resultHash": "b71a3c70001801286a1d9a1f7d4ad99a103683aaeb58e4b9b30ae65eca61e624",
+          "rankingHash": "6b8d19dfc196a0c5b0919ad016e435ce473ce721a94da3bc160064a9ade3b3f3",
+          "contestHash": "9d22fac352b217ecffff740ef2cc21672b35dd1766f9d442d22cd40b27ae2d44",
+          "advancedHash": "d50c1b3f979b9eb11d48e0aad8b64faeee3ccf82b8096b66232f51985c88ab2a"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 12
+              }
+            ]
+          },
+          "entryHash": "d50c1b3f979b9eb11d48e0aad8b64faeee3ccf82b8096b66232f51985c88ab2a",
+          "resultHash": "de5de406e9eb2f1666b36471a4779f170d59ad23a5eef3d1716af2f99acae7ef",
+          "rankingHash": "82a7e051871d3da8a5edb2fe81919630b5faab36431a9c3c7921eda6f750536c",
+          "contestHash": "19a2a9a8f0041c304510270f35d6bf99af86964f292da1b3572a7da9637612ef",
+          "advancedHash": "b6055571c194f403db7af113019a77834d43c427fc853bb8271910e3d834bf23"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "b6055571c194f403db7af113019a77834d43c427fc853bb8271910e3d834bf23",
+          "resultHash": "940157a7cd26bec587e62824df46123b989eb131e16f0d71575b61df42c53be4",
+          "rankingHash": "2f6d3a41dbf349511b300d959996c0c0edfa9670444e4852749042dd94fe1b4c",
+          "contestHash": "839be42bca1e2315b694029694163a1c26b8c6c51e8ee76cbbe7cd3678a2dbaa",
+          "advancedHash": "3bc8137b99ecba613e2da80dc68df25309f6c579b2136c200c6da871b4c3b3b5"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 17
+              }
+            ]
+          },
+          "entryHash": "3bc8137b99ecba613e2da80dc68df25309f6c579b2136c200c6da871b4c3b3b5",
+          "resultHash": "08103142905b0598278153b8809d851ec622101bd4608807f15fb56dfa473e3b",
+          "rankingHash": "5c3f32c3bdeea40c560e2ed01f26b74f4f899a4acba5f3efbfaaa866fe908e7d",
+          "contestHash": "ef7001a321e8d5f8dbda3a8c0ad1428edf3880ab36066e85fb0959f7c99b8841",
+          "advancedHash": "ff27867136841051a8cd46a6f80076a81d95f0ad39c945ec1d3fb30a2576f375"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 100
+              }
+            ]
+          },
+          "entryHash": "ff27867136841051a8cd46a6f80076a81d95f0ad39c945ec1d3fb30a2576f375",
+          "resultHash": "ff2ed866727fa06ff2af7648c572d8995c64227ce2fa9b61479e786b63868f27",
+          "rankingHash": "02ac736c381bd92c28ce0b6e8c86ecd1a00bd99cb86b2cf5b6c418fdec09bd7b",
+          "contestHash": "82071ef0b670c2769d81dc69eb53feef9dc7931dec6f589a4a820040aa5986a2",
+          "advancedHash": "134b4881d25ff56fa541be439ad4096bcf78dacfd7957901f93c537a0ff535bb"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 76
+              }
+            ]
+          },
+          "entryHash": "134b4881d25ff56fa541be439ad4096bcf78dacfd7957901f93c537a0ff535bb",
+          "resultHash": "ff0272abc26e4b1fb068e079ed8579dd022bade2ae74f5296cac025b2716957e",
+          "rankingHash": "5ebd290ee41c224ad476dab8cec87cde30993f394d3e494e6157f9801cc981fc",
+          "contestHash": "749f933d93c5dd00a7e822588b74ef0a13b735b9da4105b838741b60106c73cf",
+          "advancedHash": "23e463fc11d2126aa8ce488c96071ef69010d20273ad6467b09f1debd81a0447"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 60
+              }
+            ]
+          },
+          "entryHash": "23e463fc11d2126aa8ce488c96071ef69010d20273ad6467b09f1debd81a0447",
+          "resultHash": "dc4bba27d77117db5aff512dab4192c7bed0d10eed04bb22b10cb1ebfc7c9318",
+          "rankingHash": "59e404e7556afee88e06107e2aafd377141d358be74220716e935ec04fc6763e",
+          "contestHash": "ecd2ca5090d999e7feb529a9655099aead1dd7c429a8501eb0c1108132dc9113",
+          "advancedHash": "d904ec77a5f55dc9f8bcbcdc836fd53a06ffca86123f469135eae9deedd5ea93"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "d904ec77a5f55dc9f8bcbcdc836fd53a06ffca86123f469135eae9deedd5ea93",
+          "resultHash": "655990060673bad3e5c2bf15e7bb8400f250a42b05ec6fed8641e02659bb634a",
+          "rankingHash": "47ee32d7a6e7f802eede52ebf904744720716aeb9e2849eaa28e643e40e889f5",
+          "contestHash": "d9d0dd780cefb85d5c85187ba23a8018d886b0f155d0e8ffd8fce0e5122d1380",
+          "advancedHash": "31fd70907c00b61ae277de38e2a8203e592dc510e3927e6a54198249d9cd99ac"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 81
+              }
+            ]
+          },
+          "entryHash": "31fd70907c00b61ae277de38e2a8203e592dc510e3927e6a54198249d9cd99ac",
+          "resultHash": "b989693ac0c4a67731279e8478ed818bf8d51b5d5725c3b098e3565b5b3d3868",
+          "rankingHash": "9003d2753e661494725411689e122451cc0012218906c34d8f6c404ad7ea3a82",
+          "contestHash": "b6cb4f1304c15040e69746476b4b549da143efbfae2bad8165d83a7317e65ac0",
+          "advancedHash": "dbc435c2d2ea67c82331a0c3b17b72c33a07820bb835c96223afc36f7291f4b7"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 200
+              }
+            ]
+          },
+          "entryHash": "dbc435c2d2ea67c82331a0c3b17b72c33a07820bb835c96223afc36f7291f4b7",
+          "resultHash": "b1a5e4f4324a3cf22d838b6075dbd75f18aa6c15734e9b971de5f11ec15f67d4",
+          "rankingHash": "7fefcaded7c8bd4111d0e69d36ef332388b1c3ba5400d8ae34faebd239af9a6f",
+          "contestHash": "f928f71fffa65dae34df3230ccb87e530e2be78f08bf6bfca0a58dbe2ad11411",
+          "advancedHash": "c0de216520bd35ea168b63d70e1f7c1f5bb05db870ad7a0cae3c7da6a50cf70b"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 160
+              }
+            ]
+          },
+          "entryHash": "c0de216520bd35ea168b63d70e1f7c1f5bb05db870ad7a0cae3c7da6a50cf70b",
+          "resultHash": "ce2a3ba09b25c07d1ec3837dfef892380671048f1ed4bb86439acc9b44cb2fac",
+          "rankingHash": "7a92846040b2876d1bf82e74d479ead5fd4b8131d6faecb44c0a924e54324ecc",
+          "contestHash": "1a25528a35941eb80d3291e134907ff79051c9b1bf2cb9cee8c03a1cda61d8f6",
+          "advancedHash": "e81669bae1eaaab8f4bbd081e7d0d1f811ba508ca952a76252ca11f5f2126f12"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 128
+              }
+            ]
+          },
+          "entryHash": "e81669bae1eaaab8f4bbd081e7d0d1f811ba508ca952a76252ca11f5f2126f12",
+          "resultHash": "b253267c4e4eb04962ea9611db4259e69e8724c34e467d4be50f58cd9884e7c6",
+          "rankingHash": "533de8013e974dabb6a4a1ad3be1e5d2967392987f0b77da48bbed97925bd2d3",
+          "contestHash": "210c7e5a5332bc683d55dba0a1d1d3eebb8cacb854c810a20a41a46044092213",
+          "advancedHash": "6087f37b57c5e9654ba08df3139094168954f22cea1a90bf201f8c814d42d911"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "6087f37b57c5e9654ba08df3139094168954f22cea1a90bf201f8c814d42d911",
+          "resultHash": "f0ad02110365ec28c531b44c3a9d476dd6a3dca0f375de36908a1df412d7e49c",
+          "rankingHash": "79a871d393c8d8c34e6c7e5b1f0bc71603eb5a7c430940fb145069a2e1441fa3",
+          "contestHash": "e2a8fdbc9f4c9b1c74440302dbab33290616b3c51893fde3f0f9032bbfe809c9",
+          "advancedHash": "0fd8578a92f08193ec1b1becd612e34314cf2f64db8c7a87c4444ea0fb033db0"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 170
+              }
+            ]
+          },
+          "entryHash": "0fd8578a92f08193ec1b1becd612e34314cf2f64db8c7a87c4444ea0fb033db0",
+          "resultHash": "fd67c34f1f255186a45875a1348875f3ab8939393250196c4f161950c5da5525",
+          "rankingHash": "5e12a316a2634947eaaa605dee2b562f5098613fec8c0abb372bca199b378588",
+          "contestHash": "afe90163a905c8b116c3502c676e26be223bbbf3cbdbb41f1514136b5ebbbc67",
+          "advancedHash": "d5fb847d4f62f9900a94645859fd9ad1abc38d59828108cb658fad7f756201f3"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "azazel",
+      "seed": 424242,
+      "selectionHash": "a423340d1a9ecdd2c3b4d0daad318ce0aec387d78578f43c2bf6dfd914a71b10",
+      "startHash": "e3e5c1a7c90705605f17cc9f435fdae7bbf10a12e70e0b6c9016242c2c45763f",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "e3e5c1a7c90705605f17cc9f435fdae7bbf10a12e70e0b6c9016242c2c45763f",
+          "resultHash": "d6049ab30fb3c3e6e25750bc6566c9fc18bd3d3122f3a35cf0b0d9738822fad7",
+          "rankingHash": "9f482ff7e5efce5cf82d477934c51afb7694a7e8182bbac39a6160438eed7a6b",
+          "contestHash": "559c6eb477c9e4ad9dc89ecbb03b26acae2b7aa11e47efdfc5351a287721f735",
+          "advancedHash": "36dd6bc4369fd1cde137eeaec391b2460d364e4196084709a9b5c30ea438cb7c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 16
+              }
+            ]
+          },
+          "entryHash": "36dd6bc4369fd1cde137eeaec391b2460d364e4196084709a9b5c30ea438cb7c",
+          "resultHash": "84b76bad1fea89cac223597e2a6dd4a7314e9e4e1abca777c0d94d1389e8d993",
+          "rankingHash": "d2bfecbaedf12bd9a1d01442d439efba82d85d3f32e95812bd3412d25c3451b2",
+          "contestHash": "a28112a26887408e35eb461ac45d0932f85ea7faf7be9d0c3981fdca6f852586",
+          "advancedHash": "72398fb11ab954eb34cb1302e3144447e4a884a157f50608ece83a415253a3bd"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 12
+              }
+            ]
+          },
+          "entryHash": "72398fb11ab954eb34cb1302e3144447e4a884a157f50608ece83a415253a3bd",
+          "resultHash": "f3916cb1516e0e4a2ee633aa2a93c9b8bb34f25dfeb80e5bc95af50076e8be1f",
+          "rankingHash": "46910340285a477fc5682acd7827eb73d47f7fab6ac624b5eeb2c5a47ee3d38e",
+          "contestHash": "dc7f5689a7b9162ec0572149297224e491906bdfc5afe5043969ccf186f239b3",
+          "advancedHash": "388c9e8d8a16d08fc8cbd10bb2743391dcd09a14922872642b3201455b0d16f8"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "388c9e8d8a16d08fc8cbd10bb2743391dcd09a14922872642b3201455b0d16f8",
+          "resultHash": "6ed604df43695f37e5bf03cb3936529d507bceaa2a66811a591960126e485fa3",
+          "rankingHash": "7d70d1685e29fb5ae1f67f5606b16192aac999370afc4e875e366ada8786d3ca",
+          "contestHash": "0809845461c23cdfaf83028e8d0c3f75556a4eb8cb40a1ed3a0ea36846ecc715",
+          "advancedHash": "1dd0a1db8fdd2c37b9837d408dfcb3097653aec0ab1b7ba23939afbf290af071"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 18
+              }
+            ]
+          },
+          "entryHash": "1dd0a1db8fdd2c37b9837d408dfcb3097653aec0ab1b7ba23939afbf290af071",
+          "resultHash": "885ad0b76480b1c18f1f160bdd2d6b93c0b3986327d393b75e43c4014e714843",
+          "rankingHash": "9867e830a927a8d543992d8a1cc7f0cc646ba12dd536d78bce32cabdf0a49213",
+          "contestHash": "acd56fca657e6b54a98140a191aa5e435748dba3fdf88901fb9ecd96e6eab866",
+          "advancedHash": "9753206e5ab451097e3ecb5d0c8891896c92fa7271f622e9c005488fe2810cd5"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 95
+              }
+            ]
+          },
+          "entryHash": "9753206e5ab451097e3ecb5d0c8891896c92fa7271f622e9c005488fe2810cd5",
+          "resultHash": "5675d2f11691943d9247190d884dadf312a4200e2c5918cc7fbf8131c1a20f85",
+          "rankingHash": "03b17e8447789e17f81e1688b0152c7c188024b21a4e212cf616bd8a0dd96c6d",
+          "contestHash": "341a5fc2856d7265c35867e229c4bc4dd2d051b300030c49d088c1105bce1c08",
+          "advancedHash": "de37fece5d51d1448c3969a3ca4de06a026e9e778020073a441186990d9f16c5"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 76
+              }
+            ]
+          },
+          "entryHash": "de37fece5d51d1448c3969a3ca4de06a026e9e778020073a441186990d9f16c5",
+          "resultHash": "19c0c00ac15a69545eb5c630d41df7a3591019b4b5ad463caf056013630a7f88",
+          "rankingHash": "5f2f31247dce1c1350c8f637d1beb5017240e1e556f08c0fae363555022b74a1",
+          "contestHash": "8bbd0c172bbb6529c0490c9ed05d26a8465cd0e2f1a351978dac4764850e8ece",
+          "advancedHash": "8c90fe8f461e02f9706e039ef0f231b05f92002a31ae4204ea0b84fcfa311b68"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 60
+              }
+            ]
+          },
+          "entryHash": "8c90fe8f461e02f9706e039ef0f231b05f92002a31ae4204ea0b84fcfa311b68",
+          "resultHash": "9d374b3a2cd4f251f3432d8eb777d04a95d0220e000cab3711a636ed5fe6e780",
+          "rankingHash": "b15f8e72c733a60439d503a6d8946c3c2a0f6403a5fc6d47ddb53c6a2ee72f06",
+          "contestHash": "78c288846dc33aff3e71a67082d19fdff7f3a42d38ee93278d5989dd03601841",
+          "advancedHash": "3dad32f6089f16e39db9a4a227455c091850f64c4375990ef94fdf027fdbb392"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "3dad32f6089f16e39db9a4a227455c091850f64c4375990ef94fdf027fdbb392",
+          "resultHash": "ef1c51f71aeb3769edc391d4ad9cc4db9f288742dfb64407dee4e58a152da0de",
+          "rankingHash": "1aaf3fce1ecaca3f685d59638900183a619596ee0e939c471caa025a27bf8a2d",
+          "contestHash": "777d1cde68803cf40890265aab432a09a1d09626cac51b31efef824dc8072200",
+          "advancedHash": "a7739eee977790e036bcf885dd16508fc4804c5ca17fefad6030a7e765fbcbe0"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 81
+              }
+            ]
+          },
+          "entryHash": "a7739eee977790e036bcf885dd16508fc4804c5ca17fefad6030a7e765fbcbe0",
+          "resultHash": "74d0e8aa97e462eb9bdbc8fa8a57b529cb73110213959876080ed2bea8e98013",
+          "rankingHash": "63a0343975e5b23038173f44977dcfc4110f657a9e7612ef60fe87085083b05e",
+          "contestHash": "3bf4c8498ac51a1ce0d0bd7c12e68a4939197e528bc555d05a57f30b12a98c73",
+          "advancedHash": "64e9fd0d6419f39075d558dfaa7ee007a056c73fce8309303242d1e1b3f5032f"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 200
+              }
+            ]
+          },
+          "entryHash": "64e9fd0d6419f39075d558dfaa7ee007a056c73fce8309303242d1e1b3f5032f",
+          "resultHash": "0b8cebd3ad5fd8a8a26e99be344e5cc47e29a2348a28db1f59888e2a5f667172",
+          "rankingHash": "98de91ff42ba7eaf6b5f5a423213b00558eb0e69be14ba678fe9d9f14837c9f5",
+          "contestHash": "93958b3465d9f170c21de412ee9e7dd42fdd065111729b9626f5384b0f7a7ea3",
+          "advancedHash": "95509ceec3404cab652e3d08fc1f35937eb705a26f5b395fff21de0b2c22d3d6"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 160
+              }
+            ]
+          },
+          "entryHash": "95509ceec3404cab652e3d08fc1f35937eb705a26f5b395fff21de0b2c22d3d6",
+          "resultHash": "4f27a760d5958a5c8df9245e491e12505713a562ae02f3e34e3af18607dc8eb3",
+          "rankingHash": "b01b8fdfc38b2c93b0df850a015812f7070dab4515b95841f670d5d235cdfd0b",
+          "contestHash": "e254a5b801499a1ef382342b9b688d106fcf057eb9c046f4eab12b59edd88287",
+          "advancedHash": "7fb2b361f459dea924b3eb36dadbb1d5379cff9e8e36173b14aa904738d8d64f"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 128
+              }
+            ]
+          },
+          "entryHash": "7fb2b361f459dea924b3eb36dadbb1d5379cff9e8e36173b14aa904738d8d64f",
+          "resultHash": "7d086895e119448062a4f1b2bec9733b4f0d8e7585463ce62f789c6dfcb940af",
+          "rankingHash": "8cfefebde2409c874c7713997b20d2eb3be44488eb89da657a36dd34054840ed",
+          "contestHash": "f2386d32675dfc0bf103136284851b1c5c406f9c009dc7298d8f8fbcc792826f",
+          "advancedHash": "912a993a74cb85e298f860a726a26c845fad5de4022afea74d534ae484050999"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "912a993a74cb85e298f860a726a26c845fad5de4022afea74d534ae484050999",
+          "resultHash": "f15019bfe134387da7c20119fe6ed6c480854f79b85858a8b3e897004f05a389",
+          "rankingHash": "21a0df3fe17852cfe98bc15316eb3df47f5266fbbc411d12c84719341955d2de",
+          "contestHash": "54b0614e6e319aa7a32a8b8449d6532bf6e2b267ccf5e6ef412c69f7e4790e7e",
+          "advancedHash": "448d7b13793a6e510e7948524dd10d74648f943070800c4e9f202c55485ebd9f"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 179
+              }
+            ]
+          },
+          "entryHash": "448d7b13793a6e510e7948524dd10d74648f943070800c4e9f202c55485ebd9f",
+          "resultHash": "f78ad6fef444c97d3937c66c6693f1482875cd6bf8f12c3e40543e708741c161",
+          "rankingHash": "2ec16d029f18e25d41040b21c52df383d7829439af21c32e118e81e8ac455760",
+          "contestHash": "9034fd41a4de59e79d755bc934b44fa67ca34d5b3b43196c0239371bfc5056c0",
+          "advancedHash": "16027f88236040f944d55c366b51914ab6f7a080690b6155aa4f00ab3d7904f8"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "eden",
+      "seed": 42,
+      "selectionHash": "76e5b808b93a7c2483797a7bbe600f4f1ff76b4602d45b8d6dfd57ff84a5d511",
+      "startHash": "a67825dc3af7ae5e5045abe3766285e1bf78ea0706149b66de7ce5471f54970c",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "a67825dc3af7ae5e5045abe3766285e1bf78ea0706149b66de7ce5471f54970c",
+          "resultHash": "1eb3ee09ef256c2078fd74fa75dc5149ec5e6ab34394533049fd4dcec8654cb5",
+          "rankingHash": "8cdcb1f67dc22690a73fec0b3bbf6dd0c618715777bc5825850f17c3ba1f2d16",
+          "contestHash": "287faddab7cb5bc6f617fad342ef283ccc6fe94a976e0dc387eb5556b9c95c0f",
+          "advancedHash": "3c3c045a3f8f46ef3c1f2efe5c76cea960d39777c0ec6a97c4df7219ad8184ac"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "3c3c045a3f8f46ef3c1f2efe5c76cea960d39777c0ec6a97c4df7219ad8184ac",
+          "resultHash": "cd27b610934d5370d715aa979c541133b5bae041ccf4f6fb0e33cde6b97d72f8",
+          "rankingHash": "b68832b200cf064b8b037683463bef269d2b27a828aecc7045cfb1eec8f4fb88",
+          "contestHash": "b7ecb20a5ea85e8356ba278b0ea77ac756d5f9a7b36013d5ddfe788596de3083",
+          "advancedHash": "b8a4af2d3dd1aaef13b70da99c64d25b9eb77ba2a254309ac8272050667e9ce3"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 14
+              }
+            ]
+          },
+          "entryHash": "b8a4af2d3dd1aaef13b70da99c64d25b9eb77ba2a254309ac8272050667e9ce3",
+          "resultHash": "be846d4252c53e38214e8f02945b7b094cbb3747940798666fece8a99ef609a5",
+          "rankingHash": "d27ca243245dd9f2cc242372540ea01a11981221339840df29f967b19afc3e3d",
+          "contestHash": "e6f20b6c96986ddb6e2b5838459623eb04a0f0d6d9c5dce5d3ea3055ae9d0040",
+          "advancedHash": "251a352fc6040438a4580b3903b1bf4429dc2c558670c9dc92e3ee8406231b16"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "251a352fc6040438a4580b3903b1bf4429dc2c558670c9dc92e3ee8406231b16",
+          "resultHash": "bd376b81c70b136fa40160b732447c7d00dc969926e762f87d12f8bec457a38e",
+          "rankingHash": "9cffd79436f1fccbc963d05c41218bdc9dd5e16c997bce006a505cff2e07c6ea",
+          "contestHash": "4e7d2b457d2dd12c26bd00841e76810ae0b10662769c1f751065f027d8589938",
+          "advancedHash": "2bbab3d0cdf3bd4b105a13b64197a25f04ca0803d35af5050a5e1502f6c2cd84"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "2bbab3d0cdf3bd4b105a13b64197a25f04ca0803d35af5050a5e1502f6c2cd84",
+          "resultHash": "840cd1f9939c38c8cbb2f911f7c74e729feba4b68dc814f52174b53fbc25d421",
+          "rankingHash": "c257b2785f3a9184e648c0e2018446daecd0da999ab41b965fab2d84e5d75de2",
+          "contestHash": "739f072bd6d7d01bc470ab9f899df4335d2c7e38094991a74fae79b436304f91",
+          "advancedHash": "056b9ae6c68a2706055df217a24a4056937be85588f682da83eca2f79e768ace"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 107
+              }
+            ]
+          },
+          "entryHash": "056b9ae6c68a2706055df217a24a4056937be85588f682da83eca2f79e768ace",
+          "resultHash": "b002646c9f34fc1e01d5417f1a7c02b8ab702565193af3008cd8e1a115a7b777",
+          "rankingHash": "5bf20f6be02e9a160020d81ad60b572c2a853ee7c5343564c1e0bd3c87f57e46",
+          "contestHash": "0e87c556ff6612fe3e8cb585411d9235b853858ae66b1bd4b45f3bf6a3046a0e",
+          "advancedHash": "9b4bbf3566fa665a31c9f83cd12354324a5c2294482db2400d9713a1d975fc4c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 86
+              }
+            ]
+          },
+          "entryHash": "9b4bbf3566fa665a31c9f83cd12354324a5c2294482db2400d9713a1d975fc4c",
+          "resultHash": "2bbc04980799154021a4c23b58eff654e3afaf4eab367a4e0ee995627d0452e1",
+          "rankingHash": "92ff83ba074b5081636192d871b901cd0e91d404a68c1bd5cdeac8ff892f0db9",
+          "contestHash": "6c8c26032faed1f7fefd57e3549555142a8693f734e2991085a9dc24e3a7c035",
+          "advancedHash": "f43067c1a1f0370f7907da3fee1fce2b88231185057fbd1b09c9bdc74d3f3060"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 68
+              }
+            ]
+          },
+          "entryHash": "f43067c1a1f0370f7907da3fee1fce2b88231185057fbd1b09c9bdc74d3f3060",
+          "resultHash": "7cb948fc1e917b224058c4e827abf7184d0ad1ee2bb41ff3ee3956524c437589",
+          "rankingHash": "304d7e91505b231915279e227956bd4aa7dbeec8c9e3a28be54e601f2b07dbd8",
+          "contestHash": "8146037b47a3ffb235c5563dfcb821ea2e63fd554d3a133b581ee208caac0056",
+          "advancedHash": "5cbb1092934ebced575225e6f238e11105cd68405f1ad13156c3cbc5bda3c5a8"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "5cbb1092934ebced575225e6f238e11105cd68405f1ad13156c3cbc5bda3c5a8",
+          "resultHash": "ea8506a03743b8416b27a81eac38612808cbc36db7cddda9237f12e825df8e34",
+          "rankingHash": "ce9ba7174e47e983650150dc7fe74ad8666f489ef46c01dd9383f54fc8e279fa",
+          "contestHash": "3288347171f36e1a4f7acc265ceef0c8249f712143a73a1d0f4f7646d584c8b5",
+          "advancedHash": "f0ce207f97c59aaa2fe8b0d27908d1013629e73232334c15b6a1abd5d14dc445"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 87
+              }
+            ]
+          },
+          "entryHash": "f0ce207f97c59aaa2fe8b0d27908d1013629e73232334c15b6a1abd5d14dc445",
+          "resultHash": "8866b65b2f8a21845fb93f2a3688b13769de2de4a092124328970ba8cbb53dea",
+          "rankingHash": "cbf415894737e0118ad0424d6627300da150cd1c44a232ada4ceb3dd0910543d",
+          "contestHash": "974c780c1d864fe3a3ffa2a1c26766beaac23526a174d59a6eb09f663974722f",
+          "advancedHash": "cacc80aebb88b1fa87931039bccbf9586e2b381ed656c6d652982141d56e1527"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 204
+              }
+            ]
+          },
+          "entryHash": "cacc80aebb88b1fa87931039bccbf9586e2b381ed656c6d652982141d56e1527",
+          "resultHash": "77393c211553d6af0bc0e34ba3a67e9177d3b57d1ade99846665d7385c3c7d43",
+          "rankingHash": "938b2372d92541b09c22be234b5b309485e7b64b3cbe9d7a417f3f9ed5ef3f25",
+          "contestHash": "8bdadfabb9d566319f2943258d65ef3765e0d09308c115121bf7763e7f776b05",
+          "advancedHash": "c3eee9a6c06450090b875c983bdbc9d06e506b629b7bea5004d632dd6e055ed2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 163
+              }
+            ]
+          },
+          "entryHash": "c3eee9a6c06450090b875c983bdbc9d06e506b629b7bea5004d632dd6e055ed2",
+          "resultHash": "a95df408438567c3876f34cca14f94203e5b6a15f43ffc2a6f5d148f52227698",
+          "rankingHash": "ed85f6a42a202dab927df6b590b5da736d5286fc5787a8bca70188a5297ae805",
+          "contestHash": "ffc0825d3a18b3a82e5eebab092cf0ca83eb730887f52cd091f9a1e788f355f9",
+          "advancedHash": "ae1083097d9618523569e78f2531dc78636c68ee89e6fb1ea5459d1d13152e5f"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 130
+              }
+            ]
+          },
+          "entryHash": "ae1083097d9618523569e78f2531dc78636c68ee89e6fb1ea5459d1d13152e5f",
+          "resultHash": "c5d8b5c28037ca0ce942b04107e28a070985b165dc1d5799e00a70cfc3fa3146",
+          "rankingHash": "1c2e7240a9e9db76d803325b45dfdbc444d5133a65b63da73ced10ea8c5b045b",
+          "contestHash": "381757197d71f1cb17465353d5aa0e874825b4093cfcaab29d3099f8b9376a47",
+          "advancedHash": "9c7e403698697b7eb6c3664f26a0b5a2d9e76e83e94d8c624ac059867fc10567"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "9c7e403698697b7eb6c3664f26a0b5a2d9e76e83e94d8c624ac059867fc10567",
+          "resultHash": "bed04b0ba6815fab56951f9c4a5fad4e6b38eedc67eb6d52f989739adbb0bdff",
+          "rankingHash": "12abb26fb5fa1cc44bfe81b4ca42d21d128db3a14618c80a9d62afced156bb7c",
+          "contestHash": "f1af6ad5dde99fd72652aa3903c35fe2ef3a69c95f35bfe4e6abba24fbe035f1",
+          "advancedHash": "df9cb950d068c91d2d8cb6231ca45b932ed036895f082b85215eede17c3475b5"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 183
+              }
+            ]
+          },
+          "entryHash": "df9cb950d068c91d2d8cb6231ca45b932ed036895f082b85215eede17c3475b5",
+          "resultHash": "5dfb91ab72b649fac204d1fd561e19dc89066642dfe7fc16d1580e152d88e838",
+          "rankingHash": "8379251dd6559a47b168d4f8a5754cd5f02edb0529c43130afc6dd63ebb94fee",
+          "contestHash": "a550dea963c82d00ba54af36d6f434e95d14107b84cbf80fb2aaf968d16693b8",
+          "advancedHash": "eab9b61e089a2c82cedd17d69c1f8c611aced62335fb909a8cc0c4df75d8c28d"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "eden",
+      "seed": 424242,
+      "selectionHash": "a423340d1a9ecdd2c3b4d0daad318ce0aec387d78578f43c2bf6dfd914a71b10",
+      "startHash": "d0a09188af958d93f62987fb5b4fe6a5c82212f585eabe752f036ad9171845b5",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 20
+              }
+            ]
+          },
+          "entryHash": "d0a09188af958d93f62987fb5b4fe6a5c82212f585eabe752f036ad9171845b5",
+          "resultHash": "0be9210db3b20c15afb10e43ef5e7bb18bcf0ff33abadba4f2542450748a81df",
+          "rankingHash": "6a29c05c1c548117bb4ef34cb053ce69446a10674bab5e4414ce54f65a289859",
+          "contestHash": "be4b85be8c1852419a37584a68bd4e20bbabba2a80fa56372eee4d50153e425f",
+          "advancedHash": "0d5fd584535cca9adb320398610e50cf042a6a76cea5592dbca8991ebeeeac31"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 17
+              }
+            ]
+          },
+          "entryHash": "0d5fd584535cca9adb320398610e50cf042a6a76cea5592dbca8991ebeeeac31",
+          "resultHash": "7a97b407ac4513a335ebce836bb00ef34dc8c4366a424f6e74798552eaf38c4e",
+          "rankingHash": "978abab15f47bb2ef93796f0166ffdd83ec331f72c5a3638e1315215fcb957a2",
+          "contestHash": "18cb8064a67fbc7ab9c2d67ff94ca6e7466afdb9d171a13b0449471c455d9da7",
+          "advancedHash": "3ec2f57366a116661b657812c5d4c5c7c8b42b9230e560a444c3a273cf5d2ce4"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 13
+              }
+            ]
+          },
+          "entryHash": "3ec2f57366a116661b657812c5d4c5c7c8b42b9230e560a444c3a273cf5d2ce4",
+          "resultHash": "edec1134e05ea992ac4c943befde7112e31f60eafa40d4e90c5cb7505a92dde1",
+          "rankingHash": "e3c58ec9ccef230097cd4f9883d542c8abb4264bc3bf51e79e806f4a1f4e75d9",
+          "contestHash": "fd98c31e29e296459305dd390221cc33e097401127305fa04bd8348cd64def09",
+          "advancedHash": "c8f74b5b1f310c8531c683476a447bd0190153c44c3f5e333b0932bff42ce9ef"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "c8f74b5b1f310c8531c683476a447bd0190153c44c3f5e333b0932bff42ce9ef",
+          "resultHash": "c1a45c5565de8107587b653807f1c80b2d6cfae6fd2321decf795ac0bde11468",
+          "rankingHash": "c6930d40a1aaa3ea9caba385d3448c2dab43f41f34ad60f1186006abedef49f8",
+          "contestHash": "e907cd39ce7e004b285b831eb4e2de451bcdc02952fe37c848341a5e29ceadeb",
+          "advancedHash": "b4920430d7fc91a5ccb8ea2dddd4d107b8447e586ab3bd6dd63625660b69637b"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 21
+              }
+            ]
+          },
+          "entryHash": "b4920430d7fc91a5ccb8ea2dddd4d107b8447e586ab3bd6dd63625660b69637b",
+          "resultHash": "04579fcc1674c53ce4ba381f202975b3cd4cc015478b2e22eb57a9d41d95405e",
+          "rankingHash": "f112521127a0cfa2c249c895b3c3ec695fd1ba207992760f7cc797207d725389",
+          "contestHash": "cd5ef4c086e7fe875e5c3b8e0fcb4d5fbbef39777b6fb73345fa55df498d375e",
+          "advancedHash": "0e0bc3802b7fb25da76149a51115067286a397f2f5b25a7200254637f27f1df4"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 99
+              }
+            ]
+          },
+          "entryHash": "0e0bc3802b7fb25da76149a51115067286a397f2f5b25a7200254637f27f1df4",
+          "resultHash": "fe73810801babc2201efa07126ad07f6768076ff088dda30a0f8a9288930a82c",
+          "rankingHash": "b7e458b669fe85797e57eeb69368c0e1407fda0bc1d673ab6b11eed429d8ff25",
+          "contestHash": "07c778833b4fb8f7cfe38a7b2ecdac78eec93d3e6688feb3468bc62974874ad2",
+          "advancedHash": "2ac8dddc87d531e67fde734747ca0bea425601db2b3730d26cddb80adfd642c6"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 85
+              }
+            ]
+          },
+          "entryHash": "2ac8dddc87d531e67fde734747ca0bea425601db2b3730d26cddb80adfd642c6",
+          "resultHash": "8b208d5ca298be7a8b8055944361cd5417cf063ade780375964c75606fe13b18",
+          "rankingHash": "f76c34942a3b097d4413a5e6f97b3e3e1ea7fdecefbe6efc114ad0096d30784b",
+          "contestHash": "479c00a135eeba3a00e1448af9614c1ae85076cb16ddf31ca0d12a15fabb183a",
+          "advancedHash": "d26fb817e582a5b52117cfc9a1d4ec5a674f695b788612e3383276156a9230ef"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 68
+              }
+            ]
+          },
+          "entryHash": "d26fb817e582a5b52117cfc9a1d4ec5a674f695b788612e3383276156a9230ef",
+          "resultHash": "72a645d5c465a2b5b027ef081270189dacebccb585e60125310d95f9bb528960",
+          "rankingHash": "e8d74c203de40fe8b21c622d06506d5025dbae96253e770c5fc9bb031dd77409",
+          "contestHash": "2d2b6e736f4b46e385e017ab946bd1e9391690dbb8d20ffe1188903ab7e7d5ea",
+          "advancedHash": "e21c2c37225e8860a108aba50cdc90eec721652d6a05210a6399b284d865d6a5"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "e21c2c37225e8860a108aba50cdc90eec721652d6a05210a6399b284d865d6a5",
+          "resultHash": "ee7c75e5bde5e8afa674d244d7e754e1e24e0daa31cb32132e0476a1d411f520",
+          "rankingHash": "bfc990dd13766b9b16ece7904342ac7531c01cc38c5f14d538712bc170b80663",
+          "contestHash": "7137a8eda497d11be84a8fedbedab5c5c7f6ce52ba357b134a396847916bd1b8",
+          "advancedHash": "782c00389b11e77530eb4fa88696742179eaa5753e076871b96fb0915a67f509"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 103
+              }
+            ]
+          },
+          "entryHash": "782c00389b11e77530eb4fa88696742179eaa5753e076871b96fb0915a67f509",
+          "resultHash": "f88a5438d1ae9fcdf2aa16327f99ee05888d1e4a428a84187585811dae497296",
+          "rankingHash": "9163a37b0bae30a1a91f27a75b6e79d20b66f9efae2a4d77c8a2c3d45eec4416",
+          "contestHash": "e63f6ef348696196329e648e023a5efb15746466af931ba26e9be58fd2807193",
+          "advancedHash": "31f4ac205591e270a3be37e7fb82a41d5a403f7d64fd3746089bcdcf76886528"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 181
+              }
+            ]
+          },
+          "entryHash": "31f4ac205591e270a3be37e7fb82a41d5a403f7d64fd3746089bcdcf76886528",
+          "resultHash": "8d5ff6a7444c33eaccbfd7d3a6dde1e7d4bd79baf743558b45768acd52202ab8",
+          "rankingHash": "48678c327485355598470fd652ebf1c5974e63c71ed3883b4cf505aa1e3c7b92",
+          "contestHash": "5ccc8554a67c5e9030915c1cc1b364428bc9692ae67cb815901d4e4709e4a5cd",
+          "advancedHash": "9a9ee0d3bfb9b07812db14e0e8dcf82c1e3f522c25a7ff33f34fe370b3c9dcae"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 155
+              }
+            ]
+          },
+          "entryHash": "9a9ee0d3bfb9b07812db14e0e8dcf82c1e3f522c25a7ff33f34fe370b3c9dcae",
+          "resultHash": "95a7f73916c25d347ef6a56bcb673c421a5a7b8baf15255c5e0cf5b5b941eb54",
+          "rankingHash": "4ad05b2e9153b88998bee7c38bec6dc07010fa0df55d15d6d931e1a6388f22d2",
+          "contestHash": "f212794710bb878fdbc926d5a07f37c0c5e271b7cf586fd7d2195b59826486e4",
+          "advancedHash": "3cc01c0c98161039f4f8dc4877f9462b0a798f8cf8be1c5b635920053618f285"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 124
+              }
+            ]
+          },
+          "entryHash": "3cc01c0c98161039f4f8dc4877f9462b0a798f8cf8be1c5b635920053618f285",
+          "resultHash": "ae36113f1e6997339035296a7d3f4b8872b43c371655641c7afefb2dd8e58b6a",
+          "rankingHash": "4bcd9a2b423dba150d0b85fa870ff78d7a17b883ca3adeb0a92bb9f70136fe8d",
+          "contestHash": "3b1402e8d118d2bf10ccbed4612927567a6fc92b323c3da1fdc36bdd3eea8b5f",
+          "advancedHash": "4dbec85cd044f5f2f39308fbc059dfbaaebf7bdfbd0ffb7810dabf2b94c1d903"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "4dbec85cd044f5f2f39308fbc059dfbaaebf7bdfbd0ffb7810dabf2b94c1d903",
+          "resultHash": "98f175828985b438884720b85806f9eb69ed84c89a989dea7065e624b20c24b9",
+          "rankingHash": "bca8374fa9cd7b721d00cfdd88e55543599b49e47f294fb5e990f23fc82e366e",
+          "contestHash": "060e042996c747f9bc1db557c8af42fecb78f94ad4775b357fd61d9d24b3ed56",
+          "advancedHash": "a74f585a04e42bec9610f48153bb9ac232d91211fc1899bcd6b0b683e7203b7b"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 187
+              }
+            ]
+          },
+          "entryHash": "a74f585a04e42bec9610f48153bb9ac232d91211fc1899bcd6b0b683e7203b7b",
+          "resultHash": "ae640804433de464c279b1b48bf7ee7fcb6d530424802df1c25970cf4a6c43e9",
+          "rankingHash": "a9d4aecc0dce56d111eacbae2d278872c1721f710091593ec0a6d34e3bfff96c",
+          "contestHash": "4cdb3a6b5757ee9483ed99bd5a43e3dafb2bf2c0e5eb34f2e8e6e955e638acec",
+          "advancedHash": "0c703afe9aa907736044ff78e827a55906ad71cd5566f3f80be463dced1124e8"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "jacob_esau",
+      "seed": 42,
+      "selectionHash": "76e5b808b93a7c2483797a7bbe600f4f1ff76b4602d45b8d6dfd57ff84a5d511",
+      "startHash": "ac99bf571fd3f65c2d7e11e7ef29b91014f11880d82ef89448b2844cad184dd8",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 24
+              }
+            ]
+          },
+          "entryHash": "ac99bf571fd3f65c2d7e11e7ef29b91014f11880d82ef89448b2844cad184dd8",
+          "resultHash": "800c7eaccc5bffc648b23b31f60b6ace85c3f7217c8f8d47d6a18f498a65341e",
+          "rankingHash": "eaf6758c05375a050b5d8527a7b6efb263e3a6e98705a3cf62ea17c9f5e5dfb2",
+          "contestHash": "950d0eea8e100e755722d629d40771fa98305077c3fc8e51cf331949bbef2692",
+          "advancedHash": "124bd12a55bfc0f87c255ba81bba37ba0088cca7d894e713fe1e3c5af8243cff"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "124bd12a55bfc0f87c255ba81bba37ba0088cca7d894e713fe1e3c5af8243cff",
+          "resultHash": "1b04516caa2b3438555eb9897e05a07b983ca7ffa4e5db876646061977830dc3",
+          "rankingHash": "918a0caf5e922c04962bc009f9b2cbc8cd49e1dcd6c092bea6030d403f74bb9e",
+          "contestHash": "d00ac2b6d70011f821f99ae01a8cc4d028c1993a253a2706c0973efbee0c8c81",
+          "advancedHash": "5fcb1983a82514b2a0466307d5e2759a4f9bd09ad8f55970245cd2a7cd4d2c44"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 7
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 7
+              }
+            ]
+          },
+          "entryHash": "5fcb1983a82514b2a0466307d5e2759a4f9bd09ad8f55970245cd2a7cd4d2c44",
+          "resultHash": "43e384147d0118e2f884bacdd712aa01892a76c3d75d32a5625fc837aaf11c7f",
+          "rankingHash": "dc8d10d1775128b59ab293c5a5985de9a8fd5e7d9069d801e673d34135dca2bc",
+          "contestHash": "64191a8f39f926b8112488ae3071f707c24e9ae70a013e6a2860e2d3969bdacf",
+          "advancedHash": "110d34bdd2f6fd34b3c2a874c4e99c29a073cf3aa4f7bbc49a5cfa44fb10b194"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "110d34bdd2f6fd34b3c2a874c4e99c29a073cf3aa4f7bbc49a5cfa44fb10b194",
+          "resultHash": "8624e3a5a96227988d5104511c35565c229fa9f13e3808d86d46e375d325a8f5",
+          "rankingHash": "dbde5a13632b6c8c80330f27a8e61c8aa3f735660e29addbb53e98f49d7c9e7f",
+          "contestHash": "2480f03922f9ab1d93b4d046aab66421217c094fcae5a4c5055b10cdddffbe56",
+          "advancedHash": "7c73de1069d5cc1dd1434430a019be98320c39b2f78f9c8a92c597a6e6779139"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 22
+              }
+            ]
+          },
+          "entryHash": "7c73de1069d5cc1dd1434430a019be98320c39b2f78f9c8a92c597a6e6779139",
+          "resultHash": "6e75d45449e849a7f938a058f9cabd7ff0d1f7736c1e070ceee603047c44c3b9",
+          "rankingHash": "2c2f659e0f5b33df7431ed981d76311c0beb2f2e134cc1e86215b35d45a2b966",
+          "contestHash": "ab6e6903af9af4aff3dca2fc87606e4ed6e219055e733458ccacc25ffe61c1ce",
+          "advancedHash": "c84774755864b7e4fb0a9c906115377e7da536f5f31863c46ee03acb568ae17d"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 114
+              }
+            ]
+          },
+          "entryHash": "c84774755864b7e4fb0a9c906115377e7da536f5f31863c46ee03acb568ae17d",
+          "resultHash": "df007890cb9aac423d2ce91dbf9e0879bcde10f242fa1d20f6dd256910623be2",
+          "rankingHash": "a0a6fbbbf0adb6a5ca6d179e3b0c7e5bf3c56553e61ef22a12859c1378f3a560",
+          "contestHash": "0e75c2d1d682b507f08f2bb95dce70b914a25a653a2ca8b7decb7a7cc00b8f5e",
+          "advancedHash": "4056c6d4c93f21179ea813f06b102352198e4c1e1f325d254fda4e4c54d2a1af"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 91
+              }
+            ]
+          },
+          "entryHash": "4056c6d4c93f21179ea813f06b102352198e4c1e1f325d254fda4e4c54d2a1af",
+          "resultHash": "87084cc0133d911f71181fe61ff597f4bc0e5204503439f3aa1cbe1a7fe1920f",
+          "rankingHash": "73d82c23d076b734e317c8f6f5243150cfa0fb819302f9ef86f40e039665bd70",
+          "contestHash": "43a1601697ab4c0da4993553480c0e73852cfb41ab995793089d4b3c1d6b9584",
+          "advancedHash": "f6164752795c7acd801ce783eaf571133d9637967f1af333b0501e7c54377ae6"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 36
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 36
+              }
+            ]
+          },
+          "entryHash": "f6164752795c7acd801ce783eaf571133d9637967f1af333b0501e7c54377ae6",
+          "resultHash": "973c47332b25d1cdaf836d1a1652f4ecf72dd19a86232d4924e904cdd31b7582",
+          "rankingHash": "f03c1696c2746b16a71a4a66066c2a6cc2e88e484a7c418d0855c68b4c71bc79",
+          "contestHash": "ed0df085a478722ceb38d86f89b8e4193205e9dd8f43f7de968c8ec5ce334158",
+          "advancedHash": "5de19e6ba02813c3ed1921221e7ff8bf252df69b51697c23105680defbe6dc6c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "5de19e6ba02813c3ed1921221e7ff8bf252df69b51697c23105680defbe6dc6c",
+          "resultHash": "41e2be653b3f63efe990ef4e5699be4844ab252570fcc884957583ee9e6b2031",
+          "rankingHash": "d5fe1bfd315b4814cd2267149be0f384c89885ca04e498621a5d3e3e959b76cc",
+          "contestHash": "f4ba2d6ae57772f922d6ebbe27e67ec3035d815e6382ff7256cd190a3892a602",
+          "advancedHash": "cafde7ab9787cb463656143a7b6a6f64320cfc1b19ce5978156f1da16baeb3ab"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 92
+              }
+            ]
+          },
+          "entryHash": "cafde7ab9787cb463656143a7b6a6f64320cfc1b19ce5978156f1da16baeb3ab",
+          "resultHash": "a07be8c6cf0a6809ffda2493bbdd605aa1f1f8282312e2b434b5425850ba5f6f",
+          "rankingHash": "41c110bd33de4af1b10f43055321c43ac89262cc5577ab084037f46b2c416af5",
+          "contestHash": "d2348e87bf0d5d85da2affa4f09f117fb6c9bb52f0ec974984c54983b418b81e",
+          "advancedHash": "2a6408c4a3511b9f2d3c73434cd1e7ad9646e161c810e1898eec9ecaec522943"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 228
+              }
+            ]
+          },
+          "entryHash": "2a6408c4a3511b9f2d3c73434cd1e7ad9646e161c810e1898eec9ecaec522943",
+          "resultHash": "bfd2a2a46fab0b2541db4d1fa03715bba62fb1b9e9bcac7a23c2ab1ab5e1fa0f",
+          "rankingHash": "1141d6748c5bf67ce6f88af1ae8475a64b9a5e8277a44d9d06372f380132ce60",
+          "contestHash": "d5d26dfa5fa024fc2ce667e6a8076f67453abd7fa3e5064bd6b1aa50b2b6dbe3",
+          "advancedHash": "058dd06a7970002bb088826176fabce1567946d8e8ea57558e21a97252423e82"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 182
+              }
+            ]
+          },
+          "entryHash": "058dd06a7970002bb088826176fabce1567946d8e8ea57558e21a97252423e82",
+          "resultHash": "c6251e95beca383f5ca91c3e585a0fb764e5990826303fbcbc6eb685d4183f31",
+          "rankingHash": "f33810f90c1b8cf91f97e94d442fc90bf42383e53977b5765007b2464480ea61",
+          "contestHash": "0da40cd103f3d87b1581b7d1c8536e05abb3bd9c2a8fb4f984d4db01489dd94f",
+          "advancedHash": "0d7eb787105c6cc165ed5242f0a68cc73233a0eaa7f77ef7c7f0b03a73292585"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 73
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 73
+              }
+            ]
+          },
+          "entryHash": "0d7eb787105c6cc165ed5242f0a68cc73233a0eaa7f77ef7c7f0b03a73292585",
+          "resultHash": "e5e3b832199f16ad4f94dfd197b6b9aeda146a97b858dd55516e1975916526fe",
+          "rankingHash": "4919dedf0395def11e08600a15e7a3cd3bc101870c7a7d12cd14aa1ff3317996",
+          "contestHash": "0844376ad686d9c051cdab8c2e79034e1c2c879ee6b0aff116532cb14331505b",
+          "advancedHash": "228260264dc37d976f848e49165ef47e949f6037885e06d346c5c453927beeea"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "228260264dc37d976f848e49165ef47e949f6037885e06d346c5c453927beeea",
+          "resultHash": "61bc362c226cfc0b80d064df234f32b31a35ffb38d9c1080fcb73e7718e16c59",
+          "rankingHash": "fd617142a89a8fecc7031501016a43cc6e0886b2f6391b47dab0fce48efd04c0",
+          "contestHash": "165e5e044d3e7ba5974a9d48e348e8404b93dd9b64b6c0764a8450b43d00dc8e",
+          "advancedHash": "8ce8470b25fd7d77d47adf8182d6fd2a4ae67be54d38bf1e60eafe42c694c0f2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 184
+              }
+            ]
+          },
+          "entryHash": "8ce8470b25fd7d77d47adf8182d6fd2a4ae67be54d38bf1e60eafe42c694c0f2",
+          "resultHash": "771ac719d73f7eba9d740d1e61fa1196ff46216b95591fd1328fbf3b83fb4679",
+          "rankingHash": "858fbddbe798f69d610adcebff7ca24829691aedaaa9b64cbfeb375fda7fa6f6",
+          "contestHash": "3323310c4149ff890d307f7a007eb76a303cfd2500c5ae86220991a76864507d",
+          "advancedHash": "7973c141c45618586a541ced06a3ef179ea65e6cdb056adf94ff967f624144ab"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    },
+    {
+      "characterId": "jacob_esau",
+      "seed": 424242,
+      "selectionHash": "a423340d1a9ecdd2c3b4d0daad318ce0aec387d78578f43c2bf6dfd914a71b10",
+      "startHash": "40cdbb95205b54872ca78be4785aa880b674e7f67c9035f59cffd8f3c0eaa0af",
+      "rooms": [
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 24
+              }
+            ]
+          },
+          "entryHash": "40cdbb95205b54872ca78be4785aa880b674e7f67c9035f59cffd8f3c0eaa0af",
+          "resultHash": "214fe0bd14a8b0ffbbab6b8e6dc47030ce8ddfb65619fbf9f9a9c94d108fc711",
+          "rankingHash": "65db780d2ca55827065169e747636403ea2bfa7d595c6175a4bee71c8f3c9083",
+          "contestHash": "9e077b7fd19dce444bf67992ffb22c943e7bc72ad2f4930a784b9b3308f2c5dc",
+          "advancedHash": "17f41dae6a78f403b6fc0818a41d0b7870e95916eb8bb02584dba995a7d16479"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 19
+              }
+            ]
+          },
+          "entryHash": "17f41dae6a78f403b6fc0818a41d0b7870e95916eb8bb02584dba995a7d16479",
+          "resultHash": "bfb5500a4bf51ff496381eae5156d76d56d7ba31aac2abb337de082122d22d76",
+          "rankingHash": "d559f48346b14f8d910df4e7415a9e0c8d6dabe174ccc36563e92d57a80df6e4",
+          "contestHash": "c7558598d3b4dda1179472ad7bb664937aed040d0656a6cfaae54ef99f527e0e",
+          "advancedHash": "b81d719b1fe9b8761a66d2ccf60bb27bab9305a9bd86f961cd0f7479d61483f1"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 7
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 7
+              }
+            ]
+          },
+          "entryHash": "b81d719b1fe9b8761a66d2ccf60bb27bab9305a9bd86f961cd0f7479d61483f1",
+          "resultHash": "8d8a2e7e76e3fdb5334d2d03eb420417b69680eead937269249ce78007c051bb",
+          "rankingHash": "a0371d48c408eea68973392b38543e10d9285bcf81d567896e74e4cc88351506",
+          "contestHash": "93f262f70eff337a4f73030fcc6889ca786146828140012fa38839e802d6c79d",
+          "advancedHash": "54ee9dd543aa59952a75ebb8a527c5e93c8881686714845cf15788c2a2c9ca28"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "54ee9dd543aa59952a75ebb8a527c5e93c8881686714845cf15788c2a2c9ca28",
+          "resultHash": "e2449bc69ce2080009dbd4e0876024b401bb97c841269fc582e5d2df7299686d",
+          "rankingHash": "24432813bd068589e73321c504c7095e6468bde5fafbf745eeb0cd6d3c055296",
+          "contestHash": "659971e7296b7b84ce2769e2de7370852f2414cf5ce40e077df702d6bda6d804",
+          "advancedHash": "1d506e645f26a6a7f5b7afa73ff85b40cddc0ff38b68d36e67632e1ec6b5ba18"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 22
+              }
+            ]
+          },
+          "entryHash": "1d506e645f26a6a7f5b7afa73ff85b40cddc0ff38b68d36e67632e1ec6b5ba18",
+          "resultHash": "9504a37d33fe58281d126ee07b2cbb1af79998de2e4d5bb5ed21ec596a1cbe39",
+          "rankingHash": "02e3348702675f5de71f9131e38d69942314061ff4768f8286bbb8856a220151",
+          "contestHash": "ba578b06957df6c50f53c498aae98b90dc819d78af45cea142ef0dfde133a6be",
+          "advancedHash": "8defc801327bb67c1ebdf29e14f3c433b91dbb94a5cb128831b8e50155e6de71"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 120
+              }
+            ]
+          },
+          "entryHash": "8defc801327bb67c1ebdf29e14f3c433b91dbb94a5cb128831b8e50155e6de71",
+          "resultHash": "23789b6380ea5c674d50c93ce6d78e6f8770733cd312b192d22b91aa7b3c46fe",
+          "rankingHash": "11dbfe10cedcd920f3a64df374cb9f9ae52a53b642664c315c83c20c1bf838b8",
+          "contestHash": "e9e7420cebbb5ef4d665db8c66905d42725e862feab3ee6d91b57f56de8d16f2",
+          "advancedHash": "b54dae1c8ff2039822ce48f1981bfeb5bb7b1dbcaebcce38e94bc3158e339120"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 91
+              }
+            ]
+          },
+          "entryHash": "b54dae1c8ff2039822ce48f1981bfeb5bb7b1dbcaebcce38e94bc3158e339120",
+          "resultHash": "ac8c1b64ad1a6ba9a109a6141db9f3a8d088aaf33faebb63373ed57b837dc099",
+          "rankingHash": "3cb81a59fc42a4788ad8b3d9217f090c93e1d6eb07a56477d88e64cc10d00b84",
+          "contestHash": "c870b846da6d861e81097acb7bb17646b3ac3f2127c73fe66a34f0152d61c2c1",
+          "advancedHash": "652fb136a81c81a4d5b1ecb2f73adb2c56f485faebdd42f7d9011b0c16bbdfba"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 36
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 36
+              }
+            ]
+          },
+          "entryHash": "652fb136a81c81a4d5b1ecb2f73adb2c56f485faebdd42f7d9011b0c16bbdfba",
+          "resultHash": "80c30ba6bb7d9d167fca424ddd19b1ded651b49bd526ca80513532b8e0b815ed",
+          "rankingHash": "dc32e9bf06875ec5c60b1039e57c8fc2527280a1079000eeb50ca26516c35db4",
+          "contestHash": "019385c583ac09a43661b73e8865500af2ebf376aa9dff597d74ca86fea93e00",
+          "advancedHash": "8898c2d3054cbf15f45acc9ce22722a209b59318a47a0a41dd26458f48313de0"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "8898c2d3054cbf15f45acc9ce22722a209b59318a47a0a41dd26458f48313de0",
+          "resultHash": "0527ce116b5d3d657b85ca65f19361c36b43c5407e914877be1eceaa5fee9314",
+          "rankingHash": "bf745d5af3425fb5008bd8ec3ef8bebab472f3e152eeb1377c2517ebe901b80e",
+          "contestHash": "8ced8e1d48f90bc8a8212ba3cfd268692bddfef6edf9d2c58510491ce93809a9",
+          "advancedHash": "72c0fcd1c4b63a3d974a39e02b49282ad3bb156452a033bfda050e2551ce50a2"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 97
+              }
+            ]
+          },
+          "entryHash": "72c0fcd1c4b63a3d974a39e02b49282ad3bb156452a033bfda050e2551ce50a2",
+          "resultHash": "34d280d8f4701832eb28bfeafc04a55993d70c85e666054d757dbd1d0486df82",
+          "rankingHash": "d4ea254a49f1509e964ff702a42d49bf968037b6051965e026928aecf2ff2afd",
+          "contestHash": "b53a79c881d8fee4ab04c4120080444b727b03c2d448696fef840c1ec980bc6c",
+          "advancedHash": "ee73c3c03310a5247c27eebbf7e841b0f29133e56ff93f8d3172d7804db2f40c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 240
+              }
+            ]
+          },
+          "entryHash": "ee73c3c03310a5247c27eebbf7e841b0f29133e56ff93f8d3172d7804db2f40c",
+          "resultHash": "f6d950d50a4f19d0a538127e27cb43a715ae4adb303e6f62c3f1425fccaf873b",
+          "rankingHash": "3a6c743c4a2170789b529dbd377cc7846cb4df2e2568a46d094b70010c75de3e",
+          "contestHash": "12f208eee00747327e8fd62651bd266cecf4152d4ad04435048e8ea435328a8f",
+          "advancedHash": "235c67dd37157d22485a844a621429231cca9ef5dbf4e14a37d6726275ddbb66"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "disrupt",
+                "group": "B",
+                "amount": 192
+              }
+            ]
+          },
+          "entryHash": "235c67dd37157d22485a844a621429231cca9ef5dbf4e14a37d6726275ddbb66",
+          "resultHash": "189516d8292ca2f3f8757b10b802a225751726f6c8bc9b16c07050f87774e6ee",
+          "rankingHash": "43cc624e9b83092eb1ea4623aa955071f58c7b5eedbeca4b5b217e2e83136642",
+          "contestHash": "c81c7ed798d19e1c5e277c813d2d930e6fd8ebae7441ad1a877bdbf2a1fbe289",
+          "advancedHash": "67e20c6f8979894c83e07d350bf1355c2f121c6d5e0aed040a85b87ced692825"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 69
+              },
+              {
+                "type": "bid",
+                "group": "B",
+                "amount": 69
+              }
+            ]
+          },
+          "entryHash": "67e20c6f8979894c83e07d350bf1355c2f121c6d5e0aed040a85b87ced692825",
+          "resultHash": "86ba65149a8fe76083e30433c700e6bacc8e3cd18e50f808a664a51be107db60",
+          "rankingHash": "ecf506f866418e530ca4af00cd5a5b3dc46677560f016175364859e7f5f3dc59",
+          "contestHash": "17b98b540fe7c07a458b518b938b47913fe43d66e5849c2d68fd4ebe4df73de5",
+          "advancedHash": "9056e097983c42ff84cc5b3d0615be64e539434ad9a385bd032a5187c3322b2a"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "withdraw"
+              }
+            ]
+          },
+          "entryHash": "9056e097983c42ff84cc5b3d0615be64e539434ad9a385bd032a5187c3322b2a",
+          "resultHash": "9fefb4c382854e046844477090287fa62adca411cbed2d3bb9fb41800fba5e75",
+          "rankingHash": "75a2975d3c25b2b96998bcbdfdba3fc869fe4ad6163fa62c2c17c4a0a793153a",
+          "contestHash": "33c2645a3e139d7d3e605697ea4a9ffa75517d2ce142c9813e4e0eb330dc74ca",
+          "advancedHash": "2d55f6f20a0d7b0e4ba4e08f709ae8de447a6f3dc52bd0e5437692149658652c"
+        },
+        {
+          "turn": {
+            "playerId": "human",
+            "actions": [
+              {
+                "type": "bid",
+                "group": "A",
+                "amount": 194
+              }
+            ]
+          },
+          "entryHash": "2d55f6f20a0d7b0e4ba4e08f709ae8de447a6f3dc52bd0e5437692149658652c",
+          "resultHash": "100b15254f2f69c85a49a34062802ca1aded52f3a0ee0fa74ba4404a9d41d423",
+          "rankingHash": "151b11265455e404ca90276d3cce9117e14c07824b9f735d770c2d2a9b149798",
+          "contestHash": "b995c82a2058aeaa40d850ddf365ce131646b1a54308af9082925325f51e9ad2",
+          "advancedHash": "9a5b3697854317ff5b843e00e3075c619c5421eb81aa01b8c93f0d4384b750e7"
+        }
+      ],
+      "restartedHash": "84bffae6d0220bb3d4e7d21d9ed355457bfc93249414729c4d335fa79eee2c28"
+    }
+  ]
+}
