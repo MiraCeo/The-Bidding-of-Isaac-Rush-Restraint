@@ -6,6 +6,32 @@ export const survivalDifficulties = [
 ] as const;
 export type SurvivalDifficulty = (typeof survivalDifficulties)[number];
 export const defaultSurvivalDifficulty: SurvivalDifficulty = 'standard';
+export const currentSurvivalAiPolicy = 'role-aware-1' as const;
+export type SurvivalAiPolicy = typeof currentSurvivalAiPolicy;
+/** v1 parameters above remain frozen for client3 continuation. */
+export const survivalRoleDifficultyProfiles = Object.freeze({
+  easy: Object.freeze({
+    planning: 0.1,
+    forecastError: 0.25,
+    quoteError: 0.4,
+    lapseRate: 0.18,
+    rolePrecision: 0.2,
+  }),
+  standard: Object.freeze({
+    planning: 0.4,
+    forecastError: 0.14,
+    quoteError: 0.25,
+    lapseRate: 0.08,
+    rolePrecision: 0.5,
+  }),
+  hard: Object.freeze({
+    planning: 0.85,
+    forecastError: 0.025,
+    quoteError: 0.05,
+    lapseRate: 0.02,
+    rolePrecision: 0.85,
+  }),
+});
 /** Highest delegates to the frozen AI2 policy. Lower tiers alter judgments, not game rules. */
 export const survivalDifficultyProfiles = Object.freeze({
   easy: Object.freeze({

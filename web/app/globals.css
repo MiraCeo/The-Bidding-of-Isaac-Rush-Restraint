@@ -3,6 +3,7 @@
 @import 'shadcn/tailwind.css';
 
 /* Mode menu and independent survival screens. */
+.survival-tutorial-inputs {display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0;}.survival-tutorial-inputs label {display:grid;gap:8px;font-size:.8rem}.survival-teaching input,.survival-teaching select {border:1px solid var(--border);background:var(--background);color:var(--foreground);border-radius:6px;padding:10px;max-width:100%}.survival-tutorial-ledger {display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0}.survival-tutorial-ledger>div {padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--card)}.survival-tutorial-ledger dd {color:var(--primary);font-weight:800;font-size:1.2rem;margin-top:8px}.survival-teaching-ranking {display:grid;gap:14px;padding:20px;list-style:decimal inside}.survival-teaching-item {display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.8rem}.survival-teaching .survival-table-wrap {max-height:460px;overflow:auto}@media(max-width:850px){.survival-tutorial-ledger {grid-template-columns:repeat(2,1fr)}.survival-tutorial-inputs {grid-template-columns:1fr}}
 .survival-replay .replay-identity { flex-wrap:wrap; gap:16px; }
 .survival-replay .replay-scope-tabs { flex-wrap:wrap; }
 .survival-replay .replay-scope-tabs button:disabled { opacity:.4; cursor:not-allowed; }

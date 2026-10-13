@@ -58,6 +58,7 @@ export interface ClassicGameAppProps {
   };
   externalReplay?: ReplayDocument | null;
   onCloseExternalReplay?: () => void;
+  externalReplayReturnLabel?: string;
   preferences?: GamePreferences;
   preferenceStatus?: PreferenceSaveStatus;
   onSharedPreferencesChange?: (next: GamePreferences) => void;
@@ -295,7 +296,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
           <div className="topbar-inner">
             <h1>经典只读回放</h1>
             <button type="button" onClick={props.onCloseExternalReplay}>
-              返回经典对局
+              {props.externalReplayReturnLabel ?? '返回经典对局'}
             </button>
             <button type="button" onClick={props.onReturnMenu}>
               返回主菜单

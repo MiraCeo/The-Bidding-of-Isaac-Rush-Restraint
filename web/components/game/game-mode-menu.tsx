@@ -54,7 +54,7 @@ export function GameModeMenu({
               ◇
             </span>
             <h3>教程</h3>
-            <p>五课独立练习，掌握竞拍、合作、扰乱与构筑。</p>
+            <p>基础五课与生存六课独立练习，掌握报价、构筑和层末淘汰。</p>
             <small>不创建正式对局 · 不影响存档</small>
             <Button onClick={() => changeUtilityPanel('tutorial')}>
               新手教程

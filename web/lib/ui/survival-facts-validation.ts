@@ -92,8 +92,14 @@ export function validateSurvivalRuleFacts(facts: SurvivalRuleFacts): void {
   keys(
     facts.parameters,
     ['rules', 'cutLines', 'bossRewards'],
-    ['aiDifficulty'],
+    ['aiDifficulty', 'aiPolicy'],
   );
+  if (
+    Object.hasOwn(facts.parameters, 'aiPolicy') &&
+    (facts.parameters.aiPolicy !== 'role-aware-1' ||
+      facts.parameters.aiDifficulty === undefined)
+  )
+    fail('未知生存AI策略或缺少难度。');
   if (
     Object.hasOwn(facts.parameters, 'aiDifficulty') &&
     !isSurvivalDifficulty(facts.parameters.aiDifficulty)

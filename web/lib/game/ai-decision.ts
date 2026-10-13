@@ -25,7 +25,10 @@ import { getRoomScoreMultiplier } from './room-modifiers';
 import { countItem, hasItem } from './runtime';
 import { getRuntimeActionAmounts } from './turns';
 import type { RandomSource, RewardGroup, RulesConfig } from './types';
-import type { SurvivalDifficulty } from './survival-difficulty';
+import type {
+  SurvivalDifficulty,
+  SurvivalAiPolicy,
+} from './survival-difficulty';
 import {
   estimateSurvivalTurnScore,
   type SurvivalAiPlan,
@@ -49,6 +52,10 @@ export interface AiDecisionExperiments {
 }
 
 export interface AiDecisionOptions {
+  /** Research-only ablation, never set by the client. */
+  survivalDisableRoleAdaptation?: boolean;
+  survivalRolePrecision?: number;
+  survivalAiPolicy?: SurvivalAiPolicy;
   survivalDifficulty?: SurvivalDifficulty;
   survivalDifficultyRandom?: RandomSource;
   survivalExecutionFactor?: number;
@@ -414,6 +421,7 @@ function considerSecondaryAction(
         ),
         survivalPlan: options.survivalPlan,
         survivalExecutionFactor: options.survivalExecutionFactor,
+        survivalRolePrecision: options.survivalRolePrecision,
       });
       const amount = Math.min(rawQuote.amount, legalSecondaryMaximum);
       const action =
@@ -729,6 +737,7 @@ export function decideAiTurn(
     ),
     survivalPlan: options.survivalPlan,
     survivalExecutionFactor: options.survivalExecutionFactor,
+    survivalRolePrecision: options.survivalRolePrecision,
   });
   const { baseQuote, randomFactor: quoteFactor, amount } = quoteAnalysis;
 

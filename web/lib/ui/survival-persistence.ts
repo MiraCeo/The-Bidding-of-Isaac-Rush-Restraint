@@ -340,24 +340,53 @@ export function parseSurvivalReplay(source: string): SurvivalReplayDocument {
   };
 }
 
+export interface SurvivalSaveResult {
+  checkpointSaved: boolean;
+  archiveSaved: boolean | null;
+}
+/** The small continuation checkpoint must survive a separate, larger archive quota failure. */
+export function saveSurvivalProgress(
+  storage: SaveStorage | null,
+  game: SurvivalGameState,
+  draft: RoomDraft | null = null,
+): SurvivalSaveResult {
+  const failed = { checkpointSaved: false, archiveSaved: null };
+  if (!storage) return failed;
+  try {
+    const source = serializeSurvivalCheckpoint(game, draft);
+    storage.setItem(survivalSaveKey, source);
+  } catch {
+    return failed;
+  }
+  if (game.phase === 'competition_complete') {
+    try {
+      storage.setItem(
+        survivalLastCompletedKey,
+        serializeSurvivalReplay(createSurvivalReplay(game)),
+      );
+      return { checkpointSaved: true, archiveSaved: true };
+    } catch {
+      return { checkpointSaved: true, archiveSaved: false };
+    }
+  }
+  return { checkpointSaved: true, archiveSaved: null };
+}
 export function persistSurvivalCheckpoint(
   storage: SaveStorage | null,
   game: SurvivalGameState,
   draft: RoomDraft | null = null,
 ): boolean {
-  if (!storage) return false;
-  try {
-    const source = serializeSurvivalCheckpoint(game, draft);
-    if (game.phase === 'competition_complete')
-      storage.setItem(
-        survivalLastCompletedKey,
-        serializeSurvivalReplay(createSurvivalReplay(game)),
-      );
-    storage.setItem(survivalSaveKey, source);
-    return true;
-  } catch {
-    return false;
-  }
+  const result = saveSurvivalProgress(storage, game, draft);
+  return result.checkpointSaved && result.archiveSaved !== false;
+}
+export function survivalSaveMessage(result: SurvivalSaveResult): string {
+  if (!result.checkpointSaved)
+    return '生存自动保存失败，当前仅在本页运行，请导出存档；浏览器中可能仍是较早的进度。';
+  if (result.archiveSaved === false)
+    return '生存检查点已保存；最近完成回放未保存，请导出回放。原最近回放保留。';
+  return result.archiveSaved
+    ? '生存检查点与完成回放已保存'
+    : '生存检查点已保存';
 }
 export function loadSurvivalCheckpoint(
   storage: Pick<SaveStorage, 'getItem'> | null,

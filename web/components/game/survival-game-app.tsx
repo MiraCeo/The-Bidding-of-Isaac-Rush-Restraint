@@ -34,7 +34,8 @@ import type { CharacterId, PlayerTurn } from '@/lib/game/item-types';
 import type { SurvivalGameAction } from '@/lib/game/survival-session';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
 import {
-  persistSurvivalCheckpoint,
+  saveSurvivalProgress,
+  survivalSaveMessage,
   type SurvivalReplayDocument,
 } from '@/lib/ui/survival-persistence';
 import {
@@ -71,6 +72,8 @@ export interface SurvivalGameAppProps {
   onPreferencesChange: (next: GamePreferences) => void;
   imported: SurvivalReplayDocument | null;
   onReplay: (doc: SurvivalReplayDocument | null) => void;
+  onReturnImported?: () => void;
+  importedReturnLabel?: string;
   onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
   restoreMessage?: string;
 }
@@ -85,6 +88,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const [saveStatus, setSaveStatus] = useState('');
   const [restart, setRestart] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [teachingOpen, setTeachingOpen] = useState(false);
   const dispatch = (action: SurvivalGameAction) => {
     try {
       if (!session) return;
@@ -113,18 +117,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    const saved = persistSurvivalCheckpoint(
+    const saved = saveSurvivalProgress(
       getPreferenceStorage(),
       session.game,
       session.draft,
     );
     queueMicrotask(() => {
-      if (!cancelled)
-        setSaveStatus(
-          saved
-            ? '生存检查点已保存'
-            : '存储不可用，当前仅在本页运行，请导出存档。',
-        );
+      if (!cancelled) setSaveStatus(survivalSaveMessage(saved));
     });
     return () => {
       cancelled = true;
@@ -227,7 +226,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         />
       );
     let content: ReactNode;
-    if (selected === 'tutorial') content = <GameTutorial />;
+    if (selected === 'tutorial')
+      content = <GameTutorial mode="survival" scoreDecimals={decimals} />;
     else if (selected === 'replay')
       content = (
         <>
@@ -348,6 +348,15 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       content = (
         <>
           <h2>生存模式规则</h2>
+          <Button
+            variant="secondary"
+            onClick={() => setTeachingOpen((open) => !open)}
+          >
+            {teachingOpen ? '收起生存教学' : '打开生存教学'}
+          </Button>
+          {teachingOpen && (
+            <GameTutorial mode="survival" scoreDecimals={decimals} />
+          )}
           <p>
             20人开局，每层5房，第5房为BOSS。每层基础资金重置为1000，再应用角色与道具效果。正式斩杀线为
             {survivalOfficialCutLines.join('／')}。
@@ -409,6 +418,14 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
       </b>
       <span>难度 {survivalDifficultyLabel(game.aiDifficulty)}</span>
+      <span>
+        AI策略{' '}
+        {game.aiDifficulty === 'highest'
+          ? '原最高基线'
+          : game.aiPolicy === 'role-aware-1'
+            ? '角色适配'
+            : '历史原版'}
+      </span>
       <span>斩杀线 {game.cutLines[game.floorIndex]}</span>
       <span>资金 {human?.money}</span>
       <span>
@@ -609,10 +626,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               variant="secondary"
               onClick={() => {
                 setPanel(null);
-                props.onReplay(null);
+                if (props.onReturnImported) props.onReturnImported();
+                else props.onReplay(null);
               }}
             >
-              返回生存对局
+              {props.importedReturnLabel ?? '返回生存对局'}
             </Button>
             <Button variant="secondary" onClick={props.onReturnMenu}>
               返回主菜单
@@ -631,7 +649,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       >
         {page}
         <output className="survival-save-message">
-          {message || props.restoreMessage || saveStatus}
+          {message || saveStatus}
+          {props.restoreMessage && <span> · {props.restoreMessage}</span>}
         </output>
         {message && game?.humanEliminatedAt !== null && (
           <Button onClick={() => setMessage('')}>重试AI续跑</Button>

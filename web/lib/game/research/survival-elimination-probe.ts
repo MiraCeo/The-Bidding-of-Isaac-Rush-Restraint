@@ -26,6 +26,8 @@ export const proposedSurvivalCutLines = Object.freeze([
   200, 250, 325, 425, 550, 700, 850,
 ]);
 export interface EliminationProbeOptions {
+  disableRoleAdaptation?: boolean;
+  aiPolicy?: import('../survival-difficulty').SurvivalAiPolicy;
   aiDifficulty?: SurvivalDifficulty;
   aiVersion?: 'legacy' | 'survival';
   seed: number;
@@ -63,10 +65,23 @@ export function runSurvivalEliminationProbe(
     history: createEmptyAiHistory(),
   };
   let queued = new Map<string, AiDecision>();
+  const survivalDecider: typeof decideAiTurn = (
+    player,
+    floorIndex,
+    rules,
+    random,
+    decisionOptions,
+  ) =>
+    decideSurvivalAiTurn(player, floorIndex, rules, random, {
+      ...decisionOptions,
+      ...(options.disableRoleAdaptation
+        ? { survivalDisableRoleAdaptation: true }
+        : {}),
+    });
   const reducer = createSurvivalResearchReducer((...args) => {
     if (options.policy !== 'all_ai')
       return (
-        options.aiVersion === 'survival' ? decideSurvivalAiTurn : decideAiTurn
+        options.aiVersion === 'survival' ? survivalDecider : decideAiTurn
       )(...args);
     const decision = queued.get(args[0].id);
     if (!decision) throw new Error('Missing pre-submit AI decision.');
@@ -126,12 +141,11 @@ export function runSurvivalEliminationProbe(
                     })),
                   },
                   survivalDifficulty: game.aiDifficulty,
+                  survivalAiPolicy: game.aiPolicy,
                 }
               : {}),
           },
-          options.aiVersion === 'survival'
-            ? decideSurvivalAiTurn
-            : decideAiTurn,
+          options.aiVersion === 'survival' ? survivalDecider : decideAiTurn,
         );
         queued = new Map(
           allAi.decisions.map((decision) => [decision.turn.playerId, decision]),

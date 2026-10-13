@@ -26,6 +26,7 @@ import * as preferenceStorage from './game-preferences';
 import * as kernel from '../game/survival-session';
 import * as ai from '../game/ai-decision';
 import { serializeSurvivalBackup } from './survival-backup';
+import { SurvivalDataManagement } from '@/components/game/survival-data-management';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -98,6 +99,208 @@ async function settings() {
 }
 
 describe('formal independent survival entry', () => {
+  it('cancelling a pending file chooser clears reading state and invalidates the older read', async () => {
+    seeded();
+    await mount();
+    await settings();
+    const source = serializeSurvivalCheckpoint(
+      startSurvivalClient('lost', 99).game,
+    );
+    let finish!: (source: string) => void;
+    const file = new File(['pending'], 'pending.json');
+    Object.defineProperty(file, 'text', {
+      value: () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+    });
+    const input = node<HTMLInputElement>('input[type="file"]');
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [file],
+    });
+    await act(async () =>
+      input.dispatchEvent(new Event('change', { bubbles: true })),
+    );
+    expect(container.textContent).toContain('正在验证文件');
+    Object.defineProperty(input, 'files', { configurable: true, value: [] });
+    await act(async () =>
+      input.dispatchEvent(new Event('change', { bubbles: true })),
+    );
+    expect(container.textContent).not.toContain('正在验证文件');
+    await act(async () => finish(source));
+    expect(container.querySelector('.data-candidate')).toBeNull();
+    expect(
+      parseSurvivalCheckpoint(localStorage.getItem(survivalSaveKey)!).game.seed,
+    ).toBe(42);
+  });
+  it('settings mounted before AI completion exposes the completed replay without reopening settings', async () => {
+    let completed = startSurvivalClient('isaac', 42);
+    while (completed.game.phase !== 'competition_complete')
+      completed = reduceSurvivalClient(
+        completed,
+        completed.game.phase === 'room_action'
+          ? completed.game.activePlayerIds.includes('human')
+            ? {
+                type: 'submit_player_turn',
+                turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+              }
+            : { type: 'submit_ai_room' }
+          : {
+              type:
+                completed.game.phase === 'room_result'
+                  ? 'advance_room'
+                  : 'advance_floor',
+            },
+      );
+    const onReplay = vi.fn(),
+      onImport = vi.fn(),
+      render = (session: SurvivalClientSession) =>
+        root.render(
+          createElement(SurvivalDataManagement, {
+            session,
+            imported: null,
+            onReplay,
+            onImport,
+          }),
+        );
+    await act(async () => render(startSurvivalClient('lost', 99)));
+    expect(container.textContent).not.toContain('查看最近完成的生存回放');
+    await act(async () => render(completed));
+    await click(button('查看最近完成的生存回放'));
+    expect(onReplay).toHaveBeenCalledTimes(1);
+    expect(onReplay.mock.calls[0]![0].replay.seed).toBe(42);
+    expect(onReplay.mock.calls[0]![0].replay.final.ranking).toEqual(
+      completed.game.finalRanking,
+    );
+  });
+  it('explicit backup profile restore failure keeps the original match and profile with an actionable error', async () => {
+    seeded();
+    const original = createPlayerProfile();
+    localStorage.setItem(playerProfileKey, JSON.stringify(original));
+    await mount();
+    await settings();
+    const before = localStorage.getItem(survivalSaveKey),
+      incoming = createPlayerProfile();
+    incoming.progression.statistics.example = 123;
+    await upload(
+      serializeSurvivalBackup(
+        startSurvivalClient('lost', 99).game,
+        null,
+        incoming,
+      ),
+    );
+    await click(
+      node<HTMLInputElement>('.data-candidate input[type="checkbox"]'),
+    );
+    vi.spyOn(preferenceStorage, 'getPreferenceStorage').mockReturnValue({
+      getItem: (key: string) => localStorage.getItem(key),
+      setItem: (key: string, value: string) => {
+        if (key === playerProfileKey) throw new Error('quota');
+        localStorage.setItem(key, value);
+      },
+      removeItem: (key: string) => localStorage.removeItem(key),
+    } as unknown as Storage);
+    await click(button('载入生存对局'));
+    expect(container.textContent).toContain('已恢复原存储');
+    expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+    expect(JSON.parse(localStorage.getItem(playerProfileKey)!)).toEqual(
+      original,
+    );
+    expect(button('载入生存对局')).toBeTruthy();
+  });
+  it('same-seed checkpoint import resets stale replay UI and restores the incoming room and difficulty', async () => {
+    seeded();
+    await mount();
+    await settings();
+    const incoming = withdraw(startSurvivalClient('lost', 42, 'easy'));
+    await upload(serializeSurvivalCheckpoint(incoming.game));
+    await click(button('载入生存对局'));
+    expect(container.textContent).toContain('难度 简单');
+    expect(container.querySelector('.survival-replay')).toBeNull();
+    expect(button('积分排行')).toBeTruthy();
+    expect(
+      parseSurvivalCheckpoint(localStorage.getItem(survivalSaveKey)!).game
+        .selectedCharacter,
+    ).toBe('lost');
+  });
+  it('import success does not hide later auto-save failure', async () => {
+    seeded();
+    await mount();
+    await settings();
+    await upload(
+      serializeSurvivalCheckpoint(startSurvivalClient('lost', 99).game),
+    );
+    await click(button('载入生存对局'));
+    const before = localStorage.getItem(survivalSaveKey);
+    vi.spyOn(preferenceStorage, 'getPreferenceStorage').mockReturnValue({
+      getItem: (key: string) => localStorage.getItem(key),
+      setItem: () => {
+        throw new Error('quota');
+      },
+      removeItem: () => {},
+    } as unknown as Storage);
+    await click(button('出价竞拍'));
+    expect(container.textContent).toContain('自动保存失败');
+    expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+  });
+  it('returns a classic replay to its survival source without switching the active marker or losing draft', async () => {
+    seeded();
+    let classic = reduceGameSession(createGameSession(77), {
+      type: 'start_game',
+      characterId: 'lost',
+    });
+    classic = reduceGameSession(classic, {
+      type: 'submit_player_turn',
+      turn: { playerId: 'human', actions: [{ type: 'withdraw' }] },
+    });
+    await mount();
+    await settings();
+    const before = localStorage.getItem(survivalSaveKey);
+    await upload(serializeReplay(classic.replay!, 'p0-test'));
+    await click(button('确认打开回放'));
+    await click(button('返回生存对局'));
+    expect(container.querySelector('[aria-label="房间行动区"]')).not.toBeNull();
+    expect(
+      node<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
+    ).toBe('250');
+    expect(localStorage.getItem(activeModeKey)).toBe('survival');
+    expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+  });
+  it('returns a survival replay to the classic settings where it was opened', async () => {
+    await mount();
+    await click(button('经典模式'));
+    await settings();
+    await click(button('导入文件'));
+    await upload(
+      serializeSurvivalReplay(
+        createSurvivalReplay(withdraw(startSurvivalClient('isaac', 42)).game),
+      ),
+    );
+    await click(button('打开生存回放'));
+    expect(container.textContent).toContain('生存事实回放');
+    await click(button('返回经典对局'));
+    expect(container.textContent).toContain('设置');
+    expect(container.querySelector('.survival-replay')).toBeNull();
+    expect(localStorage.getItem(activeModeKey)).toBe('classic');
+  });
+  it('failed checkpoint deletion does not abandon the match and then resurrect an older game on refresh', async () => {
+    seeded();
+    await mount();
+    const before = localStorage.getItem(survivalSaveKey);
+    vi.spyOn(preferenceStorage, 'getPreferenceStorage').mockReturnValue({
+      getItem: (key: string) => localStorage.getItem(key),
+      setItem: (key: string, value: string) => localStorage.setItem(key, value),
+      removeItem: () => {
+        throw new Error('blocked');
+      },
+    } as unknown as Storage);
+    await click(button('重新选角'));
+    await click(button('确认重新选角'));
+    expect(container.textContent).toContain('未放弃当前局');
+    expect(button('出价竞拍')).toBeTruthy();
+    expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+  });
   it('routes the two result buttons to distinct room tabs, with a separate live survival tab', async () => {
     const session = withdraw(startSurvivalClient('isaac', 42, 'highest'));
     seeded(session);

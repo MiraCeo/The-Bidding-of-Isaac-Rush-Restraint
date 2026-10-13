@@ -42,6 +42,7 @@ export function SurvivalDataManagement({
     },
     [],
   );
+  const phase = session?.game.phase;
   const [recent] = useState(() => {
     try {
       const source = getPreferenceStorage()?.getItem(survivalLastCompletedKey);
@@ -89,7 +90,10 @@ export function SurvivalDataManagement({
     setBackup(null);
     setRestoreProfile(false);
     setMessage('');
-    if (!file) return;
+    if (!file) {
+      setReading(false);
+      return;
+    }
     setReading(true);
     try {
       if (file.size > 8 * 1024 * 1024)
@@ -253,8 +257,32 @@ export function SurvivalDataManagement({
           </Button>
         </section>
       )}
-      {recent.doc && (
-        <Button variant="secondary" onClick={() => onReplay(recent.doc!)}>
+      {(phase === 'competition_complete' || recent.doc) && (
+        <Button
+          variant="secondary"
+          onClick={() =>
+            run(() => {
+              // Read on activation, not only at mount: AI may have finished while settings stayed open.
+              if (session?.game.phase === 'competition_complete')
+                onReplay({
+                  format: 'the-bidding-of-isaac-replay',
+                  version: 4,
+                  mode: 'survival',
+                  exportedAt: new Date().toISOString(),
+                  exportedBuild: readBuildVersion(),
+                  replay: createSurvivalReplay(session.game),
+                });
+              else {
+                const source = getPreferenceStorage()?.getItem(
+                  survivalLastCompletedKey,
+                );
+                if (!source)
+                  throw new Error('最近完成回放不存在，当前对局未改变。');
+                onReplay(parseSurvivalReplay(source));
+              }
+            })
+          }
+        >
           查看最近完成的生存回放
         </Button>
       )}

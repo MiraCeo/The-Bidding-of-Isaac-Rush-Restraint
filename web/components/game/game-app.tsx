@@ -35,6 +35,7 @@ import {
   defaultSurvivalDifficulty,
   type SurvivalDifficulty,
 } from '@/lib/game/survival-difficulty';
+import { restoreSurvivalBackupProgress } from '@/lib/ui/survival-restore';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -57,6 +58,10 @@ export function GameApp() {
     return { survival, screen };
   });
   const [screen, setScreen] = useState(initial.screen);
+  const [replayOrigin, setReplayOrigin] = useState<
+    'menu' | 'classic' | 'survival'
+  >('survival');
+  const [survivalRevision, setSurvivalRevision] = useState(0);
   const [selectedDifficulty, setSelectedDifficulty] =
     useState<SurvivalDifficulty>(() =>
       initial.survival.document
@@ -107,12 +112,11 @@ export function GameApp() {
   }
   function restoreSurvival(doc: SurvivalSaveDocument, profile?: PlayerProfile) {
     if (profile) {
-      const validated = readPlayerProfile(profile);
       const storage = getPreferenceStorage();
-      if (!storage) throw new Error('存储不可用，未覆盖玩家进度。');
-      storage.setItem(playerProfileKey, JSON.stringify(validated));
+      restoreSurvivalBackupProgress(storage, doc.game, doc.draft, profile);
     }
     setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
+    setSurvivalRevision((value) => value + 1);
     setSurvival({
       game: withSurvivalBuild(doc.game, readBuildVersion()),
       draft: doc.draft ?? survivalDraft(doc.game),
@@ -122,6 +126,8 @@ export function GameApp() {
     select('survival');
   }
   function replaySurvival(doc: SurvivalReplayDocument | null) {
+    if (doc && (!importedSurvival || screen !== 'survival'))
+      setReplayOrigin(screen);
     setImportedSurvival(doc);
     if (doc) setScreen('survival');
   }
@@ -145,6 +151,7 @@ export function GameApp() {
       return;
     }
     if (candidate.kind === 'replay') {
+      if (!classicReplay || screen !== 'classic') setReplayOrigin(screen);
       setClassicReplay(candidate.document);
       setScreen('classic');
       return;
@@ -191,7 +198,13 @@ export function GameApp() {
         onSurvivalReplayImport={replaySurvival}
         incoming={classicIncoming}
         externalReplay={classicReplay}
-        onCloseExternalReplay={() => setClassicReplay(null)}
+        onCloseExternalReplay={() => {
+          setClassicReplay(null);
+          setScreen(replayOrigin);
+        }}
+        externalReplayReturnLabel={
+          replayOrigin === 'survival' ? '返回生存对局' : '返回经典对局'
+        }
         preferences={preferences}
         preferenceStatus={status}
         onSharedPreferencesChange={changePreferences}
@@ -199,7 +212,7 @@ export function GameApp() {
       <SurvivalGameApp
         selectedDifficulty={selectedDifficulty}
         onDifficultyChange={setSelectedDifficulty}
-        key={survival?.game.seed ?? 'selection'}
+        key={`${survival?.game.seed ?? 'selection'}:${survivalRevision}`}
         inactive={screen !== 'survival'}
         session={survival}
         setSession={setSurvival}
@@ -215,7 +228,10 @@ export function GameApp() {
           try {
             getPreferenceStorage()?.removeItem(survivalSaveKey);
           } catch {
-            /* only current session cleared */
+            setSurvivalMessage(
+              '无法清除旧生存检查点，未放弃当前局。请先导出存档，再重试。',
+            );
+            return;
           }
           setSurvival(null);
           setImportedSurvival(null);
@@ -228,6 +244,13 @@ export function GameApp() {
         onPreferencesChange={changePreferences}
         imported={importedSurvival}
         onReplay={replaySurvival}
+        onReturnImported={() => {
+          setImportedSurvival(null);
+          setScreen(replayOrigin);
+        }}
+        importedReturnLabel={
+          replayOrigin === 'classic' ? '返回经典对局' : '返回生存对局'
+        }
         onImport={importCandidate}
         restoreMessage={survivalMessage}
       />

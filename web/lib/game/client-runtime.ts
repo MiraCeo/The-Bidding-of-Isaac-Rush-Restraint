@@ -147,6 +147,7 @@ function rankPercentiles(
 
 export interface ClientAiRoomInput {
   survivalDifficulty?: SurvivalDifficulty;
+  survivalAiPolicy?: import('./survival-difficulty').SurvivalAiPolicy;
   survivalContext?: SurvivalAiPublicContext;
   seed: number;
   players: readonly RuntimePlayerState[];
@@ -191,6 +192,7 @@ export function decideClientAiRoom(
             ? {
                 survivalContext: state.survivalContext,
                 survivalDifficulty: state.survivalDifficulty,
+                survivalAiPolicy: state.survivalAiPolicy,
                 survivalDifficultyRandom: createSeededRandom(
                   mixClientSeed(
                     state.seed,

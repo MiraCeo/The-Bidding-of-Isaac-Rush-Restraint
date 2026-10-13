@@ -43,7 +43,7 @@ describe('difficulty-specific facts and compatible continuation', () => {
       );
       expect(checkpoint.game).toEqual(session.game);
       const replay = createSurvivalReplay(session.game);
-      expect(replay.compatibility).toMatch(/^survival-client-3-/);
+      expect(replay.compatibility).toMatch(/^survival-client-4-/);
       expect(
         parseSurvivalReplay(serializeSurvivalReplay(replay)).replay,
       ).toEqual(replay);
@@ -84,6 +84,32 @@ describe('difficulty-specific facts and compatible continuation', () => {
       survivalGameReducer(game, action),
     );
   });
+  it.each(survivalDifficulties)(
+    'continues historical client3 tier %s without opting into role-aware AI',
+    (aiDifficulty) => {
+      const game = startSurvivalGame({
+        seed: 42,
+        characterId: 'azazel',
+        cutLines: survivalOfficialCutLines,
+        aiDifficulty,
+      });
+      const log = createSurvivalReplay(game);
+      expect(log.compatibility).toMatch(/^survival-client-3-/);
+      const restored = parseSurvivalCheckpoint(
+        serializeSurvivalCheckpoint(game),
+      ).game;
+      expect(restored.aiPolicy).toBeUndefined();
+      expect(restored).toEqual(game);
+      expect(createSurvivalReplay(restored).id).toBe(log.id);
+      const action = {
+        type: 'submit_player_turn' as const,
+        turn: { playerId: 'human', actions: [{ type: 'withdraw' as const }] },
+      };
+      expect(survivalGameReducer(restored, action)).toEqual(
+        survivalGameReducer(game, action),
+      );
+    },
+  );
   it('rejects unknown difficulty and changed rule facts even with a recalculated checksum', () => {
     const source = JSON.parse(
       serializeSurvivalCheckpoint(startSurvivalClient('isaac', 42).game),
@@ -104,5 +130,26 @@ describe('difficulty-specific facts and compatible continuation', () => {
         aiDifficulty: 'unknown' as never,
       }),
     ).toThrow();
+  });
+  it('rejects an unknown policy or a policy marker without difficulty before replaying commands', () => {
+    const source = JSON.parse(
+      serializeSurvivalCheckpoint(startSurvivalClient('isaac', 42).game),
+    );
+    for (const change of [
+      { aiPolicy: 'unknown' },
+      { aiPolicy: 'role-aware-1', aiDifficulty: undefined },
+    ]) {
+      const changed = structuredClone(source);
+      delete changed.checksum;
+      Object.assign(changed.ruleFacts.parameters, change);
+      if (
+        change.aiDifficulty === undefined &&
+        Object.hasOwn(change, 'aiDifficulty')
+      )
+        delete changed.ruleFacts.parameters.aiDifficulty;
+      expect(() =>
+        parseSurvivalCheckpoint(JSON.stringify(withChecksum(changed))),
+      ).toThrow();
+    }
   });
 });

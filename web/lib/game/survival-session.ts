@@ -3,6 +3,8 @@ import { decideAiTurn, type AiDecision } from './ai-decision';
 import { decideSurvivalAiTurn } from './survival-ai';
 import {
   isSurvivalDifficulty,
+  currentSurvivalAiPolicy,
+  type SurvivalAiPolicy,
   type SurvivalDifficulty,
 } from './survival-difficulty';
 import type { AiPublicMarketSnapshot } from './ai-analysis';
@@ -52,6 +54,7 @@ import {
 } from './survival-rules';
 
 export interface SurvivalStartOptions {
+  aiPolicy?: SurvivalAiPolicy;
   aiDifficulty?: SurvivalDifficulty;
   characterId: CharacterId;
   seed: number;
@@ -96,6 +99,7 @@ export interface SurvivalRoomRecord extends ClientRoomSettlementRecord {
 
 /** Survival state, deliberately not assignable to a v3 classic GameSession. */
 export interface SurvivalGameState {
+  aiPolicy?: SurvivalAiPolicy;
   /** Omitted only for historical AI2 highest-policy continuation. */
   aiDifficulty?: SurvivalDifficulty;
   mode: 'survival';
@@ -207,6 +211,12 @@ export function startSurvivalGame(
   options: SurvivalStartOptions,
 ): SurvivalGameState {
   if (
+    options.aiPolicy !== undefined &&
+    (options.aiPolicy !== currentSurvivalAiPolicy ||
+      options.aiDifficulty === undefined)
+  )
+    throw new Error('Unknown survival AI policy or missing difficulty.');
+  if (
     options.aiDifficulty !== undefined &&
     !isSurvivalDifficulty(options.aiDifficulty)
   )
@@ -267,6 +277,7 @@ export function startSurvivalGame(
   );
   validateRuntimeNumbers(preparation.players, rules.scoreStorageDecimals);
   return {
+    ...(options.aiPolicy !== undefined ? { aiPolicy: options.aiPolicy } : {}),
     ...(options.aiDifficulty !== undefined
       ? { aiDifficulty: options.aiDifficulty }
       : {}),
@@ -357,6 +368,7 @@ function settleRoom(
       recentMarkets: state.recentMarkets,
       rules,
       survivalDifficulty: state.aiDifficulty,
+      survivalAiPolicy: state.aiPolicy,
       survivalContext: {
         cutLine: state.cutLines[state.floorIndex]!,
         moneyExchangeRatio: state.rules.moneyExchangeRatio,

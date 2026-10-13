@@ -22,9 +22,10 @@ import { canonicalJson, copySnapshot, shortHash } from '../shared/json-facts';
 import type { SurvivalDifficulty } from '../game/survival-difficulty';
 
 /** Bump when survival runtime, AI, RNG or continuation semantics change. */
-export const survivalEngineVersion = 'survival-client-3';
+export const survivalEngineVersion = 'survival-client-4';
 export { survivalFactsV1Mechanics as survivalMechanics } from './survival-facts-v1';
 export interface SurvivalParameters {
+  aiPolicy?: import('../game/survival-difficulty').SurvivalAiPolicy;
   /** Absent in AI2 historical files, which retain the frozen highest policy. */
   aiDifficulty?: SurvivalDifficulty;
   rules: SurvivalRules;
@@ -71,9 +72,11 @@ export function createSurvivalRuleFacts(
   const count = maximumSurvivalFloors(parameters.rules);
   return copySnapshot({
     engineVersion:
-      parameters.aiDifficulty === undefined
-        ? 'survival-client-2'
-        : survivalEngineVersion,
+      parameters.aiPolicy !== undefined
+        ? survivalEngineVersion
+        : parameters.aiDifficulty === undefined
+          ? 'survival-client-2'
+          : 'survival-client-3',
     parameters,
     mechanics: survivalMechanics,
     roomRules: {
@@ -106,6 +109,7 @@ export function survivalParameters(
   game: SurvivalGameState,
 ): SurvivalParameters {
   return copySnapshot({
+    ...(game.aiPolicy !== undefined ? { aiPolicy: game.aiPolicy } : {}),
     ...(game.aiDifficulty !== undefined
       ? { aiDifficulty: game.aiDifficulty }
       : {}),

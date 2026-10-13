@@ -5,6 +5,7 @@ import { roundMoney } from './money';
 import { getRoomScoreMultiplier } from './room-modifiers';
 import { countItem, hasItem } from './runtime';
 import { getRuntimeActionAmounts } from './turns';
+import { brimstoneCooperationEquivalent } from './survival-role-plan';
 import type {
   PlayerAction,
   RandomSource,
@@ -72,6 +73,7 @@ export interface AiQuoteAnalysis {
 }
 
 export interface AnalyzeAiQuoteOptions {
+  survivalRolePrecision?: number;
   survivalExecutionFactor?: number;
   survivalPlan?: SurvivalAiPlan;
   player: RuntimePlayerState;
@@ -570,7 +572,17 @@ export function analyzeAiQuote(
     return { ...action, amount: lo };
   };
   const candidates = candidateFactors.map(({ level, factor }) => {
-    const desiredEquivalent = desiredEquivalentBeforeNoise * factor;
+    const baseEquivalent = desiredEquivalentBeforeNoise * factor;
+    const desiredEquivalent =
+      options.survivalRolePrecision !== undefined &&
+      strategy === 'cooperate' &&
+      hasItem(player, 'brimstone')
+        ? brimstoneCooperationEquivalent(
+            baseEquivalent,
+            prediction.predictedTarget,
+            options.survivalRolePrecision * prediction.confidence,
+          )
+        : baseEquivalent;
     const action = fitSurvivalAction(
       actionFromEquivalent(player, strategy, group, desiredEquivalent, rules),
     );

@@ -118,6 +118,7 @@ describe('survival-only public score and economy policy', () => {
         {
           ...options(room, room === 4 ? 'boss' : 'normal'),
           survivalDifficulty: 'highest',
+          survivalAiPolicy: 'role-aware-1',
           survivalDifficultyRandom: {
             next() {
               throw new Error('Highest must not consume difficulty RNG');

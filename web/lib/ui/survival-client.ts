@@ -16,6 +16,7 @@ import { readBuildVersion } from './game-version';
 import { survivalOfficialCutLines } from '../game/survival-rules';
 import {
   defaultSurvivalDifficulty,
+  currentSurvivalAiPolicy,
   type SurvivalDifficulty,
 } from '../game/survival-difficulty';
 
@@ -77,6 +78,7 @@ export function startSurvivalClient(
   aiDifficulty: SurvivalDifficulty = defaultSurvivalDifficulty,
 ): SurvivalClientSession {
   const game = startSurvivalGame({
+    aiPolicy: currentSurvivalAiPolicy,
     aiDifficulty,
     characterId,
     seed,

@@ -45,6 +45,13 @@ export function ModeFilePreview({
             log?.ruleFacts.engineVersion,
           )}
         </dd>
+        <dt>AI策略</dt>
+        <dd>
+          {(game?.aiPolicy ?? log?.ruleFacts.parameters.aiPolicy) ===
+          'role-aware-1'
+            ? '角色适配版（最高保持原基线）'
+            : '历史原策略'}
+        </dd>
         <dt>已结算房间</dt>
         <dd>{game?.roomRecords.length ?? log?.rooms.length ?? 0}</dd>
         <dt>进度</dt>

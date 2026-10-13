@@ -50,7 +50,7 @@ describe('survival AI2 engine boundary and retained historical facts', () => {
       serializeSurvivalCheckpoint(session.game, session.draft),
     );
     expect(doc.game.cutLines).toEqual([200, 325, 500, 750, 1050, 1500, 2500]);
-    expect(doc.compatibility).toMatch(/^survival-client-3-/);
+    expect(doc.compatibility).toMatch(/^survival-client-4-/);
     expect(doc.version).toBe(4);
   });
   it('reads client1 factual replay without invoking either AI policy', () => {

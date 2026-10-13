@@ -6,7 +6,11 @@ import {
 import { planSurvivalAi } from './survival-ai-plan';
 import type { RuntimePlayerState } from './item-types';
 import type { RulesConfig, RandomSource } from './types';
-import { survivalDifficultyProfiles } from './survival-difficulty';
+import {
+  survivalDifficultyProfiles,
+  survivalRoleDifficultyProfiles,
+} from './survival-difficulty';
+import { roleAwareSurvivalPlan } from './survival-role-plan';
 import { createAiQuoteProfile } from './ai-quote';
 
 /** Survival-only policy; doctrine zeros, personalities and random streams are retained. */
@@ -57,7 +61,7 @@ export function decideHighestSurvivalAiTurn(
 }
 
 /** Difficulty defaults to the historical highest policy when omitted by old AI2 checkpoints. */
-export function decideSurvivalAiTurn(
+export function decideLegacyTieredSurvivalAiTurn(
   player: RuntimePlayerState,
   floorIndex: number,
   rules: RulesConfig,
@@ -131,5 +135,108 @@ export function decideSurvivalAiTurn(
       ]),
     ),
   });
+  return { ...decision, survivalAnalysis: plan };
+}
+
+/** New matches opt in explicitly; old client2/client3 checkpoints retain their original policy. */
+export function decideSurvivalAiTurn(
+  player: RuntimePlayerState,
+  floorIndex: number,
+  rules: RulesConfig,
+  random: RandomSource,
+  options: AiDecisionOptions = {},
+): AiDecision {
+  const difficulty = options.survivalDifficulty ?? 'highest';
+  if (
+    options.survivalAiPolicy !== 'role-aware-1' ||
+    difficulty === 'highest' ||
+    !options.survivalContext ||
+    !options.context
+  )
+    return decideLegacyTieredSurvivalAiTurn(
+      player,
+      floorIndex,
+      rules,
+      random,
+      options,
+    );
+  const profile = survivalRoleDifficultyProfiles[difficulty],
+    errorRandom =
+      options.survivalDifficultyRandom ?? options.quoteRandom ?? random;
+  const forecastFactor =
+    1 + (errorRandom.next() * 2 - 1) * profile.forecastError;
+  const executionFactor = 1 + (errorRandom.next() * 2 - 1) * profile.quoteError;
+  const lapse = errorRandom.next() < profile.lapseRate;
+  const ownProfile =
+    options.quoteProfile ?? createAiQuoteProfile(options.quoteRandom ?? random);
+  const rolePrecision = options.survivalDisableRoleAdaptation
+    ? 0
+    : profile.rolePrecision;
+  const raw = roleAwareSurvivalPlan(
+    player,
+    planSurvivalAi(
+      player,
+      options.context.room.roomIndex,
+      options.context.room.kind,
+      rules,
+      rules.floorStartingMoney[floorIndex]!,
+      options.survivalContext,
+    ),
+    rolePrecision,
+  );
+  const plan = {
+    ...raw,
+    urgency: raw.urgency * profile.planning,
+    utilityInfluence: profile.planning,
+  };
+  const modifiers = {
+    high_bid: 1 + plan.urgency * 0.15,
+    cooperate: 1 + plan.urgency * 0.7,
+    disrupt_high: 1 + plan.urgency * 0.1,
+    disrupt_cooperate: 1 + plan.urgency * 0.45,
+    withdraw:
+      raw.safe && options.remainingRooms === 1
+        ? 1 + 0.6 * profile.planning
+        : Math.max(0.2, 1 - plan.urgency * 0.8),
+  };
+  const decision = decideAiTurn(player, floorIndex, rules, random, {
+    ...options,
+    survivalPlan: plan,
+    survivalExecutionFactor: executionFactor,
+    survivalRolePrecision: rolePrecision,
+    context: {
+      ...options.context,
+      scoreRankPercentile:
+        options.context.scoreRankPercentile * (1 - profile.planning) +
+        raw.scoreRankPercentile * profile.planning,
+    },
+    quoteProfile: {
+      ...ownProfile,
+      targetPredictionBias: ownProfile.targetPredictionBias * forecastFactor,
+      highestPredictionBias: ownProfile.highestPredictionBias * forecastFactor,
+      qualificationPredictionBias:
+        (ownProfile.qualificationPredictionBias ?? 1) * forecastFactor,
+    },
+    strategyMultipliers: Object.fromEntries(
+      Object.entries(modifiers).map(([strategy, value]) => [
+        strategy,
+        value *
+          (options.strategyMultipliers?.[strategy as keyof typeof modifiers] ??
+            1),
+      ]),
+    ),
+  });
+  // An occasional missed opportunity is a legal withdrawal, not a secret-income or scoring handicap.
+  if (lapse && decision.strategy !== 'withdraw')
+    return {
+      ...decision,
+      strategy: 'withdraw',
+      baseQuote: null,
+      quoteFactor: null,
+      quoteAnalysis: null,
+      secondaryActionAnalysis: undefined,
+      turn: { playerId: player.id, actions: [{ type: 'withdraw' }] },
+      survivalAnalysis: plan,
+    };
   return { ...decision, survivalAnalysis: plan };
 }

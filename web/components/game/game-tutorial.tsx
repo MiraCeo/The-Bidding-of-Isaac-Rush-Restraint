@@ -1,5 +1,6 @@
 import { ItemIcon } from './item-icon';
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
+import { SurvivalTutorial } from './survival-tutorial';
 import { Button } from '@/components/ui/button';
 import { getItemDefinition, defaultRules } from '@/lib/game';
 import {
@@ -27,7 +28,41 @@ const phaseNames = {
 const value = (n: number | null | undefined) =>
   n == null ? '—' : Number(n.toFixed(4));
 
-export function GameTutorial({ scoreDecimals = 2 }: { scoreDecimals?: 2 | 4 }) {
+export function GameTutorial({
+  scoreDecimals = 2,
+  mode = 'classic',
+}: {
+  scoreDecimals?: 2 | 4;
+  mode?: 'classic' | 'survival';
+}) {
+  const [active, setActive] = useState(mode);
+  return (
+    <>
+      <nav className="ranking-view-tabs" aria-label="教学模式">
+        <button
+          onClick={() => setActive('classic')}
+          className={active === 'classic' ? 'ranking-view-tab-active' : ''}
+          aria-pressed={active === 'classic'}
+        >
+          基础教学
+        </button>
+        <button
+          onClick={() => setActive('survival')}
+          className={active === 'survival' ? 'ranking-view-tab-active' : ''}
+          aria-pressed={active === 'survival'}
+        >
+          生存教学
+        </button>
+      </nav>
+      {active === 'survival' ? (
+        <SurvivalTutorial decimals={scoreDecimals} />
+      ) : (
+        <ClassicTutorial scoreDecimals={scoreDecimals} />
+      )}
+    </>
+  );
+}
+function ClassicTutorial({ scoreDecimals = 2 }: { scoreDecimals?: 2 | 4 }) {
   const [state, dispatch] = useReducer(tutorialReducer, undefined, () =>
     createTutorialState(),
   );

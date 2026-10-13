@@ -232,6 +232,10 @@ export function SurvivalReplayViewer({
               log.ruleFacts.parameters.aiDifficulty,
               log.ruleFacts.engineVersion,
             )}{' '}
+            ·{' '}
+            {log.ruleFacts.parameters.aiPolicy === 'role-aware-1'
+              ? '角色适配版（最高保持原基线）'
+              : '历史原策略'}{' '}
             · 已结算 {log.rooms.length} 房 · 只读记录
           </span>
         </div>
