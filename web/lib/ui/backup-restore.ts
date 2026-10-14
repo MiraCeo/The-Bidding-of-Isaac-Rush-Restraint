@@ -15,6 +15,7 @@ import {
 import { PlayerProfileChangedError } from './player-profile-file';
 import { notifyPlayerProfileChanged } from './profile-events';
 import type { GameSession } from './game-session';
+import { validateGrowthProfilePair } from './achievements/lifecycle';
 
 /** Bounded synchronous rollback, not a global cross-page transaction or crash journal. */
 export function restoreBackupWrites(
@@ -77,6 +78,7 @@ export function restoreClassicBackupProgress(
   expectedProfileSource?: string | null,
 ): void {
   const core = serializeGameCheckpoint(session);
+  if (session.growth && !session.growthIssue) validateGrowthProfilePair(profile, session.growth);
   if (!session.replay) throw Error('备份缺少完整事实，未覆盖对局与玩家进度。');
   restoreBackupWrites(
     storage,

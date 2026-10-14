@@ -1,6 +1,7 @@
 import { persistCompletionProfile } from '../completion-persistence';
 import { playerProfileKey, type PlayerProfile } from '../player-profile';
 import type { SaveStorage } from '../game-save';
+import { applyGrowthContext, type GrowthContext } from './lifecycle';
 
 export const achievementProfileLockName = `bidding-profile-write:${playerProfileKey}`;
 /** All future profile writers must join this lock before claiming global cross-tab
@@ -39,4 +40,29 @@ export async function persistAchievementProfile(
     },
     signal,
   );
+}
+/** Same profile candidate can include terminal statistics. This backend adapter
+ * does not run on parsing/importing and does not publish a cursor before commit. */
+export async function persistGrowthContext(
+  storage: Pick<SaveStorage, 'getItem' | 'setItem'> | null,
+  context: GrowthContext,
+  coordinator: AchievementWriteCoordinator | null,
+  signal?: AbortSignal,
+  additionalProfileUpdate?: (profile: PlayerProfile) => PlayerProfile,
+) {
+  const result = await persistAchievementProfile(
+    storage,
+    (profile) => {
+      const candidate = applyGrowthContext(profile, context).profile;
+      return additionalProfileUpdate
+        ? additionalProfileUpdate(candidate)
+        : candidate;
+    },
+    coordinator,
+    signal,
+  );
+  return {
+    ...result,
+    context: { ...context, acknowledged: context.units.length },
+  };
 }

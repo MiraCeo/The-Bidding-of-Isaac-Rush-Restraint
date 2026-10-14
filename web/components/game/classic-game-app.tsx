@@ -25,6 +25,10 @@ import type { CharacterId } from '@/lib/game/item-types';
 import { ReplayArchive } from './replay-viewer';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
+import {
+  beginClassicGrowth,
+  classicGrowthOrder,
+} from '@/lib/ui/achievements/lifecycle';
 
 import { CharacterSelection } from './character-selection';
 import { GameResult } from './game-result';
@@ -113,7 +117,19 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
       restoredTerminal.current = false;
     if (action.type === 'start_game' || action.type === 'restart_game')
       setRestoreMessage('');
-    setSession((current) => reduceGameSession(current, action));
+    setSession((current) => {
+      const source =
+        !current.growth &&
+        current.game.phase !== 'character_selection' &&
+        current.game.phase !== 'game_result' &&
+        action.type !== 'restart_game'
+          ? beginClassicGrowth(current, classicGrowthOrder(current))
+          : current;
+      const next = reduceGameSession(source, action);
+      return action.type === 'start_game' && next !== source
+        ? beginClassicGrowth(next)
+        : next;
+    });
   };
   useEffect(() => {
     // Retain unreadable automatic files until the user starts/imports a valid game.
@@ -133,6 +149,10 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) {
+        if (session.growthIssue)
+          setRestoreMessage(
+            `本局成长捕获已暂停：${session.growthIssue} 对局仍按原规则推进，导出保留普通对局数据。`,
+          );
         setAutoSaveStatus(
           saved
             ? game.phase === 'character_selection'

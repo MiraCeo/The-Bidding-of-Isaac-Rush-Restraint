@@ -38,6 +38,7 @@ import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
 import { useReplayArchive } from './use-replay-archive';
 import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
+import { beginSurvivalGrowth } from '@/lib/ui/achievements/lifecycle';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -90,6 +91,9 @@ export function GameApp() {
           draft:
             initial.survival.document.draft ??
             survivalDraft(initial.survival.document.game),
+          ...(initial.survival.document.growth
+            ? { growth: initial.survival.document.growth }
+            : {}),
         }
       : null,
   );
@@ -141,6 +145,7 @@ export function GameApp() {
           doc.draft,
           profile,
           expectedProfileSource,
+          doc.growth,
         );
       }
       setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
@@ -148,6 +153,7 @@ export function GameApp() {
       setSurvival({
         game: withSurvivalBuild(doc.game, readBuildVersion()),
         draft: doc.draft ?? survivalDraft(doc.game),
+        ...(doc.growth ? { growth: doc.growth } : {}),
       });
       setImportedSurvival(null);
       setSurvivalMessage('已载入生存对局。经典存档保留。');
@@ -300,7 +306,9 @@ export function GameApp() {
         setSession={setSurvival}
         onStart={(character) => {
           setSurvival(
-            startSurvivalClient(character, undefined, selectedDifficulty),
+            beginSurvivalGrowth(
+              startSurvivalClient(character, undefined, selectedDifficulty),
+            ),
           );
           setImportedSurvival(null);
           setSurvivalMessage('');

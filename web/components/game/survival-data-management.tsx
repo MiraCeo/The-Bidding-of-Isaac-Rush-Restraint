@@ -188,6 +188,8 @@ export function SurvivalDataManagement({
           session.game,
           session.draft,
           loaded.profile,
+          new Date(),
+          session.growthIssue ? undefined : session.growth,
         ),
         name: `生存完整备份-${session.game.seed}.json`,
       });
@@ -207,7 +209,12 @@ export function SurvivalDataManagement({
             run(() => {
               if (session)
                 return exportFile(
-                  serializeSurvivalCheckpoint(session.game, session.draft),
+                  serializeSurvivalCheckpoint(
+                    session.game,
+                    session.draft,
+                    new Date(),
+                    session.growthIssue ? undefined : session.growth,
+                  ),
                   `生存续玩-${session.game.seed}.json`,
                 );
             })

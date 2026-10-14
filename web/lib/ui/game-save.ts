@@ -23,6 +23,7 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
 import { measurePersistence } from './persistence-metrics';
 import type { CompletionOrigin } from './completion-registry';
+import { beginClassicGrowth, restoreGrowthContext, validateGrowthContext, classicGrowthOrder, validateGrowthProfilePair } from './achievements/lifecycle';
 import { persistCompletionProfile } from './completion-persistence';
 import {
   preserveKnifeExplanationTails,
@@ -260,6 +261,7 @@ function encodeCurrent(
       turns: session.turns,
       metadata: checkpointMetadata(session.replay),
     },
+    ...(session.growth && !session.growthIssue ? { growth: validateGrowthContext(session.growth, 'classic') } : {}),
     ...(profile
       ? {
           replay: packReplayFacts(session.replay!),
@@ -268,6 +270,7 @@ function encodeCurrent(
       : {}),
   };
   const source = stringifyChecked(doc);
+  if (profile && session.growth && !session.growthIssue) validateGrowthProfilePair(profile, session.growth);
   if (new TextEncoder().encode(source).length > maxSaveBytes)
     fail('存档文件超过8 MiB，不能导出。');
   return source;
@@ -302,6 +305,7 @@ export function parseGameSave(source: string): SaveDocument {
     'checkpoint',
     'checksum',
     ...(doc.kind === 'backup' ? ['replay', 'profile'] : []),
+    ...(Object.hasOwn(doc, 'growth') ? ['growth'] : []),
   ]);
   checkChecksum(doc);
   if (doc.compatibility !== saveCompatibility)
@@ -336,6 +340,8 @@ export function parseGameSave(source: string): SaveDocument {
     type: 'start_game',
     characterId: game.selectedCharacter as CharacterId,
   });
+  const growth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'classic') : undefined;
+  if (growth) verified = beginClassicGrowth(verified, growth.excludedThrough);
   const turns = saved.turns.map(readTurn);
   for (let i = 0; i < turns.length; i++) {
     const next = reduceGameSession(verified, {
@@ -381,12 +387,14 @@ export function parseGameSave(source: string): SaveDocument {
       doc.kind === 'backup'
         ? verifyReplayLog(unpackReplayFacts(doc.replay), verified.replay!)
         : restoreMetadata(saved.metadata, verified.replay!),
+    ...(growth ? { growth: restoreGrowthContext(growth, verified.growth!, classicGrowthOrder(verified)) } : {}),
   };
   if (
     doc.kind === 'backup' &&
     canonical(checkpointMetadata(session.replay)) !== canonical(saved.metadata)
   )
     fail('完整备份的检查点与回放来源不一致。');
+  if (doc.kind === 'backup' && session.growth) validateGrowthProfilePair(readPlayerProfile(doc.profile), session.growth);
   return {
     format,
     version: currentFileVersion,
@@ -416,6 +424,7 @@ const storageCache = new WeakMap<
   SaveStorage,
   {
     game: GameSession['game'];
+    growth?: GameSession['growth'];
     replay: ReplayLog | null;
     core: string;
     draft: RoomDraft | null;
@@ -466,6 +475,11 @@ function persistClassicSession(
 ): boolean {
   try {
     if (!storage) return false;
+    if (session.growth && !session.growthIssue && session.growth.acknowledged > 0) {
+      const local = loadPlayerProfile(storage);
+      if (local.message) return false;
+      validateGrowthProfilePair(local.profile, session.growth);
+    }
     if (session.game.phase === 'character_selection') {
       storage.removeItem(gameSaveKey);
       storage.removeItem(draftSaveKey);
@@ -475,7 +489,7 @@ function persistClassicSession(
     }
     const cached = storageCache.get(storage);
     const needsCore =
-      cached?.game !== session.game || storage.getItem(gameSaveKey) === null;
+      cached?.game !== session.game || cached?.growth !== session.growth || storage.getItem(gameSaveKey) === null;
     const core =
       !needsCore && cached ? cached.core : serializeGameCheckpoint(session);
     // Draft edits never rewrite the replay or core snapshot.
@@ -492,7 +506,9 @@ function persistClassicSession(
         recordCompletedMatch(profile, log, key, new Date(), origin),
       );
       // Only remove the active checkpoint after both completed archive and profile succeeded.
-      storage.removeItem(gameSaveKey);
+      if (session.growth && session.growth.acknowledged < session.growth.units.length)
+        storage.setItem(gameSaveKey, core);
+      else storage.removeItem(gameSaveKey);
       storage.removeItem(draftSaveKey);
       storage.removeItem(activeReplayKey);
     } else {
@@ -517,6 +533,7 @@ function persistClassicSession(
     }
     storageCache.set(storage, {
       game: session.game,
+      growth: session.growth,
       replay: session.replay,
       core,
       draft: session.draft,

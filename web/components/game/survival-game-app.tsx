@@ -29,6 +29,10 @@ import {
 import { useUtilityPages } from './use-utility-pages';
 import { persistCompletionProfile } from '@/lib/ui/completion-persistence';
 import {
+  beginSurvivalGrowth,
+  survivalGrowthOrder,
+} from '@/lib/ui/achievements/lifecycle';
+import {
   reduceSurvivalClient,
   survivalRoomView,
   survivalRoomRules,
@@ -108,7 +112,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const dispatch = (action: SurvivalGameAction) => {
     try {
       if (!session) return;
-      const next = reduceSurvivalClient(session, action);
+      const source = session.growth
+        ? session
+        : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+      const next = reduceSurvivalClient(source, action);
       setSession((current) => (current === session ? next : current));
       if (action.type === 'advance_room' || action.type === 'advance_floor') {
         setPanel(null);
@@ -137,10 +144,15 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       getPreferenceStorage(),
       session.game,
       session.draft,
+      session.growthIssue ? undefined : session.growth,
     );
     queueMicrotask(() => {
       if (!cancelled) {
-        const status = survivalSaveMessage(saved);
+        const status =
+          survivalSaveMessage(saved) +
+          (session.growthIssue
+            ? `；本局成长捕获已暂停：${session.growthIssue} 对局仍按原规则推进，导出保留普通对局数据。`
+            : '');
         setSaveStatus(status);
         onSaveStatusChange?.(status);
       }
@@ -160,7 +172,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     const token = window.setTimeout(() => {
       try {
         const phase = session.game.phase;
-        const next = reduceSurvivalClient(session, {
+        const source = session.growth
+          ? session
+          : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+        const next = reduceSurvivalClient(source, {
           type:
             phase === 'room_action'
               ? 'submit_ai_room'

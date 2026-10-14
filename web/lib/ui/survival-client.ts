@@ -19,11 +19,14 @@ import {
   currentSurvivalAiPolicy,
   type SurvivalDifficulty,
 } from '../game/survival-difficulty';
+import { observeSurvivalGrowth, type GrowthContext } from './achievements/lifecycle';
 
 /** Official preset; never mutate a restored match's own recorded schedule. */
 export const survivalEntryCutLines = survivalOfficialCutLines;
 export const activeModeKey = 'bidding-active-mode-v1';
 export interface SurvivalClientSession {
+  growth?: GrowthContext;
+  growthIssue?: string;
   game: SurvivalGameState;
   draft: RoomDraft | null;
 }
@@ -92,5 +95,15 @@ export function reduceSurvivalClient(
   action: SurvivalGameAction,
 ): SurvivalClientSession {
   const game = survivalGameReducer(session.game, action);
-  return game === session.game ? session : { game, draft: survivalDraft(game) };
+  if (game === session.game) return session;
+  const next: SurvivalClientSession = { game, draft: survivalDraft(game) };
+  if (session.growth) {
+    next.growth = session.growth;
+    next.growthIssue = session.growthIssue;
+    if (!session.growthIssue) {
+      try { next.growth = observeSurvivalGrowth(session.game, game, session.growth); }
+      catch (error) { next.growthIssue = error instanceof Error ? error.message : '成长捕获失败。'; }
+    }
+  }
+  return next;
 }

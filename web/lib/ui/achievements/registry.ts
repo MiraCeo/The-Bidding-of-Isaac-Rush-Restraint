@@ -86,6 +86,7 @@ function scan(registry: AchievementRegistry) {
   let counters = emptyAchievementCounters();
   const snapshots = new Map<string, AchievementRunState>(),
     nodes = new Map<string, AchievementReceipt>();
+  const authorityUnits = new Set<string>();
   const progress = Object.fromEntries(
     achievementCatalog.map((a) => [a.id, 0]),
   ) as Record<AchievementId, number>;
@@ -114,6 +115,15 @@ function scan(registry: AchievementRegistry) {
     )
       fail();
     decodeAchievementEvent(r);
+    const identity = canonicalJson([
+      r.mode,
+      r.root,
+      r.authorityHash,
+      r.stage,
+      r.position,
+    ]);
+    if (authorityUnits.has(identity)) fail();
+    authorityUnits.add(identity);
     if (
       r.mode === 'classic' &&
       (r.stage === 'floor' || r.stage === 'final' || r.position >= 15)
@@ -292,7 +302,16 @@ export function appendAchievementEvent(
     at: now.toISOString(),
   };
   const r: AchievementReceipt = { ...candidate, key: receiptKey(candidate) };
-  const prior = registry.receipts.find((row) => row.key === r.key);
+  // Restoring another checkpoint of the same authority prefix must not create a
+  // second receipt just because its local predecessor cursor differs.
+  const prior = registry.receipts.find(
+    (row) =>
+      row.mode === r.mode &&
+      row.root === r.root &&
+      row.authorityHash === r.authorityHash &&
+      row.stage === r.stage &&
+      row.position === r.position,
+  );
   if (prior) {
     if (
       canonicalJson([prior.stage, prior.position, prior.values]) !==

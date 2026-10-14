@@ -1,4 +1,5 @@
 import type { SurvivalGameState } from '../game/survival-session';
+import { validateGrowthProfilePair, type GrowthContext } from './achievements/lifecycle';
 import type { RoomDraft } from './game-session';
 import type { SaveStorage } from './game-save';
 import { restoreBackupWrites } from './backup-restore';
@@ -19,8 +20,10 @@ export function restoreSurvivalBackupProgress(
   draft: RoomDraft | null,
   profile: PlayerProfile,
   expectedProfileSource?: string | null,
+  growth?: GrowthContext,
 ): void {
-  const checkpoint = serializeSurvivalCheckpoint(game, draft),
+  if (growth) validateGrowthProfilePair(profile, growth);
+  const checkpoint = serializeSurvivalCheckpoint(game, draft, new Date(), growth),
     playerProfile = JSON.stringify(readPlayerProfile(profile));
   const writes = [
     [survivalSaveKey, checkpoint],
