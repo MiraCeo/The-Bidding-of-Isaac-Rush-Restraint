@@ -1,6 +1,7 @@
 import type { SurvivalGameState } from '../game/survival-session';
 import type { RoomDraft } from './game-session';
 import type { SaveStorage } from './game-save';
+import { notifyPlayerProfileChanged } from './profile-events';
 import {
   playerProfileKey,
   readPlayerProfile,
@@ -50,4 +51,5 @@ export function restoreSurvivalBackupProgress(
         : '备份载入失败，已恢复原存储，当前对局与玩家进度未改变。',
     );
   }
+  notifyPlayerProfileChanged();
 }

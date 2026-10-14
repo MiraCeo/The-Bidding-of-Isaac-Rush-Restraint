@@ -27,6 +27,10 @@ import {
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { CharacterId } from '@/lib/game/item-types';
 import { ReplayArchive } from './replay-viewer';
+import {
+  notifyPlayerProfileChanged,
+  subscribePlayerProfileChanges,
+} from '@/lib/ui/profile-events';
 
 import { CharacterSelection } from './character-selection';
 import { GameResult } from './game-result';
@@ -79,6 +83,21 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   );
   const [profile, setProfile] = useState(initialProfile.profile);
   const [profileMessage, setProfileMessage] = useState(initialProfile.message);
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = subscribePlayerProfileChanges(() =>
+      queueMicrotask(() => {
+        if (cancelled) return;
+        const loaded = loadPlayerProfile(getPreferenceStorage());
+        if (!loaded.message) setProfile(loaded.profile);
+        setProfileMessage(loaded.message);
+      }),
+    );
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     'idle' | 'saved' | 'session'
   >('idle');
@@ -90,9 +109,14 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     'current',
   );
   const hasActiveSession = useRef(initial.session !== null);
+  const restoredTerminal = useRef(
+    initial.session?.game.phase === 'game_result',
+  );
   const game = session.game;
   const dispatch = (action: ClientGameAction) => {
     if (action.type === 'restart_game') setSelectedCharacter(null);
+    if (action.type === 'start_game' || action.type === 'restart_game')
+      restoredTerminal.current = false;
     if (action.type === 'start_game' || action.type === 'restart_game')
       setRestoreMessage('');
     setSession((current) => reduceGameSession(current, action));
@@ -107,7 +131,11 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
       restoreRevision === 0
     )
       return;
-    const saved = persistGameSession(getPreferenceStorage(), session);
+    const saved = persistGameSession(
+      getPreferenceStorage(),
+      session,
+      restoredTerminal.current ? 'restored' : 'live',
+    );
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) {
@@ -129,11 +157,13 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   const onActivateClassic = props.onActivateClassic;
   const restore = useCallback(
     (next: GameSession, incomingProfile?: PlayerProfile) => {
+      restoredTerminal.current = next.game.phase === 'game_result';
       if (incomingProfile) {
         const validated = readPlayerProfile(incomingProfile);
         const storage = getPreferenceStorage();
         if (!storage) throw new Error('浏览器存储不可用，未覆盖玩家档案。');
         storage.setItem(playerProfileKey, JSON.stringify(validated));
+        notifyPlayerProfileChanged();
         setProfile(validated);
         setProfileMessage('');
       }
@@ -151,6 +181,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   );
   const activate = props.onActivateClassic;
   const newGame = useCallback(() => {
+    restoredTerminal.current = false;
     setSelectedCharacter(null);
     setSession(createGameSession());
     activate?.();

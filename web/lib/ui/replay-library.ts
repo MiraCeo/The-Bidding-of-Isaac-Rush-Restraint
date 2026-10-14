@@ -11,7 +11,7 @@ import {
   type SurvivalReplayDocument,
 } from './survival-persistence';
 import { replayFactsIdentity } from './replay-facts-codec';
-import { survivalReplayFactIdentity } from './survival-view-model';
+import { survivalCompletionFacts } from './completion-identity';
 import { packDataFile, unpackDataFile } from './compressed-file';
 import { checkedJson, maxFileBytes } from './file-json';
 import { assertCurrentFileHeader } from './file-protocol';
@@ -58,34 +58,12 @@ export async function replayLibraryKey(document: LibraryReplay) {
   // The unrounded Moms Knife explanation can differ by a few ULPs between JS
   // runtimes. Normalize ONLY that display trigger in the identity projection;
   // all authoritative four-decimal scores, actions, balances and stored text
-  // stay exact. This never changes the original saved payload or profile key.
+  // stay exact. The survival projection also supplies completion-registration keys;
+  // it never changes the original saved payload.
   const facts =
     document.mode === 'classic'
       ? replayFactsIdentity(document.replay)
-      : survivalReplayFactIdentity({
-          ...document.replay,
-          rooms: document.replay.rooms.map((room) => ({
-            ...room,
-            scoreBreakdowns: Object.fromEntries(
-              Object.entries(room.scoreBreakdowns).map(([id, breakdown]) => [
-                id,
-                {
-                  ...breakdown,
-                  triggers: breakdown.triggers.map((trigger) =>
-                    trigger.itemId === 'moms_knife' &&
-                    trigger.kind === 'additive_score' &&
-                    trigger.amount !== undefined
-                      ? {
-                          ...trigger,
-                          amount: Number(trigger.amount.toFixed(8)),
-                        }
-                      : trigger,
-                  ),
-                },
-              ]),
-            ),
-          })),
-        });
+      : survivalCompletionFacts(document.replay);
   return `${document.mode}/${await sha256(facts)}`;
 }
 export function replaySource(document: LibraryReplay) {

@@ -8,6 +8,7 @@ import {
 } from './survival-persistence';
 import { checkedJson, fail } from './file-json';
 import { assertCurrentFileHeader } from './file-protocol';
+import { profileBackupFormat } from './player-profile-file';
 import {
   parseSurvivalBackup,
   type SurvivalBackupDocument,
@@ -45,6 +46,10 @@ export function parseModeDataFile(
   filename: string,
 ): ModeDataCandidate {
   const header = checkedJson(source);
+  if (header.format === profileBackupFormat)
+    throw new Error(
+      '这是独立玩家档案备份，请使用“读取玩家档案文件”入口；当前对局未改变。',
+    );
   assertCurrentFileHeader(header);
   if (header.mode === 'classic') return parseDataFile(source, filename);
   if (header.format === 'the-bidding-of-isaac-save' && header.kind === 'backup')

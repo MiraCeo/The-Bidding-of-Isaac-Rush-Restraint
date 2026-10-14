@@ -158,7 +158,7 @@ it('shows truthful limited history by mode and does not expose unimplemented ach
   await click('进度');
   expect(
     container.querySelectorAll('nav[aria-label="进度分类"] button'),
-  ).toHaveLength(3);
+  ).toHaveLength(4);
   await click('对局记录');
   expect(container.querySelector('table')!.textContent).toContain('123.00');
   expect(container.querySelector('table')!.textContent).not.toContain('456.00');

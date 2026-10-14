@@ -23,6 +23,11 @@ import { parseReplay, serializeReplay } from './game-replay';
 import { packPlayerDeltas, unpackPlayerDeltas } from './player-deltas-codec';
 import { canonicalJson, replayRoomLocator } from './replay-record';
 import {
+  completionRegistryModule,
+  readCompletionRegistry,
+  sumCounters,
+} from './completion-registry';
+import {
   createPlayerProfile,
   playerProfileKey,
   readPlayerProfile,
@@ -276,9 +281,14 @@ describe('current checkpoint, replay and extensible profile separation', () => {
     persistGameSession(storage, complete);
     expect(loadPlayerProfile(storage).profile.history).toHaveLength(1);
     persistGameSession(storage, createGameSession(22));
-    expect(loadPlayerProfile(storage).profile.progression).toEqual(
-      p.progression,
-    );
+    const registered = loadPlayerProfile(storage).profile;
+    const { [completionRegistryModule]: _registry, ...modules } =
+      registered.progression.modules;
+    expect({ ...registered.progression, modules }).toEqual(p.progression);
+    expect(
+      sumCounters(Object.values(readCompletionRegistry(registered)!.groups))
+        .completed,
+    ).toBe(1);
     expect(parseReplay(data.get(lastCompletedKey)!).replay).toEqual(
       complete.replay,
     );

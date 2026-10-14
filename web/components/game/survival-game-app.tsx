@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type Dispatch,
@@ -25,7 +26,7 @@ import {
   SurvivalReplayViewer,
 } from './survival-replay-viewer';
 import { useUtilityPages } from './use-utility-pages';
-import { progressChangedEvent } from './progress-center';
+import { persistCompletionProfile } from '@/lib/ui/completion-persistence';
 import {
   reduceSurvivalClient,
   survivalRoomView,
@@ -53,7 +54,6 @@ import {
 } from '@/lib/game/survival-difficulty';
 import { itemPresentations } from '@/lib/game/item-presentation';
 import { loadPlayerProfile } from '@/lib/ui/game-save';
-import { playerProfileKey } from '@/lib/ui/player-profile';
 import {
   survivalCompletionKey,
   recordSurvivalCompletedMatch,
@@ -85,6 +85,9 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     useState<CharacterId | null>(null);
   const { session, preferences, setSession, onSaveStatusChange } = props;
   const game = session?.game;
+  const observedIncomplete = useRef(
+    game !== undefined && game.phase !== 'competition_complete',
+  );
   const log = useMemo(() => (game ? createSurvivalReplay(game) : null), [game]);
   const { utilityPanel: panel, changeUtilityPanel: setPanel } = useUtilityPages(
     !props.inactive,
@@ -170,7 +173,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.clearTimeout(token);
   }, [session, setSession, message]);
   useEffect(() => {
-    if (!game || !log || game.phase !== 'competition_complete') return;
+    if (!game || !log) return;
+    if (game.phase !== 'competition_complete') {
+      observedIncomplete.current = true;
+      return;
+    }
     let cancelled = false;
     void survivalCompletionKey(log)
       .then((key) => {
@@ -178,11 +185,16 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         const storage = getPreferenceStorage();
         const loaded = loadPlayerProfile(storage);
         if (loaded.message) throw new Error(loaded.message);
-        const next = recordSurvivalCompletedMatch(loaded.profile, log, key);
-        if (next === loaded.profile) return;
-        if (!storage) throw new Error('玩家进度存储不可用。');
-        storage.setItem(playerProfileKey, JSON.stringify(next));
-        window.dispatchEvent(new Event(progressChangedEvent));
+        const saved = persistCompletionProfile(storage, (profile) =>
+          recordSurvivalCompletedMatch(
+            profile,
+            log,
+            key,
+            new Date(),
+            observedIncomplete.current ? 'live' : 'restored',
+          ),
+        );
+        if (!saved.changed) return;
         setProfileMessage('生存结果已登记，重复载入不会重复计局。');
       })
       .catch((error) => {

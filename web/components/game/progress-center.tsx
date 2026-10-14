@@ -29,14 +29,20 @@ import {
 import { newLibraryDocument } from '@/lib/ui/replay-library';
 import { lastCompletedKey } from '@/lib/ui/game-save';
 import { parseReplay } from '@/lib/ui/game-replay';
+import { PlayerProfileManagement } from './player-profile-management';
+import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
+import { PlayerStatistics, type StatisticsFilters } from './player-statistics';
+export { progressChangedEvent } from '@/lib/ui/profile-events';
 
-type ProgressTab = 'overview' | 'records' | 'files';
+type ProgressTab = 'overview' | 'records' | 'statistics' | 'files';
 export interface ProgressSelection {
   tab: ProgressTab;
   mode: 'classic' | 'survival';
   libraryFilters?: Partial<Record<'classic' | 'survival', LibraryFilters>>;
+  statisticsFilters?: Partial<
+    Record<'classic' | 'survival', StatisticsFilters>
+  >;
 }
-export const progressChangedEvent = 'bidding-progress-changed';
 function recentSurvival() {
   try {
     const source = getPreferenceStorage()?.getItem(survivalLastCompletedKey);
@@ -108,6 +114,9 @@ export function ProgressCenter({
   const [libraryFilters, setLibraryFilters] = useState(
     initialSelection?.libraryFilters ?? {},
   );
+  const [statisticsFilters, setStatisticsFilters] = useState(
+    initialSelection?.statisticsFilters ?? {},
+  );
   const [profile, setProfile] = useState(() =>
     loadPlayerProfile(getPreferenceStorage()),
   );
@@ -121,8 +130,8 @@ export function ProgressCenter({
   });
   const survivalGame = survival?.game;
   useEffect(() => {
-    onSelectionChange({ tab, mode, libraryFilters });
-  }, [tab, mode, libraryFilters, onSelectionChange]);
+    onSelectionChange({ tab, mode, libraryFilters, statisticsFilters });
+  }, [tab, mode, libraryFilters, statisticsFilters, onSelectionChange]);
   const survivalLog = useMemo(
     () => (survivalGame ? createSurvivalReplay(survivalGame) : null),
     [survivalGame],
@@ -137,10 +146,10 @@ export function ProgressCenter({
         setRecentClassic(recentClassicReplay());
       });
     refresh();
-    window.addEventListener(progressChangedEvent, refresh);
+    const unsubscribe = subscribePlayerProfileChanges(refresh);
     return () => {
       cancelled = true;
-      window.removeEventListener(progressChangedEvent, refresh);
+      unsubscribe();
     };
   }, [tools.profile, survival?.game.phase]);
   useEffect(() => {
@@ -212,6 +221,7 @@ export function ProgressCenter({
             [
               ['overview', '总览'],
               ['records', '对局记录'],
+              ['statistics', '统计'],
               ['files', '存档与备份'],
             ] as const
           ).map(([key, label]) => (
@@ -289,8 +299,14 @@ export function ProgressCenter({
             <section className="settings-group progress-profile">
               <h3>玩家档案</h3>
               <p>
-                已保留 {profile.profile.history.length}{' '}
-                条完成记录，最多保留最近200条。这不是完整回放库。
+                {profile.message ? (
+                  '玩家档案暂不可核验，不能将读取失败当作记录为空。'
+                ) : (
+                  <>
+                    已保留 {profile.profile.history.length}{' '}
+                    条完成记录，最多保留最近200条。这不是完整回放库。
+                  </>
+                )}
               </p>
               {profile.message && (
                 <output className="save-message">{profile.message}</output>
@@ -337,8 +353,21 @@ export function ProgressCenter({
                     />
                   )}
                 </div>
+                <PlayerProfileManagement key={mode} />
                 <StorageDiagnostics />
               </>
+            ) : tab === 'statistics' ? (
+              <PlayerStatistics
+                key={mode}
+                profile={profile.profile}
+                message={profile.message}
+                mode={mode}
+                decimals={tools.preferences.scoreDecimals}
+                initialFilters={statisticsFilters[mode]}
+                onFiltersChange={(filters) =>
+                  setStatisticsFilters((old) => ({ ...old, [mode]: filters }))
+                }
+              />
             ) : (
               <>
                 {mode === 'classic' ? (
@@ -418,13 +447,19 @@ export function ProgressCenter({
                   <p>这里只记录结果，不承诺每条记录都保留完整回放。</p>
                   <details className="progress-light-history">
                     <summary>
-                      展开轻量完成记录（
-                      {
-                        profile.profile.history.filter(
-                          (row) => (row.mode ?? 'classic') === mode,
-                        ).length
-                      }{' '}
-                      条）
+                      {profile.message ? (
+                        '完成记录暂不可核验'
+                      ) : (
+                        <>
+                          展开轻量完成记录（
+                          {
+                            profile.profile.history.filter(
+                              (row) => (row.mode ?? 'classic') === mode,
+                            ).length
+                          }{' '}
+                          条）
+                        </>
+                      )}
                     </summary>
                     <div className="progress-history-wrap">
                       <table className="survival-table">
@@ -479,11 +514,12 @@ export function ProgressCenter({
                         </tbody>
                       </table>
                     </div>
-                    {!profile.profile.history.some(
-                      (row) => (row.mode ?? 'classic') === mode,
-                    ) && (
-                      <p className="utility-notice">暂无此模式的完成记录。</p>
-                    )}
+                    {!profile.message &&
+                      !profile.profile.history.some(
+                        (row) => (row.mode ?? 'classic') === mode,
+                      ) && (
+                        <p className="utility-notice">暂无此模式的完成记录。</p>
+                      )}
                   </details>
                   {profile.message && (
                     <output className="save-message">{profile.message}</output>

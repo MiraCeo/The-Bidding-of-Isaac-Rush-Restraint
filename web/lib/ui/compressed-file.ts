@@ -88,7 +88,7 @@ async function transform(
   }
   return output;
 }
-/** Outer transport container only. Inner v2/v3/v4 JSON and checksum are byte-for-byte unchanged. */
+/** Outer transport container only. Inner current JSON and checksum stay byte-for-byte unchanged. */
 export async function packDataFile(
   source: string,
   options: FileCodecOptions = {},

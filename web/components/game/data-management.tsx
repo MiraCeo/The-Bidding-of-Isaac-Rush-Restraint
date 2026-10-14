@@ -446,7 +446,7 @@ export function DataManagement({
         <section className="settings-group data-files">
           <h3>数据管理</h3>
           <p>
-            当前文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
+        对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
           </p>
           <div className="data-file-row">
             <div>

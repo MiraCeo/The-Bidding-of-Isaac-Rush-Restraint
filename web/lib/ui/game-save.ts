@@ -22,6 +22,8 @@ export { saveCompatibility } from './game-version';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
 import { measurePersistence } from './persistence-metrics';
+import type { CompletionOrigin } from './completion-registry';
+import { persistCompletionProfile } from './completion-persistence';
 import {
   createGameSession,
   reduceGameSession,
@@ -408,34 +410,42 @@ export function loadPlayerProfile(
   profile: PlayerProfile;
   message: string;
 } {
+  if (!storage)
+    return {
+      profile: createPlayerProfile(),
+      message: '玩家档案存储不可读取，不能将未知资料当作空档案。',
+    };
   try {
     const value = storage?.getItem(playerProfileKey);
     return {
-      profile: value
-        ? readPlayerProfile(JSON.parse(value))
-        : createPlayerProfile(),
+      profile:
+        value !== null
+          ? readPlayerProfile(JSON.parse(value))
+          : createPlayerProfile(),
       message: '',
     };
   } catch {
     return {
       profile: createPlayerProfile(),
-      message: '玩家档案未读取：原数据保留；可从完整备份恢复。',
+      message: '玩家档案未读取：原数据保留；可从玩家档案备份或完整备份恢复。',
     };
   }
 }
 export function persistGameSession(
   storage: SaveStorage | null,
   session: GameSession,
+  origin: CompletionOrigin = 'live',
 ): boolean {
   return measurePersistence(
     { mode: 'classic', operation: 'save', phase: session.game.phase },
-    () => persistClassicSession(storage, session),
+    () => persistClassicSession(storage, session, origin),
     (result) => result,
   );
 }
 function persistClassicSession(
   storage: SaveStorage | null,
   session: GameSession,
+  origin: CompletionOrigin,
 ): boolean {
   try {
     if (!storage) return false;
@@ -457,13 +467,13 @@ function persistClassicSession(
       if (loaded.message) return false;
       const log = session.replay!;
       const key = replayRoomLocator(log, log.rooms.at(-1)!);
-      const profile = recordCompletedMatch(loaded.profile, log, key);
       storage.setItem(
         lastCompletedKey,
         serializeReplay(log, readBuildVersion()),
       );
-      if (profile !== loaded.profile)
-        storage.setItem(playerProfileKey, JSON.stringify(profile));
+      persistCompletionProfile(storage, (profile) =>
+        recordCompletedMatch(profile, log, key, new Date(), origin),
+      );
       // Only remove the active checkpoint after both completed archive and profile succeeded.
       storage.removeItem(gameSaveKey);
       storage.removeItem(draftSaveKey);

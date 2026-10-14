@@ -41,6 +41,7 @@ import { ProgressNavigationContext } from './progress-navigation';
 import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
 import { useReplayArchive } from './use-replay-archive';
+import { notifyPlayerProfileChanged } from '@/lib/ui/profile-events';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -219,6 +220,7 @@ export function GameApp() {
       const storage = getPreferenceStorage();
       if (!storage) throw new Error('存储不可用，未覆盖玩家进度。');
       storage.setItem(playerProfileKey, JSON.stringify(profile));
+      notifyPlayerProfileChanged();
     }
     setClassicReplay(null);
     setClassicIncoming({

@@ -1266,3 +1266,42 @@
 .library-confirm button + button { margin-left:.7rem; }
 .library-auto-status, .library-empty { color:#bfaf90; }
 @media(max-width:800px) { .library-heading { align-items:flex-start; flex-direction:column; } .library-filters > span { margin-left:0; } }
+
+/* Independent player profile management, shared by both modes. */
+.profile-management { margin-top: 1.5rem; }
+.profile-management-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+.profile-management-heading h3 { margin:.3rem 0 .8rem; font-size:1.5rem; }
+.profile-management-heading > span { color:#bfaf90; font-size:.85rem; }
+.profile-local { padding:1rem 1.2rem; margin:1rem 0; border:1px solid #393125; border-radius:.75rem; background:#1b1711; }
+.profile-summary { display:grid; grid-template-columns: minmax(9rem, 1fr) 2fr; gap:.5rem 1.25rem; margin:.8rem 0 0; font-size:.9rem; }
+.profile-summary dt { color:#b6aa96; }
+.profile-summary dd { margin:0; color:#ede4d4; overflow-wrap:anywhere; }
+.profile-file-picker { display:flex; align-items:center; flex-wrap:wrap; gap:.75rem; padding:.6rem .9rem; border:1px solid #494035; border-radius:.65rem; }
+.profile-file-picker input { font-size:.85rem; max-width:18rem; }
+.profile-candidate { border:1px solid #98702c; background:#211b12; padding:1.25rem; margin:1rem 0; border-radius:.85rem; }
+.profile-candidate h4 { font-size:1.2rem; margin-bottom:.6rem; }
+.profile-comparison { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1rem 0; }
+.profile-comparison article { border:1px solid #494035; border-radius:.7rem; padding:1rem; }
+.profile-comparison h5 { font-size:1rem; margin:0 0 .6rem; }
+.profile-restore-ack { display:flex; align-items:center; gap:.65rem; margin:1.1rem 0; color:#e8be65; }
+.profile-restore-ack input { accent-color:#edb233; }
+@media(max-width:800px) { .profile-comparison { grid-template-columns:1fr; } .profile-summary { grid-template-columns:1fr 1.6fr; } }
+
+/* Read-only information statistics: retained history is not lifetime accounting. */
+.statistics-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+.statistics-heading h3 { font-size:1.6rem; margin:.3rem 0 1rem; }
+.statistics-heading > span { color:#e0b158; }
+.statistics-filters { display:flex; flex-wrap:wrap; align-items:center; gap:1rem; margin:1rem 0; }
+.statistics-filters label { display:flex; align-items:center; gap:.6rem; }
+.statistics-filters select { background:#211c15; color:#ede3cd; border:1px solid #514532; padding:.6rem .75rem; border-radius:.5rem; }
+.statistics-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.8rem; margin:1.25rem 0; }
+.statistics-cards article { padding:1.1rem; background:#211c15; border:1px solid #494035; border-radius:.7rem; }
+.statistics-cards span, .statistics-cards small { display:block; color:#b4a58d; font-size:.85rem; }
+.statistics-cards strong { display:block; font-size:1.6rem; margin:.65rem 0; color:#edbc50; overflow-wrap:anywhere; }
+.statistics-note, .statistics-empty { color:#bbad97; font-size:.85rem; line-height:1.7; margin:1rem 0; }
+.statistics-table-wrap { overflow:auto; margin:1rem 0; border:1px solid #393125; border-radius:.7rem; }
+.statistics-table-wrap table { min-width:680px; }
+.statistics-floors { display:flex; gap:.7rem; flex-wrap:wrap; margin:.8rem 0; }
+.statistics-floors span { padding:.6rem .85rem; border:1px solid #4a3f2e; border-radius:.5rem; color:#bfb095; }
+.statistics-floors strong { color:#edbc50; margin-left:.45rem; }
+.statistics-elimination summary { color:#d1b176; cursor:pointer; }

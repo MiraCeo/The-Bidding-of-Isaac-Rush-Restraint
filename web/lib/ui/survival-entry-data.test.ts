@@ -20,6 +20,11 @@ import {
 } from './survival-profile';
 import { parseModeDataFile } from './mode-data';
 import { withChecksum } from './file-json';
+import {
+  completionRegistryModule,
+  readCompletionRegistry,
+  sumCounters,
+} from './completion-registry';
 
 function finished() {
   let session = startSurvivalClient('isaac', 42);
@@ -91,7 +96,13 @@ describe('public survival data and progress isolation', () => {
       eliminationFloorIndex: 0,
     });
     expect(readPlayerProfile(next)).toEqual(next);
-    expect(next.progression).toEqual(profile.progression);
+    const { [completionRegistryModule]: _registry, ...modules } =
+      next.progression.modules;
+    expect({ ...next.progression, modules }).toEqual(profile.progression);
+    expect(
+      sumCounters(Object.values(readCompletionRegistry(next)!.groups))
+        .completed,
+    ).toBe(1);
   });
   it('deduplicates actual completion independently of the current build label', async () => {
     const game = finished();

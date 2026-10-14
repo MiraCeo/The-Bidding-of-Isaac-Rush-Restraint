@@ -4,6 +4,12 @@ import {
   type SurvivalDifficulty,
 } from '../game/survival-difficulty';
 import { canonicalJson, type ReplayLog } from './replay-record';
+import { classicCompletionKey } from './completion-identity';
+import {
+  readCompletionRegistry,
+  registerCompletion,
+  type CompletionOrigin,
+} from './completion-registry';
 
 export const playerProfileKey = 'bidding-player-profile-v1';
 export type ProfileValue =
@@ -155,6 +161,7 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
     keys.add(h.key);
   }
   if (new TextEncoder().encode(canonicalJson(p)).length > 1024 * 1024) fail();
+  readCompletionRegistry(p as unknown as PlayerProfile);
   return structuredClone(p) as unknown as PlayerProfile;
 }
 export function recordCompletedMatch(
@@ -162,26 +169,29 @@ export function recordCompletedMatch(
   log: ReplayLog,
   key: string,
   now = new Date(),
+  origin: CompletionOrigin = 'live',
 ): PlayerProfile {
-  if (!log.final || profile.history.some((h) => h.key === key)) return profile;
+  if (!log.final) return profile;
   const human = log.final.ranking.find((e) => e.playerId === 'human');
   if (!human) return profile;
   // Competition ranking: tied scores share a rank. Do not award future achievements here.
   const rank =
     1 + log.final.ranking.filter((e) => e.finalScore > human.finalScore).length;
-  return {
-    ...profile,
-    updatedAt: now.toISOString(),
-    history: [
-      ...profile.history,
-      {
-        key,
-        replayId: log.id,
-        characterId: log.characterId,
-        completedAt: now.toISOString(),
-        finalScore: human.finalScore,
-        rank,
-      },
-    ].slice(-200),
-  };
+  const next = registerCompletion(
+    profile,
+    {
+      key: classicCompletionKey(log),
+      replayId: log.id,
+      characterId: log.characterId,
+      completedAt: now.toISOString(),
+      finalScore: human.finalScore,
+      rank,
+      mode: 'classic',
+    },
+    [key],
+    rank === 1,
+    origin,
+    now,
+  );
+  return next === profile ? profile : readPlayerProfile(next);
 }
