@@ -21,6 +21,7 @@ import {
 export { saveCompatibility } from './game-version';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
+import { measurePersistence } from './persistence-metrics';
 import {
   createGameSession,
   reduceGameSession,
@@ -426,6 +427,16 @@ export function persistGameSession(
   storage: SaveStorage | null,
   session: GameSession,
 ): boolean {
+  return measurePersistence(
+    { mode: 'classic', operation: 'save', phase: session.game.phase },
+    () => persistClassicSession(storage, session),
+    (result) => result,
+  );
+}
+function persistClassicSession(
+  storage: SaveStorage | null,
+  session: GameSession,
+): boolean {
   try {
     if (!storage) return false;
     if (session.game.phase === 'character_selection') {
@@ -489,6 +500,16 @@ export function persistGameSession(
   }
 }
 export function loadAutoSave(storage: Pick<SaveStorage, 'getItem'> | null): {
+  session: GameSession | null;
+  message: string;
+} {
+  return measurePersistence(
+    { mode: 'classic', operation: 'load', phase: 'startup' },
+    () => loadClassicAutoSave(storage),
+    (result) => result.message === '' || !!result.session,
+  );
+}
+function loadClassicAutoSave(storage: Pick<SaveStorage, 'getItem'> | null): {
   session: GameSession | null;
   message: string;
 } {

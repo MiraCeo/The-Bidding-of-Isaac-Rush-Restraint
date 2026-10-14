@@ -1,4 +1,5 @@
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
+import { measurePersistence } from './persistence-metrics';
 import { characterCatalog } from '../game/characters';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import {
@@ -362,6 +363,17 @@ export function saveSurvivalProgress(
   game: SurvivalGameState,
   draft: RoomDraft | null = null,
 ): SurvivalSaveResult {
+  return measurePersistence(
+    { mode: 'survival', operation: 'save', phase: game.phase },
+    () => writeSurvivalProgress(storage, game, draft),
+    (result) => result.checkpointSaved && result.archiveSaved !== false,
+  );
+}
+function writeSurvivalProgress(
+  storage: SaveStorage | null,
+  game: SurvivalGameState,
+  draft: RoomDraft | null,
+): SurvivalSaveResult {
   const failed = { checkpointSaved: false, archiveSaved: null };
   if (!storage) return failed;
   try {
@@ -403,6 +415,16 @@ export function survivalSaveMessage(result: SurvivalSaveResult): string {
 export function loadSurvivalCheckpoint(
   storage: Pick<SaveStorage, 'getItem'> | null,
 ): { document: SurvivalSaveDocument | null; message: string } {
+  return measurePersistence(
+    { mode: 'survival', operation: 'load', phase: 'startup' },
+    () => readSurvivalCheckpoint(storage),
+    (result) => result.message === '',
+  );
+}
+function readSurvivalCheckpoint(storage: Pick<SaveStorage, 'getItem'> | null): {
+  document: SurvivalSaveDocument | null;
+  message: string;
+} {
   try {
     const source = storage?.getItem(survivalSaveKey);
     return {

@@ -40,6 +40,7 @@ import { SessionContext, type SessionTools } from './session-context';
 import { ProgressNavigationContext } from './progress-navigation';
 import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
+import { useReplayArchive } from './use-replay-archive';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -105,6 +106,7 @@ export function GameApp() {
   const [classicReplay, setClassicReplay] = useState<ReplayDocument | null>(
     null,
   );
+  const archiveStatus = useReplayArchive(classicTools?.session, survival?.game);
   const [preferences, setPreferences] = useState(() =>
     loadGamePreferences(getPreferenceStorage()),
   );
@@ -335,6 +337,7 @@ export function GameApp() {
             onCurrentClassicReplay={currentClassicReplay}
             survival={survival}
             survivalStatus={survivalStatus}
+            archiveStatus={archiveStatus}
             origin={progressOrigin}
             onNavigate={(page) => {
               setPendingPage(page);

@@ -191,7 +191,7 @@ it('keeps AI continuation alive while progress is open and refreshes completed h
   await click('返回进度');
   expect(container.querySelector('#progress-title')).not.toBeNull();
   expect(button('对局记录').getAttribute('aria-current')).toBe('page');
-});
+}, 20000); // Full 77-command UI continuation, not a 5-second performance assertion.
 it('preserves an unstarted character selection through shared progress without starting a match', async () => {
   localStorage.setItem(activeModeKey, 'classic');
   await mount();

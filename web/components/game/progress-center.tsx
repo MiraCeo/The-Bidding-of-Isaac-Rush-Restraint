@@ -21,11 +21,20 @@ import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
 import { currentFileVersion } from '@/lib/ui/file-protocol';
+import { StorageDiagnostics } from './storage-diagnostics';
+import {
+  ReplayLibraryPanel,
+  type LibraryFilters,
+} from './replay-library-panel';
+import { newLibraryDocument } from '@/lib/ui/replay-library';
+import { lastCompletedKey } from '@/lib/ui/game-save';
+import { parseReplay } from '@/lib/ui/game-replay';
 
 type ProgressTab = 'overview' | 'records' | 'files';
 export interface ProgressSelection {
   tab: ProgressTab;
   mode: 'classic' | 'survival';
+  libraryFilters?: Partial<Record<'classic' | 'survival', LibraryFilters>>;
 }
 export const progressChangedEvent = 'bidding-progress-changed';
 function recentSurvival() {
@@ -45,12 +54,21 @@ function recentSurvival() {
     };
   }
 }
+function recentClassicReplay() {
+  try {
+    const source = getPreferenceStorage()?.getItem(lastCompletedKey);
+    return source ? parseReplay(source) : null;
+  } catch {
+    return null;
+  }
+}
 export function ProgressCenter({
   initialSelection,
   onSelectionChange,
   onCurrentClassicReplay,
   survival,
   survivalStatus,
+  archiveStatus,
   origin,
   onNavigate,
   onClassic,
@@ -64,6 +82,7 @@ export function ProgressCenter({
   onCurrentClassicReplay: () => void;
   survival: SurvivalClientSession | null;
   survivalStatus: string;
+  archiveStatus: { classic: string; survival: string };
   origin: 'menu' | 'classic' | 'survival';
   onNavigate: (page: RoomUtilityPanel | null) => void;
   onClassic: () => void;
@@ -86,10 +105,14 @@ export function ProgressCenter({
         ? 'survival'
         : 'classic'),
   );
+  const [libraryFilters, setLibraryFilters] = useState(
+    initialSelection?.libraryFilters ?? {},
+  );
   const [profile, setProfile] = useState(() =>
     loadPlayerProfile(getPreferenceStorage()),
   );
   const [recent, setRecent] = useState(recentSurvival);
+  const [recentClassic, setRecentClassic] = useState(recentClassicReplay);
   const data = useDataManagement(onClassic, onClassic, {
     onImport,
     onReplay: onClassicReplay,
@@ -98,8 +121,8 @@ export function ProgressCenter({
   });
   const survivalGame = survival?.game;
   useEffect(() => {
-    onSelectionChange({ tab, mode });
-  }, [tab, mode, onSelectionChange]);
+    onSelectionChange({ tab, mode, libraryFilters });
+  }, [tab, mode, libraryFilters, onSelectionChange]);
   const survivalLog = useMemo(
     () => (survivalGame ? createSurvivalReplay(survivalGame) : null),
     [survivalGame],
@@ -111,6 +134,7 @@ export function ProgressCenter({
         if (cancelled) return;
         setProfile(loadPlayerProfile(getPreferenceStorage()));
         setRecent(recentSurvival());
+        setRecentClassic(recentClassicReplay());
       });
     refresh();
     window.addEventListener(progressChangedEvent, refresh);
@@ -313,6 +337,7 @@ export function ProgressCenter({
                     />
                   )}
                 </div>
+                <StorageDiagnostics />
               </>
             ) : (
               <>
@@ -391,66 +416,110 @@ export function ProgressCenter({
                 <section className="settings-group">
                   <h3>已登记的完成记录</h3>
                   <p>这里只记录结果，不承诺每条记录都保留完整回放。</p>
-                  <div className="progress-history-wrap">
-                    <table className="survival-table">
-                      <caption className="sr-only">玩家完成记录</caption>
-                      <thead>
-                        <tr>
-                          <th>模式</th>
-                          <th>角色</th>
-                          <th>难度</th>
-                          <th>结果</th>
-                          <th>名次</th>
-                          <th>累计分数</th>
-                          <th>完成时间</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {profile.profile.history
-                          .filter((row) => (row.mode ?? 'classic') === mode)
-                          .slice()
-                          .reverse()
-                          .map((row) => (
-                            <tr key={row.key}>
-                              <td>{mode === 'classic' ? '经典' : '生存'}</td>
-                              <td>{characterNames[row.characterId]}</td>
-                              <td>
-                                {mode === 'survival'
-                                  ? survivalDifficultyLabel(row.aiDifficulty)
-                                  : '—'}
-                              </td>
-                              <td>
-                                {mode === 'classic'
-                                  ? '已完成'
-                                  : row.status === 'survived'
-                                    ? '存活'
-                                    : row.eliminationFloorIndex != null
-                                      ? `第${row.eliminationFloorIndex + 1}层淘汰`
-                                      : '已完成'}
-                              </td>
-                              <td>{row.rank}</td>
-                              <td>
-                                {row.finalScore.toFixed(
-                                  tools.preferences.scoreDecimals,
-                                )}
-                              </td>
-                              <td>
-                                {new Date(row.completedAt).toLocaleString(
-                                  'zh-CN',
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {!profile.profile.history.some(
-                    (row) => (row.mode ?? 'classic') === mode,
-                  ) && <p className="utility-notice">暂无此模式的完成记录。</p>}
+                  <details className="progress-light-history">
+                    <summary>
+                      展开轻量完成记录（
+                      {
+                        profile.profile.history.filter(
+                          (row) => (row.mode ?? 'classic') === mode,
+                        ).length
+                      }{' '}
+                      条）
+                    </summary>
+                    <div className="progress-history-wrap">
+                      <table className="survival-table">
+                        <caption className="sr-only">玩家完成记录</caption>
+                        <thead>
+                          <tr>
+                            <th>模式</th>
+                            <th>角色</th>
+                            <th>难度</th>
+                            <th>结果</th>
+                            <th>名次</th>
+                            <th>累计分数</th>
+                            <th>完成时间</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {profile.profile.history
+                            .filter((row) => (row.mode ?? 'classic') === mode)
+                            .slice()
+                            .reverse()
+                            .map((row) => (
+                              <tr key={row.key}>
+                                <td>{mode === 'classic' ? '经典' : '生存'}</td>
+                                <td>{characterNames[row.characterId]}</td>
+                                <td>
+                                  {mode === 'survival'
+                                    ? survivalDifficultyLabel(row.aiDifficulty)
+                                    : '—'}
+                                </td>
+                                <td>
+                                  {mode === 'classic'
+                                    ? '已完成'
+                                    : row.status === 'survived'
+                                      ? '存活'
+                                      : row.eliminationFloorIndex != null
+                                        ? `第${row.eliminationFloorIndex + 1}层淘汰`
+                                        : '已完成'}
+                                </td>
+                                <td>{row.rank}</td>
+                                <td>
+                                  {row.finalScore.toFixed(
+                                    tools.preferences.scoreDecimals,
+                                  )}
+                                </td>
+                                <td>
+                                  {new Date(row.completedAt).toLocaleString(
+                                    'zh-CN',
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {!profile.profile.history.some(
+                      (row) => (row.mode ?? 'classic') === mode,
+                    ) && (
+                      <p className="utility-notice">暂无此模式的完成记录。</p>
+                    )}
+                  </details>
                   {profile.message && (
                     <output className="save-message">{profile.message}</output>
                   )}
                 </section>
+                <ReplayLibraryPanel
+                  key={mode}
+                  mode={mode}
+                  current={
+                    mode === 'classic'
+                      ? tools.session.replay
+                        ? newLibraryDocument({
+                            mode: 'classic',
+                            replay: tools.session.replay,
+                          })
+                        : null
+                      : survivalLog
+                        ? newLibraryDocument({
+                            mode: 'survival',
+                            replay: survivalLog,
+                          })
+                        : null
+                  }
+                  recent={mode === 'classic' ? recentClassic : recent.document}
+                  archiveStatus={archiveStatus[mode]}
+                  scoreDecimals={tools.preferences.scoreDecimals}
+                  initialFilters={libraryFilters[mode]}
+                  onFiltersChange={(filters) =>
+                    setLibraryFilters((old) => ({ ...old, [mode]: filters }))
+                  }
+                  onReplay={(doc) =>
+                    doc.mode === 'classic'
+                      ? onClassicReplay(doc)
+                      : onSurvivalReplay(doc)
+                  }
+                />
               </>
             )}
           </>

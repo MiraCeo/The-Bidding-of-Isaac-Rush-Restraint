@@ -5,6 +5,7 @@ import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 import type { PreferenceSaveStatus } from './game-settings';
+import { appVersion } from '@/lib/ui/game-version';
 
 export function GameModeMenu({
   onClassic,
@@ -37,7 +38,7 @@ export function GameModeMenu({
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <span className="status-chip">主菜单 · 0.3</span>
+          <span className="status-chip">主菜单 · {appVersion}</span>
         </div>
       </header>
       <section
