@@ -77,7 +77,11 @@ export interface SurvivalGameAppProps {
   onReplay: (doc: SurvivalReplayDocument | null) => void;
   onReturnImported?: () => void;
   importedReturnLabel?: string;
-  onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
+  onImport: (
+    candidate: ModeDataCandidate,
+    profile: boolean,
+    expectedProfileSource?: string | null,
+  ) => void;
   restoreMessage?: string;
 }
 export function SurvivalGameApp(props: SurvivalGameAppProps) {

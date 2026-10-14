@@ -10,6 +10,7 @@ export interface SessionTools {
   onSurvivalRestore?: (
     document: import('@/lib/ui/survival-persistence').SurvivalSaveDocument,
     profile?: PlayerProfile,
+    expectedProfileSource?: string | null,
   ) => void;
   onSurvivalReplayImport?: (
     document: import('@/lib/ui/survival-persistence').SurvivalReplayDocument,
@@ -17,7 +18,11 @@ export interface SessionTools {
   session: GameSession;
   autoSaveStatus: 'saved' | 'session' | 'idle';
   restoreMessage: string;
-  onRestore: (session: GameSession, profile?: PlayerProfile) => void;
+  onRestore: (
+    session: GameSession,
+    profile?: PlayerProfile,
+    expectedProfileSource?: string | null,
+  ) => void;
   profile: PlayerProfile;
   profileMessage: string;
   onNewGame: () => void;

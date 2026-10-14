@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
+import { BackupProfileNotice } from './backup-profile-notice';
+import type { BackupProfileGuard } from './use-backup-profile-guard';
 
 export function ModeFilePreview({
   candidate,
@@ -8,6 +10,8 @@ export function ModeFilePreview({
   onProfileChange,
   onConfirm,
   onCancel,
+  profileGuard,
+  onProfileRecheck,
 }: {
   candidate: Extract<
     ModeDataCandidate,
@@ -17,6 +21,8 @@ export function ModeFilePreview({
   onProfileChange: (value: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  profileGuard: BackupProfileGuard;
+  onProfileRecheck: () => void;
 }) {
   const game =
     candidate.kind === 'survival-checkpoint'
@@ -64,14 +70,21 @@ export function ModeFilePreview({
         </dd>
       </dl>
       {candidate.kind === 'survival-backup' && (
-        <label>
-          <input
-            type="checkbox"
-            checked={restoreProfile}
-            onChange={(event) => onProfileChange(event.target.checked)}
+        <div className="data-profile-choice">
+          <label>
+            <input
+              type="checkbox"
+              checked={restoreProfile}
+              onChange={(event) => onProfileChange(event.target.checked)}
+            />
+            同时恢复文件中的玩家进度
+          </label>
+          <BackupProfileNotice
+            guard={profileGuard}
+            incoming={candidate.document.profile}
+            onRecheck={onProfileRecheck}
           />
-          同时恢复文件中的玩家进度
-        </label>
+        </div>
       )}
       <p>
         {candidate.kind === 'survival-replay'
@@ -79,7 +92,10 @@ export function ModeFilePreview({
           : '确认后载入这局生存对局；未勾选时保留本机玩家进度。经典存档独立保留。'}
       </p>
       <div className="data-actions">
-        <Button onClick={onConfirm}>
+        <Button
+          onClick={onConfirm}
+          disabled={restoreProfile && profileGuard.blocked}
+        >
           {candidate.kind === 'survival-replay'
             ? '打开生存回放'
             : '载入生存对局'}

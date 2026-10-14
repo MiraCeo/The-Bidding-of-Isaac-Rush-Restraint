@@ -27,6 +27,8 @@ import * as kernel from '../game/survival-session';
 import * as ai from '../game/ai-decision';
 import { serializeSurvivalBackup } from './survival-backup';
 import { SurvivalDataManagement } from '@/components/game/survival-data-management';
+import { notifyPlayerProfileChanged } from './profile-events';
+import { serializeGameBackup } from './game-save';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -38,6 +40,53 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
 });
+it.each(['classic', 'survival'] as const)(
+  'protects the survival file picker against a stale %s profile preview',
+  async (mode) => {
+    const onImport = vi.fn(),
+      session = startSurvivalClient('isaac', 42);
+    await act(async () =>
+      root.render(
+        createElement(SurvivalDataManagement, {
+          session,
+          imported: null,
+          onImport,
+          onReplay: vi.fn(),
+        }),
+      ),
+    );
+    const incoming = createPlayerProfile();
+    const classic = reduceGameSession(createGameSession(70), {
+      type: 'start_game',
+      characterId: 'isaac',
+    });
+    await upload(
+      mode === 'classic'
+        ? serializeGameBackup(classic, incoming)
+        : serializeSurvivalBackup(session.game, session.draft, incoming),
+    );
+    await click(
+      node<HTMLInputElement>('.data-candidate input[type="checkbox"]'),
+    );
+    const changed = JSON.stringify(createPlayerProfile());
+    localStorage.setItem(playerProfileKey, changed);
+    await act(async () => notifyPlayerProfileChanged());
+    const label = mode === 'classic' ? '确认载入经典对局' : '载入生存对局';
+    expect(button(label).disabled).toBe(true);
+    expect(container.textContent).toContain('预览后本机玩家档案已变化');
+    await click(button(label));
+    expect(onImport).not.toHaveBeenCalled();
+    await click(button('重新核对本机档案'));
+    expect(
+      node<HTMLInputElement>('.data-candidate input[type="checkbox"]').checked,
+    ).toBe(false);
+    await click(
+      node<HTMLInputElement>('.data-candidate input[type="checkbox"]'),
+    );
+    await click(button(label));
+    expect(onImport).toHaveBeenCalledWith(expect.anything(), true, changed);
+  },
+);
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();

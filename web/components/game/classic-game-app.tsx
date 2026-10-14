@@ -19,18 +19,12 @@ import {
   loadPlayerProfile,
   persistGameSession,
 } from '@/lib/ui/game-save';
-import {
-  playerProfileKey,
-  readPlayerProfile,
-  type PlayerProfile,
-} from '@/lib/ui/player-profile';
+import { readPlayerProfile, type PlayerProfile } from '@/lib/ui/player-profile';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { CharacterId } from '@/lib/game/item-types';
 import { ReplayArchive } from './replay-viewer';
-import {
-  notifyPlayerProfileChanged,
-  subscribePlayerProfileChanges,
-} from '@/lib/ui/profile-events';
+import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
+import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
 
 import { CharacterSelection } from './character-selection';
 import { GameResult } from './game-result';
@@ -156,17 +150,24 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   }, [session, game.phase, initial, restoreRevision]);
   const onActivateClassic = props.onActivateClassic;
   const restore = useCallback(
-    (next: GameSession, incomingProfile?: PlayerProfile) => {
-      restoredTerminal.current = next.game.phase === 'game_result';
+    (
+      next: GameSession,
+      incomingProfile?: PlayerProfile,
+      expectedProfileSource?: string | null,
+    ) => {
       if (incomingProfile) {
         const validated = readPlayerProfile(incomingProfile);
         const storage = getPreferenceStorage();
-        if (!storage) throw new Error('浏览器存储不可用，未覆盖玩家档案。');
-        storage.setItem(playerProfileKey, JSON.stringify(validated));
-        notifyPlayerProfileChanged();
+        restoreClassicBackupProgress(
+          storage,
+          next,
+          validated,
+          expectedProfileSource,
+        );
         setProfile(validated);
         setProfileMessage('');
       }
+      restoredTerminal.current = next.game.phase === 'game_result';
       setSession(next);
       onActivateClassic?.();
       setRestoreMessage(

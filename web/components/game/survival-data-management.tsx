@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ModeFilePreview } from './mode-file-preview';
 import { readModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
@@ -18,6 +18,8 @@ import { downloadPortableJsonFile } from '@/lib/ui/json-download';
 import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { currentFileVersion } from '@/lib/ui/file-protocol';
+import { useBackupProfileGuard } from './use-backup-profile-guard';
+import { BackupProfileNotice } from './backup-profile-notice';
 
 export function SurvivalDataManagement({
   session,
@@ -28,12 +30,22 @@ export function SurvivalDataManagement({
 }: {
   session: SurvivalClientSession | null;
   imported: SurvivalReplayDocument | null;
-  onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
+  onImport: (
+    candidate: ModeDataCandidate,
+    profile: boolean,
+    expectedProfileSource?: string | null,
+  ) => void;
   onReplay: (doc: SurvivalReplayDocument) => void;
   recentOverride?: { doc: SurvivalReplayDocument | null; error: string };
 }) {
   const [candidate, setCandidate] = useState<ModeDataCandidate | null>(null);
   const [restoreProfile, setRestoreProfile] = useState(false);
+  const profileGuard = useBackupProfileGuard();
+  const clearProfileGuard = profileGuard.clear;
+  const recheckProfile = () => {
+    profileGuard.capture();
+    setRestoreProfile(false);
+  };
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const [backup, setBackup] = useState<{ source: string; name: string } | null>(
@@ -67,7 +79,8 @@ export function SurvivalDataManagement({
     }
   });
   const recent = recentOverride ?? storedRecent;
-  const cancel = () => {
+  const cancel = useCallback(() => {
+    clearProfileGuard();
     request.current++;
     readController.current?.abort();
     exportController.current?.abort();
@@ -77,7 +90,7 @@ export function SurvivalDataManagement({
     setReading(false);
     setRestoreProfile(false);
     setMessage('');
-  };
+  }, [clearProfileGuard]);
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && (candidate || backup || reading)) {
@@ -88,7 +101,7 @@ export function SurvivalDataManagement({
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [candidate, backup, reading]);
+  }, [candidate, backup, reading, cancel]);
   const run = (action: () => void | Promise<void>) => {
     try {
       const result = action();
@@ -98,6 +111,7 @@ export function SurvivalDataManagement({
     }
   };
   async function read(file?: File) {
+    profileGuard.clear();
     readController.current?.abort();
     const controller = new AbortController();
     readController.current = controller;
@@ -120,6 +134,8 @@ export function SurvivalDataManagement({
         signal: controller.signal,
       });
       if (id !== request.current) return;
+      if (parsed.kind === 'backup' || parsed.kind === 'survival-backup')
+        profileGuard.capture();
       setCandidate(parsed);
     } catch (error) {
       if (id === request.current)
@@ -151,7 +167,12 @@ export function SurvivalDataManagement({
   function confirm() {
     if (!candidate) return;
     try {
-      onImport(candidate, restoreProfile);
+      const expectedProfileSource =
+        restoreProfile &&
+        (candidate.kind === 'backup' || candidate.kind === 'survival-backup')
+          ? profileGuard.expectedSource()
+          : undefined;
+      onImport(candidate, restoreProfile, expectedProfileSource);
       cancel();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '未载入文件。');
@@ -246,6 +267,8 @@ export function SurvivalDataManagement({
         <ModeFilePreview
           candidate={candidate}
           restoreProfile={restoreProfile}
+          profileGuard={profileGuard}
+          onProfileRecheck={recheckProfile}
           onProfileChange={setRestoreProfile}
           onConfirm={confirm}
           onCancel={cancel}
@@ -264,17 +287,27 @@ export function SurvivalDataManagement({
                 : '确认后切换并载入经典对局。生存存档独立保留。'}
             </p>
             {candidate.kind === 'backup' && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={restoreProfile}
-                  onChange={(e) => setRestoreProfile(e.target.checked)}
+              <div className="data-profile-choice">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={restoreProfile}
+                    onChange={(e) => setRestoreProfile(e.target.checked)}
+                  />
+                  同时恢复文件中的玩家进度
+                </label>
+                <BackupProfileNotice
+                  guard={profileGuard}
+                  incoming={candidate.document.profile!}
+                  onRecheck={recheckProfile}
                 />
-                同时恢复文件中的玩家进度
-              </label>
+              </div>
             )}
             <div className="data-actions">
-              <Button onClick={confirm}>
+              <Button
+                onClick={confirm}
+                disabled={restoreProfile && profileGuard.blocked}
+              >
                 确认{candidate.kind === 'replay' ? '打开回放' : '载入经典对局'}
               </Button>
               <Button variant="secondary" onClick={cancel}>

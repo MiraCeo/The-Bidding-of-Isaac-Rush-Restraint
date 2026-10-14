@@ -24,12 +24,17 @@ import {
 } from '@/lib/ui/data-management';
 import { readModeDataFile, type ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { GameSession } from '@/lib/ui/game-session';
+import { useBackupProfileGuard } from './use-backup-profile-guard';
 
 export function useDataManagement(
   onOpenReplay: () => void,
   onReturnGame: () => void,
   options: {
-    onImport?: (candidate: ModeDataCandidate, profile: boolean) => void;
+    onImport?: (
+      candidate: ModeDataCandidate,
+      profile: boolean,
+      expectedProfileSource?: string | null,
+    ) => void;
     onReplay?: (document: ReplayDocument) => void;
     onCurrentReplay?: () => void;
     profile?: { profile: PlayerProfile; message: string };
@@ -70,6 +75,7 @@ export function useDataManagement(
     label: string;
   } | null>(null);
   const [restoreProfile, setRestoreProfile] = useState(false);
+  const profileGuard = useBackupProfileGuard();
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const request = useRef(0);
@@ -101,6 +107,7 @@ export function useDataManagement(
     [log, importedReplay, recent.document],
   );
   function cancel() {
+    profileGuard.clear();
     readController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
@@ -113,6 +120,7 @@ export function useDataManagement(
     setMessage('');
   }
   async function readFile(file: File | undefined) {
+    profileGuard.clear();
     readController.current?.abort();
     const controller = new AbortController();
     readController.current = controller;
@@ -133,7 +141,11 @@ export function useDataManagement(
       const value = await readModeDataFile(source, file.name, {
         signal: controller.signal,
       });
-      if (id === request.current) setCandidate(value);
+      if (id === request.current) {
+        if (value.kind === 'backup' || value.kind === 'survival-backup')
+          profileGuard.capture();
+        setCandidate(value);
+      }
     } catch (error) {
       if (id === request.current)
         setMessage(
@@ -145,6 +157,7 @@ export function useDataManagement(
     }
   }
   function openImport() {
+    profileGuard.clear();
     readController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
@@ -158,8 +171,13 @@ export function useDataManagement(
   function confirmImport() {
     if (!tools || !candidate) return;
     try {
+      const expectedProfileSource =
+        restoreProfile &&
+        (candidate.kind === 'backup' || candidate.kind === 'survival-backup')
+          ? profileGuard.expectedSource()
+          : undefined;
       if (options.onImport) {
-        options.onImport(candidate, restoreProfile);
+        options.onImport(candidate, restoreProfile, expectedProfileSource);
         return;
       }
       if (candidate.kind === 'survival-replay') {
@@ -181,6 +199,7 @@ export function useDataManagement(
           candidate.kind === 'survival-backup' && restoreProfile
             ? candidate.document.profile
             : undefined,
+          expectedProfileSource,
         );
         return;
       }
@@ -193,6 +212,7 @@ export function useDataManagement(
           candidate.kind === 'backup' && restoreProfile
             ? candidate.document.profile
             : undefined,
+          expectedProfileSource,
         );
         onReturnGame();
       }
@@ -353,6 +373,11 @@ export function useDataManagement(
     backup,
     restoreProfile,
     setRestoreProfile,
+    profileGuard,
+    recheckProfile: () => {
+      profileGuard.capture();
+      setRestoreProfile(false);
+    },
     message,
     reading,
     exporting,

@@ -7,6 +7,7 @@ import { describeDataProgress } from '@/lib/ui/data-management';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { DataManagementController } from './use-data-management';
 import { ModeFilePreview } from './mode-file-preview';
+import { BackupProfileNotice } from './backup-profile-notice';
 
 export function dataTaskTitle(data: DataManagementController) {
   if (data.task === 'backup') return '完整备份';
@@ -67,6 +68,8 @@ export function DataManagement({
             onProfileChange={data.setRestoreProfile}
             onConfirm={data.confirmImport}
             onCancel={data.cancel}
+            profileGuard={data.profileGuard}
+            onProfileRecheck={data.recheckProfile}
           />
           {message}
         </div>
@@ -136,6 +139,11 @@ export function DataManagement({
                     ? '将替换本机玩家进度，包含解锁、成就与扩展数据。'
                     : '保留本机玩家进度，只载入这局与原始回放。'}
                 </p>
+                <BackupProfileNotice
+                  guard={data.profileGuard}
+                  incoming={candidate.document.profile!}
+                  onRecheck={data.recheckProfile}
+                />
               </div>
             )}
             <p className="data-impact">
@@ -147,7 +155,11 @@ export function DataManagement({
                   (candidate.kind === 'checkpoint' ? ' 玩家进度不变。' : '')}
             </p>
             <div className="data-actions">
-              <Button type="button" onClick={data.confirmImport}>
+              <Button
+                type="button"
+                onClick={data.confirmImport}
+                disabled={data.restoreProfile && data.profileGuard.blocked}
+              >
                 {candidate.kind === 'replay'
                   ? '打开回放'
                   : candidate.kind === 'backup' && data.restoreProfile
@@ -446,7 +458,7 @@ export function DataManagement({
         <section className="settings-group data-files">
           <h3>数据管理</h3>
           <p>
-        对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
+            对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
           </p>
           <div className="data-file-row">
             <div>

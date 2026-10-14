@@ -95,7 +95,11 @@ export function ProgressCenter({
   onSurvival: () => void;
   onClassicReplay: (document: ReplayDocument) => void;
   onSurvivalReplay: (document: SurvivalReplayDocument) => void;
-  onImport: (candidate: ModeDataCandidate, profile: boolean) => void;
+  onImport: (
+    candidate: ModeDataCandidate,
+    profile: boolean,
+    expectedProfileSource?: string | null,
+  ) => void;
 }) {
   const tools = useSessionTools()!;
   const [tab, setTab] = useState<ProgressTab>(

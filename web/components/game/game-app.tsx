@@ -24,11 +24,7 @@ import {
 } from '@/lib/ui/survival-persistence';
 import { withSurvivalBuild } from '@/lib/game/survival-session';
 import { readBuildVersion } from '@/lib/ui/game-version';
-import {
-  playerProfileKey,
-  readPlayerProfile,
-  type PlayerProfile,
-} from '@/lib/ui/player-profile';
+import { type PlayerProfile } from '@/lib/ui/player-profile';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import {
@@ -41,7 +37,7 @@ import { ProgressNavigationContext } from './progress-navigation';
 import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
 import { useReplayArchive } from './use-replay-archive';
-import { notifyPlayerProfileChanged } from '@/lib/ui/profile-events';
+import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -132,10 +128,20 @@ export function GameApp() {
     );
   }, []);
   const restoreSurvival = useCallback(
-    (doc: SurvivalSaveDocument, profile?: PlayerProfile) => {
+    (
+      doc: SurvivalSaveDocument,
+      profile?: PlayerProfile,
+      expectedProfileSource?: string | null,
+    ) => {
       if (profile) {
         const storage = getPreferenceStorage();
-        restoreSurvivalBackupProgress(storage, doc.game, doc.draft, profile);
+        restoreSurvivalBackupProgress(
+          storage,
+          doc.game,
+          doc.draft,
+          profile,
+          expectedProfileSource,
+        );
       }
       setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
       setSurvivalRevision((value) => value + 1);
@@ -195,6 +201,7 @@ export function GameApp() {
   function importCandidate(
     candidate: ModeDataCandidate,
     restoreProfile: boolean,
+    expectedProfileSource?: string | null,
   ) {
     if (candidate.kind === 'survival-replay') {
       replaySurvival(candidate.document);
@@ -208,6 +215,7 @@ export function GameApp() {
       restoreSurvival(
         candidate.document.checkpoint,
         restoreProfile ? candidate.document.profile : undefined,
+        expectedProfileSource,
       );
       return;
     }
@@ -216,11 +224,12 @@ export function GameApp() {
       return;
     }
     if (restoreProfile && candidate.document.profile) {
-      const profile = readPlayerProfile(candidate.document.profile);
-      const storage = getPreferenceStorage();
-      if (!storage) throw new Error('存储不可用，未覆盖玩家进度。');
-      storage.setItem(playerProfileKey, JSON.stringify(profile));
-      notifyPlayerProfileChanged();
+      restoreClassicBackupProgress(
+        getPreferenceStorage(),
+        candidate.document.session,
+        candidate.document.profile,
+        expectedProfileSource,
+      );
     }
     setClassicReplay(null);
     setClassicIncoming({
