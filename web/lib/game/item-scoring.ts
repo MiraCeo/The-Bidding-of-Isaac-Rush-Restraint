@@ -39,6 +39,16 @@ export interface TurnScoreBreakdown {
   triggers: Array<{ itemId: ItemId; kind: string; amount?: number }>;
 }
 
+// In-process diagnostic evidence. Keeping it outside enumerable game state preserves
+// every old transcript/file byte and avoids pretending old v5 files recorded it.
+// The growth ledger captures this value BEFORE replay snapshot copying; copies
+// deliberately have no evidence. No extra RNG or score effect is introduced.
+// Reconstruction may also calculate it; its presence is NOT proof of eligibility.
+const scoreBeforeClearEvidence = new WeakMap<TurnScoreBreakdown, number>();
+export function readLiveScoreBeforeClear(value: TurnScoreBreakdown): number | undefined {
+  return scoreBeforeClearEvidence.get(value);
+}
+
 export function calculateTurnScore(
   player: RuntimePlayerState,
   actions: readonly ResolvedAction[],
@@ -157,7 +167,7 @@ export function calculateTurnScore(
   }
 
   const subtotal = actionScores.reduce((sum, action) => sum + action.subtotal, 0);
-  return {
+  const result: TurnScoreBreakdown = {
     actions: actionScores.map((action) => ({
       ...action,
       baseScore: roundTo(action.baseScore, rules.scoreStorageDecimals),
@@ -169,6 +179,8 @@ export function calculateTurnScore(
     score: cleared ? 0 : roundTo(subtotal * multiplier, rules.scoreStorageDecimals),
     triggers,
   };
+  scoreBeforeClearEvidence.set(result, roundTo(subtotal * multiplier, rules.scoreStorageDecimals));
+  return result;
 }
 
 export function calculateFinalScore(player: RuntimePlayerState): number {

@@ -10,6 +10,7 @@ import {
   registerCompletion,
   type CompletionOrigin,
 } from './completion-registry';
+import { readAchievementRegistry } from './achievements/registry';
 
 export const playerProfileKey = 'bidding-player-profile-v1';
 export type ProfileValue =
@@ -162,6 +163,7 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
   }
   if (new TextEncoder().encode(canonicalJson(p)).length > 1024 * 1024) fail();
   readCompletionRegistry(p as unknown as PlayerProfile);
+  readAchievementRegistry(p as unknown as PlayerProfile);
   return structuredClone(p) as unknown as PlayerProfile;
 }
 export function recordCompletedMatch(

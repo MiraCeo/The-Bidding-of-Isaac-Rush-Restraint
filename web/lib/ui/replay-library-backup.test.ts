@@ -36,6 +36,9 @@ let original: PreparedReplay,
   branch: PreparedReplay,
   survival: PreparedReplay,
   factory: IDBFactory;
+// Whole-backup fixtures repeatedly verify/export/restore complete classic and
+// survival records, not a single IDB operation. Match the existing 20s integration
+// bound on every async mixed() case; retain all assertions and global defaults.
 const oldKey = 'classic/' + 'e'.repeat(64);
 beforeAll(async () => {
   original = await equivalentPreparedFixture();
@@ -223,7 +226,7 @@ it('keeps the first local equivalent source and timestamp instead of replacing i
     stored.source,
   );
   expect(await target.library.add(original)).toBe('duplicate');
-});
+}, 20000);
 it('never revives an exact or semantically deleted local record, even when the source backup includes it', async () => {
   const source = await mixed(),
     target = db();
@@ -243,7 +246,7 @@ it('never revives an exact or semantically deleted local record, even when the s
       entry: { ...original.entry, origin: 'automatic' },
     }),
   ).toBe('removed');
-});
+}, 20000);
 it('does not import deletion evidence over a currently live local fact or delete that fact', async () => {
   const source = await mixed(),
     target = db();
@@ -285,6 +288,7 @@ it.each(['index', 'payload', 'removed'] as const)(
     );
     expect(await target.library.list()).toHaveLength(1);
   },
+  20000,
 );
 it.each([
   { count: 2, bytes: 64 * 1024 * 1024 },
@@ -301,6 +305,7 @@ it.each([
     await expect(target.library.restoreBackup(preview)).rejects.toThrow('上限');
     expect(await target.library.list()).toEqual([]);
   },
+  20000,
 );
 it.each(['payload', 'removed'])(
   'rolls back all stores on a simulated mid-batch %s transaction failure',
@@ -333,6 +338,7 @@ it.each(['payload', 'removed'])(
       removed: [],
     });
   },
+  20000,
 );
 it('preserves additional JSON provenance fields in indexes, payload rows and legacy markers instead of reconstructing them', async () => {
   const source = await mixed(),
@@ -364,7 +370,7 @@ it('preserves additional JSON provenance fields in indexes, payload rows and leg
   expect(data((await target.library.exportBackup()).document)).toEqual(
     data(exported.document),
   );
-});
+}, 20000);
 it('refuses unknown deletion-proof versions rather than silently turning them into old key-only marks', async () => {
   const source = await mixed(),
     target = db(),
@@ -377,7 +383,7 @@ it('refuses unknown deletion-proof versions rather than silently turning them in
     target.library.previewBackup(JSON.stringify(invalid)),
   ).rejects.toThrow('删除标记损坏');
   expect(await target.library.list()).toEqual([]);
-});
+}, 20000);
 it('retries an export snapshot changed during verification and exports the new consistent metadata', async () => {
   const source = db();
   await source.library.add(original);
@@ -505,7 +511,7 @@ it('aborts before and during append without leaving an index-only or tombstone-o
     spy.mockRestore();
   }
   expect(await target.library.list()).toEqual([]);
-});
+}, 20000);
 it('rejects forged or already-consumed preview objects', async () => {
   const source = db(),
     target = db(),
@@ -543,7 +549,7 @@ it('fails whole export/restore for damaged facts, mismatched metadata, unsupport
     ),
   ).rejects.toThrow('仅支持整库');
   expect(await target.library.list()).toEqual([]);
-});
+}, 20000);
 it('rejects prototype fields and bounded marker growth, and handles empty backups', async () => {
   const source = db(),
     exported = await source.library.exportBackup();
@@ -656,4 +662,4 @@ it('writes a retained mixed-library fixture and its roundtrip report without inv
       2,
     ),
   );
-});
+}, 20000);
