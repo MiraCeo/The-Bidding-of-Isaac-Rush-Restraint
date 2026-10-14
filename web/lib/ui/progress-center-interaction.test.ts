@@ -45,6 +45,124 @@ function button(label: string) {
 }
 const click = async (label: string) => act(async () => button(label).click());
 const mount = async () => act(async () => root.render(createElement(GameApp)));
+it('keeps one product identity across all five navigation entries and moves progress return actions into the shared page heading', async () => {
+  await mount();
+  for (const page of ['设置', '进度', '规则', '排行', '游戏']) {
+    await act(async () =>
+      [
+        ...container.querySelectorAll<HTMLButtonElement>(
+          'nav[aria-label="主导航"] button',
+        ),
+      ]
+        .find((b) => b.textContent?.trim() === page)!
+        .click(),
+    );
+    expect(
+      container.querySelector('.topbar .brand-block .eyebrow')?.textContent,
+    ).toBe('THE BIDDING OF ISAAC');
+    expect(container.querySelector('.topbar h1')?.textContent).toBe(
+      '以撒的竞合：冲 · 慎',
+    );
+    if (page === '进度') {
+      expect(
+        container
+          .querySelector('.progress-stage')
+          ?.classList.contains('ranking-stage'),
+      ).toBe(true);
+      expect(
+        container
+          .querySelector('.progress-stage')
+          ?.classList.contains('game-tools-stage'),
+      ).toBe(true);
+      expect(
+        container.querySelector(
+          '.progress-stage .ranking-page-heading #progress-title',
+        ),
+      ).not.toBeNull();
+      expect(
+        container
+          .querySelector('.progress-stage .ranking-page-heading')
+          ?.contains(button('返回主菜单')),
+      ).toBe(true);
+      expect(container.querySelector('.topbar button')?.textContent).not.toBe(
+        '返回主菜单',
+      );
+      expect(
+        container.querySelector('.topbar .status-chip')?.textContent,
+      ).toContain('主菜单');
+    }
+  }
+});
+it('uses the same heading skeleton for all four progress categories and keeps the header independent of selected filters', async () => {
+  await mount();
+  await click('进度');
+  for (const tab of ['总览', '对局记录', '统计', '存档与备份']) {
+    await click(tab);
+    expect(
+      container.querySelector(
+        '.progress-stage > .ranking-page-heading #progress-title',
+      )?.textContent,
+    ).toBe('进度');
+    expect(
+      container.querySelector(
+        '.progress-stage > .ranking-page-heading .eyebrow',
+      )?.textContent,
+    ).toBe('PLAYER PROGRESS');
+    expect(
+      container.querySelector(
+        'nav[aria-label="进度分类"] [aria-current="page"]',
+      )?.textContent,
+    ).toBe(tab);
+  }
+  await click('生存');
+  expect(
+    container.querySelector('.topbar .status-chip')?.textContent,
+  ).toContain('主菜单');
+  expect(localStorage.getItem(gameSaveKey)).toBeNull();
+  expect(localStorage.getItem(survivalSaveKey)).toBeNull();
+});
+it.each(['classic', 'survival'] as const)(
+  'shows the %s source match context in progress and preserves draft through its build shortcut',
+  async (mode) => {
+    const c = classic(),
+      s = survival();
+    localStorage.setItem(activeModeKey, mode);
+    await mount();
+    const beforeC = localStorage.getItem(gameSaveKey),
+      beforeS = localStorage.getItem(survivalSaveKey);
+    await click('进度');
+    const game = mode === 'classic' ? c.game : s.game;
+    if (game.phase === 'character_selection')
+      throw Error('Expected a started source match');
+    expect(
+      container.querySelector('.topbar .round-status')?.textContent,
+    ).toContain('第 1 层');
+    expect(
+      container.querySelector('.topbar .status-chip-money strong')?.textContent,
+    ).toBe(String(game.players.find((p) => p.isHuman)!.money));
+    await click('对局记录');
+    await click(mode === 'classic' ? '生存' : '经典');
+    expect(
+      container.querySelector('.topbar .status-chip-money strong')?.textContent,
+    ).toBe(String(game.players.find((p) => p.isHuman)!.money));
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '.topbar [aria-label="查看角色构筑"]',
+        )!
+        .click(),
+    );
+    expect(container.textContent).toContain('构筑与当前状态');
+    await click('返回游戏');
+    expect(
+      container.querySelector<HTMLInputElement>(
+        `input[aria-label="竞拍奖励 ${mode === 'classic' ? 'A' : 'B'} 的数值"]`,
+      )?.value,
+    ).toBe(mode === 'classic' ? '17' : '23');
+    expect(localStorage.getItem(gameSaveKey)).toBe(beforeC);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(beforeS);
+  },
+);
 function classic() {
   const session = reduceGameSession(createGameSession(42), {
     type: 'start_game',

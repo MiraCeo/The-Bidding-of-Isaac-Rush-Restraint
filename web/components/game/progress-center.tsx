@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ArrowLeft, Coins } from 'lucide-react';
+import { GameBrand } from './game-brand';
+import { UtilityPageHeading } from './utility-page-heading';
 import { GameNavigation } from './game-navigation';
 import { useSessionTools } from './session-context';
 import { useDataManagement } from './use-data-management';
@@ -16,7 +19,7 @@ import {
   type SurvivalReplayDocument,
 } from '@/lib/ui/survival-persistence';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import { readBuildVersion } from '@/lib/ui/game-version';
+import { appVersion, readBuildVersion } from '@/lib/ui/game-version';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
@@ -187,39 +190,73 @@ export function ProgressCenter({
     data.cancel();
     setMode(next);
   }
+  const contextGame =
+    origin === 'survival'
+      ? survivalGame
+      : origin === 'classic' && classicActive
+        ? classic
+        : null;
+  const contextHuman = contextGame?.players.find((player) => player.isHuman);
   return (
     <main className="ranking-page progress-page">
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">PLAYER PROGRESS</p>
-            <h1>以撒的竞合 · 进度</h1>
-          </div>
+          <GameBrand />
           <GameNavigation page="progress" onPageChange={onNavigate} />
+          {contextGame ? (
+            <div className="round-status">
+              <span className="status-chip">
+                第 {contextGame.floorIndex + 1} 层 · 房间{' '}
+                {contextGame.roomIndex + 1}/5
+              </span>
+              <button
+                type="button"
+                className="status-chip build-entry"
+                aria-label="查看角色构筑"
+                onClick={() => onNavigate('build')}
+              >
+                {characterNames[contextGame.selectedCharacter]}{' '}
+                <span aria-hidden="true">▾</span>
+              </button>
+              <span className="status-chip status-chip-money">
+                <Coins aria-hidden="true" />
+                <strong>{contextHuman?.money ?? '—'}</strong>
+              </span>
+            </div>
+          ) : origin === 'menu' ? (
+            <span className="status-chip">主菜单 · {appVersion}</span>
+          ) : (
+            <div className="character-step" aria-label="当前步骤">
+              <span>{origin === 'survival' ? '生存模式' : '经典模式'}</span>
+              <strong>未开始对局</strong>
+            </div>
+          )}
+        </div>
+      </header>
+      <section
+        className="ranking-stage game-tools-stage progress-stage"
+        aria-labelledby="progress-title"
+      >
+        <UtilityPageHeading
+          eyebrow="PLAYER PROGRESS"
+          title={data.task === 'settings' ? '进度' : dataTaskTitle(data)}
+          titleId="progress-title"
+        >
           <Button
             variant="secondary"
             onClick={() =>
               data.task !== 'settings' ? data.cancel() : onNavigate(null)
             }
           >
+            <ArrowLeft aria-hidden="true" />
             {data.task !== 'settings'
               ? '返回进度'
               : origin === 'menu'
                 ? '返回主菜单'
                 : '返回游戏'}
           </Button>
-        </div>
-      </header>
-      <section className="progress-stage" aria-labelledby="progress-title">
-        <div className="progress-heading">
-          <div>
-            <p className="eyebrow">YOUR JOURNEY</p>
-            <h2 id="progress-title" tabIndex={-1}>
-              {data.task === 'settings' ? '进度' : dataTaskTitle(data)}
-            </h2>
-          </div>
-          <p>对局与玩家档案分别保存 · 回放只读</p>
-        </div>
+        </UtilityPageHeading>
+        <p className="progress-intro">对局与玩家档案分别保存 · 回放只读</p>
         <nav className="progress-tabs" aria-label="进度分类">
           {(
             [

@@ -43,6 +43,15 @@ export async function yieldLibraryTask(signal?: AbortSignal) {
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
   checkLibraryAbort(signal);
 }
+/** Publish a stage before its bounded synchronous work, so UI/cancel can run. */
+export async function libraryBackupStep(
+  options: LibraryBackupOptions,
+  message: string,
+) {
+  checkLibraryAbort(options.signal);
+  options.onProgress?.(message);
+  await yieldLibraryTask(options.signal);
+}
 /** Independent bounds for a whole library; the per-replay 8 MiB rule is unchanged. */
 function inspectJson(value: unknown) {
   let nodes = 0;

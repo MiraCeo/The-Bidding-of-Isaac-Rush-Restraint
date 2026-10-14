@@ -31,13 +31,20 @@ export function ReplayLibraryBackupPanel({
   const [acknowledged, setAcknowledged] = useState(false),
     [stale, setStale] = useState(false);
   const input = useRef<HTMLInputElement>(null),
+    heldPreview = useRef<LibraryRestorePreview | null>(null),
     state = useRef({
       live: true,
       token: 0,
       controller: null as AbortController | null,
     });
+  const releasePreview = useCallback(() => {
+    if (heldPreview.current)
+      replayLibrary.discardBackupPreview(heldPreview.current);
+    heldPreview.current = null;
+  }, []);
   const busy = phase !== 'idle';
   const cancel = useCallback(() => {
+    releasePreview();
     const current = state.current;
     current.token++;
     current.controller?.abort();
@@ -47,7 +54,7 @@ export function ReplayLibraryBackupPanel({
     setAcknowledged(false);
     setStale(false);
     setMessage('已取消整库读取／导出／预览，未执行增量恢复。');
-  }, [onBusyChange]);
+  }, [onBusyChange, releasePreview]);
   useEffect(() => {
     const current = state.current;
     current.live = true;
@@ -57,10 +64,11 @@ export function ReplayLibraryBackupPanel({
       current.live = false;
       current.token++;
       current.controller?.abort();
+      releasePreview();
       node?.removeEventListener('cancel', cancel);
       onBusyChange(false);
     };
-  }, [cancel, onBusyChange]);
+  }, [cancel, onBusyChange, releasePreview]);
   useEffect(() => {
     if (!candidate || phase === 'restoring') return;
     let live = true;
@@ -136,6 +144,7 @@ export function ReplayLibraryBackupPanel({
     }
   }
   async function exportAll() {
+    releasePreview();
     setCandidate(null);
     const operation = begin('exporting');
     try {
@@ -162,6 +171,7 @@ export function ReplayLibraryBackupPanel({
     file?: File,
     previous?: { source: string; filename: string },
   ) {
+    releasePreview();
     setCandidate(null);
     if (!file && !previous) {
       cancel();
@@ -176,9 +186,10 @@ export function ReplayLibraryBackupPanel({
       if (!operation.active()) return;
       const preview = await replayLibrary.previewBackup(source, operation);
       if (operation.active()) {
+        heldPreview.current = preview;
         setCandidate({ filename, source, preview });
         setMessage('整库文件与本机事实已核验，只预览；确认后才增量恢复。');
-      }
+      } else replayLibrary.discardBackupPreview(preview);
     } catch (error) {
       if (operation.active())
         setMessage(
@@ -198,6 +209,7 @@ export function ReplayLibraryBackupPanel({
         operation,
       );
       if (operation.active()) {
+        releasePreview();
         setCandidate(null);
         setMessage(
           `整库恢复完成：新增 ${result.added} 份、重复 ${result.duplicates} 份、保留本机删除决定 ${result.blocked} 份；新增删除标记 ${result.markersAdded} 条，冲突标记 ${result.markerConflicts} 条未覆盖。对局与玩家档案未改变。`,
@@ -217,7 +229,11 @@ export function ReplayLibraryBackupPanel({
   }
   const preview = candidate?.preview;
   return (
-    <section className="library-backup" aria-labelledby="library-backup-title">
+    <section
+      className="library-backup"
+      aria-labelledby="library-backup-title"
+      aria-busy={busy}
+    >
       <h4 id="library-backup-title">整库备份与恢复</h4>
       <p className="utility-notice">
         包含经典＋生存全部原正文、首次来源、索引和删除证据，不受筛选影响。续玩存档、玩家档案与设置需分别备份。
@@ -344,6 +360,11 @@ export function ReplayLibraryBackupPanel({
       )}
       <output className="save-message" aria-live="polite">
         {message}
+        {busy &&
+          phase !== 'restoring' &&
+          ' 可取消；当前只是读取或核验，尚未恢复资料。'}
+        {phase === 'restoring' &&
+          ' 提交期间请等待结果；已完成的提交不能通过离开页面撤销。'}
       </output>
     </section>
   );

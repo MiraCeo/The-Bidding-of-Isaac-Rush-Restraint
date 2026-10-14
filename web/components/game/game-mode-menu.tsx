@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { Button } from '@/components/ui/button';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
@@ -30,10 +31,7 @@ export function GameModeMenu({
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1>以撒的竞合：冲 · 慎</h1>
-          </div>
+          <GameBrand />
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}

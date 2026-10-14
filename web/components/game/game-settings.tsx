@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AboutVersion } from './about-version';
+import { UtilityPageHeading } from './utility-page-heading';
 import {
   defaultGamePreferences,
   type GamePreferences,
@@ -28,18 +29,16 @@ export function GameSettings({
       className="ranking-stage game-tools-stage"
       aria-labelledby="room-utilities-title"
     >
-      <div className="ranking-page-heading">
-        <div>
-          <p className="eyebrow">INTERFACE SETTINGS</p>
-          <h2 id="room-utilities-title" tabIndex={-1}>
-            设置
-          </h2>
-        </div>
+      <UtilityPageHeading
+        eyebrow="INTERFACE SETTINGS"
+        title="设置"
+        titleId="room-utilities-title"
+      >
         <Button type="button" variant="secondary" onClick={onReturnGame}>
           <ArrowLeft aria-hidden="true" />
           返回游戏
         </Button>
-      </div>
+      </UtilityPageHeading>
       <div className="utility-page-content game-settings-content">
         {
           <>

@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import type { ReactNode } from 'react';
 import { Coins } from 'lucide-react';
 import { characterNames, type ActiveClientGameState } from '@/lib/game';
@@ -32,10 +33,7 @@ export function SettledGameFrame({
     >
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1>以撒的竞合：冲 · 慎</h1>
-          </div>
+          <GameBrand />
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}

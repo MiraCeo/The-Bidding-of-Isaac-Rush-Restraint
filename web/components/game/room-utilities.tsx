@@ -12,6 +12,7 @@ import { GameSettings, type PreferenceSaveStatus } from './game-settings';
 import { RoomRanking } from './room-ranking';
 import { Button } from '@/components/ui/button';
 import { useProgressNavigation } from './progress-navigation';
+import { UtilityPageHeading } from './utility-page-heading';
 import type { ActiveClientGameState } from '@/lib/game/client-session';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 
@@ -101,21 +102,19 @@ export function RoomUtilities({
       className="ranking-stage game-tools-stage"
       aria-labelledby="room-utilities-title"
     >
-      <div className="ranking-page-heading">
-        <div>
-          <p className="eyebrow">
-            {panel === 'build'
-              ? 'YOUR BUILD'
-              : panel === 'replay'
-                ? 'MATCH REPLAY'
-                : panel === 'tutorial'
-                  ? 'LEARN BY PLAYING'
-                  : 'GAME RULES'}
-          </p>
-          <h2 id="room-utilities-title" tabIndex={-1}>
-            {panelNames[panel]}
-          </h2>
-        </div>
+      <UtilityPageHeading
+        titleId="room-utilities-title"
+        title={panelNames[panel]}
+        eyebrow={
+          panel === 'build'
+            ? 'YOUR BUILD'
+            : panel === 'replay'
+              ? 'MATCH REPLAY'
+              : panel === 'tutorial'
+                ? 'LEARN BY PLAYING'
+                : 'GAME RULES'
+        }
+      >
         <p>
           {panel === 'build'
             ? '已持有道具 · 实时状态 · 报价影响'
@@ -125,7 +124,7 @@ export function RoomUtilities({
                 ? '独立练习 · 固定样本 · 不影响存档'
                 : '现行机制与道具说明'}
         </p>
-      </div>
+      </UtilityPageHeading>
       <div className="utility-page-content">
         {panel === 'build' && game ? (
           <PlayerBuild game={game} turn={buildTurn} />

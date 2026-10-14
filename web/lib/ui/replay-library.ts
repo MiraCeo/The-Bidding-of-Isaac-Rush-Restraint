@@ -26,6 +26,7 @@ import {
 import {
   checkLibraryAbort,
   yieldLibraryTask,
+  libraryBackupStep,
   validateLibraryBackupData,
   serializeLibraryBackup,
   parseLibraryBackup,
@@ -428,6 +429,7 @@ export class ReplayLibrary {
     options: LibraryBackupOptions,
     label: string,
     reuse?: { data: LibraryBackupData; documents: Map<string, LibraryReplay> },
+    retainDocuments = true,
   ) {
     checkLibraryAbort(options.signal);
     validateLibraryBackupData(data);
@@ -438,7 +440,8 @@ export class ReplayLibrary {
     );
     const documents = new Map<string, LibraryReplay>();
     for (const [i, entry] of data.entries.entries()) {
-      options.onProgress?.(
+      await libraryBackupStep(
+        options,
         `${label}：核验第 ${i + 1} / ${data.entries.length} 份回放`,
       );
       const prior = reusableEntries.get(entry.key),
@@ -450,15 +453,15 @@ export class ReplayLibrary {
         prior &&
         reusableSources.get(entry.key) === payloads.get(entry.key) &&
         canonicalJson(prior) === canonicalJson(entry)
-      )
-        documents.set(entry.key, document);
-      else {
+      ) {
+        if (retainDocuments) documents.set(entry.key, document);
+      } else {
         const read = await this.decode(
           entry.key,
           entry,
           payloads.get(entry.key),
         );
-        documents.set(entry.key, read.document);
+        if (retainDocuments) documents.set(entry.key, read.document);
       }
       await yieldLibraryTask(options.signal);
     }
@@ -509,10 +512,20 @@ export class ReplayLibrary {
   /** Full cross-mode export, including legacy equivalent rows and exact deletion evidence. */
   async exportBackup(options: LibraryBackupOptions = {}) {
     for (let attempt = 0; attempt < 3; attempt++) {
+      await libraryBackupStep(
+        options,
+        `整库导出：读取一致快照（第 ${attempt + 1} / 3 次核对）`,
+      );
       const data = await this.bulkSnapshot(options.signal);
-      await this.validateBulkFacts(data, options, '整库导出');
+      // Export needs validation, not a retained map of every decoded full game.
+      await this.validateBulkFacts(data, options, '整库导出', undefined, false);
+      await libraryBackupStep(options, '整库导出：校验元数据并生成文件摘要…');
       const packed = await serializeLibraryBackup(data, options.signal);
       try {
+        await libraryBackupStep(
+          options,
+          '整库导出：再次核对本机资料，完成后才请求下载…',
+        );
         await this.bulkCommit(
           data,
           (_tx, done) => done(true),
@@ -532,6 +545,7 @@ export class ReplayLibrary {
     source: string,
     options: LibraryBackupOptions = {},
   ): Promise<LibraryRestorePreview> {
+    await libraryBackupStep(options, '备份文件：读取文件头、结构与SHA256摘要…');
     const incoming = await parseLibraryBackup(source, options.signal),
       incomingDocs = await this.validateBulkFacts(
         incoming,
@@ -547,7 +561,12 @@ export class ReplayLibrary {
       );
     const proofs = new Map<string, ClassicLibraryProof>();
     const proofDocuments = new Map<string, LibraryReplay>();
-    for (const [key, doc] of [...localDocs, ...incomingDocs]) {
+    const proofTasks = [...localDocs, ...incomingDocs];
+    for (const [i, [key, doc]] of proofTasks.entries()) {
+      await libraryBackupStep(
+        options,
+        `恢复预览：核对说明凭据 ${i + 1} / ${proofTasks.length}`,
+      );
       // Equal raw keys may have distinct valid export wrappers; identity is still factual.
       if (doc.mode === 'classic' && proofDocuments.get(key) !== doc) {
         proofs.set(key, await classicLibraryProof(doc.replay, sha256));
@@ -560,6 +579,7 @@ export class ReplayLibrary {
       rows: LibraryRestoreRow[] = [],
       records: PreparedReplay[] = [],
       additions: LibraryBackupData['payloads'] = [];
+    await libraryBackupStep(options, '恢复预览：比较新增、重复与本机删除保护…');
     for (const entry of incoming.entries) {
       const proof = proofs.get(entry.key),
         duplicate =
@@ -604,7 +624,12 @@ export class ReplayLibrary {
     const localMarkerKeys = new Set(baseline.removed.map((mark) => mark.key));
     let markerDuplicates = 0,
       markerConflicts = 0;
-    for (const mark of incoming.removed) {
+    for (const [i, mark] of incoming.removed.entries()) {
+      if (i % 256 === 0)
+        await libraryBackupStep(
+          options,
+          `恢复预览：核对删除标记 ${i} / ${incoming.removed.length}`,
+        );
       if (localMarkerKeys.has(mark.key)) {
         markerDuplicates++;
         continue;
@@ -635,6 +660,10 @@ export class ReplayLibrary {
     if (baseline.removed.length + marks.length > libraryBackupLimits.removed)
       reason = '合并后的删除标记超过8192条备份上限，整批未写入。';
     if (!reason) {
+      await libraryBackupStep(
+        options,
+        '恢复预览：核验合并后的容量与元数据边界…',
+      );
       try {
         validateLibraryBackupData({
           entries: [...baseline.entries, ...records.map((r) => r.entry)],
@@ -646,6 +675,7 @@ export class ReplayLibrary {
           error instanceof Error ? error.message : '整库合并超过有界上限。';
       }
     }
+    await libraryBackupStep(options, '恢复预览：最后核对本机快照，尚未写入…');
     await this.bulkCommit(
       baseline,
       (_tx, done) => done(true),
@@ -694,6 +724,10 @@ export class ReplayLibrary {
       throw error;
     }
   }
+  /** Release source payloads held by a cancelled/replaced preview, without storage writes. */
+  discardBackupPreview(preview: LibraryRestorePreview): void {
+    this.backupPlans.delete(preview);
+  }
   /** One atomic append transaction: never clear, overwrite first records, or revive local tombstones. */
   async restoreBackup(
     preview: LibraryRestorePreview,
@@ -703,6 +737,10 @@ export class ReplayLibrary {
     if (!plan) throw Error('整库预览不存在或已使用，请重新核对。');
     if (!plan.allowed) throw Error(plan.reason);
     checkLibraryAbort(options.signal);
+    await libraryBackupStep(
+      options,
+      '整库恢复：核对原预览并准备原子提交，请等待结果…',
+    );
     const result = await this.bulkCommit<{
       added: number;
       markersAdded: number;

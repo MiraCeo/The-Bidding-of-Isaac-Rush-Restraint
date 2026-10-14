@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { Coins, Crown, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -47,10 +48,7 @@ export function GameResult({
       {!embedded && (
         <header className="topbar">
           <div className="topbar-inner">
-            <div className="brand-block">
-              <p className="eyebrow">THE BIDDING OF ISAAC</p>
-              <h1>以撒的竞合：冲 · 慎</h1>
-            </div>
+            <GameBrand />
             <div className="result-header-title">
               <span>三层 · 十五房间</span>
               <strong>最终结算</strong>

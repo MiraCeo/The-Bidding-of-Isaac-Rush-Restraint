@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { useState, type ReactNode } from 'react';
 import { Check, Coins, PackageOpen } from 'lucide-react';
 
@@ -102,10 +103,7 @@ export function CharacterSelection({
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1>以撒的竞合：冲 · 慎</h1>
-          </div>
+          <GameBrand />
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}

@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
@@ -87,10 +88,7 @@ export function RoomResult({
       {!embedded && (
         <header className="topbar">
           <div className="topbar-inner">
-            <div className="brand-block">
-              <p className="eyebrow">THE BIDDING OF ISAAC</p>
-              <h1>以撒的竞合：冲 · 慎</h1>
-            </div>
+            <GameBrand />
             <div className="result-header-title">
               <span>{roomKindNames[settlement.room.kind]}</span>
               <strong>房间结算</strong>

@@ -238,6 +238,7 @@ it('catches a payload-only change at final confirmation even if no change event 
 });
 it('cancels a late read without applying it and releases other library controls', async () => {
   const prepared = await replayLibrary.previewBackup(source);
+  const discard = vi.spyOn(replayLibrary, 'discardBackupPreview');
   await mount();
   let finish!: (preview: LibraryRestorePreview) => void;
   vi.spyOn(replayLibrary, 'previewBackup').mockImplementation(
@@ -250,9 +251,53 @@ it('cancels a late read without applying it and releases other library controls'
   expect(button('刷新回放库').disabled).toBe(true);
   await click('取消整库操作');
   await act(async () => finish(prepared));
+  expect(discard).toHaveBeenCalledWith(prepared);
   expect(container.querySelector('[aria-label="整库增量恢复预览"]')).toBeNull();
   expect(button('刷新回放库').disabled).toBe(false);
   expect(await replayLibrary.list()).toHaveLength(0);
+  untouched();
+});
+it('releases the active prepared payloads on cancel and unmount, preserving the existing library', async () => {
+  await replayLibrary.add(branch);
+  await mount();
+  const discard = vi.spyOn(replayLibrary, 'discardBackupPreview');
+  await upload();
+  await waitForFileUi(() => expect(button('取消整库恢复')).toBeDefined());
+  await click('取消整库恢复');
+  expect(discard).toHaveBeenCalledTimes(1);
+  await upload();
+  await waitForFileUi(() => expect(button('取消整库恢复')).toBeDefined());
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  expect(discard).toHaveBeenCalledTimes(2);
+  expect(await replayLibrary.list()).toHaveLength(1);
+  untouched();
+});
+it('shows a stage as busy and suppresses a late download after export cancellation', async () => {
+  await mount();
+  const original = await replayLibrary.exportBackup();
+  let finish!: (value: typeof original) => void;
+  vi.spyOn(replayLibrary, 'exportBackup').mockImplementation((options) => {
+    options?.onProgress?.('整库导出：校验元数据并生成文件摘要…');
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  const download = vi
+    .spyOn(URL, 'createObjectURL')
+    .mockReturnValue('blob:never-download');
+  await click('导出整库备份');
+  expect(
+    container.querySelector('.library-backup')?.getAttribute('aria-busy'),
+  ).toBe('true');
+  expect(container.textContent).toContain('校验元数据');
+  expect(container.textContent).toContain('可取消');
+  await click('取消整库操作');
+  await act(async () => finish(original));
+  expect(download).not.toHaveBeenCalled();
+  expect(
+    container.querySelector('.library-backup')?.getAttribute('aria-busy'),
+  ).toBe('false');
   untouched();
 });
 it('keeps the library unchanged on cancel, file chooser cancellation, malformed files or oversized file declarations', async () => {

@@ -180,6 +180,11 @@
 .status-chip { display: inline-flex; min-height: 2.25rem; align-items: center; gap: .5rem; border: 1px solid var(--border); border-radius: 999px; background: rgb(33 28 23 / 84%); padding: .42rem .78rem; color: var(--muted-foreground); font-size: .76rem; }
 .status-chip svg { width: 1rem; }
 .status-chip-money { color: var(--primary); }
+@media (max-width: 1080px) {
+  .topbar-inner { width: min(92vw, 1480px); grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 14px; }
+  .brand-block h1 { font-size: 1.25rem; }
+  .round-status { min-width: 0; flex-wrap: wrap; gap: 6px; }
+}
 
 .game-stage { width: var(--game-content-width); margin: 0 auto; padding: 2.2vh 0 24px; }
 .room-intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
@@ -1204,20 +1209,16 @@
   .quote-preview-compact .quote-preview-row dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* Shared player progress, separate from display preferences and game decisions. */
-.progress-stage { width: min(1180px, calc(100% - 48px)); margin: 40px auto 72px; }
-.progress-page .topbar-inner > button { justify-self: end; }
 .round-status .status-chip { flex-shrink: 0; white-space: nowrap; }
-.progress-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px; }
-.progress-heading h2 { font-size: 32px; margin: 8px 0 0; }
-.progress-heading p, .progress-intro { color: #b7ad9b; line-height: 1.7; }
-.progress-tabs { display: flex; gap: 8px; border-bottom: 1px solid #ffffff14; margin-bottom: 28px; }
-.progress-tabs button { padding: 14px 24px; color: #b7ad9b; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 700; }
-.progress-tabs button.progress-tab-active { color: #efb43a; border-bottom-color: #efb43a; }
+.progress-intro { color: var(--muted-foreground); line-height: 1.7; font-size: .78rem; margin-bottom: 18px; }
+.progress-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.progress-tabs button { padding: 12px 20px; color: var(--muted-foreground); border-bottom: 3px solid transparent; cursor: pointer; font-size: .82rem; font-weight: 800; }
+.progress-tabs button.progress-tab-active { color: var(--primary); border-bottom-color: var(--primary); }
 .progress-overview-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 24px; }
-.progress-match-card { display: flex; flex-direction: column; gap: 14px; padding: 28px; border: 1px solid #ffffff14; border-radius: 18px; background: #211d17; }
-.progress-match-card h3 { font-size: 24px; margin: 0; }
-.progress-match-card p { line-height: 1.7; margin: 0; }
-.progress-match-card small { color: #b7ad9b; line-height: 1.6; }
+.progress-match-card { display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.progress-match-card h3 { font-size: 1.15rem; font-weight: 900; margin: 0; }
+.progress-match-card p { font-size: .82rem; line-height: 1.7; margin: 0; }
+.progress-match-card small { color: var(--muted-foreground); line-height: 1.6; }
 .progress-match-card button { margin-top: auto; align-self: start; }
 .progress-mode-tabs { display: flex; gap: 12px; margin-bottom: 20px; }
 .progress-profile p { line-height: 1.7; }
@@ -1238,8 +1239,6 @@
 .storage-diagnostics-table table { min-width: 650px; font-variant-numeric: tabular-nums; }
 @media(max-width:850px) { .storage-diagnostics-metrics { grid-template-columns:1fr; } .storage-diagnostics-heading { flex-wrap:wrap; } }
 @media (max-width: 850px) {
-  .progress-stage { width: calc(100% - 32px); }
-  .progress-heading { display: block; }
   .progress-overview-cards { grid-template-columns: 1fr; }
   .progress-tabs button { padding: 12px 14px; }
 }

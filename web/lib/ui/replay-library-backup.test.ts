@@ -29,6 +29,7 @@ import { canonicalJson } from '../shared/json-facts';
 import * as classicEngine from './game-session';
 import * as survivalEngine from '../game/survival-session';
 import * as classicReplayParser from './game-replay';
+import { libraryBackupStep } from './replay-library-backup-format';
 
 let original: PreparedReplay,
   nearby: PreparedReplay,
@@ -72,6 +73,96 @@ async function mixed() {
   );
   return source;
 }
+it('publishes a stage and yields for cancellation before its following work', async () => {
+  const controller = new AbortController(),
+    progress = vi.fn(() => setTimeout(() => controller.abort(), 0));
+  await expect(
+    libraryBackupStep(
+      { signal: controller.signal, onProgress: progress },
+      '准备核验',
+    ),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+  expect(progress).toHaveBeenCalledWith('准备核验');
+});
+it.each(['校验元数据并生成文件摘要', '再次核对本机资料'])(
+  'can cancel export at the %s stage without creating a partial result or modifying data',
+  async (stage) => {
+    const source = db();
+    await source.library.add(original);
+    const before = await source.library.exportBackup(),
+      controller = new AbortController();
+    await expect(
+      source.library.exportBackup({
+        signal: controller.signal,
+        onProgress: (text) => {
+          if (text.includes(stage)) controller.abort();
+        },
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(data((await source.library.exportBackup()).document)).toEqual(
+      data(before.document),
+    );
+  },
+);
+it('reports marker progress in bounded chunks and can cancel before a preview is offered', async () => {
+  const source = db(),
+    target = db();
+  const marks = Array.from({ length: 600 }, (_, i) => ({
+    key: 'classic/' + i.toString(16).padStart(64, '0'),
+    removedAt: '2026-10-14T00:00:00Z',
+  }));
+  const packed = await serializeLibraryBackup({
+      entries: [],
+      payloads: [],
+      removed: marks,
+    }),
+    controller = new AbortController(),
+    updates: string[] = [];
+  await expect(
+    target.library.previewBackup(packed.source, {
+      signal: controller.signal,
+      onProgress: (text) => {
+        updates.push(text);
+        if (text.includes('删除标记 256 / 600')) controller.abort();
+      },
+    }),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+  expect(updates.some((text) => text.includes('删除标记 0 / 600'))).toBe(true);
+  expect(data((await target.library.exportBackup()).document)).toEqual(
+    data((await source.library.exportBackup()).document),
+  );
+});
+it('releases an explicitly discarded preview without deleting stored records', async () => {
+  const source = db(),
+    target = db();
+  await source.library.add(original);
+  const exported = await source.library.exportBackup(),
+    preview = await target.library.previewBackup(exported.source);
+  target.library.discardBackupPreview(preview);
+  target.library.discardBackupPreview(preview);
+  expect(await target.library.isBackupPreviewCurrent(preview)).toBe(false);
+  await expect(target.library.restoreBackup(preview)).rejects.toThrow(
+    '预览不存在',
+  );
+  expect(await target.library.list()).toEqual([]);
+  expect((await source.library.read(original.entry.key)).source).toBe(
+    original.source,
+  );
+});
+it('still decodes every exported source even though export no longer retains all parsed documents', async () => {
+  const source = db();
+  await source.library.list();
+  await seedLegacyLibrary(factory, source.name, [original, nearby]);
+  const parser = vi.spyOn(classicReplayParser, 'parseReplay');
+  try {
+    expect((await source.library.exportBackup()).document.entries).toHaveLength(
+      2,
+    );
+    expect(parser).toHaveBeenCalledTimes(2);
+  } finally {
+    parser.mockRestore();
+  }
+});
 it('roundtrips both modes, legacy equivalent copies, first provenance and old/new deletion evidence exactly into an empty library', async () => {
   const source = await mixed(),
     exported = await source.library.exportBackup(),

@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import {
   useEffect,
   useMemo,
@@ -599,10 +600,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       <main className="ranking-page">
         <header className="topbar">
           <div className="topbar-inner">
-            <div className="brand-block">
-              <p className="eyebrow">SURVIVAL</p>
-              <h1>以撒的竞合 · 生存</h1>
-            </div>
+            <GameBrand />
             <GameNavigation
               page={panel}
               onPageChange={(next) => {

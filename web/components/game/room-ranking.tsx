@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { ItemIcon } from './item-icon';
 import { ArrowLeft, ArrowRight, Coins, Trophy } from 'lucide-react';
 
@@ -97,10 +98,7 @@ export function RoomRanking(props: RoomRankingProps) {
       {!props.embedded && (
         <header className="topbar">
           <div className="topbar-inner">
-            <div className="brand-block">
-              <p className="eyebrow">THE BIDDING OF ISAAC</p>
-              <h1>以撒的竞合：冲 · 慎</h1>
-            </div>
+            <GameBrand />
             <nav className="main-nav" aria-label="主导航">
               <button type="button" className="nav-item" disabled>
                 游戏

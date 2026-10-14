@@ -1,3 +1,4 @@
+import { GameBrand } from './game-brand';
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { useState, useEffect, type ReactNode } from 'react';
@@ -252,10 +253,7 @@ export function RoomPrototype({
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-block">
-            <p className="eyebrow">THE BIDDING OF ISAAC</p>
-            <h1>以撒的竞合：冲 · 慎</h1>
-          </div>
+          <GameBrand />
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
