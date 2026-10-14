@@ -37,7 +37,7 @@ export function useReplayArchive(
               classic:
                 result === 'removed'
                   ? '此回放曾明确删除，不再自动入库。'
-                  : '完整回放已入库（相同事实只保留一份）。',
+                  : '完整回放已入库（相同或等价事实不重复保存）。',
             }));
         },
         (error) => {

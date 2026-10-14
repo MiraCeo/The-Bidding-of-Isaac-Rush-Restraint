@@ -1,7 +1,13 @@
 import { characterCatalog } from '../game/characters';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { createGameSession, reduceGameSession } from './game-session';
-import { canonicalJson, copySnapshot, type ReplayLog } from './replay-record';
+import {
+  canonicalJson,
+  copySnapshot,
+  replayRoomLocator,
+  type ReplayLog,
+} from './replay-record';
+import { preserveKnifeExplanationTails } from './classic-runtime-facts';
 import { saveCompatibility } from './game-version';
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import {
@@ -124,7 +130,19 @@ export function verifyReplayLog(
     )
       fail();
     normalized.rooms[i]!.source = room.source;
-    if (room.locator !== expected.rooms[i]!.locator) fail();
+    normalized.rooms[i]!.settlement = preserveKnifeExplanationTails(
+      normalized.rooms[i]!.settlement,
+      room.settlement,
+    );
+    if (
+      room.locator !==
+      replayRoomLocator(normalized, {
+        ...normalized.rooms[i]!,
+        locator: undefined,
+      })
+    )
+      fail();
+    normalized.rooms[i]!.locator = room.locator as string;
   }
   if (normalized.final)
     normalized.final.build = build(record(input.final).build);

@@ -29,6 +29,11 @@ import { startSurvivalClient, activeModeKey } from './survival-client';
 import { playerProfileKey, createPlayerProfile } from './player-profile';
 import { unpackDataFile } from './compressed-file';
 import type { SurvivalGameState } from '../game/survival-session';
+import {
+  classicEquivalentFixture,
+  seedLegacyLibrary,
+} from './classic-library-equivalence.test-helper';
+import { replayLibraryDatabase, replayLibraryChanged } from './replay-library';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -78,6 +83,91 @@ function button(label: string) {
   return b;
 }
 const click = async (label: string) => act(async () => button(label).click());
+it('labels pre-existing classic equivalents without deleting or altering either source or any progress', async () => {
+  await replayLibrary.list();
+  const a = await prepareLibraryReplay(replaySource(classicDoc)),
+    b = await prepareLibraryReplay(replaySource(classicEquivalentFixture(1)));
+  a.entry.savedAt = '2026-10-14T00:00:00Z';
+  b.entry.savedAt = '2026-10-14T00:01:00Z';
+  await seedLegacyLibrary(
+    indexedDB as unknown as IDBFactory,
+    replayLibraryDatabase,
+    [a, b],
+  );
+  localStorage.setItem(playerProfileKey, 'unchanged-profile');
+  localStorage.setItem(gameSaveKey, 'unchanged-game');
+  await panel();
+  await click('检查经典等价副本');
+  await waitForFileUi(() =>
+    expect(container.textContent).toContain('发现 1 组等价记录、1 份副本'),
+  );
+  expect(container.textContent).toContain('等价组参照');
+  expect(container.textContent).toContain('等价副本');
+  expect(rows()).toHaveLength(2);
+  expect((await replayLibrary.read(a.entry.key)).source).toBe(a.source);
+  expect((await replayLibrary.read(b.entry.key)).source).toBe(b.source);
+  expect(localStorage.getItem(playerProfileKey)).toBe('unchanged-profile');
+  expect(localStorage.getItem(gameSaveKey)).toBe('unchanged-game');
+  await click('删除');
+  await click('保留回放');
+  expect(await replayLibrary.list()).toHaveLength(2);
+});
+it('ignores late equivalent audit results after cancellation without changing library records', async () => {
+  await replayLibrary.add(await prepareLibraryReplay(replaySource(classicDoc)));
+  await panel();
+  let finish!: (
+    value: Awaited<ReturnType<typeof replayLibrary.classicEquivalentGroups>>,
+  ) => void;
+  vi.spyOn(replayLibrary, 'classicEquivalentGroups').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await click('检查经典等价副本');
+  await click('取消等价核验');
+  await act(async () => finish([{ keeper: 'old', copies: ['late'] }]));
+  expect(container.textContent).toContain('已取消等价核验');
+  expect(container.textContent).not.toContain('发现 1 组');
+  expect(await replayLibrary.list()).toHaveLength(1);
+});
+it('invalidates an in-flight equivalent audit on a library refresh and discards its stale result', async () => {
+  await panel();
+  let finish!: (
+    value: Awaited<ReturnType<typeof replayLibrary.classicEquivalentGroups>>,
+  ) => void;
+  vi.spyOn(replayLibrary, 'classicEquivalentGroups').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await click('检查经典等价副本');
+  await act(async () => window.dispatchEvent(new Event(replayLibraryChanged)));
+  await act(async () => finish([{ keeper: 'old', copies: ['late'] }]));
+  expect(container.textContent).toContain('等价核验结果失效');
+  expect(container.textContent).not.toContain('发现 1 组');
+  expect(await replayLibrary.list()).toHaveLength(0);
+});
+it('never exposes classic equivalent results after unmounting into survival', async () => {
+  await panel();
+  let finish!: (
+    value: Awaited<ReturnType<typeof replayLibrary.classicEquivalentGroups>>,
+  ) => void;
+  vi.spyOn(replayLibrary, 'classicEquivalentGroups').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await click('检查经典等价副本');
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await panel('survival');
+  await act(async () => finish([{ keeper: 'old', copies: ['late'] }]));
+  expect(container.textContent).not.toContain('检查经典等价副本');
+  expect(container.textContent).not.toContain('发现 1 组');
+});
 // IDB uses macrotasks. Keep successive waits within act, rather than silencing diagnostics.
 async function waitForFileUi(check: () => void) {
   const deadline = performance.now() + 5000;

@@ -13,6 +13,7 @@ import {
   type LibraryReplay,
   type PreparedReplay,
   type ReplayLibraryEntry,
+  type ClassicEquivalentGroup,
 } from '@/lib/ui/replay-library';
 
 const size = (bytes: number) =>
@@ -50,6 +51,12 @@ export function ReplayLibraryPanel({
     [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(false);
+  const [equivalents, setEquivalents] = useState<
+    ClassicEquivalentGroup[] | null
+  >(null);
+  const [checkingEquivalents, setCheckingEquivalents] = useState(false);
+  const equivalenceToken = useRef(0),
+    equivalenceActive = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const [role, setRole] = useState(initialFilters?.role ?? 'all'),
     [difficulty, setDifficulty] = useState(initialFilters?.difficulty ?? 'all');
@@ -68,6 +75,14 @@ export function ReplayLibraryPanel({
     readToken = useRef(0),
     refreshToken = useRef(0);
   const reload = useCallback(async () => {
+    equivalenceToken.current++;
+    setEquivalents(null);
+    if (equivalenceActive.current) {
+      equivalenceActive.current = false;
+      setCheckingEquivalents(false);
+      setBusy(false);
+      setMessage('回放库已刷新，等价核验结果失效；请重新核对。');
+    }
     const token = ++refreshToken.current;
     try {
       const rows = await replayLibrary.list();
@@ -90,6 +105,7 @@ export function ReplayLibraryPanel({
     const invalidate = () => {
       readToken.current++;
       refreshToken.current++;
+      equivalenceToken.current++;
     };
     const refresh = () => {
       void reload();
@@ -103,6 +119,38 @@ export function ReplayLibraryPanel({
       window.removeEventListener('focus', refresh);
     };
   }, [reload]);
+  function cancelEquivalence() {
+    equivalenceToken.current++;
+    equivalenceActive.current = false;
+    setCheckingEquivalents(false);
+    setBusy(false);
+    setEquivalents(null);
+    setMessage('已取消等价核验，回放库未修改。');
+  }
+  async function checkEquivalents() {
+    const token = ++equivalenceToken.current;
+    equivalenceActive.current = true;
+    setEquivalents(null);
+    setCheckingEquivalents(true);
+    setBusy(true);
+    setMessage('正在只读核对经典等价副本…');
+    try {
+      const groups = await replayLibrary.classicEquivalentGroups();
+      if (lifetime.current && token === equivalenceToken.current) {
+        setEquivalents(groups);
+        setMessage('经典等价核验完成，未删除、合并或改写任何原记录。');
+      }
+    } catch (error) {
+      if (lifetime.current && token === equivalenceToken.current)
+        setMessage(errorText(error));
+    } finally {
+      if (lifetime.current && token === equivalenceToken.current) {
+        equivalenceActive.current = false;
+        setCheckingEquivalents(false);
+        setBusy(false);
+      }
+    }
+  }
   const cancelRead = useCallback(() => {
     readToken.current++;
     setReading(false);
@@ -117,6 +165,12 @@ export function ReplayLibraryPanel({
   }, [cancelRead]);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && checkingEquivalents) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        cancelEquivalence();
+        return;
+      }
       if (
         event.key === 'Escape' &&
         (reading || candidate || deleting) &&
@@ -130,7 +184,7 @@ export function ReplayLibraryPanel({
     };
     window.addEventListener('keydown', escape, true);
     return () => window.removeEventListener('keydown', escape, true);
-  }, [reading, candidate, deleting, busy, cancelRead]);
+  }, [reading, candidate, deleting, busy, cancelRead, checkingEquivalents]);
   async function operation(action: () => Promise<string>) {
     setBusy(true);
     setMessage('正在处理回放…');
@@ -151,7 +205,7 @@ export function ReplayLibraryPanel({
       const result = await replayLibrary.add(prepared);
       if (lifetime.current) setCandidate(null);
       return result === 'duplicate'
-        ? '相同回放已在库中，未重复保存或覆盖来源。'
+        ? '相同或等价回放已在库中，未重复保存或覆盖来源。'
         : '完整事实已入库；对局、草稿与玩家档案未改变。';
     });
   const save = (doc: LibraryReplay) =>
@@ -160,7 +214,7 @@ export function ReplayLibraryPanel({
         await prepareLibraryReplay(replaySource(doc), 'manual'),
       );
       return result === 'duplicate'
-        ? '相同回放已在库中，未重复保存。'
+        ? '相同或等价回放已在库中，未重复保存。'
         : '回放已入库。';
     });
   async function selectFile(file: File | undefined) {
@@ -243,6 +297,15 @@ export function ReplayLibraryPanel({
         >
           最近完成回放入库
         </Button>
+        {mode === 'classic' && (
+          <Button
+            variant="secondary"
+            disabled={busy || !ready || !!deleting}
+            onClick={() => void checkEquivalents()}
+          >
+            检查经典等价副本
+          </Button>
+        )}
         <label className="library-file">
           导入回放文件
           <input
@@ -263,6 +326,19 @@ export function ReplayLibraryPanel({
         <Button variant="secondary" onClick={cancelRead}>
           取消读取回放
         </Button>
+      )}
+      {checkingEquivalents && (
+        <Button variant="secondary" onClick={cancelEquivalence}>
+          取消等价核验
+        </Button>
+      )}
+      {mode === 'classic' && equivalents !== null && (
+        <output className="utility-notice">
+          {equivalents.length
+            ? `发现 ${equivalents.length} 组等价记录、${equivalents.reduce((n, g) => n + g.copies.length, 0)} 份副本。以保存时间最早的记录为参照。`
+            : '未发现经典等价副本。'}
+          已有记录仍各自保留，可分别查看、导出；不自动删除或合并。新增等价入库保留旧键与首次正文。
+        </output>
       )}
       {candidate && (
         <section className="library-confirm" aria-label="回放入库预览">
@@ -365,6 +441,14 @@ export function ReplayLibraryPanel({
                 <td>
                   <strong>{characterNames[entry.characterId]}</strong>
                   <small>种子 {entry.seed}</small>
+                  {mode === 'classic' &&
+                    equivalents?.some((g) => g.keeper === entry.key) && (
+                      <small>等价组参照</small>
+                    )}
+                  {mode === 'classic' &&
+                    equivalents?.some((g) => g.copies.includes(entry.key)) && (
+                      <small>等价副本</small>
+                    )}
                 </td>
                 <td>
                   {entry.completed ? '已完成' : '进行中片段'}

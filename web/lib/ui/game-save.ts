@@ -25,6 +25,10 @@ import { measurePersistence } from './persistence-metrics';
 import type { CompletionOrigin } from './completion-registry';
 import { persistCompletionProfile } from './completion-persistence';
 import {
+  preserveKnifeExplanationTails,
+  restoreClassicRoomLocator,
+} from './classic-runtime-facts';
+import {
   createGameSession,
   reduceGameSession,
   type GameSession,
@@ -215,11 +219,14 @@ function restoreMetadata(value: unknown, expected: ReplayLog): ReplayLog {
       if (
         typeof m.build !== 'string' ||
         !m.build.trim() ||
-        m.build.length > 160 ||
-        m.locator !== replayRoomLocator(expected, r)
+        m.build.length > 160
       )
         fail('检查点的历史定位损坏。');
-      return { ...r, build: m.build, source: 'checkpoint-reconstruction' };
+      return {
+        ...restoreClassicRoomLocator(expected, r, m.locator),
+        build: m.build,
+        source: 'checkpoint-reconstruction',
+      };
     }),
   };
   if (expected.final) {
@@ -350,14 +357,24 @@ export function parseGameSave(source: string): SaveDocument {
     verified = reduceGameSession(verified, { type: 'advance_room' });
   }
   // JSON removes optional undefined properties; compare JSON-normalized snapshots.
+  if (verified.game.phase === 'character_selection') fail();
+  const verifiedGame = {
+    ...verified.game,
+    roomSettlement: verified.game.roomSettlement
+      ? preserveKnifeExplanationTails(
+          verified.game.roomSettlement,
+          game.roomSettlement,
+        )
+      : null,
+  };
   if (
-    canonical(JSON.parse(JSON.stringify(checkpointGame(verified.game)))) !==
+    canonical(JSON.parse(JSON.stringify(checkpointGame(verifiedGame)))) !==
     canonical(game)
   )
     fail();
   if (canonical(turns) !== canonical(saved.turns)) fail();
   const session = {
-    game: verified.game,
+    game: verifiedGame,
     turns,
     draft: readDraft(saved.draft, verified),
     replay:

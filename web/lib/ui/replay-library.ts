@@ -16,6 +16,13 @@ import { packDataFile, unpackDataFile } from './compressed-file';
 import { checkedJson, maxFileBytes } from './file-json';
 import { assertCurrentFileHeader } from './file-protocol';
 import { readBuildVersion } from './game-version';
+import { canonicalJson } from '../shared/json-facts';
+import {
+  classicLibraryProof,
+  sameClassicLibraryProof,
+  validClassicLibraryProof,
+  type ClassicLibraryProof,
+} from './classic-library-equivalence';
 
 export type LibraryReplay = ReplayDocument | SurvivalReplayDocument;
 export const replayLibraryDatabase = 'bidding-replay-library-v1';
@@ -44,6 +51,44 @@ export interface ReplayLibraryEntry {
 export interface PreparedReplay {
   entry: ReplayLibraryEntry;
   source: string;
+}
+interface RemovedReplay {
+  key: string;
+  removedAt: string;
+  classicProof?: ClassicLibraryProof;
+}
+interface LibrarySnapshot {
+  entries: ReplayLibraryEntry[];
+  removed: RemovedReplay[];
+  token: string;
+}
+export interface ClassicEquivalentGroup {
+  keeper: string;
+  copies: string[];
+}
+const retrySnapshot = Symbol('library-snapshot-changed');
+function samePayloadSource(a: unknown, b: unknown) {
+  if (Object.is(a, b)) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  try {
+    return canonicalJson(a) === canonicalJson(b);
+  } catch {
+    return false;
+  }
+}
+function validRemoved(value: unknown): value is RemovedReplay {
+  const r = value as RemovedReplay;
+  return (
+    !!r &&
+    typeof r === 'object' &&
+    typeof r.key === 'string' &&
+    /^(classic|survival)\/[a-f0-9]{64}$/.test(r.key) &&
+    typeof r.removedAt === 'string' &&
+    Number.isFinite(Date.parse(r.removedAt)) &&
+    (r.classicProof === undefined ||
+      (r.key.startsWith('classic/') &&
+        validClassicLibraryProof(r.classicProof)))
+  );
 }
 const encoder = new TextEncoder();
 async function sha256(source: string) {
@@ -309,76 +354,96 @@ export class ReplayLibrary {
   async add(
     prepared: PreparedReplay,
   ): Promise<'added' | 'duplicate' | 'removed'> {
-    // Encoding/hashing finishes BEFORE the transaction: no awaits in live IDB callbacks.
+    // Freeze caller-owned data before any asynchronous validation.
+    prepared = structuredClone(prepared);
     if (
       !validEntry(prepared.entry) ||
       encoder.encode(prepared.source).length !== prepared.entry.bytes ||
       (await sha256(prepared.source)) !== prepared.entry.payloadHash
     )
       throw Error('待入库数据不完整，未写入。');
-    const result = await this.transaction<'added' | 'duplicate' | 'removed'>(
-      'readwrite',
-      (tx, done, fail) => {
-        const index = tx.objectStore('index'),
-          removed = tx.objectStore('removed');
-        const all = index.getAll();
-        all.onsuccess = () => {
-          if (!all.result.every(validEntry)) {
-            fail(Error('回放库索引损坏，原数据保留，未写入。'));
-            return;
-          }
-          if (
-            all.result.some(
-              (e: ReplayLibraryEntry) => e.key === prepared.entry.key,
-            )
-          ) {
-            done('duplicate');
-            return;
-          }
-          const tombstone = removed.get(prepared.entry.key);
-          tombstone.onsuccess = () => {
-            if (tombstone.result && prepared.entry.origin === 'automatic') {
-              done('removed');
-              return;
-            }
-            if (
-              all.result.length >= this.limits.count ||
-              all.result.reduce(
-                (sum: number, e: ReplayLibraryEntry) => sum + e.bytes,
-                0,
-              ) +
-                prepared.entry.bytes >
-                this.limits.bytes
-            ) {
-              // No eviction, overwrite or checkpoint mutation on capacity failure.
-              fail(
-                Error('已达到应用保留上限，请先导出并明确删除不再保留的回放。'),
-              );
-              return;
-            }
-            try {
-              index.add(prepared.entry);
-              tx.objectStore('payload').add({
-                key: prepared.entry.key,
-                source: prepared.source,
-              });
-              removed.delete(prepared.entry.key);
-              done('added');
-            } catch (error) {
-              fail(error);
-            }
-          };
-        };
-      },
-    ).catch((error) => {
-      throw Error(
-        `回放入库失败（可能达到100局／64 MiB上限或浏览器额度不足）。原记录与续玩不变。${error instanceof Error ? error.message : ''}`,
+    const incoming = await this.decode(
+      prepared.entry.key,
+      prepared.entry,
+      prepared.source,
+    );
+    const proof =
+      incoming.document.mode === 'classic'
+        ? await classicLibraryProof(incoming.document.replay, sha256)
+        : null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const snapshot = await this.snapshot(),
+        witnesses = new Map<string, unknown>();
+      let duplicate: string | undefined;
+      const candidates = snapshot.entries
+        .filter(
+          (e) =>
+            e.key === prepared.entry.key ||
+            (proof &&
+              e.mode === 'classic' &&
+              e.replayId === prepared.entry.replayId),
+        )
+        .sort(
+          (a, b) =>
+            Date.parse(a.savedAt) - Date.parse(b.savedAt) ||
+            a.key.localeCompare(b.key),
+        );
+      for (const entry of candidates) {
+        const source = await this.payloadSource(entry.key);
+        witnesses.set(entry.key, source);
+        const stored = await this.decode(entry.key, entry, source);
+        if (
+          entry.key === prepared.entry.key ||
+          (proof &&
+            stored.document.mode === 'classic' &&
+            sameClassicLibraryProof(
+              proof,
+              await classicLibraryProof(stored.document.replay, sha256),
+            ))
+        ) {
+          duplicate ??= entry.key;
+        }
+      }
+      const marks = snapshot.removed.filter(
+        (r) =>
+          r.key === prepared.entry.key ||
+          (proof &&
+            r.classicProof &&
+            sameClassicLibraryProof(proof, r.classicProof)),
       );
-    });
-    if (result === 'added') announce();
-    // A damaged existing payload is not a successful duplicate. Never silently replace it.
-    if (result === 'duplicate') await this.read(prepared.entry.key);
-    return result;
+      const result = await this.commitSnapshot<
+        'added' | 'duplicate' | 'removed'
+      >(snapshot, witnesses, (tx, done, fail) => {
+        if (duplicate) {
+          done('duplicate');
+          return;
+        }
+        if (marks.length && prepared.entry.origin === 'automatic') {
+          done('removed');
+          return;
+        }
+        if (
+          snapshot.entries.length >= this.limits.count ||
+          snapshot.entries.reduce((n, e) => n + e.bytes, 0) +
+            prepared.entry.bytes >
+            this.limits.bytes
+        ) {
+          fail(Error('已达到应用保留上限，请先导出并明确删除不再保留的回放。'));
+          return;
+        }
+        tx.objectStore('index').add(prepared.entry);
+        tx.objectStore('payload').add({
+          key: prepared.entry.key,
+          source: prepared.source,
+        });
+        for (const mark of marks) tx.objectStore('removed').delete(mark.key);
+        done('added');
+      });
+      if (result === retrySnapshot) continue;
+      if (result === 'added') announce();
+      return result;
+    }
+    throw Error('回放库在核验期间持续变化，未写入；原记录保留，请重试。');
   }
   async read(
     key: string,
@@ -392,6 +457,14 @@ export class ReplayLibrary {
       payload.onsuccess = () =>
         result({ entry: entry.result, source: payload.result?.source });
     });
+    return this.decode(key, stored.entry, stored.source);
+  }
+  private async decode(
+    key: string,
+    entry: ReplayLibraryEntry,
+    source: unknown,
+  ): Promise<{ document: LibraryReplay; source: string }> {
+    const stored = { entry, source };
     if (
       !validEntry(stored.entry) ||
       typeof stored.source !== 'string' ||
@@ -420,16 +493,173 @@ export class ReplayLibrary {
   async remove(key: string): Promise<void> {
     if (!/^(classic|survival)\/[a-f0-9]{64}$/.test(key))
       throw Error('回放键无效，未删除。');
-    await this.transaction<void>('readwrite', (tx, done) => {
-      tx.objectStore('index').delete(key);
-      tx.objectStore('payload').delete(key);
-      tx.objectStore('removed').put({
-        key,
-        removedAt: new Date().toISOString(),
-      });
-      done(undefined);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const snapshot = await this.snapshot(),
+        entry = snapshot.entries.find((e) => e.key === key),
+        witnesses = new Map<string, unknown>();
+      let proof: ClassicLibraryProof | undefined;
+      if (entry) {
+        const source = await this.payloadSource(key);
+        witnesses.set(key, source);
+        try {
+          const stored = await this.decode(key, entry, source);
+          if (stored.document.mode === 'classic')
+            proof = await classicLibraryProof(stored.document.replay, sha256);
+        } catch {
+          /* Explicit removal may clean a corrupt payload; retain an exact-key marker, never invent missing facts. */
+        }
+      } else proof = snapshot.removed.find((r) => r.key === key)?.classicProof;
+      const result = await this.commitSnapshot(
+        snapshot,
+        witnesses,
+        (tx, done) => {
+          tx.objectStore('index').delete(key);
+          tx.objectStore('payload').delete(key);
+          tx.objectStore('removed').put({
+            key,
+            removedAt: new Date().toISOString(),
+            ...(proof ? { classicProof: proof } : {}),
+          });
+          done(true);
+        },
+      );
+      if (result === retrySnapshot) continue;
+      announce();
+      return;
+    }
+    throw Error('回放库在删除核验期间持续变化，未删除；原记录保留。');
+  }
+  private payloadSource(key: string): Promise<unknown> {
+    return this.transaction('readonly', (tx, done) => {
+      const request = tx.objectStore('payload').get(key);
+      request.onsuccess = () => done(request.result?.source);
     });
-    announce();
+  }
+  private snapshot(): Promise<LibrarySnapshot> {
+    return this.transaction('readonly', (tx, done, fail) => {
+      const index = tx.objectStore('index').getAll(),
+        removed = tx.objectStore('removed').getAll();
+      let pending = 2;
+      const finish = () => {
+        if (--pending) return;
+        if (!index.result.every(validEntry)) {
+          fail(Error('回放库索引损坏，原数据保留，未写入。'));
+          return;
+        }
+        if (!removed.result.every(validRemoved)) {
+          fail(Error('回放库删除标记损坏或版本不支持，原数据保留。'));
+          return;
+        }
+        done({
+          entries: index.result,
+          removed: removed.result,
+          token: canonicalJson([index.result, removed.result]),
+        });
+      };
+      index.onsuccess = removed.onsuccess = finish;
+    });
+  }
+  /** All hashing/parsing happens before this short atomic transaction. Its first
+   * requests compare the observed index+markers+candidate payloads; no async gaps
+   * occur between that check and the mutation. Competing writers cause a re-read. */
+  private commitSnapshot<T>(
+    snapshot: LibrarySnapshot,
+    sources: Map<string, unknown>,
+    action: (
+      tx: IDBTransaction,
+      done: (value: T) => void,
+      fail: (error: unknown) => void,
+    ) => void,
+    mode: IDBTransactionMode = 'readwrite',
+  ): Promise<T | typeof retrySnapshot> {
+    return this.transaction(mode, (tx, done, fail) => {
+      const index = tx.objectStore('index').getAll(),
+        removed = tx.objectStore('removed').getAll();
+      let pending = 2;
+      const finish = () => {
+        if (--pending) return;
+        try {
+          if (
+            canonicalJson([index.result, removed.result]) !== snapshot.token
+          ) {
+            done(retrySnapshot);
+            return;
+          }
+          let left = sources.size,
+            changed = false;
+          const write = () => {
+            try {
+              action(tx, done, fail);
+            } catch (error) {
+              fail(error);
+            }
+          };
+          if (!left) {
+            write();
+            return;
+          }
+          for (const [key, source] of sources) {
+            const request = tx.objectStore('payload').get(key);
+            request.onsuccess = () => {
+              if (!samePayloadSource(request.result?.source, source))
+                changed = true;
+              if (--left === 0) {
+                if (changed) done(retrySnapshot);
+                else write();
+              }
+            };
+          }
+        } catch (error) {
+          fail(error);
+        }
+      };
+      index.onsuccess = removed.onsuccess = finish;
+    });
+  }
+  /** Read-only audit: existing copies remain individually viewable/exportable.
+   * Equivalence is always relative to the earliest original, never chained. */
+  async classicEquivalentGroups(): Promise<ClassicEquivalentGroup[]> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const snapshot = await this.snapshot(),
+        witnesses = new Map<string, unknown>();
+      const entries = snapshot.entries
+        .filter((e) => e.mode === 'classic')
+        .sort(
+          (a, b) =>
+            Date.parse(a.savedAt) - Date.parse(b.savedAt) ||
+            a.key.localeCompare(b.key),
+        );
+      // Explicit audit verifies every classic payload, not just apparently
+      // matching index IDs: corrupt metadata must not create a false "no copies".
+      const candidates = entries;
+      const keepers: Array<{
+        entry: ReplayLibraryEntry;
+        proof: ClassicLibraryProof;
+        copies: string[];
+      }> = [];
+      for (const entry of candidates) {
+        const source = await this.payloadSource(entry.key);
+        witnesses.set(entry.key, source);
+        const stored = await this.decode(entry.key, entry, source);
+        if (stored.document.mode !== 'classic')
+          throw Error('经典索引与回放模式不一致。');
+        const proof = await classicLibraryProof(stored.document.replay, sha256),
+          keeper = keepers.find((k) => sameClassicLibraryProof(k.proof, proof));
+        if (keeper) keeper.copies.push(entry.key);
+        else keepers.push({ entry, proof, copies: [] });
+      }
+      const unchanged = await this.commitSnapshot(
+        snapshot,
+        witnesses,
+        (_tx, done) => done(true),
+        'readonly',
+      );
+      if (unchanged === retrySnapshot) continue;
+      return keepers
+        .filter((k) => k.copies.length)
+        .map((k) => ({ keeper: k.entry.key, copies: k.copies }));
+    }
+    throw Error('回放库在等价核验期间持续变化，请重新核对；原记录保留。');
   }
 }
 export const replayLibrary = new ReplayLibrary();
