@@ -4,6 +4,7 @@ import {
   type AiDoctrine,
   type AiLiquidityBand,
   type AiStrategy,
+  type AiDecisionExperiments,
 } from './ai-decision';
 import {
   createAiQuoteProfile,
@@ -22,6 +23,8 @@ import {
   type AiPersonality,
 } from './ai-personality';
 import { defaultRules } from './config';
+import { CharacterBudgetCollector } from './character-budget-diagnostics';
+import { NoiseEcologyCollector } from './noise-ecology-diagnostics';
 import { assignCharacter, characterOrder, chooseRandomCharacter } from './characters';
 import { itemCatalog } from './item-catalog';
 import { calculateFinalScore } from './item-scoring';
@@ -33,6 +36,12 @@ import { calculateHighPriceSlotCount } from './rewards';
 import { generateFloor } from './rooms';
 import { createRuntimePlayer } from './runtime';
 import type { RulesConfig } from './types';
+import {
+  summarizeResearchCohorts,
+  updateResearchFingerprint,
+  type ResearchPlayerRecord,
+  type SimulationResearchSummary,
+} from './simulation-research';
 
 interface RunningMetric {
   count: number;
@@ -108,6 +117,9 @@ export interface SimulationReport {
     strategyRates: Record<AiStrategy, number>;
     averageActualCostRatioPerDecision: number;
     roomScore: MetricSummary;
+    initialRoomScore: MetricSummary;
+    retroactiveRoomScore: MetricSummary;
+    finalRoomScore: MetricSummary;
   }>;
   decisionAnalysis: {
     situationMultiplierMeans: Record<AiStrategy, number>;
@@ -129,6 +141,7 @@ export interface SimulationReport {
     qualificationPredictionErrorRatio: MetricSummary;
     cooperationZoneHitRate: number;
     scorePerActualMoney: number;
+    finalScorePerActualMoney: number;
     averageActualCostRatioByRoomKind: Record<RoomKind, number>;
     averageQuoteRatioByItemValueBand: Record<'low' | 'medium' | 'high', number>;
     premiumRoomNoMoneyRate: number;
@@ -200,11 +213,29 @@ export interface SimulationReport {
     secondaryQuote: MetricSummary;
     predictedUtility: MetricSummary;
     actualRoomScore: MetricSummary;
+    retroactiveRoomScore: MetricSummary;
+    finalRoomScore: MetricSummary;
     actualTotalCost: MetricSummary;
     entitlementsPerTurn: MetricSummary;
     awardsPerTurn: MetricSummary;
   };
   emptyMarketRooms: number;
+  scoringTotals: {
+    initialRoomScore: number;
+    retroactiveRoomScore: number;
+    finalRoomScore: number;
+    cumulativeBeforeFinalMultipliers: number;
+    actualCosts: number;
+  };
+  research?: SimulationResearchSummary;
+}
+
+export interface SimulationResearchOptions extends AiDecisionExperiments {
+  neutralizedPersonalities?: readonly AiPersonality[];
+  randomization?: 'legacy' | 'per-player-room';
+  /** Extra observations for T08; never used by AI or the playable client. */
+  collectCharacterBudget?: boolean;
+  collectNoiseEcology?: boolean;
 }
 
 export interface SimulationOptions {
@@ -217,6 +248,8 @@ export interface SimulationOptions {
   personalityCountMaximum?: number;
   enableDoubleActions?: boolean;
   personalityPool?: readonly AiPersonality[];
+  /** Experimental settings do not alter the playable client's defaults. */
+  research?: SimulationResearchOptions;
 }
 
 export interface DoctrinePerformanceSummary {
@@ -569,6 +602,12 @@ export function simulateAiGames(
     aiPersonalityOrder.map((personality) => [personality, 0]),
   ) as Record<AiPersonality, number>;
   const allPlayerRecords: RankedPlayerRecord[] = [];
+  const researchRecords: ResearchPlayerRecord[] = [];
+  const neutralized = new Set(options.research?.neutralizedPersonalities ?? []);
+  const characterBudget = options.research?.collectCharacterBudget ? new CharacterBudgetCollector() : undefined;
+  const noiseEcology = options.research?.collectNoiseEcology ? new NoiseEcologyCollector(rules) : undefined;
+  let worldFingerprint = 0x811c9dc5;
+  let personalityFingerprint = 0x811c9dc5;
   const championRecords: RankedPlayerRecord[] = [];
   const entitlementSources: Record<string, number> = {};
   const itemAppearanceCounts: Partial<Record<ItemId, number>> = {};
@@ -609,6 +648,9 @@ export function simulateAiGames(
   const scoreByRoomKind = Object.fromEntries(
     roomKindOrderForReport.map((kind) => [kind, metric()]),
   ) as Record<RoomKind, RunningMetric>;
+  const initialScoreByRoomKind = Object.fromEntries(roomKindOrderForReport.map((kind) => [kind, metric()])) as Record<RoomKind, RunningMetric>;
+  const retroactiveScoreByRoomKind = Object.fromEntries(roomKindOrderForReport.map((kind) => [kind, metric()])) as Record<RoomKind, RunningMetric>;
+  const finalScoreByRoomKind = Object.fromEntries(roomKindOrderForReport.map((kind) => [kind, metric()])) as Record<RoomKind, RunningMetric>;
   const roomCounts = Object.fromEntries(
     roomKindOrderForReport.map((kind) => [kind, 0]),
   ) as Record<RoomKind, number>;
@@ -636,6 +678,9 @@ export function simulateAiGames(
   let cooperationZoneHits = 0;
   let totalActualCost = 0;
   let totalRoomScore = 0;
+  let totalRetroactiveRoomScore = 0;
+  let totalFinalRoomScore = 0;
+  let cumulativeBeforeFinalMultipliers = 0;
   let premiumRoomDecisions = 0;
   let premiumRoomNoMoneyDecisions = 0;
   let cooperationSlots = 0;
@@ -664,6 +709,8 @@ export function simulateAiGames(
   const secondaryQuoteMetric = metric();
   const secondaryUtilityMetric = metric();
   const doubleActionScoreMetric = metric();
+  const doubleActionRetroactiveScoreMetric = metric();
+  const doubleActionFinalScoreMetric = metric();
   const doubleActionCostMetric = metric();
   const doubleActionEntitlementMetric = metric();
   const doubleActionAwardMetric = metric();
@@ -719,7 +766,23 @@ export function simulateAiGames(
     const quoteProfiles = new Map<string, AiQuoteProfile>(
       players.map((player) => [player.id, createAiQuoteProfile(quoteProfileRandom)]),
     );
+    const researchDiagnostics = new Map(players.map((player) => [player.id, {
+      quoteAttempts: 0, quoteClamps: 0, cooperationAttempts: 0, cooperationHits: 0,
+      disruptedHighPriceSlots: 0, disruptedHighPriceVacancies: 0,
+    }]));
+    if (options.research) {
+      worldFingerprint = updateResearchFingerprint(worldFingerprint, {
+        rooms: generatedFloors,
+        players: players.map((player) => ({
+          id: player.id, character: player.characterId,
+          items: player.items.map((item) => item.itemId),
+          doctrine: playerDoctrines.get(player.id), quoteProfile: quoteProfiles.get(player.id),
+        })),
+      });
+      personalityFingerprint = updateResearchFingerprint(personalityFingerprint, [...playerPersonalities]);
+    }
     const recentMarkets: AiPublicMarketSnapshot[] = [];
+    noiseEcology?.beginGame(gameIndex + 1, generatedFloors, players, new Map(players.map((p) => [p.id, { doctrine: playerDoctrines.get(p.id)!, personalities: playerPersonalities.get(p.id)! }])), [...quoteProfiles]);
 
     for (let floorIndex = 0; floorIndex < 3; floorIndex += 1) {
       const rooms = generatedFloors[floorIndex]!;
@@ -727,6 +790,10 @@ export function simulateAiGames(
       for (const room of rooms) {
         roomCounts[room.kind] += 1;
         const globalRoom = floorIndex * 5 + room.roomIndex + 1;
+        const paired = options.research?.randomization === 'per-player-room';
+        const pairedRandom = (salt: number, playerIndex = 0) => createSeededRandom(
+          (gameSeed ^ Math.imul(globalRoom, 0x9e3779b1) ^ Math.imul(playerIndex + 1, 0x85ebca6b) ^ salt) >>> 0,
+        );
         for (const reward of room.rewards) {
           increment(itemAppearanceCounts, reward.itemId);
           itemAccumulators[reward.itemId].appearance += 1;
@@ -736,9 +803,15 @@ export function simulateAiGames(
           floorIndex,
           room.roomIndex,
           rules,
-          gameplayRandom,
+          paired ? pairedRandom(0x13198a2e) : gameplayRandom,
         );
         players = preparation.players;
+        if (room.roomIndex === 0) characterBudget?.beginFloor(floorIndex + 1, floorMoney, players);
+        noiseEcology?.entry(room, players);
+        if (options.research && room.roomIndex === 0) {
+          worldFingerprint = updateResearchFingerprint(worldFingerprint,
+            players.map((player) => [player.id, player.characterFloorStartingMoney]));
+        }
         collectItemEvents(preparation.events, itemAccumulators);
 
         const rankPercentiles = (value: (player: RuntimePlayerState) => number): Map<string, number> => {
@@ -763,14 +836,17 @@ export function simulateAiGames(
         }> = [];
         const strategiesForRoom = new Map<string, AiStrategy>();
         const doubleActionPlayersForRoom = new Set<string>();
-        const decisionsForRoom = players.map((player) => {
+        const ecologyDecisions: ReturnType<typeof decideAiTurn>[] = [];
+        const decisionsForRoom = players.map((player, playerIndex) => {
           if (room.kind === 'shop' || room.kind === 'boss') {
             premiumRoomDecisions += 1;
             if (player.money <= 0) premiumRoomNoMoneyDecisions += 1;
           }
           if (player.money < floorMoney * 0.5) belowHalfStartingMoney += 1;
           const remainingRooms = 5 - room.roomIndex;
-          const decision = decideAiTurn(player, floorIndex, rules, decisionRandom, {
+          const assignedPersonalities = playerPersonalities.get(player.id) ?? [];
+          const decision = decideAiTurn(player, floorIndex, rules,
+            paired ? pairedRandom(0x85a308d3, playerIndex) : decisionRandom, {
             remainingRooms,
             context: {
               moneyRankPercentile: moneyRanks.get(player.id) ?? 0.5,
@@ -783,12 +859,15 @@ export function simulateAiGames(
             enableSituationAnalysis: options.enableSituationAnalysis,
             enableItemAnalysis: options.enableItemAnalysis,
             quoteProfile: quoteProfiles.get(player.id),
-            quoteRandom,
+            quoteRandom: paired ? pairedRandom(0x299f31d0, playerIndex) : quoteRandom,
             doctrine: playerDoctrines.get(player.id),
-            personalities: playerPersonalities.get(player.id),
+            personalities: options.research ? assignedPersonalities.filter((personality) => !neutralized.has(personality)) : assignedPersonalities,
             enableDoubleActions: options.enableDoubleActions,
+            experiments: options.research,
           });
           strategiesForRoom.set(player.id, decision.strategy);
+          if (noiseEcology) ecologyDecisions.push(decision);
+          characterBudget?.decision(player, room, decision);
           decisionsByRoomKind[room.kind] += 1;
           strategiesByRoomKind[room.kind][decision.strategy] += 1;
           if (decision.secondaryActionAnalysis?.considered) {
@@ -820,6 +899,11 @@ export function simulateAiGames(
           }
           if (decision.quoteAnalysis) {
             const quote = decision.quoteAnalysis;
+            if (options.research) {
+              const diagnostics = researchDiagnostics.get(player.id)!;
+              diagnostics.quoteAttempts += 1;
+              if (quote.wasClamped) diagnostics.quoteClamps += 1;
+            }
             const quoteAction = decision.turn.actions[0];
             quoteAnalysesForRoom.push({
               playerId: player.id,
@@ -915,10 +999,15 @@ export function simulateAiGames(
           return decision.turn;
         });
 
-        const settlement = settleRuntimeRoom(room, players, decisionsForRoom, rules, gameplayRandom);
+        const settlement = settleRuntimeRoom(room, players, decisionsForRoom, rules,
+          paired ? pairedRandom(0x510e527f) : gameplayRandom);
+        noiseEcology?.room(room, players, ecologyDecisions, settlement);
         players = settlement.players;
+        characterBudget?.settlement(settlement, doubleActionPlayersForRoom);
         for (const playerId of doubleActionPlayersForRoom) {
           addMetric(doubleActionScoreMetric, settlement.scoreBreakdowns[playerId]?.score ?? 0);
+          addMetric(doubleActionRetroactiveScoreMetric, settlement.roomScoreSummaries[playerId]!.retroactiveScore);
+          addMetric(doubleActionFinalScoreMetric, settlement.roomScoreSummaries[playerId]!.finalScore);
           addMetric(
             doubleActionCostMetric,
             settlement.resolvedActions
@@ -940,6 +1029,14 @@ export function simulateAiGames(
           highPriceQualificationSlots += 1;
           totalQualificationSlots += 1;
           if (placement.actionType === 'disrupt') disruptedHighPriceQualificationSlots += 1;
+          if (options.research && placement.actionType === 'disrupt') {
+            const diagnostics = researchDiagnostics.get(placement.playerId)!;
+            diagnostics.disruptedHighPriceSlots += 1;
+            if (!settlement.transcendenceRedemptions.some((redemption) =>
+              redemption.playerId === placement.playerId && redemption.group === placement.group && redemption.slotType === 'highest')) {
+              diagnostics.disruptedHighPriceVacancies += 1;
+            }
+          }
         }
         for (const placement of settlement.cooperationPlacements) {
           cooperationSlots += 1;
@@ -1004,6 +1101,7 @@ export function simulateAiGames(
             );
             if (resolved?.scoringEquivalent !== null && settlement.baseline) {
               cooperationZoneAttempts += 1;
+              if (options.research) researchDiagnostics.get(entry.playerId)!.cooperationAttempts += 1;
               for (const personality of playerPersonalities.get(entry.playerId) ?? []) {
                 personalityAccumulators[personality].cooperationAttempts += 1;
               }
@@ -1012,6 +1110,7 @@ export function simulateAiGames(
                 floorMoney * rules.cooperationZoneRatio
               ) {
                 cooperationZoneHits += 1;
+                if (options.research) researchDiagnostics.get(entry.playerId)!.cooperationHits += 1;
                 for (const personality of playerPersonalities.get(entry.playerId) ?? []) {
                   personalityAccumulators[personality].cooperationHits += 1;
                 }
@@ -1025,6 +1124,13 @@ export function simulateAiGames(
         }
         for (const breakdown of Object.values(settlement.scoreBreakdowns)) {
           addMetric(scoreByRoomKind[room.kind], breakdown.score);
+        }
+        for (const summary of Object.values(settlement.roomScoreSummaries)) {
+          addMetric(initialScoreByRoomKind[room.kind], summary.initialScore);
+          addMetric(retroactiveScoreByRoomKind[room.kind], summary.retroactiveScore);
+          addMetric(finalScoreByRoomKind[room.kind], summary.finalScore);
+          totalRetroactiveRoomScore += summary.retroactiveScore;
+          totalFinalRoomScore += summary.finalScore;
         }
         totalRoomScore += Object.values(settlement.scoreBreakdowns).reduce(
           (sum, breakdown) => sum + breakdown.score,
@@ -1097,11 +1203,14 @@ export function simulateAiGames(
         }
       }
       for (const player of players) addMetric(moneyMetrics[floorIndex]!, player.money);
+      characterBudget?.endFloor(players);
     }
 
     const finalScores = players.map((player) => calculateFinalScore(player));
+    noiseEcology?.endGame(players);
     const winnerScore = Math.max(...finalScores);
     const winnerIndexes = finalScores.flatMap((score, index) => (score === winnerScore ? [index] : []));
+    characterBudget?.endGame(gameIndex + 1, players, finalScores, winnerIndexes);
     const rankedIndexes = finalScores
       .map((score, index) => ({ score, index }))
       .sort((left, right) => right.score - left.score)
@@ -1123,6 +1232,18 @@ export function simulateAiGames(
         itemCount: players[index]!.items.length,
         items: players[index]!.items.map((item) => item.itemId),
       });
+      cumulativeBeforeFinalMultipliers += players[index]!.score;
+      if (options.research) {
+        const playerId = players[index]!.id;
+        researchRecords.push({
+          ...allPlayerRecords[allPlayerRecords.length - 1]!,
+          money: players[index]!.money,
+          awardedCopies: histories.get(playerId)!.awards,
+          winner: winnerIndexes.includes(index),
+          strategyCounts: { ...histories.get(playerId)!.strategyCounts },
+          ...researchDiagnostics.get(playerId)!,
+        });
+      }
       addMetric(finalScoreMetric, finalScores[index]!);
       addMetric(itemCountMetric, players[index]!.items.length);
       const doctrineAccumulator = doctrineAccumulators[playerDoctrines.get(players[index]!.id)!];
@@ -1288,6 +1409,9 @@ export function simulateAiGames(
             ? 0
             : actualCostByRoomKind[kind].sum / roomDecisions,
           roomScore: summarize(scoreByRoomKind[kind]),
+          initialRoomScore: summarize(initialScoreByRoomKind[kind]),
+          retroactiveRoomScore: summarize(retroactiveScoreByRoomKind[kind]),
+          finalRoomScore: summarize(finalScoreByRoomKind[kind]),
         }];
       }),
     ) as SimulationReport['roomKindAnalysis'],
@@ -1321,6 +1445,7 @@ export function simulateAiGames(
         ? 0
         : cooperationZoneHits / cooperationZoneAttempts,
       scorePerActualMoney: totalActualCost === 0 ? 0 : totalRoomScore / totalActualCost,
+      finalScorePerActualMoney: totalActualCost === 0 ? 0 : totalFinalRoomScore / totalActualCost,
       averageActualCostRatioByRoomKind: Object.fromEntries(
         Object.entries(actualCostByRoomKind).map(([kind, target]) => [kind, summarize(target).mean]),
       ) as Record<RoomKind, number>,
@@ -1519,10 +1644,26 @@ export function simulateAiGames(
       secondaryQuote: summarize(secondaryQuoteMetric),
       predictedUtility: summarize(secondaryUtilityMetric),
       actualRoomScore: summarize(doubleActionScoreMetric),
+      retroactiveRoomScore: summarize(doubleActionRetroactiveScoreMetric),
+      finalRoomScore: summarize(doubleActionFinalScoreMetric),
       actualTotalCost: summarize(doubleActionCostMetric),
       entitlementsPerTurn: summarize(doubleActionEntitlementMetric),
       awardsPerTurn: summarize(doubleActionAwardMetric),
     },
     emptyMarketRooms,
+    scoringTotals: {
+      initialRoomScore: totalRoomScore,
+      retroactiveRoomScore: totalRetroactiveRoomScore,
+      finalRoomScore: totalFinalRoomScore,
+      cumulativeBeforeFinalMultipliers,
+      actualCosts: totalActualCost,
+    },
+    research: options.research ? {
+      worldFingerprint: worldFingerprint.toString(16).padStart(8, '0'),
+      personalityFingerprint: personalityFingerprint.toString(16).padStart(8, '0'),
+      cohorts: summarizeResearchCohorts(researchRecords),
+      ...(characterBudget ? { characterBudget: characterBudget.summarize() } : {}),
+      ...(noiseEcology ? { noiseEcology: noiseEcology.summarize() } : {}),
+    } : undefined,
   };
 }

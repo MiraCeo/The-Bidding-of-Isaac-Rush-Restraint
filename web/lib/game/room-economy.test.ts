@@ -46,6 +46,12 @@ describe('room transition economy', () => {
     const secondFloor = preparePlayersForRoom([firstFloor], 1, 0, defaultRules, random).players[0]!;
     expect(firstFloor.money).toBe(90);
     expect(secondFloor.money).toBe(550);
+    expect(firstFloor.characterFloorStartingMoney).toBe(90);
+    expect(secondFloor.characterFloorStartingMoney).toBe(550);
+    const later = preparePlayersForRoom([secondFloor], 1, 1, defaultRules, {
+      next: () => { throw new Error('Role funds must not be rerolled within the floor.'); },
+    });
+    expect(later.players[0]?.characterFloorStartingMoney).toBe(550);
   });
 
   it('applies an acquired Interest after the character floor-money trait', () => {
@@ -54,6 +60,7 @@ describe('room transition economy', () => {
     const result = preparePlayersForRoom([isaac], 1, 0, defaultRules, queuedRandom(0.5));
     // 500 -> 550 character trait -> 605 next-floor Interest -> 635 room Interest.
     expect(result.players[0]?.money).toBe(635);
+    expect(result.players[0]?.characterFloorStartingMoney).toBe(550);
   });
 
   it('steals 5% of the adjacent ranked player money for each Money Bag', () => {

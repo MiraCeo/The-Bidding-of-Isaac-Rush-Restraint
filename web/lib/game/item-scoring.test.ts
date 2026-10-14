@@ -121,4 +121,31 @@ describe('item-adjusted scoring', () => {
     player.characterId = 'jacob_esau';
     expect(calculateFinalScore(player)).toBeCloseTo(140);
   });
+
+  it.each([
+    { itemId: 'brimstone' as const, type: 'bid' as const, amount: 80, targets: [40, 100, 120] },
+    { itemId: 'short_brimstone' as const, type: 'disrupt' as const, amount: 40, targets: [30, 50, 70] },
+  ])('never expands $itemId scoring bounds with duplicate copies', ({ itemId, type, amount, targets }) => {
+    for (const target of targets) {
+      const one = playerWith(itemId);
+      const turn = { playerId: 'p', actions: [{ type, group: 'A' as const, amount }] };
+      const expected = calculateTurnScore(one, resolveTurnActions(one, turn, defaultRules),
+        target, 100, 0, 'normal', defaultRules, noRandom);
+      for (const copies of [2, 3]) {
+        const repeated = playerWith(...Array<ItemId>(copies).fill(itemId));
+        const actual = calculateTurnScore(repeated, resolveTurnActions(repeated, turn, defaultRules),
+          target, 100, 0, 'normal', defaultRules, noRandom);
+        expect(actual).toEqual(expected);
+        expect(repeated.items).toHaveLength(copies);
+      }
+    }
+  });
+
+  it('still counts duplicate non-stacking items toward the crown inventory penalty', () => {
+    const one = playerWith('dark_princes_crown', 'lucky_foot');
+    const two = playerWith('dark_princes_crown', 'lucky_foot', 'lucky_foot');
+    expect(calculateFinalScore(one)).toBe(135);
+    expect(calculateFinalScore(two)).toBe(130);
+    expect(two.items).toHaveLength(3);
+  });
 });

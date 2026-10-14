@@ -49,6 +49,8 @@ export interface ItemInstance {
 
 export interface RuntimePlayerState extends PlayerState {
   characterId: CharacterId | null;
+  /** Actual role-adjusted start of this floor, before Interest or other economy effects. */
+  characterFloorStartingMoney: number | null;
   items: ItemInstance[];
   temporaryShields: number;
   persistentShields: number;

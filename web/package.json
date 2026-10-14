@@ -1,6 +1,6 @@
 {
   "name": "the-bidding-of-isaac-web",
-  "version": "0.1.0",
+  "version": "0.4.11",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -8,6 +8,11 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc --noEmit && vite build",
+    "build:offline": "tsc --noEmit && node scripts/build-offline.mjs",
+    "build:release": "node scripts/build-release.mjs",
+    "build:deployment": "node scripts/build-deployment.mjs",
+    "prepare:deployment": "node scripts/prepare-deployment.mjs",
+    "lint:client": "oxlint components/game lib/ui scripts vite.config.ts --ignore-pattern node_modules/** --ignore-pattern work/**",
     "start": "vite preview --host 0.0.0.0 --port 3000",
     "test": "vitest run",
     "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",
@@ -30,6 +35,8 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
+    "fake-indexeddb": "6.2.4",
+    "happy-dom": "20.14.6",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -37,7 +44,8 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "8.0.13",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yaml": "2.8.1"
   },
   "type": "module"
 }

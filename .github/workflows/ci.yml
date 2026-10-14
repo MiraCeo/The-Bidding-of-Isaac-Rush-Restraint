@@ -1,0 +1,48 @@
+name: Desktop build validation
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    env:
+      BIDDING_WEB_BASE: /
+      BIDDING_EXPECTED_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - run: npm ci
+      - name: Local documentation links and archived research data
+        run: node scripts/check-doc-links.mjs
+      - name: Tests, web, offline and verified delivery
+        id: delivery
+        run: npm run build:deployment -- --require-clean
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: desktop-delivery-${{ github.run_id }}
+          path: ${{ steps.delivery.outputs.directory }}
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: desktop-gate-logs-${{ github.run_id }}
+          path: web/work/release-*.log
+          if-no-files-found: warn
+          retention-days: 14

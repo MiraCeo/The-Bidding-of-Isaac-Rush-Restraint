@@ -60,6 +60,7 @@ export function preparePlayersForRoom(
       player.temporaryShields = countItem(player, 'holy_mantle');
       player.triggeredCollarsThisFloor = [];
       const characterStartingMoney = getCharacterFloorStartingMoney(player, floorMoney, random);
+      player.characterFloorStartingMoney = characterStartingMoney;
       player.money = characterStartingMoney;
       if (characterStartingMoney !== floorMoney) {
         events.push({

@@ -9,7 +9,7 @@ import type {
 import { calculateTurnScore, type TurnScoreBreakdown } from './item-scoring';
 import { roundMoney } from './money';
 import { checkCollarTriggers } from './room-economy';
-import { cloneRuntimePlayer, hasItem } from './runtime';
+import { cloneRuntimePlayer, grantItemInstance, hasItem } from './runtime';
 import { calculateHighPriceSlotCount } from './rewards';
 import { resolveTurnActions, validateTurn } from './turns';
 import type { MarketBaseline, RandomSource, RewardGroup, RulesConfig } from './types';
@@ -20,11 +20,20 @@ export interface Entitlement {
   sources: string[];
 }
 
+export interface RoomScoreSummary {
+  initialScore: number;
+  retroactiveScore: number;
+  finalScore: number;
+  retroactiveMultiplier: number;
+}
+
 export interface RoomSettlementResult {
   players: RuntimePlayerState[];
   baseline: MarketBaseline | null;
   resolvedActions: ResolvedAction[];
   scoreBreakdowns: Record<string, TurnScoreBreakdown>;
+  /** Final room totals include post-award effects without rerolling the original breakdown. */
+  roomScoreSummaries: Record<string, RoomScoreSummary>;
   entitlements: Entitlement[];
   awards: ItemAward[];
   events: SettlementEvent[];
@@ -110,7 +119,13 @@ export function settleRuntimeRoom(
   turns: readonly PlayerTurn[],
   rules: RulesConfig,
   random: RandomSource,
+  options: { minimumAcquisitionOrder?: number } = {},
 ): RoomSettlementResult {
+  if (options.minimumAcquisitionOrder !== undefined && (
+    !Number.isSafeInteger(options.minimumAcquisitionOrder) || options.minimumAcquisitionOrder < 1
+  )) {
+    throw new RangeError('Minimum acquisition order must be a positive safe integer.');
+  }
   const nextPlayers = players.map(cloneRuntimePlayer);
   const playerById = new Map(nextPlayers.map((player) => [player.id, player]));
   const turnByPlayer = new Map(turns.map((turn) => [turn.playerId, turn]));
@@ -152,6 +167,14 @@ export function settleRuntimeRoom(
     0,
   );
   const scoreBreakdowns: Record<string, TurnScoreBreakdown> = {};
+  const roomScoreSummaries: Record<string, RoomScoreSummary> = Object.fromEntries(
+    nextPlayers.map((player) => [player.id, {
+      initialScore: 0,
+      retroactiveScore: 0,
+      finalScore: 0,
+      retroactiveMultiplier: 1,
+    }]),
+  );
 
   if (baseline) {
     for (const player of nextPlayers) {
@@ -167,6 +190,12 @@ export function settleRuntimeRoom(
         random,
       );
       scoreBreakdowns[player.id] = breakdown;
+      roomScoreSummaries[player.id] = {
+        initialScore: breakdown.score,
+        retroactiveScore: 0,
+        finalScore: breakdown.score,
+        retroactiveMultiplier: 1,
+      };
       player.score = roundTo(player.score + breakdown.score, rules.scoreStorageDecimals);
       events.push({
         type: 'score',
@@ -292,12 +321,12 @@ export function settleRuntimeRoom(
   const awards: ItemAward[] = [];
   for (const entitlement of entitlementMap.values()) {
     const player = playerById.get(entitlement.playerId)!;
+    const reward = room.rewards.find((candidate) => candidate.group === entitlement.group)!;
     let copies = 1;
-    if (hasItem(player, 'guppys_tail')) {
+    if (reward.itemId !== 'guppys_tail' && hasItem(player, 'guppys_tail')) {
       const roll = random.next();
       copies = roll < 1 / 3 ? 0 : roll < 2 / 3 ? 1 : 2;
     }
-    const reward = room.rewards.find((candidate) => candidate.group === entitlement.group)!;
     if (copies === 0) {
       events.push({
         type: 'destroy',
@@ -322,32 +351,33 @@ export function settleRuntimeRoom(
     awards.push({ playerId: player.id, group: entitlement.group, itemId: reward.itemId, copies });
   }
 
-  let acquisitionOrder = nextAcquisitionOrder(nextPlayers);
+  // A survival caller keeps the all-game order even after its highest owner is eliminated.
+  let acquisitionOrder = Math.max(nextAcquisitionOrder(nextPlayers), options.minimumAcquisitionOrder ?? 1);
   for (const award of awards) {
     const player = playerById.get(award.playerId)!;
     for (let copy = 0; copy < award.copies; copy += 1) {
       const instanceId = `${room.floorIndex}:${room.roomIndex}:${award.group}:${player.id}:${acquisitionOrder}`;
-      player.items.push({ instanceId, itemId: award.itemId, acquiredOrder: acquisitionOrder });
+      grantItemInstance(player, { instanceId, itemId: award.itemId, acquiredOrder: acquisitionOrder });
       acquisitionOrder += 1;
 
-      if (award.itemId === 'holy_mantle') player.temporaryShields += 1;
-      if (award.itemId === 'wooden_cross') player.persistentShields += 1;
       if (award.itemId === 'grab_bag') {
         const source = resolvedActions.find(
           (resolved) =>
             resolved.playerId === player.id &&
-            resolved.action.type !== 'withdraw' &&
+            resolved.action.type === 'bid' &&
             resolved.action.group === award.group,
         );
-        const refund = roundMoney((source?.actualCost ?? 0) * 0.75);
-        player.money = roundMoney(player.money + refund);
-        events.push({
-          type: 'refund',
-          playerId: player.id,
-          itemId: 'grab_bag',
-          amount: refund,
-          message: `福袋返还 ${refund} 资金。`,
-        });
+        if (source) {
+          const refund = roundMoney(source.actualCost * 0.75);
+          player.money = roundMoney(player.money + refund);
+          events.push({
+            type: 'refund',
+            playerId: player.id,
+            itemId: 'grab_bag',
+            amount: refund,
+            message: `福袋返还 ${refund} 资金。`,
+          });
+        }
       }
       events.push({
         type: 'award',
@@ -361,17 +391,34 @@ export function settleRuntimeRoom(
     if (award.itemId === 'guppys_collar') {
       checkCollarTriggers(player, room.floorIndex, rules, random, events);
     }
-    if (award.itemId === 'moms_heart' && room.kind === 'boss') {
-      const previousRoomScore = scoreBreakdowns[player.id]?.score ?? 0;
-      const multiplier = 2 ** award.copies;
-      const bonus = roundTo(previousRoomScore * (multiplier - 1), rules.scoreStorageDecimals);
+  }
+
+  // Aggregate the actually awarded hearts across both groups after destruction/duplication.
+  // The original score already includes existing hearts and all random scoring outcomes.
+  if (room.kind === 'boss') {
+    for (const player of nextPlayers) {
+      const newHearts = awards
+        .filter((award) => award.playerId === player.id && award.itemId === 'moms_heart')
+        .reduce((sum, award) => sum + award.copies, 0);
+      if (newHearts === 0) continue;
+      const summary = roomScoreSummaries[player.id]!;
+      const multiplier = 2 ** newHearts;
+      const finalScore = roundTo(summary.initialScore * multiplier, rules.scoreStorageDecimals);
+      const bonus = roundTo(finalScore - summary.initialScore, rules.scoreStorageDecimals);
       player.score = roundTo(player.score + bonus, rules.scoreStorageDecimals);
+      roomScoreSummaries[player.id] = {
+        initialScore: summary.initialScore,
+        retroactiveScore: bonus,
+        finalScore,
+        retroactiveMultiplier: multiplier,
+      };
       events.push({
         type: 'score',
         playerId: player.id,
         itemId: 'moms_heart',
         amount: bonus,
-        message: `妈妈的心脏追溯增加 ${bonus} 分。`,
+        // Keep v1 trace wording/fingerprints stable; UI resolves the current item label.
+        message: `${newHearts} 份妈妈的心脏追溯增加 ${bonus} 分。`,
       });
     }
   }
@@ -381,6 +428,7 @@ export function settleRuntimeRoom(
     baseline,
     resolvedActions,
     scoreBreakdowns,
+    roomScoreSummaries,
     entitlements: [...entitlementMap.values()],
     awards,
     events,
