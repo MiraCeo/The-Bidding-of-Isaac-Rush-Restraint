@@ -1006,7 +1006,8 @@
 .market-chart-legend { display: flex; flex-wrap: wrap; gap: 7px 20px; color: #d0c0a4; font-size: .71rem; margin-top: 14px; }
 .replay-event-details { border: 1px solid #44392c; border-radius: 10px; padding: 14px 16px; }
 .replay-event-details > .replay-timeline-section { margin-top: 12px; }
-.replay-field-panel { padding: 0; border: 0; background: transparent; gap: 18px; }
+.replay-field-panel { padding: 0; border: 0; background: transparent; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+.replay-field-panel > * { min-width: 0; }
 .replay-field-chart, .replay-reward-destinations, .replay-field-table-section { padding: 18px; border: 1px solid #44392c; border-radius: 12px; background: #1b1712; }
 .replay-field-chart .replay-section-heading p { color: #bda88b; font-size: .74rem; margin-top: 5px; }
 .replay-chart-metrics { display: flex; flex-wrap: wrap; gap: 5px; }

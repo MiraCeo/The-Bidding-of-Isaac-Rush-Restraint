@@ -25,7 +25,8 @@ export function MatchRestartControl() {
       ) : (
         <div className="match-restart-confirm">
           <p>
-            重新选角会放弃本局自动进度；需要保留时先在设置中导出存档。玩家进度和已完成对局记录不清除。
+            重新选角会放弃本局自动进度；需要保留时先在进度 →
+            存档与备份中导出续玩存档。玩家档案和已完成对局记录不清除。
           </p>
           <div className="data-actions">
             <Button

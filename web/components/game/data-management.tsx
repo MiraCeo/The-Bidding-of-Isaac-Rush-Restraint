@@ -136,7 +136,7 @@ export function DataManagement({
                 </label>
                 <p>
                   {data.restoreProfile
-                    ? '将替换本机玩家进度，包含解锁、成就与扩展数据。'
+                    ? '将替换本机玩家档案，包含完成记录、累计统计、去重凭据及已保留的扩展数据。'
                     : '保留本机玩家进度，只载入这局与原始回放。'}
                 </p>
                 <BackupProfileNotice
@@ -219,7 +219,7 @@ export function DataManagement({
           </li>
           <li>
             <Check aria-hidden="true" />
-            玩家进度：已保存的解锁、成就及扩展数据
+            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；当前不发放成就或解锁角色。
           </li>
         </ul>
         {data.activeSession && data.showRecent && (

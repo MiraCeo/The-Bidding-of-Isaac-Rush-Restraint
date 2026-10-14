@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { decodedDownload } from './file-export.test-helper';
+import { readFileSync } from 'node:fs';
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -112,6 +113,19 @@ async function changeSelect(value: string) {
 }
 
 describe('read-only replay UI', () => {
+  it('constrains the shared field panel grid while retaining local chart and table scrolling', () => {
+    const css = readFileSync('app/globals.css', 'utf8');
+    expect(css).toMatch(
+      /\.replay-field-panel\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    );
+    expect(css).toMatch(
+      /\.replay-field-panel\s*>\s*\*\s*\{[^}]*min-width:\s*0/,
+    );
+    expect(css).toMatch(/\.replay-chart-scroll\s*\{[^}]*overflow-x:\s*auto/);
+    expect(css).toMatch(
+      /\.replay-field-table-section\s+\.replay-table-wrap\s*\{[^}]*overflow:\s*auto/,
+    );
+  });
   it('keeps reference-time changes inside match overview and moves to personal view only on an explicit point', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(7)));
     await mount();

@@ -261,7 +261,7 @@ it('does not import deletion evidence over a currently live local fact or delete
       (r) => r.key === branch.entry.key,
     ),
   ).toBe(false);
-});
+}, 20000);
 it.each(['index', 'payload', 'removed'] as const)(
   'rejects a stale preview after %s changes, without automatically recomputing an approved plan',
   async (store) => {

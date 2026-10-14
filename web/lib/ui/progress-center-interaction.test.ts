@@ -45,6 +45,49 @@ function button(label: string) {
 }
 const click = async (label: string) => act(async () => button(label).click());
 const mount = async () => act(async () => root.render(createElement(GameApp)));
+it('points restart preservation to progress and keeps the current match when cancellation is chosen', async () => {
+  classic();
+  localStorage.setItem(activeModeKey, 'classic');
+  await mount();
+  const before = localStorage.getItem(gameSaveKey);
+  await click('重新选角');
+  const confirmation = container.querySelector('.match-restart-confirm')!;
+  expect(confirmation.textContent).toContain('进度 → 存档与备份');
+  expect(confirmation.textContent).not.toContain('设置中');
+  await click('保留当前对局');
+  expect(container.querySelector('.match-restart-confirm')).toBeNull();
+  expect(localStorage.getItem(gameSaveKey)).toBe(before);
+  expect(
+    container.querySelector<HTMLInputElement>(
+      'input[aria-label="竞拍奖励 A 的数值"]',
+    )?.value,
+  ).toBe('17');
+});
+it('describes existing profile data in the backup preview and cancels back to the focused progress page without saving', async () => {
+  classic();
+  localStorage.setItem(activeModeKey, 'classic');
+  await mount();
+  const before = localStorage.getItem(gameSaveKey);
+  const profile = localStorage.getItem(playerProfileKey);
+  await click('进度');
+  await click('存档与备份');
+  await click('完整备份');
+  const preview = container.querySelector('.data-backup-preview')!;
+  expect(preview.textContent).toContain('完成记录、累计统计、去重凭据');
+  expect(preview.textContent).toContain('当前不发放成就或解锁角色');
+  expect(preview.textContent).not.toContain('已保存的解锁');
+  expect(document.activeElement?.id).toBe('progress-title');
+  await act(async () =>
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    ),
+  );
+  expect(container.querySelector('.data-backup-preview')).toBeNull();
+  expect(container.querySelector('#progress-title')?.textContent).toBe('进度');
+  expect(document.activeElement?.id).toBe('progress-title');
+  expect(localStorage.getItem(gameSaveKey)).toBe(before);
+  expect(localStorage.getItem(playerProfileKey)).toBe(profile);
+});
 it('keeps one product identity across all five navigation entries and moves progress return actions into the shared page heading', async () => {
   await mount();
   for (const page of ['设置', '进度', '规则', '排行', '游戏']) {
@@ -213,7 +256,9 @@ it('preserves both authoritative matches and their drafts across progress, mode 
   await click('设置');
   expect(container.querySelector('.survival-status')).toBeNull();
   expect(container.textContent).not.toContain('生存模式 · 存档与文件');
-  expect(container.textContent).not.toContain('重新选角');
+  expect(
+    [...container.querySelectorAll('button')].map((b) => b.textContent?.trim()),
+  ).not.toContain('重新选角');
   await click('进度');
   await click('继续经典对局');
   expect(

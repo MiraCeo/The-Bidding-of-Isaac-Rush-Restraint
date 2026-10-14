@@ -400,6 +400,14 @@ describe('specific data layouts and confirmation flows', () => {
       const toggle = node<HTMLInputElement>('.data-profile-choice input');
       expect(toggle.checked).toBe(false);
       if (restore) await click(toggle);
+      if (restore) {
+        expect(node('.data-profile-choice').textContent).toContain(
+          '完成记录、累计统计、去重凭据',
+        );
+        expect(node('.data-profile-choice').textContent).not.toContain(
+          '包含解锁、成就',
+        );
+      }
       expect(localStorage.getItem(playerProfileKey)).toBe(
         JSON.stringify(original),
       );

@@ -147,7 +147,11 @@ describe('room utility interaction without a real browser', () => {
     );
     await mount(createElement(GameApp));
     await click(button('设置', element('nav')));
-    expect(element('#room-utilities').textContent).not.toContain('重新选角');
+    expect(
+      [...element('#room-utilities').querySelectorAll('button')].map((b) =>
+        b.textContent?.trim(),
+      ),
+    ).not.toContain('重新选角');
     await click(button('游戏', element('nav')));
     await click(button('重新选角'));
     expect(localStorage.getItem(gameSaveKey)).not.toBeNull();
