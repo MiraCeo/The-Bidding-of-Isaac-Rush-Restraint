@@ -12,7 +12,7 @@
     "build:release": "node scripts/build-release.mjs",
     "build:deployment": "node scripts/build-deployment.mjs",
     "prepare:deployment": "node scripts/prepare-deployment.mjs",
-    "lint:client": "oxlint components/game lib/ui scripts vite.config.ts --ignore-pattern node_modules/** --ignore-pattern work/**",
+    "lint:client": "oxlint components/game lib/ui scripts vite.config.ts --ignore-pattern \"node_modules/**\" --ignore-pattern \"work/**\"",
     "start": "vite preview --host 0.0.0.0 --port 3000",
     "test": "vitest run",
     "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",

@@ -3,7 +3,7 @@ import { resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 import {
   normalizeWebBase,
@@ -26,6 +26,13 @@ import { recordWebArtifact } from './web-artifact.mjs';
 const root = resolve('.');
 const work = resolve(root, 'work');
 const commit = 'a'.repeat(40);
+// Synthetic fixture provenance must not inherit the real CI publication SHA.
+// Only tests stub the environment; production still requires the workflow SHA.
+beforeEach(() => {
+  vi.stubEnv('BIDDING_EXPECTED_SHA', commit);
+  vi.stubEnv('BIDDING_WEB_BASE', '/');
+});
+afterEach(() => vi.unstubAllEnvs());
 const validation = {
   tests: { passed: 1, skipped: 0 },
   lint: 'passed',
@@ -123,6 +130,13 @@ async function removeOwned(path) {
 }
 
 describe('deployment paths, provenance and delivery identity', () => {
+  it('uses the environment commit guard when no expectedCommit override is supplied', async () => {
+    const f = await fixture();
+    vi.stubEnv('BIDDING_EXPECTED_SHA', 'b'.repeat(40));
+    await expect(
+      prepareDeployment({ root: f.path, source: f.source }),
+    ).rejects.toThrow('当前提交不是要求发布的提交');
+  });
   it.each([
     ['/', '/'],
     ['/repo', '/repo/'],
