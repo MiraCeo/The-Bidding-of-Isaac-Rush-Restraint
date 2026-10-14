@@ -46,6 +46,10 @@ export function parseModeDataFile(
   filename: string,
 ): ModeDataCandidate {
   const header = checkedJson(source);
+  if (header.format === 'the-bidding-of-isaac-library-backup')
+    throw new Error(
+      '这是整库备份，请使用长期完整回放库的“读取整库备份”入口；对局与玩家档案未改变。',
+    );
   if (header.format === profileBackupFormat)
     throw new Error(
       '这是独立玩家档案备份，请使用“读取玩家档案文件”入口；当前对局未改变。',

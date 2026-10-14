@@ -4,6 +4,7 @@ import { characterNames } from '@/lib/game';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import { downloadJsonFile } from '@/lib/ui/json-download';
 import { maxFileBytes } from '@/lib/ui/file-json';
+import { ReplayLibraryBackupPanel } from './replay-library-backup-panel';
 import {
   replayLibrary,
   replayLibraryLimits,
@@ -49,7 +50,9 @@ export function ReplayLibraryPanel({
   const [entries, setEntries] = useState<ReplayLibraryEntry[]>([]);
   const [ready, setReady] = useState(false),
     [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [working, setBusy] = useState(false),
+    [bulkBusy, setBulkBusy] = useState(false);
+  const busy = working || bulkBusy;
   const [reading, setReading] = useState(false);
   const [equivalents, setEquivalents] = useState<
     ClassicEquivalentGroup[] | null
@@ -322,6 +325,10 @@ export function ReplayLibraryPanel({
           />
         </label>
       </div>
+      <ReplayLibraryBackupPanel
+        disabled={working || !!deleting || !!candidate}
+        onBusyChange={setBulkBusy}
+      />
       {reading && (
         <Button variant="secondary" onClick={cancelRead}>
           取消读取回放

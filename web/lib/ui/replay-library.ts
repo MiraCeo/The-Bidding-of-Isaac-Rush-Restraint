@@ -23,6 +23,19 @@ import {
   validClassicLibraryProof,
   type ClassicLibraryProof,
 } from './classic-library-equivalence';
+import {
+  checkLibraryAbort,
+  yieldLibraryTask,
+  validateLibraryBackupData,
+  serializeLibraryBackup,
+  parseLibraryBackup,
+  libraryBackupLimits,
+  LibraryBackupChangedError,
+  type LibraryBackupData,
+  type LibraryBackupOptions,
+  type LibraryRestorePreview,
+  type LibraryRestoreRow,
+} from './replay-library-backup-format';
 
 export type LibraryReplay = ReplayDocument | SurvivalReplayDocument;
 export const replayLibraryDatabase = 'bidding-replay-library-v1';
@@ -52,7 +65,7 @@ export interface PreparedReplay {
   entry: ReplayLibraryEntry;
   source: string;
 }
-interface RemovedReplay {
+export interface RemovedReplay {
   key: string;
   removedAt: string;
   classicProof?: ClassicLibraryProof;
@@ -67,6 +80,22 @@ export interface ClassicEquivalentGroup {
   copies: string[];
 }
 const retrySnapshot = Symbol('library-snapshot-changed');
+function sameBulkData(a: LibraryBackupData, b: LibraryBackupData): boolean {
+  if (
+    canonicalJson([a.entries, a.removed]) !==
+      canonicalJson([b.entries, b.removed]) ||
+    a.payloads.length !== b.payloads.length
+  )
+    return false;
+  const expected = new Map(a.payloads.map((p) => [p.key, p]));
+  return b.payloads.every((p) => {
+    const old = expected.get(p.key);
+    if (!old || p.source !== old.source) return false;
+    const { source: _a, ...extraA } = old,
+      { source: _b, ...extraB } = p;
+    return canonicalJson(extraA) === canonicalJson(extraB);
+  });
+}
 function samePayloadSource(a: unknown, b: unknown) {
   if (Object.is(a, b)) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
@@ -76,7 +105,7 @@ function samePayloadSource(a: unknown, b: unknown) {
     return false;
   }
 }
-function validRemoved(value: unknown): value is RemovedReplay {
+export function validRemoved(value: unknown): value is RemovedReplay {
   const r = value as RemovedReplay;
   return (
     !!r &&
@@ -91,7 +120,7 @@ function validRemoved(value: unknown): value is RemovedReplay {
   );
 }
 const encoder = new TextEncoder();
-async function sha256(source: string) {
+export async function librarySha256(source: string) {
   if (!globalThis.crypto?.subtle)
     throw Error('当前浏览器无法计算回放SHA256摘要，未写入。');
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(source));
@@ -99,6 +128,7 @@ async function sha256(source: string) {
     b.toString(16).padStart(2, '0'),
   ).join('');
 }
+const sha256 = librarySha256;
 export async function replayLibraryKey(document: LibraryReplay) {
   // The unrounded Moms Knife explanation can differ by a few ULPs between JS
   // runtimes. Normalize ONLY that display trigger in the identity projection;
@@ -192,7 +222,7 @@ export function newLibraryDocument(
     exportedBuild: readBuildVersion(),
   } as LibraryReplay;
 }
-function validEntry(value: unknown): value is ReplayLibraryEntry {
+export function validEntry(value: unknown): value is ReplayLibraryEntry {
   const e = value as ReplayLibraryEntry;
   return (
     !!e &&
@@ -239,6 +269,17 @@ function announce() {
 }
 /** Each operation owns a short-lived connection; version changes cannot strand another tab. */
 export class ReplayLibrary {
+  private backupPlans = new WeakMap<
+    LibraryRestorePreview,
+    {
+      baseline: LibraryBackupData;
+      records: PreparedReplay[];
+      payloads: LibraryBackupData['payloads'];
+      marks: RemovedReplay[];
+      allowed: boolean;
+      reason: string;
+    }
+  >();
   constructor(
     private factory: () => IDBFactory | undefined = () => globalThis.indexedDB,
     private name = replayLibraryDatabase,
@@ -298,8 +339,14 @@ export class ReplayLibrary {
       result: (value: T) => void,
       fail: (error: unknown) => void,
     ) => void,
+    signal?: AbortSignal,
   ): Promise<T> {
+    checkLibraryAbort(signal);
     const db = await this.open();
+    if (signal?.aborted) {
+      db.close();
+      checkLibraryAbort(signal);
+    }
     return new Promise<T>((resolve, reject) => {
       let value: T, tx: IDBTransaction, failure: unknown;
       try {
@@ -309,11 +356,22 @@ export class ReplayLibrary {
         reject(error);
         return;
       }
+      const abort = () => {
+        failure = new DOMException('整库操作已取消。', 'AbortError');
+        try {
+          tx.abort();
+        } catch {
+          /* Transaction already completed. */
+        }
+      };
+      signal?.addEventListener('abort', abort, { once: true });
       tx.oncomplete = () => {
+        signal?.removeEventListener('abort', abort);
         db.close();
         resolve(value);
       };
       tx.onabort = () => {
+        signal?.removeEventListener('abort', abort);
         db.close();
         reject(failure ?? tx.error ?? Error('回放库事务失败，原记录保留。'));
       };
@@ -324,8 +382,12 @@ export class ReplayLibrary {
             value = next;
           },
           (error) => {
-            failure = error;
-            tx.abort();
+            failure ??= error;
+            try {
+              tx.abort();
+            } catch {
+              /* Already aborted by a cancellation. */
+            }
           },
         );
       } catch (error) {
@@ -333,6 +395,342 @@ export class ReplayLibrary {
         reject(error);
       }
     });
+  }
+  private bulkSnapshot(signal?: AbortSignal): Promise<LibraryBackupData> {
+    return this.transaction(
+      'readonly',
+      (tx, done) => {
+        const index = tx
+            .objectStore('index')
+            .getAll(undefined, libraryBackupLimits.records + 1),
+          payload = tx
+            .objectStore('payload')
+            .getAll(undefined, libraryBackupLimits.records + 1),
+          removed = tx
+            .objectStore('removed')
+            .getAll(undefined, libraryBackupLimits.removed + 1);
+        let pending = 3;
+        const finish = () => {
+          if (--pending === 0)
+            done({
+              entries: index.result,
+              payloads: payload.result,
+              removed: removed.result,
+            });
+        };
+        index.onsuccess = payload.onsuccess = removed.onsuccess = finish;
+      },
+      signal,
+    );
+  }
+  private async validateBulkFacts(
+    data: LibraryBackupData,
+    options: LibraryBackupOptions,
+    label: string,
+    reuse?: { data: LibraryBackupData; documents: Map<string, LibraryReplay> },
+  ) {
+    checkLibraryAbort(options.signal);
+    validateLibraryBackupData(data);
+    const payloads = new Map(data.payloads.map((p) => [p.key, p.source]));
+    const reusableEntries = new Map(reuse?.data.entries.map((e) => [e.key, e]));
+    const reusableSources = new Map(
+      reuse?.data.payloads.map((p) => [p.key, p.source]),
+    );
+    const documents = new Map<string, LibraryReplay>();
+    for (const [i, entry] of data.entries.entries()) {
+      options.onProgress?.(
+        `${label}：核验第 ${i + 1} / ${data.entries.length} 份回放`,
+      );
+      const prior = reusableEntries.get(entry.key),
+        document = reuse?.documents.get(entry.key);
+      // This is operation-local reuse of an already verified input, never a cache
+      // across database snapshots. Every index field and exact source must match.
+      if (
+        document &&
+        prior &&
+        reusableSources.get(entry.key) === payloads.get(entry.key) &&
+        canonicalJson(prior) === canonicalJson(entry)
+      )
+        documents.set(entry.key, document);
+      else {
+        const read = await this.decode(
+          entry.key,
+          entry,
+          payloads.get(entry.key),
+        );
+        documents.set(entry.key, read.document);
+      }
+      await yieldLibraryTask(options.signal);
+    }
+    return documents;
+  }
+  /** Verify an observed full snapshot in the same short transaction as the append. */
+  private bulkCommit<T>(
+    baseline: LibraryBackupData,
+    action: (tx: IDBTransaction, done: (value: T) => void) => void,
+    mode: IDBTransactionMode,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return this.transaction(
+      mode,
+      (tx, done, fail) => {
+        const index = tx
+            .objectStore('index')
+            .getAll(undefined, libraryBackupLimits.records + 1),
+          payload = tx
+            .objectStore('payload')
+            .getAll(undefined, libraryBackupLimits.records + 1),
+          removed = tx
+            .objectStore('removed')
+            .getAll(undefined, libraryBackupLimits.removed + 1);
+        let pending = 3;
+        const finish = () => {
+          if (--pending) return;
+          try {
+            checkLibraryAbort(signal);
+            if (
+              !sameBulkData(baseline, {
+                entries: index.result,
+                payloads: payload.result,
+                removed: removed.result,
+              })
+            )
+              throw new LibraryBackupChangedError();
+            action(tx, done);
+          } catch (error) {
+            fail(error);
+          }
+        };
+        index.onsuccess = payload.onsuccess = removed.onsuccess = finish;
+      },
+      signal,
+    );
+  }
+  /** Full cross-mode export, including legacy equivalent rows and exact deletion evidence. */
+  async exportBackup(options: LibraryBackupOptions = {}) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const data = await this.bulkSnapshot(options.signal);
+      await this.validateBulkFacts(data, options, '整库导出');
+      const packed = await serializeLibraryBackup(data, options.signal);
+      try {
+        await this.bulkCommit(
+          data,
+          (_tx, done) => done(true),
+          'readonly',
+          options.signal,
+        );
+        return packed;
+      } catch (error) {
+        if (!(error instanceof LibraryBackupChangedError)) throw error;
+      }
+    }
+    throw new LibraryBackupChangedError();
+  }
+  /** Dry-run only. Compare imports only to the original local library, never collapse
+   * historic equivalent rows within the same backup. Empty-target recovery is lossless. */
+  async previewBackup(
+    source: string,
+    options: LibraryBackupOptions = {},
+  ): Promise<LibraryRestorePreview> {
+    const incoming = await parseLibraryBackup(source, options.signal),
+      incomingDocs = await this.validateBulkFacts(
+        incoming,
+        options,
+        '备份文件',
+      ),
+      baseline = await this.bulkSnapshot(options.signal),
+      localDocs = await this.validateBulkFacts(
+        baseline,
+        options,
+        '本机回放库',
+        { data: incoming, documents: incomingDocs },
+      );
+    const proofs = new Map<string, ClassicLibraryProof>();
+    const proofDocuments = new Map<string, LibraryReplay>();
+    for (const [key, doc] of [...localDocs, ...incomingDocs]) {
+      // Equal raw keys may have distinct valid export wrappers; identity is still factual.
+      if (doc.mode === 'classic' && proofDocuments.get(key) !== doc) {
+        proofs.set(key, await classicLibraryProof(doc.replay, sha256));
+        proofDocuments.set(key, doc);
+      }
+      await yieldLibraryTask(options.signal);
+    }
+    const local = new Map(baseline.entries.map((e) => [e.key, e])),
+      payload = new Map(incoming.payloads.map((p) => [p.key, p])),
+      rows: LibraryRestoreRow[] = [],
+      records: PreparedReplay[] = [],
+      additions: LibraryBackupData['payloads'] = [];
+    for (const entry of incoming.entries) {
+      const proof = proofs.get(entry.key),
+        duplicate =
+          local.get(entry.key) ??
+          baseline.entries
+            .filter(
+              (e) => e.mode === 'classic' && e.replayId === entry.replayId,
+            )
+            .sort(
+              (a, b) =>
+                Date.parse(a.savedAt) - Date.parse(b.savedAt) ||
+                a.key.localeCompare(b.key),
+            )
+            .find(
+              (e) =>
+                proof && sameClassicLibraryProof(proof, proofs.get(e.key)!),
+            );
+      const blocked = duplicate
+        ? undefined
+        : baseline.removed.find(
+            (mark) =>
+              mark.key === entry.key ||
+              (proof &&
+                mark.classicProof &&
+                sameClassicLibraryProof(proof, mark.classicProof)),
+          );
+      rows.push({
+        entry: structuredClone(entry),
+        status: duplicate ? 'duplicate' : blocked ? 'blocked' : 'add',
+        ...(duplicate
+          ? { referenceKey: duplicate.key }
+          : blocked
+            ? { referenceKey: blocked.key }
+            : {}),
+      });
+      if (!duplicate && !blocked) {
+        records.push({ entry, source: payload.get(entry.key)!.source });
+        additions.push(payload.get(entry.key)!);
+      }
+    }
+    const marks: RemovedReplay[] = [];
+    const localMarkerKeys = new Set(baseline.removed.map((mark) => mark.key));
+    let markerDuplicates = 0,
+      markerConflicts = 0;
+    for (const mark of incoming.removed) {
+      if (localMarkerKeys.has(mark.key)) {
+        markerDuplicates++;
+        continue;
+      }
+      if (
+        baseline.entries.some(
+          (e) =>
+            e.key === mark.key ||
+            (mark.classicProof &&
+              proofs.get(e.key) &&
+              sameClassicLibraryProof(mark.classicProof, proofs.get(e.key)!)),
+        )
+      ) {
+        markerConflicts++;
+        continue;
+      }
+      marks.push(mark);
+    }
+    const finalCount = baseline.entries.length + records.length,
+      finalBytes = [...baseline.entries, ...records.map((r) => r.entry)].reduce(
+        (n, e) => n + e.bytes,
+        0,
+      );
+    let reason = '';
+    if (finalCount > this.limits.count || finalBytes > this.limits.bytes)
+      reason =
+        '增量恢复会超过100局／64 MiB应用上限，整批未写入；不会自动清库。';
+    if (baseline.removed.length + marks.length > libraryBackupLimits.removed)
+      reason = '合并后的删除标记超过8192条备份上限，整批未写入。';
+    if (!reason) {
+      try {
+        validateLibraryBackupData({
+          entries: [...baseline.entries, ...records.map((r) => r.entry)],
+          payloads: [...baseline.payloads, ...additions],
+          removed: [...baseline.removed, ...marks],
+        });
+      } catch (error) {
+        reason =
+          error instanceof Error ? error.message : '整库合并超过有界上限。';
+      }
+    }
+    await this.bulkCommit(
+      baseline,
+      (_tx, done) => done(true),
+      'readonly',
+      options.signal,
+    );
+    const preview: LibraryRestorePreview = Object.freeze({
+      exportedAt: incoming.exportedAt,
+      exportedBuild: incoming.exportedBuild,
+      rows,
+      added: records.length,
+      duplicates: rows.filter((r) => r.status === 'duplicate').length,
+      blocked: rows.filter((r) => r.status === 'blocked').length,
+      markerAdded: marks.length,
+      markerDuplicates,
+      markerConflicts,
+      finalCount,
+      finalBytes,
+      canRestore: !reason,
+      reason,
+    });
+    this.backupPlans.set(preview, {
+      baseline,
+      records,
+      payloads: additions,
+      marks,
+      allowed: !reason,
+      reason,
+    });
+    return preview;
+  }
+  async isBackupPreviewCurrent(
+    preview: LibraryRestorePreview,
+  ): Promise<boolean> {
+    const plan = this.backupPlans.get(preview);
+    if (!plan) return false;
+    try {
+      await this.bulkCommit(
+        plan.baseline,
+        (_tx, done) => done(true),
+        'readonly',
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof LibraryBackupChangedError) return false;
+      throw error;
+    }
+  }
+  /** One atomic append transaction: never clear, overwrite first records, or revive local tombstones. */
+  async restoreBackup(
+    preview: LibraryRestorePreview,
+    options: LibraryBackupOptions = {},
+  ) {
+    const plan = this.backupPlans.get(preview);
+    if (!plan) throw Error('整库预览不存在或已使用，请重新核对。');
+    if (!plan.allowed) throw Error(plan.reason);
+    checkLibraryAbort(options.signal);
+    const result = await this.bulkCommit<{
+      added: number;
+      markersAdded: number;
+      duplicates: number;
+      blocked: number;
+      markerConflicts: number;
+    }>(
+      plan.baseline,
+      (tx, done) => {
+        for (const record of plan.records)
+          tx.objectStore('index').add(record.entry);
+        for (const payload of plan.payloads)
+          tx.objectStore('payload').add(payload);
+        for (const mark of plan.marks) tx.objectStore('removed').add(mark);
+        done({
+          added: plan.records.length,
+          markersAdded: plan.marks.length,
+          duplicates: preview.duplicates,
+          blocked: preview.blocked,
+          markerConflicts: preview.markerConflicts,
+        });
+      },
+      'readwrite',
+      options.signal,
+    );
+    this.backupPlans.delete(preview);
+    if (result.added || result.markersAdded) announce();
+    return result;
   }
   async list(): Promise<ReplayLibraryEntry[]> {
     return this.transaction('readonly', (tx, result, fail) => {
