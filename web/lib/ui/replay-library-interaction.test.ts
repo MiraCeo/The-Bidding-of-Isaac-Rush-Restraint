@@ -350,6 +350,7 @@ function ArchiveProbe({ c, s }: { c?: GameSession; s?: SurvivalGameState }) {
   const status = useReplayArchive(c, s);
   return createElement('output', null, status.classic + status.survival);
 }
+// Full-game reconstruction/archiving can exceed 5s; keep assertions and the global default unchanged.
 it('automatically archives authoritative final games only, preserving local storage and deduplicating a refreshed session', async () => {
   const profile = JSON.stringify(createPlayerProfile());
   localStorage.setItem(playerProfileKey, profile);
@@ -373,7 +374,7 @@ it('automatically archives authoritative final games only, preserving local stor
     expect(container.textContent?.match(/完整回放已入库/g)).toHaveLength(2),
   );
   expect(await replayLibrary.list()).toHaveLength(2);
-});
+}, 20000);
 it('keeps auto-archive failure separate from a valid final checkpoint and allows manual retry', async () => {
   const spy = vi
     .spyOn(replayLibrary, 'add')

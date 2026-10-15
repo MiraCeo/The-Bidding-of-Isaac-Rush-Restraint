@@ -1,4 +1,5 @@
 import {
+  CircleHelp,
   HeartCrack,
   CircleDashed,
   Repeat2,
@@ -38,6 +39,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AchievementId } from '@/lib/ui/achievements/catalog';
+
+import { achievementCollectionMetadata } from '@/lib/ui/achievements/collection-metadata';
 
 // One distinct code-native glyph per achievement; no remote art or copied game assets.
 export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
@@ -81,15 +84,19 @@ export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
 export function AchievementBadge({
   id,
   achieved = false,
+  concealed = false,
 }: {
   id: AchievementId;
   achieved?: boolean;
+  concealed?: boolean;
 }) {
-  const Glyph = achievementGlyphs[id];
+  const Glyph = concealed ? CircleHelp : achievementGlyphs[id];
   return (
     <span
       className="achievement-badge"
       data-category={id[0]}
+      data-tier={achievementCollectionMetadata[id].tier}
+      data-concealed={concealed}
       data-achieved={achieved}
       aria-hidden="true"
     >

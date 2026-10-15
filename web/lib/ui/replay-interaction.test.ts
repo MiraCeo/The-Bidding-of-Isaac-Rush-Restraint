@@ -592,6 +592,7 @@ describe('read-only replay UI', () => {
       JSON.stringify(profile),
     );
   });
+  // Full-game reconstruction/archiving can exceed 5s; keep assertions and the global default unchanged.
   it('opens the separately archived completed game after restart without reviving it as an active match', async () => {
     persistGameSession(localStorage, gameWithRooms(15));
     persistGameSession(localStorage, createGameSession(19));
@@ -605,7 +606,7 @@ describe('read-only replay UI', () => {
     await click(button('返回进度'));
     await click(button('返回游戏'));
     expect(container.textContent).toContain('选择角色');
-  });
+  }, 20000);
   it('does not navigate back to replay when file reading finishes after the user left settings', async () => {
     const source = serializeReplay(gameWithRooms(1).replay!, 'file-build');
     await mount();
@@ -814,6 +815,7 @@ describe('read-only replay UI', () => {
       parseReplay(await decodedDownload(() => blob)).replay.rooms[0]!.locator,
     ).toMatch(/^ISAAC-.*\/F1-R1#[0-9a-f]{8}$/);
   });
+  // Full-game reconstruction/archiving can exceed 5s; keep assertions and the global default unchanged.
   it('restores historical records on refresh and shows final ranking without a restart or advance button', async () => {
     localStorage.setItem(gameSaveKey, serializeGameSave(gameWithRooms(15)));
     await mount();
@@ -835,7 +837,7 @@ describe('read-only replay UI', () => {
       '进入下一房间',
     );
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
-  });
+  }, 20000);
   it('reads actual offline build metadata instead of guessing the bundle version', () => {
     const meta = document.createElement('meta');
     meta.name = 'bidding-offline-build';

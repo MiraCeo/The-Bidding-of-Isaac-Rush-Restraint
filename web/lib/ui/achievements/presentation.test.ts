@@ -1,10 +1,19 @@
 import { achievementCollectionNotes } from './collection-notes';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { achievementCatalog } from './catalog';
+import {
+  achievementCollectionMetadata,
+  achievementTierLabels,
+  achievementTiers,
+} from './collection-metadata';
+import {
+  achievementCatalog,
+  characterAchievementRequirements,
+} from './catalog';
 import {
   achievementPresentation,
   selectAchievements,
+  achievementListPresentation,
   type AchievementFilters,
 } from './presentation';
 import {
@@ -86,6 +95,84 @@ describe('presentation-only catalog and deterministic filters', () => {
         .map((a) => a.id),
     ).toEqual(['A01', 'E05', 'A02', 'D03']);
     expect(selectAchievements(all, {}, {})).toHaveLength(36);
+  });
+});
+describe('metal config and soft-concealed list policy', () => {
+  it('covers all 36 IDs exactly once without adding thresholds or hiding role prerequisites', () => {
+    expect(Object.keys(achievementCollectionMetadata).sort()).toEqual(
+      achievementCatalog.map((a) => a.id).sort(),
+    );
+    expect(
+      achievementTiers.map(
+        (t) =>
+          achievementCatalog.filter(
+            (a) => achievementCollectionMetadata[a.id].tier === t,
+          ).length,
+      ),
+    ).toEqual([21, 11, 4]);
+    expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
+    expect(
+      Object.entries(achievementCollectionMetadata)
+        .filter(([, m]) => m.hidden)
+        .map(([id]) => id),
+    ).toEqual(['A03', 'C07', 'F02']);
+    for (const ids of Object.values(characterAchievementRequirements))
+      for (const id of ids)
+        expect(achievementCollectionMetadata[id].hidden).toBe(false);
+    expect(achievementCollectionMetadata.A01.tier).toBe('bronze');
+    expect(achievementCollectionMetadata.A02.tier).toBe('silver');
+    expect(achievementCollectionMetadata.A03.tier).toBe('gold');
+  });
+  it.each(['A03', 'C07', 'F02'] as const)(
+    'does not match concealed %s by true name until earned; ID and generic search remain usable',
+    (id) => {
+      const a = achievementCatalog.find((a) => a.id === id)!;
+      expect(achievementListPresentation(id, false)).toMatchObject({
+        name: '???',
+        hidden: true,
+      });
+      expect(selectAchievements({ ...all, query: a.name }, {}, {})).toEqual([]);
+      expect(
+        selectAchievements({ ...all, query: id.toLowerCase() }, {}, {}).map(
+          (a) => a.id,
+        ),
+      ).toEqual([id]);
+      expect(
+        selectAchievements(
+          { ...all, query: a.name },
+          {},
+          { [id]: '2026-10-15T00:00:00.000Z' },
+        ).map((a) => a.id),
+      ).toEqual([id]);
+      expect(achievementListPresentation(id, true)).toMatchObject({
+        name: a.name,
+        hidden: false,
+      });
+    },
+  );
+  it('combines tier with existing filters and does not disclose hidden progress through ranking', () => {
+    expect(
+      selectAchievements({ ...all, tier: 'gold' }, {}, {}).map((a) => a.id),
+    ).toEqual(['A03', 'C07', 'E08', 'F02']);
+    expect(
+      selectAchievements({ ...all, tier: 'gold', category: 'E' }, {}, {}).map(
+        (a) => a.id,
+      ),
+    ).toEqual(['E08']);
+    const secret = Object.freeze({ A03: 4, C07: 1 }),
+      at = '2026-10-15T00:00:00.000Z';
+    expect(
+      selectAchievements({ ...all, sort: 'progress' }, secret, {}),
+    ).toEqual(selectAchievements({ ...all, sort: 'progress' }, {}, {}));
+    expect(
+      selectAchievements({ ...all, tier: 'gold', status: 'achieved' }, secret, {
+        A03: at,
+      }).map((a) => a.id),
+    ).toEqual(['A03']);
+    expect(
+      selectAchievements({ ...all, tier: 'bronze', query: 'A02' }, {}, {}),
+    ).toEqual([]);
+    expect(secret).toEqual({ A03: 4, C07: 1 });
   });
 });
 describe('optional display preference and static responsive contract', () => {

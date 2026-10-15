@@ -1471,3 +1471,16 @@
 .achievement-collection-note h4 { font-size:.72rem; color:var(--primary); font-weight:750; margin-bottom:9px; }
 .achievement-collection-note blockquote { font-size:.88rem; line-height:1.9; color:#ead4ac; }
 .achievement-collection-note p { font-size:.76rem; color:var(--muted-foreground); }
+
+/* 0.5.4 collectible metals; text labels carry meaning without relying on color. */
+.achievement-tier,.achievement-tier-totals>span { --medal:#d7a779; color:var(--medal); font-variant-numeric:tabular-nums; }
+.achievement-tier[data-tier="silver"],.achievement-tier-totals>[data-tier="silver"] { --medal:#d2dbe6; }
+.achievement-tier[data-tier="gold"],.achievement-tier-totals>[data-tier="gold"] { --medal:#f3c665; }
+.achievement-tier { display:inline-flex; align-items:center; flex:none; border:1px solid currentColor; border-radius:4px; padding:1px 5px; font-size:.6rem; line-height:1.5; opacity:.9; }
+.achievement-card-heading strong { flex:1; }
+.achievement-tier-totals { display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; font-size:.68rem; }
+.achievement-badge[data-achieved="true"][data-tier="bronze"] { color:#efbf92; background:linear-gradient(135deg,#65482f,#38291e); border-color:#af8053; box-shadow:inset 0 0 0 3px #39271b; }
+.achievement-badge[data-achieved="true"][data-tier="silver"] { color:#e2eaf3; background:linear-gradient(135deg,#53606f,#2d323b); border-color:#a2afbd; box-shadow:inset 0 0 0 3px #2a3039; }
+.achievement-badge[data-achieved="true"][data-tier="gold"] { color:#ffe09a; background:linear-gradient(135deg,#765627,#3c2c1b); border-color:#d0a552; box-shadow:inset 0 0 0 3px #3a2a16; }
+.achievement-badge[data-concealed="true"] { border-radius:10px; background:#211d19; color:#a79a87; border-color:#51483c; }
+.achievement-card[data-concealed="true"] .achievement-summary { font-style:italic; }

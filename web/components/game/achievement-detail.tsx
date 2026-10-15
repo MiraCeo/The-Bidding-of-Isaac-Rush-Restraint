@@ -9,6 +9,10 @@ import {
 } from '@/lib/ui/achievements/catalog';
 import { achievementPresentation } from '@/lib/ui/achievements/presentation';
 import { achievementCollectionNotes } from '@/lib/ui/achievements/collection-notes';
+import {
+  achievementCollectionMetadata,
+  achievementTierLabels,
+} from '@/lib/ui/achievements/collection-metadata';
 import { AchievementBadge } from './achievement-badge';
 
 /** Full saved metadata stays here; the collection only needs a compact summary. */
@@ -51,6 +55,26 @@ export function AchievementDetail({
         {a.condition}
       </Dialog.Description>
       <dl className="achievement-detail-facts">
+        <div>
+          <dt>徽章等级</dt>
+          <dd>
+            <span
+              className="achievement-tier"
+              data-tier={achievementCollectionMetadata[a.id].tier}
+            >
+              {achievementTierLabels[achievementCollectionMetadata[a.id].tier]}
+              徽章
+            </span>
+          </dd>
+        </div>
+        {achievementCollectionMetadata[a.id].hidden && (
+          <div>
+            <dt>展示属性</dt>
+            <dd>
+              隐藏成就 · 未达成时列表隐藏名称与专属图标，详情可查看真实条件。
+            </dd>
+          </div>
+        )}
         <div>
           <dt>适用模式</dt>
           <dd>

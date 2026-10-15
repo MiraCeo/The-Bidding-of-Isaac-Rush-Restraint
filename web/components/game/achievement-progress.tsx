@@ -13,7 +13,7 @@ import {
 } from '@/lib/ui/achievements/catalog';
 import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
-  achievementPresentation,
+  achievementListPresentation,
   selectAchievements,
   type AchievementStatusFilter,
   type AchievementSort,
@@ -24,6 +24,12 @@ import {
   type AchievementColumns,
 } from '@/lib/ui/achievements/layout-preferences';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
+import {
+  achievementCollectionMetadata,
+  achievementTiers,
+  achievementTierLabels,
+  type AchievementTier,
+} from '@/lib/ui/achievements/collection-metadata';
 import { AchievementBadge } from './achievement-badge';
 import { AchievementSystemRules } from './achievement-system-rules';
 import { AchievementDetail } from './achievement-detail';
@@ -50,7 +56,8 @@ export function AchievementProgress({
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState<AchievementCategory | 'all'>('all'),
     [status, setStatus] = useState<AchievementStatusFilter>('all'),
-    [sort, setSort] = useState<AchievementSort>('catalog');
+    [sort, setSort] = useState<AchievementSort>('catalog'),
+    [tier, setTier] = useState<AchievementTier | 'all'>('all');
   const [columns, setColumns] = useState(() =>
       loadAchievementColumns(getPreferenceStorage()),
     ),
@@ -95,7 +102,7 @@ export function AchievementProgress({
     (c) => c.id === 'isaac' || view?.characterUnlocks[c.id],
   ).length;
   const entries = selectAchievements(
-    { query, category, status, sort },
+    { query, category, status, sort, tier },
     progress,
     achieved,
   );
@@ -120,6 +127,7 @@ export function AchievementProgress({
     setCategory('all');
     setStatus('all');
     setSort('catalog');
+    setTier('all');
   };
   return (
     <Dialog.Root
@@ -152,6 +160,20 @@ export function AchievementProgress({
               <Users aria-hidden="true" size={14} /> 已解锁角色 {unlockedRoles}{' '}
               / {characterCatalog.length}
             </span>
+          </div>
+          <div className="achievement-tier-totals" aria-label="各等级收藏进度">
+            {achievementTiers.map((t) => {
+              const badges = achievementCatalog.filter(
+                (a) => achievementCollectionMetadata[a.id].tier === t,
+              );
+              return (
+                <span key={t} data-tier={t}>
+                  {achievementTierLabels[t]}{' '}
+                  {badges.filter((a) => achieved[a.id]).length} /{' '}
+                  {badges.length}
+                </span>
+              );
+            })}
           </div>
         </header>
         <div className="achievement-browser">
@@ -205,6 +227,22 @@ export function AchievementProgress({
                 <option value="3">3 列</option>
               </select>
             </label>
+            <label>
+              徽章等级
+              <select
+                value={tier}
+                onChange={(e) =>
+                  setTier(e.target.value as AchievementTier | 'all')
+                }
+              >
+                <option value="all">全部等级</option>
+                {achievementTiers.map((t) => (
+                  <option key={t} value={t}>
+                    {achievementTierLabels[t]}徽章
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <fieldset className="achievement-categories">
             <legend className="sr-only">成就分类</legend>
@@ -253,7 +291,9 @@ export function AchievementProgress({
           <div className="achievement-grid" data-columns={columns}>
             {entries.map((a) => {
               const at = achieved[a.id],
-                value = progress[a.id] ?? 0;
+                value = progress[a.id] ?? 0,
+                listing = achievementListPresentation(a.id, !!at),
+                badgeTier = achievementCollectionMetadata[a.id].tier;
               return (
                 <button
                   type="button"
@@ -261,21 +301,29 @@ export function AchievementProgress({
                   className="achievement-card"
                   key={a.id}
                   data-achieved={!!at}
-                  aria-label={`查看${a.id} ${a.name}详情`}
+                  data-concealed={listing.hidden}
+                  aria-label={`查看${a.id} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
                   aria-haspopup="dialog"
                   aria-controls={detail ? dialogId : undefined}
                   onClick={(e) => openDetail(a.id, e)}
                 >
-                  <AchievementBadge id={a.id} achieved={!!at} />
+                  <AchievementBadge
+                    id={a.id}
+                    achieved={!!at}
+                    concealed={listing.hidden}
+                  />
                   <span className="achievement-card-copy">
                     <span className="achievement-card-heading">
-                      <strong>{a.name}</strong>
+                      <strong>{listing.name}</strong>
+                      <span className="achievement-tier" data-tier={badgeTier}>
+                        {achievementTierLabels[badgeTier]}徽章
+                      </span>
                       <span className="achievement-card-state">
                         {at ? (
                           <>
                             <Check size={12} aria-hidden="true" /> 已达成
                           </>
-                        ) : a.target === 1 ? (
+                        ) : listing.hidden || a.target === 1 ? (
                           <>
                             <LockKeyhole size={12} aria-hidden="true" />
                             <span className="sr-only">未达成</span>
@@ -284,9 +332,9 @@ export function AchievementProgress({
                       </span>
                     </span>
                     <span className="achievement-summary">
-                      {achievementPresentation[a.id].summary}
+                      {listing.summary}
                     </span>
-                    {a.target > 1 && (
+                    {!listing.hidden && a.target > 1 && (
                       <span className="achievement-card-progress">
                         <span className="sr-only">
                           {a.kind === 'same-match'

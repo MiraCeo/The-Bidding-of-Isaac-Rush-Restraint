@@ -130,7 +130,7 @@ it('sorts actual saved progress without changing records', async () => {
     cards()
       .slice(0, 3)
       .map((c) => c.id),
-  ).toEqual(['achievement-A01', 'achievement-A03', 'achievement-A02']);
+  ).toEqual(['achievement-A01', 'achievement-A02', 'achievement-A03']);
   await select(0, 'pending');
   expect(cards()).toHaveLength(35);
   await select(1, 'recent');

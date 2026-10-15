@@ -96,7 +96,7 @@ it('shows exactly 36 catalog cards in six categories and six prerequisites versu
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
   expect(node.querySelectorAll('.achievement-badge')).toHaveLength(36);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(8);
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(6);
   expect(node.textContent).toContain('成就总览0 / 36');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
@@ -144,8 +144,16 @@ it('shows saved progress, exact ISO completion time, scope and same-match peak l
     '1 / 10',
   );
   expect(node.querySelector('#achievement-A03')!.textContent).toContain(
+    '隐藏成就',
+  );
+  expect(node.querySelector('#achievement-A03 progress')).toBeNull();
+  await act(async () =>
+    (node.querySelector('#achievement-A03') as HTMLButtonElement).click(),
+  );
+  expect(document.querySelector('[role=dialog]')!.textContent).toContain(
     '单局最高进度',
   );
+  await closeDialog();
   await act(async () =>
     (node.querySelector('#achievement-F02') as HTMLButtonElement).click(),
   );

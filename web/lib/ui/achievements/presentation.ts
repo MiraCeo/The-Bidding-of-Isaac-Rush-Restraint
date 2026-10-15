@@ -4,6 +4,11 @@ import {
   type AchievementId,
 } from './catalog';
 
+import {
+  achievementCollectionMetadata,
+  type AchievementTier,
+} from './collection-metadata';
+
 /** Presentation only: does not add facts, evaluate achievements or write profiles. */
 export const achievementPresentation: Readonly<
   Record<AchievementId, { summary: string; note: string }>
@@ -153,6 +158,21 @@ export const achievementPresentation: Readonly<
     note: '以正式终局的真人冠军身份为准，任意AI难度均可；仅存活或排名数组第一不替代冠军事实。仅统计0.5.3启用后的新终局。',
   },
 };
+/** Soft concealment is a list policy only. Opening details intentionally reveals
+ * real conditions; no reveal bit is ever saved by browsing or searching. */
+export function achievementListPresentation(
+  id: AchievementId,
+  achieved: boolean,
+) {
+  const hidden = achievementCollectionMetadata[id].hidden && !achieved;
+  return {
+    hidden,
+    name: hidden ? '???' : achievementCatalog.find((a) => a.id === id)!.name,
+    summary: hidden
+      ? '隐藏成就 · 点击查看详情'
+      : achievementPresentation[id].summary,
+  };
+}
 export type AchievementStatusFilter = 'all' | 'achieved' | 'pending';
 export type AchievementSort = 'catalog' | 'recent' | 'progress';
 export interface AchievementFilters {
@@ -160,6 +180,7 @@ export interface AchievementFilters {
   category: AchievementCategory | 'all';
   status: AchievementStatusFilter;
   sort: AchievementSort;
+  tier?: AchievementTier | 'all';
 }
 export function selectAchievements(
   filters: AchievementFilters,
@@ -171,12 +192,17 @@ export function selectAchievements(
     .filter(
       (a) =>
         (filters.category === 'all' || a.category === filters.category) &&
+        (!filters.tier ||
+          filters.tier === 'all' ||
+          achievementCollectionMetadata[a.id].tier === filters.tier) &&
         (filters.status === 'all' ||
           (filters.status === 'achieved'
             ? !!achieved[a.id]
             : !achieved[a.id])) &&
         (!query ||
-          `${a.id} ${a.name}`.toLocaleLowerCase('zh-CN').includes(query)),
+          `${a.id} ${achievementListPresentation(a.id, !!achieved[a.id]).name}`
+            .toLocaleLowerCase('zh-CN')
+            .includes(query)),
     )
     .sort((a, b) => {
       if (filters.sort === 'recent') {
@@ -187,7 +213,11 @@ export function selectAchievements(
       }
       if (filters.sort === 'progress') {
         const ratio = (id: AchievementId, target: number) =>
-          achieved[id] ? 1 : Math.min(progress[id] ?? 0, target) / target;
+          achieved[id]
+            ? 1
+            : achievementCollectionMetadata[id].hidden
+              ? 0
+              : Math.min(progress[id] ?? 0, target) / target;
         const difference = ratio(b.id, b.target) - ratio(a.id, a.target);
         if (difference) return difference;
       }
