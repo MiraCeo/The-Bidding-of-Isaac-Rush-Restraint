@@ -84,8 +84,10 @@ const survivalCache = new WeakMap<
   }
 >();
 class StaleProfileWriteError extends Error {
-  constructor() {
-    super('档案已明确替换，旧保存任务已取消；当前内存对局保留。');
+  constructor(
+    message = '档案已明确替换，旧保存任务已取消；当前内存对局保留。',
+  ) {
+    super(message);
   }
 }
 function scheduledProfileEpoch(
@@ -101,10 +103,11 @@ function assertScheduledProfileEpoch(
   storage: SaveStorage,
   expected: string | null | undefined,
 ) {
-  if (
-    expected !== undefined &&
-    storage.getItem(profileReplacementEpochKey) !== expected
-  )
+  if (expected === undefined)
+    throw new StaleProfileWriteError(
+      '保存请求的档案代次未读取，本次未写入；当前内存对局保留，请重试。',
+    );
+  if (storage.getItem(profileReplacementEpochKey) !== expected)
     throw new StaleProfileWriteError();
 }
 function committed(options: ClientSaveOptions, source: string | null) {

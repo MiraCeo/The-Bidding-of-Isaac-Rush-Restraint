@@ -249,3 +249,36 @@ it('serializes independent manual grant and both formal modes without losing ach
   );
   expect(store.getItem(playerProfileKey)).toBe(before);
 });
+it.each(['classic', 'survival'] as const)(
+  'does not treat a failed scheduling epoch read as empty in %s; a fresh retry counts once',
+  async (mode) => {
+    const store = memory(),
+      coordinator = locks(),
+      base = store.getItem;
+    let failed = false;
+    store.getItem = (key) => {
+      if (key === 'bidding-profile-replacement-epoch-v1' && !failed) {
+        failed = true;
+        throw Error('transient read');
+      }
+      return base(key);
+    };
+    const pending =
+      mode === 'classic'
+        ? classicTurn(startClassic())
+        : survivalTurn(startSurvival());
+    await expect(save(mode, store, pending, coordinator)).rejects.toThrow(
+      '代次未读取',
+    );
+    expect(store.data.size).toBe(0);
+    const result = await save(mode, store, pending, coordinator);
+    expect(result.message).toBe('');
+    expect(
+      readAchievementRegistry(JSON.parse(store.getItem(playerProfileKey)!))!
+        .receipts,
+    ).toHaveLength(2);
+    const committed = store.getItem(playerProfileKey);
+    await save(mode, store, result.session, coordinator);
+    expect(store.getItem(playerProfileKey)).toBe(committed);
+  },
+);
