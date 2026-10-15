@@ -40,7 +40,11 @@ import {
 } from 'lucide-react';
 import type { AchievementId } from '@/lib/ui/achievements/catalog';
 
-import { achievementCollectionMetadata } from '@/lib/ui/achievements/collection-metadata';
+import {
+  achievementCollectionMetadata,
+  achievementTierLabels,
+  achievementTiers,
+} from '@/lib/ui/achievements/collection-metadata';
 
 // One distinct code-native glyph per achievement; no remote art or copied game assets.
 export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
@@ -91,16 +95,25 @@ export function AchievementBadge({
   concealed?: boolean;
 }) {
   const Glyph = concealed ? CircleHelp : achievementGlyphs[id];
+  const tier = achievementCollectionMetadata[id].tier;
   return (
     <span
       className="achievement-badge"
       data-category={id[0]}
-      data-tier={achievementCollectionMetadata[id].tier}
+      data-tier={tier}
       data-concealed={concealed}
       data-achieved={achieved}
       aria-hidden="true"
     >
+      <span className="achievement-badge-pips">
+        {Array.from({ length: achievementTiers.indexOf(tier) + 1 }, (_, i) => (
+          <i key={i} />
+        ))}
+      </span>
       <Glyph strokeWidth={1.65} />
+      <span className="achievement-badge-rank">
+        {achievementTierLabels[tier]}
+      </span>
     </span>
   );
 }

@@ -15,6 +15,7 @@ import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
   achievementListPresentation,
   selectAchievements,
+  groupAchievementEntries,
   type AchievementStatusFilter,
   type AchievementSort,
 } from '@/lib/ui/achievements/presentation';
@@ -286,74 +287,113 @@ export function AchievementProgress({
             <output>
               显示 {entries.length} / {total} 项
             </output>
-            <span>点击徽章查看详情</span>
+            <span>按分类分组 · 分类内排序 · 点击徽章查看详情</span>
           </div>
-          <div className="achievement-grid" data-columns={columns}>
-            {entries.map((a) => {
-              const at = achieved[a.id],
-                value = progress[a.id] ?? 0,
-                listing = achievementListPresentation(a.id, !!at),
-                badgeTier = achievementCollectionMetadata[a.id].tier;
-              return (
-                <button
-                  type="button"
-                  id={`achievement-${a.id}`}
-                  className="achievement-card"
-                  key={a.id}
-                  data-achieved={!!at}
-                  data-concealed={listing.hidden}
-                  aria-label={`查看${a.id} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
-                  aria-haspopup="dialog"
-                  aria-controls={detail ? dialogId : undefined}
-                  onClick={(e) => openDetail(a.id, e)}
+          <div className="achievement-sections">
+            {groupAchievementEntries(entries).map(
+              ({ category: group, items }) => (
+                <section
+                  className="achievement-section"
+                  key={group.id}
+                  aria-labelledby={`achievement-section-${group.id}`}
                 >
-                  <AchievementBadge
-                    id={a.id}
-                    achieved={!!at}
-                    concealed={listing.hidden}
-                  />
-                  <span className="achievement-card-copy">
-                    <span className="achievement-card-heading">
-                      <strong>{listing.name}</strong>
-                      <span className="achievement-tier" data-tier={badgeTier}>
-                        {achievementTierLabels[badgeTier]}徽章
-                      </span>
-                      <span className="achievement-card-state">
-                        {at ? (
-                          <>
-                            <Check size={12} aria-hidden="true" /> 已达成
-                          </>
-                        ) : listing.hidden || a.target === 1 ? (
-                          <>
-                            <LockKeyhole size={12} aria-hidden="true" />
-                            <span className="sr-only">未达成</span>
-                          </>
-                        ) : null}
-                      </span>
+                  <header className="achievement-section-heading">
+                    <span
+                      className="achievement-section-index"
+                      aria-hidden="true"
+                    >
+                      {group.id}
                     </span>
-                    <span className="achievement-summary">
-                      {listing.summary}
+                    <h4 id={`achievement-section-${group.id}`}>{group.name}</h4>
+                    <span
+                      className="achievement-section-rule"
+                      aria-hidden="true"
+                    />
+                    <span className="achievement-section-count">
+                      已达成{' '}
+                      {
+                        achievementCatalog.filter(
+                          (a) => a.category === group.id && achieved[a.id],
+                        ).length
+                      }{' '}
+                      / {group.count} · 显示 {items.length} 项
                     </span>
-                    {!listing.hidden && a.target > 1 && (
-                      <span className="achievement-card-progress">
-                        <span className="sr-only">
-                          {a.kind === 'same-match'
-                            ? '单局最高进度'
-                            : '已记录进度'}
-                          ：
-                        </span>
-                        {Math.min(value, a.target)} / {a.target}
-                        <progress
-                          aria-label={`${a.name}进度`}
-                          value={Math.min(value, a.target)}
-                          max={a.target}
-                        />
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
+                  </header>
+                  <div className="achievement-grid" data-columns={columns}>
+                    {items.map((a) => {
+                      const at = achieved[a.id],
+                        value = progress[a.id] ?? 0,
+                        listing = achievementListPresentation(a.id, !!at),
+                        badgeTier = achievementCollectionMetadata[a.id].tier;
+                      return (
+                        <button
+                          type="button"
+                          id={`achievement-${a.id}`}
+                          className="achievement-card"
+                          key={a.id}
+                          data-achieved={!!at}
+                          data-tier={badgeTier}
+                          data-concealed={listing.hidden}
+                          aria-label={`查看${a.id} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
+                          aria-haspopup="dialog"
+                          aria-controls={detail ? dialogId : undefined}
+                          onClick={(e) => openDetail(a.id, e)}
+                        >
+                          <AchievementBadge
+                            id={a.id}
+                            achieved={!!at}
+                            concealed={listing.hidden}
+                          />
+                          <span className="achievement-card-copy">
+                            <span className="achievement-card-heading">
+                              <strong>{listing.name}</strong>
+                              <span
+                                className="achievement-tier"
+                                data-tier={badgeTier}
+                              >
+                                {achievementTierLabels[badgeTier]}徽章
+                              </span>
+                              <span className="achievement-card-state">
+                                {at ? (
+                                  <>
+                                    <Check size={12} aria-hidden="true" />{' '}
+                                    已达成
+                                  </>
+                                ) : listing.hidden || a.target === 1 ? (
+                                  <>
+                                    <LockKeyhole size={12} aria-hidden="true" />
+                                    <span className="sr-only">未达成</span>
+                                  </>
+                                ) : null}
+                              </span>
+                            </span>
+                            <span className="achievement-summary">
+                              {listing.summary}
+                            </span>
+                            {!listing.hidden && a.target > 1 && (
+                              <span className="achievement-card-progress">
+                                <span className="sr-only">
+                                  {a.kind === 'same-match'
+                                    ? '单局最高进度'
+                                    : '已记录进度'}
+                                  ：
+                                </span>
+                                {Math.min(value, a.target)} / {a.target}
+                                <progress
+                                  aria-label={`${a.name}进度`}
+                                  value={Math.min(value, a.target)}
+                                  max={a.target}
+                                />
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ),
+            )}
           </div>
           {!entries.length && (
             <div className="achievement-empty">

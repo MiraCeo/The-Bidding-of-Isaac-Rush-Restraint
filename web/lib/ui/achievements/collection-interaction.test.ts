@@ -295,3 +295,45 @@ it('moves common rules to one discoverable dialog and returns to the original ac
   expect(popup().textContent).toContain('一键解锁全部角色');
   await close();
 });
+
+it('creates six independent category grids with separators and respects filtered category boundaries', async () => {
+  await mount(earned());
+  const groups = () => [...node.querySelectorAll('.achievement-section')];
+  expect(groups().map((g) => g.querySelector('h4')!.textContent)).toEqual([
+    '竞拍失败',
+    '竞拍与策略',
+    '扰乱与结算奇遇',
+    '资金与道具',
+    '角色道具与探索',
+    '生存淘汰',
+  ]);
+  expect(
+    groups().map((g) => g.querySelectorAll('.achievement-card').length),
+  ).toEqual([3, 6, 7, 6, 8, 6]);
+  expect(node.querySelectorAll('.achievement-section-rule')).toHaveLength(6);
+  expect(
+    groups()[0]!.querySelector('.achievement-section-count')!.textContent,
+  ).toContain('已达成 1 / 3');
+  await select(2, '2');
+  expect(
+    [...node.querySelectorAll('.achievement-grid')].every(
+      (g) => g.getAttribute('data-columns') === '2',
+    ),
+  ).toBe(true);
+  await select(3, 'gold');
+  expect(groups().map((g) => g.querySelector('h4')!.textContent)).toEqual([
+    '竞拍失败',
+    '扰乱与结算奇遇',
+    '角色道具与探索',
+    '生存淘汰',
+  ]);
+  expect(cards()).toHaveLength(4);
+  await select(3, 'all');
+  await search('B0');
+  expect(groups()).toHaveLength(1);
+  expect(cards()).toHaveLength(6);
+  await search('不存在');
+  expect(groups()).toHaveLength(0);
+  expect(node.textContent).toContain('没有符合条件的成就');
+  expect(localStorage.getItem(playerProfileKey)).toBeNull();
+});

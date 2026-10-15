@@ -1,3 +1,4 @@
+import { AchievementNotice } from './achievement-notice';
 import { GameHeader } from './game-header';
 import {
   useCallback,
@@ -508,14 +509,10 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
           data-reduce-motion={preferences.reduceMotion}
         >
           {page}
-          {liveSave.achievementNotice && (
-            <output className="save-message achievement-notice">
-              {liveSave.achievementNotice}
-              <button type="button" onClick={liveSave.dismissNotice}>
-                知道了
-              </button>
-            </output>
-          )}
+          <AchievementNotice
+            ids={liveSave.achievementNotice}
+            onDismiss={liveSave.dismissNotice}
+          />
           {liveSave.message && (
             <output className="survival-save-message">
               {liveSave.message}

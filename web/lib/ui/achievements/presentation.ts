@@ -1,5 +1,7 @@
 import {
   achievementCatalog,
+  achievementCategories,
+  type AchievementDefinition,
   type AchievementCategory,
   type AchievementId,
 } from './catalog';
@@ -223,4 +225,15 @@ export function selectAchievements(
       }
       return a.id.localeCompare(b.id);
     });
+}
+
+/** All-view categories are real grid boundaries. Input order (selected sorting)
+ * is retained inside each category; empty groups are never rendered. */
+export function groupAchievementEntries(
+  entries: readonly AchievementDefinition[],
+) {
+  return achievementCategories.flatMap((category) => {
+    const items = entries.filter((a) => a.category === category.id);
+    return items.length ? [{ category, items }] : [];
+  });
 }

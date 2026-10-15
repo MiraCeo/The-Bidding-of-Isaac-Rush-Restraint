@@ -1,4 +1,7 @@
-import { achievementCatalog } from '@/lib/ui/achievements/catalog';
+import {
+  achievementCatalog,
+  type AchievementId,
+} from '@/lib/ui/achievements/catalog';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
@@ -58,9 +61,11 @@ export function useLivePersistence(options: {
       hasGrowth: !!options.session?.growth && !options.session.growthIssue,
     };
   }, [options.origin, options.enabled, options.session]);
-  const [notice, setNotice] = useState<{ anchor: string; text: string } | null>(
-    null,
-  );
+  const [notice, setNotice] = useState<{
+    anchor: string;
+    ids: AchievementId[];
+  } | null>(null);
+  const noticeGeneration = useRef(0);
   const dismissNotice = useCallback(() => setNotice(null), []);
   const [retryRevision, setRetryRevision] = useState(0);
   const [status, setStatus] = useState({
@@ -77,6 +82,7 @@ export function useLivePersistence(options: {
         const next = currentGrowthEpoch();
         if (next === undefined || next === epoch) return;
         epoch = next;
+        noticeGeneration.current += 1;
         setNotice(null);
         // A replacement invalidates only operational receipt interpretation, never
         // gameplay. Persist the ignored prefix even before the next user action so
@@ -116,6 +122,7 @@ export function useLivePersistence(options: {
       incomingSource.current = null;
     }
     const owned = baseline.current,
+      feedbackGeneration = noticeGeneration.current,
       abort = new AbortController();
     controller.current?.abort();
     controller.current = abort;
@@ -147,18 +154,24 @@ export function useLivePersistence(options: {
         const issue = snapshot.growthIssue
           ? `本局成长捕获已暂停：${snapshot.growthIssue}`
           : '';
-        if (result.newlyAchieved.length)
-          setNotice({
-            anchor,
-            text:
-              '成就已保存：' +
-              result.newlyAchieved
-                .map(
-                  (id) =>
-                    achievementCatalog.find((a) => a.id === id)?.name ?? id,
-                )
-                .join('、'),
-          });
+        if (
+          result.newlyAchieved.length &&
+          feedbackGeneration === noticeGeneration.current
+        ) {
+          const ids = achievementCatalog
+            .filter((a) => result.newlyAchieved.includes(a.id))
+            .map((a) => a.id);
+          if (ids.length)
+            setNotice((previous) => ({
+              anchor,
+              ids: [
+                ...new Set([
+                  ...(previous?.anchor === anchor ? previous.ids : []),
+                  ...ids,
+                ]),
+              ],
+            }));
+        }
         setStatus({
           saved: true,
           busy: false,
@@ -194,7 +207,7 @@ export function useLivePersistence(options: {
     retry,
     invalidate,
     acceptSource,
-    achievementNotice: notice?.anchor === anchor ? notice.text : '',
+    achievementNotice: notice?.anchor === anchor ? notice.ids : [],
     dismissNotice,
   };
 }

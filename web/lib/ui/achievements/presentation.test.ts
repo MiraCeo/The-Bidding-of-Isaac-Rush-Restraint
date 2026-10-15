@@ -13,6 +13,7 @@ import {
 import {
   achievementPresentation,
   selectAchievements,
+  groupAchievementEntries,
   achievementListPresentation,
   type AchievementFilters,
 } from './presentation';
@@ -252,5 +253,38 @@ describe('optional display preference and static responsive contract', () => {
       'max-height:calc(100dvh - 40px); overflow-y:auto',
     ])
       expect(css).toContain(source);
+  });
+});
+
+describe('category sections preserve sorted input within a real category boundary', () => {
+  it('starts each category on an independent grid, omits empty groups, and never loses or duplicates an entry', () => {
+    const entries = selectAchievements(
+      { ...all, sort: 'progress' },
+      { D03: 999, A02: 4, E05: 2 },
+      {},
+    );
+    const groups = groupAchievementEntries(entries);
+    expect(groups.map((g) => g.category.id)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+    ]);
+    expect(groups.map((g) => g.items.length)).toEqual([3, 6, 7, 6, 8, 6]);
+    expect(new Set(groups.flatMap((g) => g.items.map((a) => a.id))).size).toBe(
+      36,
+    );
+    for (const g of groups)
+      expect(g.items).toEqual(
+        entries.filter((a) => a.category === g.category.id),
+      );
+    expect(groupAchievementEntries([])).toEqual([]);
+    expect(
+      groupAchievementEntries(
+        selectAchievements({ ...all, tier: 'gold' }, {}, {}),
+      ).map((g) => g.category.id),
+    ).toEqual(['A', 'C', 'E', 'F']);
   });
 });

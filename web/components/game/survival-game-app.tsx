@@ -1,3 +1,4 @@
+import { AchievementNotice } from './achievement-notice';
 import { UtilityPageHeading } from './utility-page-heading';
 import { ArrowLeft } from 'lucide-react';
 import { GameHeader } from './game-header';
@@ -707,14 +708,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         data-reduce-motion={preferences.reduceMotion}
       >
         {page}
-        {liveSave.achievementNotice && (
-          <output className="save-message achievement-notice">
-            {liveSave.achievementNotice}
-            <button type="button" onClick={liveSave.dismissNotice}>
-              知道了
-            </button>
-          </output>
-        )}
+        <AchievementNotice
+          ids={liveSave.achievementNotice}
+          onDismiss={liveSave.dismissNotice}
+        />
         <output className="survival-save-message">
           {message || saveStatus}
           {props.restoreMessage && <span> · {props.restoreMessage}</span>}
