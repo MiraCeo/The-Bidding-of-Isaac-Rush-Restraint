@@ -1,6 +1,6 @@
 import { useCharacterAccess } from './use-character-access';
 import { characterRequirementText } from '@/lib/ui/achievements/character-access';
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { useState, type ReactNode } from 'react';
 import { Check, Coins, PackageOpen } from 'lucide-react';
 
@@ -106,19 +106,22 @@ export function CharacterSelection({
 
   return (
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        navigation={
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <div className="character-step" aria-label="当前步骤">
-            <span>{mode === 'survival' ? '生存模式' : '经典模式'}</span>
-            <strong>{utilityPanel ? '未开始对局' : '选择角色'}</strong>
-          </div>
-        </div>
-      </header>
+        }
+        context={
+          <>
+            <div className="character-step" aria-label="当前步骤">
+              <span>{mode === 'survival' ? '生存模式' : '经典模式'}</span>
+              <strong>{utilityPanel ? '未开始对局' : '选择角色'}</strong>
+            </div>
+          </>
+        }
+      />
 
       <section
         className="character-stage"

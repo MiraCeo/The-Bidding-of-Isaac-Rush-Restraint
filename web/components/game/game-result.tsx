@@ -1,4 +1,4 @@
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { Coins, Crown, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -46,21 +46,24 @@ export function GameResult({
   return (
     <Container className="final-page">
       {!embedded && (
-        <header className="topbar">
-          <div className="topbar-inner">
-            <GameBrand />
+        <GameHeader
+          navigation={
             <div className="result-header-title">
               <span>三层 · 十五房间</span>
               <strong>最终结算</strong>
             </div>
-            <div className="round-status">
-              <span className="status-chip">
-                <Crown aria-hidden="true" />
-                挑战完成
-              </span>
-            </div>
-          </div>
-        </header>
+          }
+          context={
+            <>
+              <div className="round-status">
+                <span className="status-chip">
+                  <Crown aria-hidden="true" />
+                  挑战完成
+                </span>
+              </div>
+            </>
+          }
+        />
       )}
 
       <section className="final-stage">

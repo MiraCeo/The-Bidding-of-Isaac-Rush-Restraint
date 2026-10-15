@@ -15,6 +15,7 @@ interface GameSettingsProps {
   beforeGame?: boolean;
   onOpenReplay?: () => void;
   onReturnGame?: () => void;
+  returnLabel?: string;
 }
 export function GameSettings({
   preferences,
@@ -22,6 +23,7 @@ export function GameSettings({
   onChange,
   beforeGame = false,
   onReturnGame = () => {},
+  returnLabel = '返回游戏',
 }: GameSettingsProps) {
   return (
     <section
@@ -33,10 +35,11 @@ export function GameSettings({
         eyebrow="INTERFACE SETTINGS"
         title="设置"
         titleId="room-utilities-title"
+        description="显示偏好与版本信息，不改变游戏结算。"
       >
         <Button type="button" variant="secondary" onClick={onReturnGame}>
           <ArrowLeft aria-hidden="true" />
-          返回游戏
+          {returnLabel}
         </Button>
       </UtilityPageHeading>
       <div className="utility-page-content game-settings-content">

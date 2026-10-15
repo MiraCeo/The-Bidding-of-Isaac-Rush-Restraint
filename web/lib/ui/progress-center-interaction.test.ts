@@ -1,3 +1,4 @@
+import { appVersion } from './game-version';
 import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
@@ -133,9 +134,13 @@ it('keeps one product identity across all five navigation entries and moves prog
       expect(container.querySelector('.topbar button')?.textContent).not.toBe(
         '返回主菜单',
       );
-      expect(
-        container.querySelector('.topbar .status-chip')?.textContent,
-      ).toContain('主菜单');
+      expect(container.querySelector('.topbar .app-version')?.textContent).toBe(
+        `v${appVersion}`,
+      );
+      expect(container.querySelector('.topbar')?.textContent).not.toContain(
+        '主菜单',
+      );
+      expect(container.querySelector('.page-context-bar')).toBeNull();
     }
   }
 });
@@ -161,9 +166,13 @@ it('uses the same heading skeleton for all four progress categories and keeps th
     ).toBe(tab);
   }
   await click('生存');
-  expect(
-    container.querySelector('.topbar .status-chip')?.textContent,
-  ).toContain('主菜单');
+  expect(container.querySelector('.topbar .app-version')?.textContent).toBe(
+    `v${appVersion}`,
+  );
+  expect(container.querySelector('.topbar')?.textContent).not.toContain(
+    '主菜单',
+  );
+  expect(container.querySelector('.page-context-bar')).toBeNull();
   expect(localStorage.getItem(gameSaveKey)).toBeNull();
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
 });
@@ -181,20 +190,22 @@ it.each(['classic', 'survival'] as const)(
     if (game.phase === 'character_selection')
       throw Error('Expected a started source match');
     expect(
-      container.querySelector('.topbar .round-status')?.textContent,
+      container.querySelector('.page-context-bar .round-status')?.textContent,
     ).toContain('第 1 层');
     expect(
-      container.querySelector('.topbar .status-chip-money strong')?.textContent,
+      container.querySelector('.page-context-bar .status-chip-money strong')
+        ?.textContent,
     ).toBe(String(game.players.find((p) => p.isHuman)!.money));
     await click('对局记录');
     await click(mode === 'classic' ? '生存' : '经典');
     expect(
-      container.querySelector('.topbar .status-chip-money strong')?.textContent,
+      container.querySelector('.page-context-bar .status-chip-money strong')
+        ?.textContent,
     ).toBe(String(game.players.find((p) => p.isHuman)!.money));
     await act(async () =>
       container
         .querySelector<HTMLButtonElement>(
-          '.topbar [aria-label="查看角色构筑"]',
+          '.page-context-bar [aria-label="查看角色构筑"]',
         )!
         .click(),
     );

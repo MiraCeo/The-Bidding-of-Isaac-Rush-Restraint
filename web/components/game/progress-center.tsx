@@ -2,7 +2,7 @@ import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Coins } from 'lucide-react';
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { UtilityPageHeading } from './utility-page-heading';
 import { GameNavigation } from './game-navigation';
 import { useSessionTools } from './session-context';
@@ -20,7 +20,7 @@ import {
   type SurvivalReplayDocument,
 } from '@/lib/ui/survival-persistence';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import { appVersion, readBuildVersion } from '@/lib/ui/game-version';
+import { readBuildVersion } from '@/lib/ui/game-version';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
@@ -206,11 +206,12 @@ export function ProgressCenter({
   const contextHuman = contextGame?.players.find((player) => player.isHuman);
   return (
     <main className="ranking-page progress-page">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        navigation={
           <GameNavigation page="progress" onPageChange={onNavigate} />
-          {contextGame ? (
+        }
+        context={
+          contextGame ? (
             <div className="round-status">
               <span className="status-chip">
                 第 {contextGame.floorIndex + 1} 层 · 房间{' '}
@@ -230,16 +231,14 @@ export function ProgressCenter({
                 <strong>{contextHuman?.money ?? '—'}</strong>
               </span>
             </div>
-          ) : origin === 'menu' ? (
-            <span className="status-chip">主菜单 · {appVersion}</span>
-          ) : (
+          ) : origin === 'menu' ? null : (
             <div className="character-step" aria-label="当前步骤">
               <span>{origin === 'survival' ? '生存模式' : '经典模式'}</span>
               <strong>未开始对局</strong>
             </div>
-          )}
-        </div>
-      </header>
+          )
+        }
+      />
       <section
         className="ranking-stage game-tools-stage progress-stage"
         aria-labelledby="progress-title"
@@ -248,6 +247,7 @@ export function ProgressCenter({
           eyebrow="PLAYER PROGRESS"
           title={data.task === 'settings' ? '进度' : dataTaskTitle(data)}
           titleId="progress-title"
+          description="对局与玩家档案分别保存 · 回放只读"
         >
           <Button
             variant="secondary"
@@ -263,7 +263,6 @@ export function ProgressCenter({
                 : '返回游戏'}
           </Button>
         </UtilityPageHeading>
-        <p className="progress-intro">对局与玩家档案分别保存 · 回放只读</p>
         <nav className="progress-tabs" aria-label="进度分类">
           {(
             [

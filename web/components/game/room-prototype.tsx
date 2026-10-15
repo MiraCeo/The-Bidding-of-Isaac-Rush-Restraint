@@ -1,4 +1,4 @@
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { useState, useEffect, type ReactNode } from 'react';
@@ -251,35 +251,38 @@ export function RoomPrototype({
 
   return (
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        navigation={
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <div className="round-status">
-            <span className="status-chip">
-              <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
-              {game.roomIndex + 1}/5
-            </span>
-            <button
-              type="button"
-              className="status-chip build-entry"
-              aria-label="查看角色构筑"
-              aria-current={utilityPanel === 'build' ? 'page' : undefined}
-              onClick={() => changeUtilityPanel('build')}
-            >
-              {characterNames[game.selectedCharacter]}{' '}
-              <span aria-hidden="true">▾</span>
-            </button>
-            <span className="status-chip status-chip-money">
-              <Coins aria-hidden="true" />
-              <strong>{human.money}</strong>
-            </span>
-          </div>
-        </div>
-      </header>
+        }
+        context={
+          <>
+            <div className="round-status">
+              <span className="status-chip">
+                <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
+                {game.roomIndex + 1}/5
+              </span>
+              <button
+                type="button"
+                className="status-chip build-entry"
+                aria-label="查看角色构筑"
+                aria-current={utilityPanel === 'build' ? 'page' : undefined}
+                onClick={() => changeUtilityPanel('build')}
+              >
+                {characterNames[game.selectedCharacter]}{' '}
+                <span aria-hidden="true">▾</span>
+              </button>
+              <span className="status-chip status-chip-money">
+                <Coins aria-hidden="true" />
+                <strong>{human.money}</strong>
+              </span>
+            </div>
+          </>
+        }
+      />
       {utilityPanel === null && extraStatus}
 
       <div

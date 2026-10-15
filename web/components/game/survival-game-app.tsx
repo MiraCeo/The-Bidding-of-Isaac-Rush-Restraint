@@ -1,4 +1,6 @@
-import { GameBrand } from './game-brand';
+import { UtilityPageHeading } from './utility-page-heading';
+import { ArrowLeft } from 'lucide-react';
+import { GameHeader } from './game-header';
 import {
   useEffect,
   useMemo,
@@ -231,6 +233,12 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           onReturnGame={close}
         />
       );
+    const roomRanking =
+      selected === 'ranking' &&
+      game?.roomSettlement &&
+      rankingView !== 'survival'
+        ? rankingView
+        : null;
     let content: ReactNode;
     if (selected === 'tutorial')
       content = <GameTutorial mode="survival" scoreDecimals={decimals} />;
@@ -262,7 +270,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
       content = (
         <>
-          <h2>构筑与当前状态</h2>
           <p>
             临时屏障 {summary.temporaryShields} · 持久屏障{' '}
             {summary.persistentShields} · 道具 {summary.itemCount}
@@ -327,6 +334,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             <RoomRanking
               embedded
               hideViewTabs
+              hideHeading
               hideFooter
               finalRoom={false}
               game={{ ...survivalRoomView(game), roomRankingView: view }}
@@ -353,7 +361,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     } else if (selected === 'rules')
       content = (
         <>
-          <h2>生存模式规则</h2>
           <Button
             variant="secondary"
             onClick={() => setTeachingOpen((open) => !open)}
@@ -403,14 +410,56 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     else content = <p>开始生存对局后可查看此页。</p>;
     return (
       <section
-        id="room-utilities-title"
-        tabIndex={-1}
+        id="room-utilities"
+        aria-labelledby="room-utilities-title"
         className="ranking-stage game-tools-stage survival-utility"
       >
-        <Button variant="secondary" onClick={close}>
-          返回游戏
-        </Button>
-        {content}
+        <UtilityPageHeading
+          titleId="room-utilities-title"
+          title={
+            selected === 'ranking'
+              ? roomRanking === 'score'
+                ? '当前积分排行'
+                : roomRanking === 'contest'
+                  ? '本房争夺榜'
+                  : '生存排行'
+              : selected === 'rules'
+                ? '生存模式规则'
+                : selected === 'build'
+                  ? '构筑与当前状态'
+                  : selected === 'replay'
+                    ? '生存回放'
+                    : '生存教学'
+          }
+          eyebrow={
+            selected === 'ranking'
+              ? 'PLAYER RANKING'
+              : selected === 'rules'
+                ? 'GAME RULES'
+                : selected === 'build'
+                  ? 'YOUR BUILD'
+                  : selected === 'replay'
+                    ? 'MATCH REPLAY'
+                    : 'LEARN BY PLAYING'
+          }
+          description={
+            selected === 'ranking'
+              ? roomRanking === 'score'
+                ? '已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。'
+                : roomRanking === 'contest'
+                  ? '按照市场等价出价排列，扰乱者同样参与名额争夺。'
+                  : '已结算房间与层末成绩 · 查看不重复结算'
+              : selected === 'rules'
+                ? '现行生存机制与道具说明'
+                : undefined
+          }
+        >
+          <Button variant="secondary" onClick={close}>
+            <ArrowLeft aria-hidden="true" />
+            返回游戏
+          </Button>
+        </UtilityPageHeading>
+        <div className="utility-page-content">{content}</div>
       </section>
     );
   }
@@ -585,9 +634,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     page = (
       <main className="ranking-page">
-        <header className="topbar">
-          <div className="topbar-inner">
-            <GameBrand />
+        <GameHeader
+          navigation={
             <GameNavigation
               page={panel}
               onPageChange={(next) => {
@@ -595,8 +643,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                 setPanel(next);
               }}
             />
-          </div>
-        </header>
+          }
+        />
         {(panel === null || panel === 'ranking' || panel === 'build') && strip}
         <div
           className="survival-tools"
@@ -628,24 +676,26 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   if (props.imported && panel === 'replay')
     page = (
       <main className="ranking-page">
-        <header className="topbar">
-          <div className="topbar-inner">
-            <h1>生存只读回放</h1>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setPanel(null);
-                if (props.onReturnImported) props.onReturnImported();
-                else props.onReplay(null);
-              }}
-            >
-              {props.importedReturnLabel ?? '返回生存对局'}
-            </Button>
-            <Button variant="secondary" onClick={props.onReturnMenu}>
-              返回主菜单
-            </Button>
-          </div>
-        </header>
+        <GameHeader
+          navigation={<span className="header-location">生存只读回放</span>}
+          context={
+            <div className="readonly-return-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setPanel(null);
+                  if (props.onReturnImported) props.onReturnImported();
+                  else props.onReplay(null);
+                }}
+              >
+                {props.importedReturnLabel ?? '返回生存对局'}
+              </Button>
+              <Button variant="secondary" onClick={props.onReturnMenu}>
+                返回主菜单
+              </Button>
+            </div>
+          }
+        />
         {utilities('replay')}
       </main>
     );

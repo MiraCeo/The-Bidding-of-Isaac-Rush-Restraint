@@ -1,4 +1,5 @@
-import { GameBrand } from './game-brand';
+import { UtilityPageHeading } from './utility-page-heading';
+import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { ArrowLeft, ArrowRight, Coins, Trophy } from 'lucide-react';
 
@@ -22,6 +23,7 @@ type RoomRankingProps = {
   advanceLabel?: string;
   scoreDescription?: string;
   hideViewTabs?: boolean;
+  hideHeading?: boolean;
   hideFooter?: boolean;
 } & (
   | {
@@ -30,7 +32,12 @@ type RoomRankingProps = {
       onSwitch: (view: ClientRankingView) => void;
       onAdvance: () => void;
     }
-  | { variant: 'public'; game?: ActiveClientGameState; onReturn: () => void }
+  | {
+      variant: 'public';
+      game?: ActiveClientGameState;
+      onReturn: () => void;
+      returnLabel?: string;
+    }
 );
 
 export function RoomRanking(props: RoomRankingProps) {
@@ -44,19 +51,19 @@ export function RoomRanking(props: RoomRankingProps) {
         className="ranking-stage game-tools-stage"
         aria-labelledby="room-utilities-title"
       >
-        <div className="ranking-page-heading">
-          <div>
-            <p className="eyebrow">PLAYER RANKING</p>
-            <h2 id="room-utilities-title" tabIndex={-1}>
-              当前公开排行
-            </h2>
-          </div>
-          <p>
-            {game
-              ? `当前资金与积分 · ${game.players.length} 人`
-              : '尚未开始对局'}
-          </p>
-        </div>
+        <UtilityPageHeading
+          eyebrow="PLAYER RANKING"
+          title="当前公开排行"
+          titleId="room-utilities-title"
+          description={
+            game ? `当前资金与积分 · ${game.players.length} 人` : '尚未开始对局'
+          }
+        >
+          <Button type="button" variant="secondary" onClick={props.onReturn}>
+            <ArrowLeft aria-hidden="true" />
+            {props.returnLabel ?? '返回游戏'}
+          </Button>
+        </UtilityPageHeading>
         <PublicRanking game={game} scoreDecimals={scoreDecimals} />
         <footer className="result-actions ranking-actions utility-page-actions">
           <p>
@@ -64,10 +71,6 @@ export function RoomRanking(props: RoomRankingProps) {
               ? '返回后继续当前房间，不提交行动。Esc 可返回。'
               : '开始游戏后显示本局排行。Esc 可返回。'}
           </p>
-          <Button type="button" size="lg" onClick={props.onReturn}>
-            <ArrowLeft aria-hidden="true" />
-            返回游戏
-          </Button>
         </footer>
       </section>
     );
@@ -96,9 +99,8 @@ export function RoomRanking(props: RoomRankingProps) {
   return (
     <Container className="ranking-page">
       {!props.embedded && (
-        <header className="topbar">
-          <div className="topbar-inner">
-            <GameBrand />
+        <GameHeader
+          navigation={
             <nav className="main-nav" aria-label="主导航">
               <button type="button" className="nav-item" disabled>
                 游戏
@@ -117,34 +119,39 @@ export function RoomRanking(props: RoomRankingProps) {
                 规则
               </button>
             </nav>
-            <div className="round-status">
-              <span className="status-chip">
-                <Trophy aria-hidden="true" />第 {humanRank} 名
-              </span>
-              <span className="status-chip status-chip-money">
-                <Coins aria-hidden="true" />
-                <strong>{human?.money ?? 0}</strong>
-              </span>
-            </div>
-          </div>
-        </header>
+          }
+          context={
+            <>
+              <div className="round-status">
+                <span className="status-chip">
+                  <Trophy aria-hidden="true" />第 {humanRank} 名
+                </span>
+                <span className="status-chip status-chip-money">
+                  <Coins aria-hidden="true" />
+                  <strong>{human?.money ?? 0}</strong>
+                </span>
+              </div>
+            </>
+          }
+        />
       )}
 
       <section className="ranking-stage">
-        <div className="ranking-page-heading">
-          <div>
-            <p className="eyebrow">ROOM RANKING</p>
-            <h2>
-              {game.roomRankingView === 'score' ? '当前积分排行' : '本房争夺榜'}
-            </h2>
-          </div>
-          <p>
-            {game.roomRankingView === 'score'
-              ? (props.scoreDescription ??
-                '本轮行动、得分和道具变化已经计入排行。')
-              : '按照市场等价出价从高到低排列，扰乱者同样参与名额争夺。'}
-          </p>
-        </div>
+        {!props.hideHeading && (
+          <UtilityPageHeading
+            eyebrow="ROOM RANKING"
+            titleId="room-ranking-title"
+            title={
+              game.roomRankingView === 'score' ? '当前积分排行' : '本房争夺榜'
+            }
+            description={
+              game.roomRankingView === 'score'
+                ? (props.scoreDescription ??
+                  '本轮行动、得分和道具变化已经计入排行。')
+                : '按照市场等价出价从高到低排列，扰乱者同样参与名额争夺。'
+            }
+          />
+        )}
 
         {!props.hideViewTabs && (
           <div

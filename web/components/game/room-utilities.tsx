@@ -41,6 +41,7 @@ interface RoomUtilitiesProps {
   saveStatus: PreferenceSaveStatus;
   onPanelChange: (panel: RoomUtilityPanel | null) => void;
   onPreferencesChange: (preferences: GamePreferences) => void;
+  returnLabel?: string;
 }
 
 export function RoomUtilities({
@@ -51,6 +52,7 @@ export function RoomUtilities({
   saveStatus,
   onPanelChange,
   onPreferencesChange,
+  returnLabel = '返回游戏',
 }: RoomUtilitiesProps) {
   const tools = useSessionTools();
   const progress = useProgressNavigation();
@@ -81,6 +83,7 @@ export function RoomUtilities({
         saveStatus={saveStatus}
         onChange={onPreferencesChange}
         beforeGame={!game}
+        returnLabel={returnLabel}
         onOpenReplay={() => onPanelChange('replay')}
         onReturnGame={() => onPanelChange(null)}
       />
@@ -91,6 +94,7 @@ export function RoomUtilities({
         variant="public"
         game={game}
         scoreDecimals={preferences.scoreDecimals}
+        returnLabel={returnLabel}
         onReturn={() => onPanelChange(null)}
       />
     );
@@ -105,6 +109,15 @@ export function RoomUtilities({
       <UtilityPageHeading
         titleId="room-utilities-title"
         title={panelNames[panel]}
+        description={
+          panel === 'build'
+            ? '已持有道具 · 实时状态 · 报价影响'
+            : panel === 'replay'
+              ? '本房复盘 · 整局概览 · 只读查看'
+              : panel === 'tutorial'
+                ? '独立练习 · 固定样本 · 不影响存档'
+                : '现行机制与道具说明'
+        }
         eyebrow={
           panel === 'build'
             ? 'YOUR BUILD'
@@ -115,15 +128,20 @@ export function RoomUtilities({
                 : 'GAME RULES'
         }
       >
-        <p>
-          {panel === 'build'
-            ? '已持有道具 · 实时状态 · 报价影响'
-            : panel === 'replay'
-              ? '本房复盘 · 整局概览 · 只读查看'
-              : panel === 'tutorial'
-                ? '独立练习 · 固定样本 · 不影响存档'
-                : '现行机制与道具说明'}
-        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() =>
+            panel === 'replay' && progress?.replayReturnToProgress
+              ? progress.openProgress()
+              : onPanelChange(null)
+          }
+        >
+          <ArrowLeft aria-hidden="true" />
+          {panel === 'replay' && progress?.replayReturnToProgress
+            ? '返回进度'
+            : returnLabel}
+        </Button>
       </UtilityPageHeading>
       <div className="utility-page-content">
         {panel === 'build' && game ? (
@@ -142,22 +160,10 @@ export function RoomUtilities({
             ? game.phase === 'room_action'
               ? '当前报价保留，返回后可继续修改。Esc 可返回。'
               : '返回当前结算阶段，不重新计算本房间。Esc 可返回。'
-            : '返回后继续选择角色，不会自动开始对局。Esc 可返回。'}
+            : returnLabel === '返回主菜单'
+              ? '返回主菜单，不改变当前对局。Esc 可返回。'
+              : '返回后继续选择角色，不会自动开始对局。Esc 可返回。'}
         </p>
-        <Button
-          type="button"
-          size="lg"
-          onClick={() =>
-            panel === 'replay' && progress?.replayReturnToProgress
-              ? progress.openProgress()
-              : onPanelChange(null)
-          }
-        >
-          <ArrowLeft aria-hidden="true" />
-          {panel === 'replay' && progress?.replayReturnToProgress
-            ? '返回进度'
-            : '返回游戏'}
-        </Button>
       </footer>
     </section>
   );

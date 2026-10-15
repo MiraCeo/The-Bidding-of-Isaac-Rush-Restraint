@@ -104,6 +104,10 @@
 }
 
 :root {
+  --desktop-shell-max: 1440px;
+  --desktop-shell-gutter: 32px;
+  --desktop-shell-width: min(var(--desktop-shell-max), calc(100% - 2 * var(--desktop-shell-gutter)));
+  --topbar-height: 86px;
   --header-content-width: 76vw;
   --game-content-width: 60vw;
   --drawer-width: 18vw;
@@ -306,7 +310,7 @@
 .drawer-tab-left.drawer-tab-expanded { left: var(--drawer-width); }
 .drawer-tab-right.drawer-tab-expanded { right: var(--drawer-width); }
 
-.side-drawer { position: fixed; z-index: 40; top: 86px; bottom: 0; width: var(--drawer-width); overflow-y: auto; border-color: var(--border); background: #191511; padding: 2vh 1.2vw; box-shadow: 0 0 34px rgb(0 0 0 / 28%); transition: transform 220ms cubic-bezier(.22, .75, .25, 1); }
+.side-drawer { position: fixed; z-index: 40; top: var(--topbar-height); bottom: 0; width: var(--drawer-width); overflow-y: auto; border-color: var(--border); background: #191511; padding: 2vh 1.2vw; box-shadow: 0 0 34px rgb(0 0 0 / 28%); transition: transform 220ms cubic-bezier(.22, .75, .25, 1); }
 .ranking-drawer { left: 0; border-right: 1px solid var(--border); transform: translateX(-102%); }
 .market-drawer { right: 0; border-left: 1px solid var(--border); transform: translateX(102%); }
 .side-drawer.drawer-open { transform: translateX(0); }
@@ -1401,3 +1405,62 @@
 @media (max-width:450px) { .achievement-overview { padding:18px; }.achievement-toolbar>label:not(.achievement-search) { flex:1 1 28%; }.achievement-dialog { padding:18px; }.achievement-detail-heading { gap:10px; }.achievement-detail-heading h2 { font-size:1.08rem; } }
 
 .achievement-notice { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:12px; margin:12px; }
+
+/* 0.5.2 shared desktop shell. No new mobile layout or gameplay sizing contract. */
+.app-version { justify-self:end; color:var(--muted-foreground); font-size:.72rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.page-context-bar { width:var(--header-content-width); margin:12px auto 0; display:flex; align-items:center; gap:12px; min-width:0; }
+.page-context-bar .round-status { flex-wrap:wrap; justify-content:flex-start; min-width:0; }
+.page-context-bar .character-step { justify-content:flex-start; }
+.readonly-return-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.utility-page-heading-copy { min-width:0; }
+.utility-page-heading-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; flex:none; gap:10px; }
+.utility-page-description { margin-top:8px; color:var(--muted-foreground); font-size:.8rem; line-height:1.7; }
+.header-location { color:var(--muted-foreground); font-size:.86rem; font-weight:700; }
+@media (min-width:900px) {
+  :root { --header-content-width:var(--desktop-shell-width); --topbar-height:76px; }
+  .topbar { height:var(--topbar-height); }
+  .topbar-inner { width:var(--desktop-shell-width); grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:24px; }
+  .topbar .brand-block { min-width:0; }
+  .topbar .brand-block .eyebrow { font-size:.57rem; letter-spacing:.15em; }
+  .topbar .brand-block h1 { font-size:1.2rem; margin-top:4px; white-space:nowrap; }
+  .topbar .app-version { display:inline; padding:0; border:0; background:none; line-height:1.4; }
+  .nav-item { min-width:62px; font-size:.82rem; padding-inline:12px; }
+  .page-context-bar { width:var(--desktop-shell-width); padding:0 0 10px; border-bottom:1px solid var(--border); }
+  .page-context-bar .status-chip { min-height:28px; padding:4px 9px; font-size:.72rem; border-radius:7px; background:#211c1780; }
+  .page-context-bar .character-step { font-size:.74rem; gap:10px; }
+  .ranking-stage, .ranking-stage.survival-utility, .ranking-stage.survival-stage,
+  .result-stage, .final-stage, .character-stage, .mode-menu-stage,
+  .survival-status, .survival-tools { width:var(--desktop-shell-width); margin-inline:auto; }
+  .ranking-stage, .ranking-stage.survival-utility, .ranking-stage.survival-stage,
+  .result-stage, .final-stage, .character-stage { margin-top:0; padding:24px 0 48px; }
+  .mode-menu-stage { margin-block:32px 48px; }
+  /* Embedded ranking content fills its parent, never applies the shell twice. */
+  .survival-utility .ranking-stage, .survival-utility .result-stage,
+  .survival-utility .final-stage { width:100%; padding:0; margin:0; }
+  .ranking-page-heading { align-items:center; gap:24px; }
+  .ranking-page-heading h2 { font-size:1.4rem; line-height:1.4; margin-top:5px; }
+  .ranking-page-heading .eyebrow { font-size:.6rem; }
+  .game-tools-stage .ranking-page-heading { margin-bottom:20px; }
+  .utility-page-description { max-width:90ch; }
+  .survival-utility .utility-page-content>p { max-width:95ch; }
+  .readonly-return-actions>button { display:inline-flex; align-items:center; min-height:34px; border:1px solid var(--border); border-radius:8px; background:var(--secondary); padding:6px 12px; font-size:.78rem; }
+  .utility-page-heading-actions button { min-height:34px; font-size:.78rem; }
+  .utility-page-content { margin-top:0; }
+  .utility-page-actions { justify-content:flex-start; padding-top:16px; border-top:1px solid var(--border); }
+  .utility-page-actions>p { line-height:1.75; }
+  .progress-tabs { margin-bottom:20px; gap:4px; }
+  .progress-tabs button { padding:10px 16px; font-size:.79rem; }
+  .progress-tabs .progress-tab-active { background:linear-gradient(0deg,#edaf3d0b,transparent); }
+  .progress-stage .achievement-progress { max-width:none; margin:0; }
+  .achievement-overview { padding:20px 24px; }
+  .achievement-browser { margin-top:18px; }
+  .survival-utility .utility-page-heading-copy h2 { margin:5px 0 0; }
+  .survival-utility .utility-page-description { margin:8px 0 0; }
+  .survival-utility .utility-page-heading-copy .eyebrow { margin:0; line-height:1.4; color:var(--primary); }
+  .character-intro { margin-bottom:24px; gap:24px; }
+  .character-intro h2 { font-size:1.6rem; }
+  /* Bidding keeps its two drawer-safe gutters; do not stretch inputs under them. */
+  .game-stage { width:min(var(--game-content-width),1200px); padding-top:20px; }
+  .room-intro h2 { font-size:1.3rem; }
+  .final-hero { padding:12px 0 24px; }
+}

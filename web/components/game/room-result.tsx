@@ -1,4 +1,4 @@
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
@@ -86,24 +86,27 @@ export function RoomResult({
   return (
     <Container className="result-page">
       {!embedded && (
-        <header className="topbar">
-          <div className="topbar-inner">
-            <GameBrand />
+        <GameHeader
+          navigation={
             <div className="result-header-title">
               <span>{roomKindNames[settlement.room.kind]}</span>
               <strong>房间结算</strong>
             </div>
-            <div className="round-status">
-              <span className="status-chip">
-                第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5
-              </span>
-              <span className="status-chip status-chip-money">
-                <Coins aria-hidden="true" />
-                <strong>{humanAfter.money}</strong>
-              </span>
-            </div>
-          </div>
-        </header>
+          }
+          context={
+            <>
+              <div className="round-status">
+                <span className="status-chip">
+                  第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5
+                </span>
+                <span className="status-chip status-chip-money">
+                  <Coins aria-hidden="true" />
+                  <strong>{humanAfter.money}</strong>
+                </span>
+              </div>
+            </>
+          }
+        />
       )}
 
       <section className="result-stage">

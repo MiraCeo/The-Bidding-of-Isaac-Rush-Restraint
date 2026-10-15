@@ -1,3 +1,4 @@
+import { GameHeader } from './game-header';
 import {
   useCallback,
   useEffect,
@@ -422,17 +423,19 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   if (props.externalReplay && !props.menu)
     page = (
       <main className="ranking-page">
-        <header className="topbar">
-          <div className="topbar-inner">
-            <h1>经典只读回放</h1>
-            <button type="button" onClick={props.onCloseExternalReplay}>
-              {props.externalReplayReturnLabel ?? '返回经典对局'}
-            </button>
-            <button type="button" onClick={props.onReturnMenu}>
-              返回主菜单
-            </button>
-          </div>
-        </header>
+        <GameHeader
+          navigation={<span className="header-location">经典只读回放</span>}
+          context={
+            <div className="readonly-return-actions">
+              <button type="button" onClick={props.onCloseExternalReplay}>
+                {props.externalReplayReturnLabel ?? '返回经典对局'}
+              </button>
+              <button type="button" onClick={props.onReturnMenu}>
+                返回主菜单
+              </button>
+            </div>
+          }
+        />
         <section className="ranking-stage">
           <p>文件只读查看，不替换当前对局，不登记玩家进度。</p>
           <ReplayArchive
