@@ -63,7 +63,11 @@ export function encodeAchievementEvent(
     encoded = {
       stage: event.stage,
       position: int(e.floorIndex, 6) * 5 + int(e.roomIndex, 4),
-      values: [int(e.stolenMoney), int(e.interestMoney)],
+      values: [
+        int(e.stolenMoney),
+        int(e.interestMoney),
+        ...(e.milestones === true ? [1] : []),
+      ],
     };
   } else if (event.stage === 'room') {
     const e = event.facts;
@@ -96,6 +100,9 @@ export function encodeAchievementEvent(
                 2 * Number(bool(e.missedHighPrice)),
             ]
           : []),
+        ...(e.milestoneFlags !== undefined || e.saleSavings !== undefined
+          ? [int(e.milestoneFlags, 63), int(e.saleSavings)]
+          : []),
       ],
     };
   } else if (event.stage === 'floor') {
@@ -108,6 +115,7 @@ export function encodeAchievementEvent(
           Number(bool(e.humanSurvived)) * 2 +
           Number(bool(e.humanEliminated)) * 4 +
           Number(bool(e.lowestSurvivor)) * 8,
+        ...(e.milestones === true ? [1] : []),
       ],
     };
   } else if (event.stage === 'final') {
@@ -119,6 +127,7 @@ export function encodeAchievementEvent(
         Number(bool(e.humanSurvived)),
         Number(bool(e.highestDifficulty)),
         e.humanEliminationFloor,
+        ...(e.milestones === true ? [1] : []),
       ],
     };
   } else if (event.stage === 'complete') {
@@ -130,6 +139,7 @@ export function encodeAchievementEvent(
       values: [
         int(achievementCharacters.indexOf(e.characterId), 4),
         Number(bool(e.champion)),
+        ...(e.milestones === true ? [1] : []),
       ],
     };
   } else {
@@ -149,19 +159,21 @@ export function decodeAchievementEvent(
   const floorIndex = Math.floor(int(p, 34) / 5),
     roomIndex = p % 5;
   if (encoded.stage === 'entry') {
-    if (v.length !== 2) fail();
+    if (v.length !== 2 && v.length !== 3) fail();
+    if (v.length === 3 && v[2] !== 1) fail();
     return {
       stage: 'entry',
       facts: {
         floorIndex,
         roomIndex,
+        ...(v.length === 3 ? { milestones: true as const } : {}),
         stolenMoney: int(v[0]),
         interestMoney: int(v[1]),
       },
     };
   }
   if (encoded.stage === 'room') {
-    if (v.length !== 5 && v.length !== 6) fail();
+    if (![5, 6, 8].includes(v.length)) fail();
     const code = int(v[0], 6),
       mask = int(v[1], 2 ** roomFlags.length - 1),
       score = v[4];
@@ -181,11 +193,27 @@ export function decodeAchievementEvent(
           ? [code === 2]
           : [code >= 5, (code - 3) % 2 === 1];
     if (
-      v.length === 6 &&
+      v.length >= 6 &&
       int(v[5], 3) > 0 &&
       !bidSuccesses.some((success) => !success)
     )
       fail();
+    if (v.length === 8) {
+      const extra = int(v[6], 63),
+        savings = int(v[7]);
+      if (extra & 51 && !bidSuccesses.some(Boolean)) fail();
+      if (extra & 1 && !v[2]) fail();
+      if (extra & 2 && !(mask & 1)) fail();
+      if (extra & 4 && !(mask & (2 ** 5))) fail();
+      if (extra & 8 && (!(mask & (2 ** 3)) || code !== 0)) fail();
+      if (extra & 16 && !(mask & (2 ** 14))) fail();
+      if (
+        extra & 32 &&
+        (bidSuccesses.length !== 2 || !bidSuccesses.some(Boolean))
+      )
+        fail();
+      if (savings > 0 !== !!(mask & (2 ** 11))) fail();
+    }
     const flags = Object.fromEntries(
       roomFlags.map((key, i) => [key, (mask & (2 ** i)) !== 0]),
     ) as Pick<AchievementRoomFacts, (typeof roomFlags)[number]>;
@@ -196,11 +224,14 @@ export function decodeAchievementEvent(
         roomIndex,
         bidSuccesses,
         ...flags,
-        ...(v.length === 6
+        ...(v.length >= 6
           ? {
               missedCooperation: (int(v[5], 3) & 1) !== 0,
               missedHighPrice: (int(v[5], 3) & 2) !== 0,
             }
+          : {}),
+        ...(v.length === 8
+          ? { milestoneFlags: int(v[6], 63), saleSavings: int(v[7]) }
           : {}),
         highestAwardOpportunities: int(v[2], 2),
         hiddenAwardCopies: int(v[3], 4),
@@ -210,7 +241,8 @@ export function decodeAchievementEvent(
   }
   if (encoded.stage === 'floor') {
     int(p, 6);
-    if (v.length !== 1) fail();
+    if (v.length !== 1 && v.length !== 2) fail();
+    if (v.length === 2 && v[1] !== 1) fail();
     const mask = int(v[0], 15),
       humanParticipated = !!(mask & 1),
       humanSurvived = !!(mask & 2),
@@ -227,6 +259,7 @@ export function decodeAchievementEvent(
       stage: 'floor',
       facts: {
         floorIndex: p,
+        ...(v.length === 2 ? { milestones: true as const } : {}),
         humanParticipated,
         humanSurvived,
         humanEliminated,
@@ -236,7 +269,8 @@ export function decodeAchievementEvent(
   }
   if (encoded.stage === 'final') {
     int(p, 6);
-    if (v.length !== 3) fail();
+    if (v.length !== 3 && v.length !== 4) fail();
+    if (v.length === 4 && v[3] !== 1) fail();
     const humanSurvived = int(v[0], 1) === 1,
       highestDifficulty = int(v[1], 1) === 1;
     const humanEliminationFloor = v[2] === null ? null : int(v[2], p);
@@ -244,6 +278,7 @@ export function decodeAchievementEvent(
     return {
       stage: 'final',
       facts: {
+        ...(v.length === 4 ? { milestones: true as const } : {}),
         humanSurvived,
         highestDifficulty,
         lastEliminationFloor: p,
@@ -253,10 +288,12 @@ export function decodeAchievementEvent(
   }
   if (encoded.stage === 'complete') {
     int(p, 1);
-    if (v.length !== 2) fail();
+    if (v.length !== 2 && v.length !== 3) fail();
+    if (v.length === 3 && v[2] !== 1) fail();
     return {
       stage: 'complete',
       facts: {
+        ...(v.length === 3 ? { milestones: true as const } : {}),
         mode: p === 0 ? 'classic' : 'survival',
         characterId: achievementCharacters[int(v[0], 4)]!,
         champion: int(v[1], 1) === 1,
@@ -309,12 +346,33 @@ export function sameAchievementEventFacts(
   b: EncodedAchievementEvent,
 ): boolean {
   if (a.stage !== b.stage || a.position !== b.position) return false;
-  const comparable =
-    a.stage === 'room' && (a.values.length === 5 || b.values.length === 5)
+  const base =
+    a.stage === 'room'
       ? 5
-      : undefined;
+      : a.stage === 'floor'
+        ? 1
+        : a.stage === 'final'
+          ? 3
+          : 2;
+  let comparable = Math.min(a.values.length, b.values.length);
+  if (a.stage === 'room')
+    comparable = comparable >= 8 ? 8 : comparable >= 6 ? 6 : base;
   return (
     canonicalJson(a.values.slice(0, comparable)) ===
     canonicalJson(b.values.slice(0, comparable))
+  );
+}
+export function isMilestoneEvent(
+  e: Pick<EncodedAchievementEvent, 'stage' | 'values'>,
+): boolean {
+  return (
+    e.values.length ===
+    (e.stage === 'room'
+      ? 8
+      : e.stage === 'floor'
+        ? 2
+        : e.stage === 'final'
+          ? 4
+          : 3)
   );
 }

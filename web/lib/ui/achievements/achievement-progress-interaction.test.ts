@@ -91,13 +91,13 @@ function earned() {
     new Date('2026-10-15T00:00:00.000Z'),
   );
 }
-it('shows exactly 36 catalog cards in six categories and six prerequisites versus 30 collection challenges without activating a profile', async () => {
+it('shows 60 badges as 54 catalog cards in six categories and six prerequisites versus 30 collection challenges without activating a profile', async () => {
   await mount();
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
-  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(36);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(6);
-  expect(node.textContent).toContain('成就总览0 / 36');
+  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(54);
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(12);
+  expect(node.textContent).toContain('成就总览0 / 60');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });
@@ -105,8 +105,16 @@ it.each(achievementCatalog)(
   'preserves $id full metadata in a detail modal without activation',
   async (a) => {
     await mount();
+    await act(async () => {
+      const input = node.querySelector<HTMLInputElement>('input[type=search]')!;
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      )!.set!.call(input, a.id);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     await act(async () =>
-      (node.querySelector(`#achievement-${a.id}`) as HTMLButtonElement).click(),
+      (node.querySelector('.achievement-card') as HTMLButtonElement).click(),
     );
     const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain(a.condition);
@@ -199,14 +207,14 @@ it('unreadable or unknown profile is not displayed as zero and does not reset th
   expect(localStorage.getItem(playerProfileKey)).toBe(source);
   await mount(createPlayerProfile(), '档案读取失败');
   expect(node.textContent).toContain('档案读取失败');
-  expect(node.textContent).not.toContain('0 / 36');
+  expect(node.textContent).not.toContain('0 / 60');
 });
 it('shared progress achievement tab is read-only until explicit grant, then reloads current role permissions without awarding', async () => {
   locks();
   await act(async () => root.render(createElement(GameApp)));
   await click('进度');
   await click('成就');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
   expect(node.querySelector('.progress-mode-tabs')).toBeNull();
   await click('一键解锁全部角色');

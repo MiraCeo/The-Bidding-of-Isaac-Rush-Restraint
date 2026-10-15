@@ -169,10 +169,10 @@ it('filters by metal with fixed global totals and resets all filters without wri
   await mount(p);
   const overview = node.querySelector('.achievement-overview')!.textContent;
   expect(node.querySelector('.achievement-tier-totals')!.textContent).toBe(
-    '铜 1 / 21银 0 / 11金 1 / 4',
+    '铜 1 / 25银 0 / 24金 1 / 11',
   );
   await tier('gold');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(4);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(11);
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(
     overview,
   );
@@ -183,7 +183,7 @@ it('filters by metal with fixed global totals and resets all filters without wri
       (b) => b.textContent === '清除筛选',
     )!,
   );
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
   expect(node.querySelectorAll('select')[3]!.value).toBe('all');
   expect(localStorage.length).toBe(0);
   expect(JSON.stringify(p)).toBe(before);

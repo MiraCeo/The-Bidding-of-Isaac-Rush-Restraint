@@ -1525,3 +1525,17 @@
 .achievement-notice-item p { font-size:.7rem; line-height:1.7; color:#c5b396; margin:5px 0 0; overflow-wrap:anywhere; }
 @keyframes achievement-notice-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion:reduce) { .achievement-notice { animation:none; } }
+
+/* 0.5.6 shared-metric stages, independent badges; no grid expansion on details. */
+.achievement-series-stages { display:flex;gap:10px;font-size:.66rem;color:var(--muted-foreground); }
+.achievement-series-stages>[data-earned="true"] { color:#e5c58c; }
+.achievement-card[data-partial="true"] { border-color:#80684a;background:linear-gradient(120deg,#2a2319,#1b1713); }
+.achievement-card-ready { font-size:.65rem;color:#e4bc79; }
+.achievement-series-detail { margin-top:18px; }
+.achievement-series-detail h4 { font-size:.86rem;font-weight:800;color:var(--primary); }
+.achievement-series-detail ol { list-style:none;padding:0;display:grid;gap:12px;margin-top:12px; }
+.achievement-series-detail li { padding:13px;border:1px solid #66533a;border-radius:8px;background:#191611; }
+.achievement-series-detail li>div { display:flex;gap:12px;justify-content:space-between;font-size:.74rem; }
+.achievement-series-detail p,.achievement-series-detail time { font-size:.71rem;line-height:1.7;margin-top:7px;color:var(--muted-foreground); }
+.achievement-series-detail h5 { font-size:.68rem;margin-top:12px;color:var(--primary); }
+.achievement-series-detail blockquote { font-size:.78rem;line-height:1.8;margin-top:6px;color:#e2c79e; }

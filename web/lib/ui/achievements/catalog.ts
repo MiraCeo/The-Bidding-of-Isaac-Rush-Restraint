@@ -2,7 +2,8 @@ import type { CharacterId } from '../../game/item-types';
 
 /** Product catalog v1. No RNG, storage, rewards or new-game restrictions. */
 export const achievementCatalogVersion = 1; // Legacy ledger schema1/2 identity stays fixed.
-export const currentAchievementCatalogVersion = 2;
+export const currentAchievementCatalogVersion = 2; // schema3 stays catalog2
+export const milestoneAchievementCatalogVersion = 3;
 export const achievementCharacters = [
   'isaac',
   'lost',
@@ -11,12 +12,12 @@ export const achievementCharacters = [
   'jacob_esau',
 ] as const;
 export const achievementCategories = [
-  { id: 'A', name: '竞拍失败', count: 3 },
-  { id: 'B', name: '竞拍与策略', count: 6 },
-  { id: 'C', name: '扰乱与结算奇遇', count: 7 },
-  { id: 'D', name: '资金与道具', count: 6 },
-  { id: 'E', name: '角色道具与探索', count: 8 },
-  { id: 'F', name: '生存淘汰', count: 6 },
+  { id: 'A', name: '竞拍失败', count: 5 },
+  { id: 'B', name: '竞拍与策略', count: 10 },
+  { id: 'C', name: '扰乱与结算奇遇', count: 9 },
+  { id: 'D', name: '资金与道具', count: 12 },
+  { id: 'E', name: '角色道具与探索', count: 13 },
+  { id: 'F', name: '生存淘汰', count: 11 },
 ] as const;
 export type AchievementCategory = (typeof achievementCategories)[number]['id'];
 export type AchievementId =
@@ -55,7 +56,31 @@ export type AchievementId =
   | 'F03'
   | 'F04'
   | 'F05'
-  | 'F06';
+  | 'F06'
+  | 'A04'
+  | 'A05'
+  | 'B07'
+  | 'B08'
+  | 'B09'
+  | 'B11'
+  | 'C08'
+  | 'C09'
+  | 'D07'
+  | 'D08'
+  | 'D09'
+  | 'D10'
+  | 'D11'
+  | 'D12'
+  | 'E09'
+  | 'E10'
+  | 'E11'
+  | 'E12'
+  | 'E15'
+  | 'F07'
+  | 'F08'
+  | 'F09'
+  | 'F10'
+  | 'F12';
 export interface AchievementDefinition {
   id: AchievementId;
   category: AchievementCategory;
@@ -228,8 +253,230 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
     1,
     'final',
   ),
+  definition(
+    'A04',
+    '重整旗鼓',
+    '同局新发生正常竞拍失败后，在后续其他房间正常竞拍实际获得道具。',
+    1,
+    'same-match',
+    'shared',
+  ),
+  definition(
+    'A05',
+    '败而不馁',
+    '同局新发生正常竞拍失败后，取得经典正式最终第一名，并列计入。',
+    1,
+    'same-match',
+    'classic',
+  ),
+  definition(
+    'B07',
+    '财大气粗 I',
+    '累计通过最高价资格实际获得1次奖励机会，复制不增加机会次数。',
+    1,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'B08',
+    '财大气粗 III',
+    '累计通过最高价资格实际获得50次奖励机会，复制不增加机会次数。',
+    50,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'B09',
+    '恰到好处',
+    '正常竞拍恰为本组正式高价名额第N位，取得最高价资格且实际获奖。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'B11',
+    '另辟蹊径',
+    '正常竞拍无本组最高价资格但凭合作资格实际获奖，且本组其他参与者市场等价报价严格更高。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'C08',
+    '反客为主',
+    '真人扰乱名额由超凡升天转化资格，且本组实际交付道具。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'C09',
+    '两处空席',
+    '同房两份真人扰乱分别令A、B两组至少一个名额实际轮空，赎回不算轮空。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'D07',
+    '钱生钱 I',
+    '累计通过利息实际获得100资金。',
+    100,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'D08',
+    '钱生钱 III',
+    '累计通过利息实际获得5000资金。',
+    5000,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'D09',
+    '背水一战',
+    '正资金全额正常报价的同份行动实际取得本组道具。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'D10',
+    '精打细算',
+    '累计因Steam大促实际少扣款100资金，只计新增金额原因事实。',
+    100,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'D11',
+    '聚沙成塔',
+    '累计通过偷钱袋实际取得其他玩家100资金。',
+    100,
+    'cumulative',
+    'shared',
+  ),
+  definition(
+    'D12',
+    '细水长流',
+    '同一局启用后通过真实利息累计取得200资金，不使用跨局总数。',
+    200,
+    'same-match',
+    'shared',
+  ),
+  definition(
+    'E09',
+    '渐入佳境',
+    '按独立正式对局身份累计完成5局经典模式，同根分支不多计。',
+    5,
+    'cumulative',
+    'classic',
+  ),
+  definition(
+    'E10',
+    '久经沙场',
+    '按独立正式对局身份累计完成20局经典模式，同根分支不多计。',
+    20,
+    'cumulative',
+    'classic',
+  ),
+  definition(
+    'E11',
+    '本色出演',
+    '使用以撒取得新正式经典最终第一名，并列计入。',
+    1,
+    'final',
+    'classic',
+  ),
+  definition(
+    'E12',
+    '有惊无险',
+    '使用游魂的同局新发生正金额屏障退款，随后正式完成经典模式。',
+    1,
+    'same-match',
+    'classic',
+  ),
+  definition(
+    'E15',
+    '左右开弓',
+    '雅阁和以扫同房对A、B分别提交不等金额的两份正常竞拍，且至少一份实际获奖。',
+    1,
+    'event',
+    'shared',
+  ),
+  definition(
+    'F07',
+    '初涉险境',
+    '首次形成正式生存终局的真人个人结果，被淘汰也计入。',
+    1,
+    'cumulative',
+    'survival',
+  ),
+  definition(
+    'F08',
+    '渐入险境',
+    '按独立正式对局身份累计形成5次生存终局个人结果，淘汰也计入。',
+    5,
+    'cumulative',
+    'survival',
+  ),
+  definition(
+    'F09',
+    '久经风浪',
+    '按独立正式对局身份累计形成15次生存终局个人结果，淘汰也计入。',
+    15,
+    'cumulative',
+    'survival',
+  ),
+  definition(
+    'F10',
+    '登峰造极',
+    '在同一局最高AI难度下成为新的正式生存冠军。',
+    1,
+    'final',
+    'survival',
+  ),
+  definition(
+    'F12',
+    '险中求胜',
+    '同局新以最低档存活者资格通过一层，最终成为正式生存冠军。',
+    1,
+    'same-match',
+    'survival',
+  ),
 ];
-export const legacyAchievementCatalog = achievementCatalog.filter(
+
+export const milestoneAchievementIds = [
+  'A04',
+  'A05',
+  'B07',
+  'B08',
+  'B09',
+  'B11',
+  'C08',
+  'C09',
+  'D07',
+  'D08',
+  'D09',
+  'D10',
+  'D11',
+  'D12',
+  'E09',
+  'E10',
+  'E11',
+  'E12',
+  'E15',
+  'F07',
+  'F08',
+  'F09',
+  'F10',
+  'F12',
+] as const;
+export const v053AchievementCatalog = achievementCatalog.filter(
+  (a) => !(milestoneAchievementIds as readonly string[]).includes(a.id),
+);
+export const legacyAchievementCatalog = v053AchievementCatalog.filter(
   (a) => !['B05', 'B06', 'E06', 'E07', 'E08', 'F06'].includes(a.id),
 );
 

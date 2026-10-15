@@ -31,12 +31,12 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('presentation-only catalog and deterministic filters', () => {
-  it('covers exactly the 36 existing IDs with concise summaries, detailed notes and unique local glyphs', () => {
+  it('covers exactly the 60 active IDs with concise summaries, detailed notes and unique local glyphs', () => {
     const ids = achievementCatalog.map((a) => a.id).sort();
     expect(Object.keys(achievementPresentation).sort()).toEqual(ids);
     expect(Object.keys(achievementCollectionNotes).sort()).toEqual(ids);
     expect(Object.keys(achievementGlyphs).sort()).toEqual(ids);
-    expect(new Set(Object.values(achievementGlyphs)).size).toBe(36);
+    expect(new Set(Object.values(achievementGlyphs)).size).toBe(60);
     for (const a of achievementCatalog) {
       expect(achievementCollectionNotes[a.id].length).toBeGreaterThan(3);
       expect(achievementCollectionNotes[a.id].length).toBeLessThanOrEqual(60);
@@ -58,7 +58,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         progress,
         achieved,
       ).map((a) => a.id),
-    ).toEqual(['A02', 'A03']);
+    ).toEqual(['A02', 'A03', 'A04', 'A05']);
     expect(
       selectAchievements({ ...all, query: '礼物' }, {}, {}).map((a) => a.id),
     ).toEqual(['E05']);
@@ -95,11 +95,11 @@ describe('presentation-only catalog and deterministic filters', () => {
         .slice(0, 4)
         .map((a) => a.id),
     ).toEqual(['A01', 'E05', 'A02', 'D03']);
-    expect(selectAchievements(all, {}, {})).toHaveLength(36);
+    expect(selectAchievements(all, {}, {})).toHaveLength(60);
   });
 });
 describe('metal config and soft-concealed list policy', () => {
-  it('covers all 36 IDs exactly once without adding thresholds or hiding role prerequisites', () => {
+  it('covers all 60 IDs exactly once without adding thresholds or hiding role prerequisites', () => {
     expect(Object.keys(achievementCollectionMetadata).sort()).toEqual(
       achievementCatalog.map((a) => a.id).sort(),
     );
@@ -110,13 +110,13 @@ describe('metal config and soft-concealed list policy', () => {
             (a) => achievementCollectionMetadata[a.id].tier === t,
           ).length,
       ),
-    ).toEqual([21, 11, 4]);
+    ).toEqual([25, 24, 11]);
     expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
     expect(
       Object.entries(achievementCollectionMetadata)
         .filter(([, m]) => m.hidden)
         .map(([id]) => id),
-    ).toEqual(['A03', 'C07', 'F02']);
+    ).toEqual(['A03', 'C07', 'F02', 'C09', 'F12']);
     for (const ids of Object.values(characterAchievementRequirements))
       for (const id of ids)
         expect(achievementCollectionMetadata[id].hidden).toBe(false);
@@ -154,12 +154,24 @@ describe('metal config and soft-concealed list policy', () => {
   it('combines tier with existing filters and does not disclose hidden progress through ranking', () => {
     expect(
       selectAchievements({ ...all, tier: 'gold' }, {}, {}).map((a) => a.id),
-    ).toEqual(['A03', 'C07', 'E08', 'F02']);
+    ).toEqual([
+      'A03',
+      'B08',
+      'C07',
+      'C09',
+      'D08',
+      'E08',
+      'E10',
+      'F02',
+      'F09',
+      'F10',
+      'F12',
+    ]);
     expect(
       selectAchievements({ ...all, tier: 'gold', category: 'E' }, {}, {}).map(
         (a) => a.id,
       ),
-    ).toEqual(['E08']);
+    ).toEqual(['E08', 'E10']);
     const secret = Object.freeze({ A03: 4, C07: 1 }),
       at = '2026-10-15T00:00:00.000Z';
     expect(
@@ -272,9 +284,9 @@ describe('category sections preserve sorted input within a real category boundar
       'E',
       'F',
     ]);
-    expect(groups.map((g) => g.items.length)).toEqual([3, 6, 7, 6, 8, 6]);
+    expect(groups.map((g) => g.items.length)).toEqual([5, 10, 9, 12, 13, 11]);
     expect(new Set(groups.flatMap((g) => g.items.map((a) => a.id))).size).toBe(
-      36,
+      60,
     );
     for (const g of groups)
       expect(g.items).toEqual(
@@ -285,6 +297,6 @@ describe('category sections preserve sorted input within a real category boundar
       groupAchievementEntries(
         selectAchievements({ ...all, tier: 'gold' }, {}, {}),
       ).map((g) => g.category.id),
-    ).toEqual(['A', 'C', 'E', 'F']);
+    ).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
   });
 });

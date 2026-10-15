@@ -85,19 +85,19 @@ it('shows saved global totals rather than filtered denominators; new entries are
   localStorage.setItem(playerProfileKey, before);
   await mount(p);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 36',
+    '1 / 60',
   );
   expect(
     node.querySelector('.achievement-overview-caption')!.textContent,
-  ).toContain('2.8%');
-  expect(cards()).toHaveLength(36);
+  ).toContain('1.7%');
+  expect(cards()).toHaveLength(54);
   expect(cards()[0]!.querySelector('progress')).toBeNull();
   expect(cards()[0]!.querySelector('time')).toBeNull();
   expect(node.textContent).toContain('初出茅庐');
   await select(0, 'achieved');
   expect(cards().map((c) => c.id)).toEqual(['achievement-A01']);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 36',
+    '1 / 60',
   );
   expect(localStorage.getItem(playerProfileKey)).toBe(before);
   expect(JSON.stringify(p)).toBe(before);
@@ -117,7 +117,7 @@ it('combines category/name/ID/status and offers empty reset without changing lay
       (b) => b.textContent === '清除筛选',
     )!,
   );
-  expect(cards()).toHaveLength(36);
+  expect(cards()).toHaveLength(54);
   expect(
     node.querySelector('.achievement-grid')!.getAttribute('data-columns'),
   ).toBe('2');
@@ -132,7 +132,7 @@ it('sorts actual saved progress without changing records', async () => {
       .map((c) => c.id),
   ).toEqual(['achievement-A01', 'achievement-A02', 'achievement-A03']);
   await select(0, 'pending');
-  expect(cards()).toHaveLength(35);
+  expect(cards()).toHaveLength(53);
   await select(1, 'recent');
   expect(cards()[0]!.id).toBe('achievement-A02');
   await select(0, 'all');
@@ -309,11 +309,11 @@ it('creates six independent category grids with separators and respects filtered
   ]);
   expect(
     groups().map((g) => g.querySelectorAll('.achievement-card').length),
-  ).toEqual([3, 6, 7, 6, 8, 6]);
+  ).toEqual([5, 8, 9, 10, 13, 9]);
   expect(node.querySelectorAll('.achievement-section-rule')).toHaveLength(6);
   expect(
     groups()[0]!.querySelector('.achievement-section-count')!.textContent,
-  ).toContain('已达成 1 / 3');
+  ).toContain('已达成 1 / 5');
   await select(2, '2');
   expect(
     [...node.querySelectorAll('.achievement-grid')].every(
@@ -323,15 +323,17 @@ it('creates six independent category grids with separators and respects filtered
   await select(3, 'gold');
   expect(groups().map((g) => g.querySelector('h4')!.textContent)).toEqual([
     '竞拍失败',
+    '竞拍与策略',
     '扰乱与结算奇遇',
+    '资金与道具',
     '角色道具与探索',
     '生存淘汰',
   ]);
-  expect(cards()).toHaveLength(4);
+  expect(cards()).toHaveLength(11);
   await select(3, 'all');
   await search('B0');
   expect(groups()).toHaveLength(1);
-  expect(cards()).toHaveLength(6);
+  expect(cards()).toHaveLength(7);
   await search('不存在');
   expect(groups()).toHaveLength(0);
   expect(node.textContent).toContain('没有符合条件的成就');

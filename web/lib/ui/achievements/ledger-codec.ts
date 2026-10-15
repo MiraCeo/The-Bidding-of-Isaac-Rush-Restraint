@@ -1,3 +1,4 @@
+import { isMilestoneEvent } from './event-codec';
 import type { AchievementReceipt, AchievementRegistry } from './registry';
 import { canonicalJson } from '../../shared/json-facts';
 import { sha256Hex } from '../../shared/sha256';
@@ -5,10 +6,11 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2 | 3;
-  catalogVersion: 1 | 2;
+  version: 2 | 3 | 4;
+  catalogVersion: 1 | 2 | 3;
   activatedAt: string;
   manualUnlockAllAt: string | null;
+  milestones?: { from: number; at: string };
   count: number;
   roots: [0 | 1, string][];
   data: string[];
@@ -65,7 +67,9 @@ export function isExpandedAchievementEvent(
   r: Pick<AchievementReceipt, 'stage' | 'values'>,
 ) {
   return (
-    r.stage === 'complete' || (r.stage === 'room' && r.values.length === 6)
+    r.stage === 'complete' ||
+    (r.stage === 'room' && r.values.length >= 6) ||
+    isMilestoneEvent(r)
   );
 }
 /** Lossless wire encoding only. Semantic validation and achievement evaluation
@@ -74,6 +78,8 @@ export function packAchievementRegistry(
   registry: AchievementRegistry,
   forceExpanded = false,
 ): PackedAchievementRegistry {
+  const v4 = !!registry.milestones;
+  if (!v4 && registry.receipts.some(isMilestoneEvent)) fail();
   const expanded =
     forceExpanded || registry.receipts.some(isExpandedAchievementEvent);
   if (registry.receipts.length > packedAchievementReceiptLimit) fail();
@@ -113,12 +119,19 @@ export function packAchievementRegistry(
       for (const n of v.slice(0, 4)) uint(n!);
       uint(v[4] === null ? 0 : 1);
       if (v[4] !== null) uint(Math.round(v[4]! * 10000));
-      if (expanded) uint(v.length === 6 ? v[5]! + 1 : 0);
+      if (expanded) uint(v.length >= 6 ? v[5]! + 1 : 0);
     } else if (r.stage === 'final') {
       uint(v[0]!);
       uint(v[1]!);
       uint(v[2] === null ? 0 : v[2]! + 1);
-    } else for (const n of v) uint(n!);
+    } else for (const n of v.slice(0, r.stage === 'floor' ? 1 : 2)) uint(n!);
+    if (v4) {
+      uint(isMilestoneEvent(r) ? 1 : 0);
+      if (r.stage === 'room' && isMilestoneEvent(r)) {
+        uint(v[6]!);
+        uint(v[7]!);
+      }
+    }
     nodes.set(r.key, nodes.size + 1);
   }
   const encoded = base64(bytes),
@@ -126,8 +139,9 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: expanded ? 3 : 2,
-    catalogVersion: expanded ? 2 : 1,
+    version: v4 ? 4 : expanded ? 3 : 2,
+    catalogVersion: v4 ? 3 : expanded ? 2 : 1,
+    ...(registry.milestones ? { milestones: { ...registry.milestones } } : {}),
     activatedAt: registry.activatedAt,
     manualUnlockAllAt: registry.manualUnlockAllAt,
     count: registry.receipts.length,
@@ -143,7 +157,8 @@ export function unpackAchievementRegistry(
   if (
     !(
       (value.version === 2 && value.catalogVersion === 1) ||
-      (value.version === 3 && value.catalogVersion === 2)
+      (value.version === 3 && value.catalogVersion === 2) ||
+      (value.version === 4 && value.catalogVersion === 3)
     )
   )
     fail();
@@ -211,7 +226,7 @@ export function unpackAchievementRegistry(
     const stage = stages[byte()],
       position = byte(),
       delta = uint();
-    if (!stage || (stage === 'complete' && value.version !== 3)) fail();
+    if (!stage || (stage === 'complete' && value.version < 3)) fail();
     time += delta % 2 ? -(delta + 1) / 2 : delta / 2;
     if (
       !Number.isSafeInteger(time) ||
@@ -234,10 +249,20 @@ export function unpackAchievementRegistry(
       const present = uint();
       if (present > 1) fail();
       values.push(present ? uint() / 10000 : null);
-      if (value.version === 3) {
+      if (value.version >= 3) {
         const code = uint();
         if (code > 4) fail();
         if (code) values.push(code - 1);
+      }
+    }
+    if (value.version === 4) {
+      const present = uint();
+      if (present > 1) fail();
+      if (present) {
+        if (stage === 'room') {
+          if (values.length !== 6) fail();
+          values.push(uint(), uint());
+        } else values.push(1);
       }
     }
     const candidate = {
@@ -258,5 +283,6 @@ export function unpackAchievementRegistry(
     activatedAt: value.activatedAt,
     manualUnlockAllAt: value.manualUnlockAllAt,
     receipts,
+    ...(value.version === 4 ? { milestones: value.milestones } : {}),
   };
 }

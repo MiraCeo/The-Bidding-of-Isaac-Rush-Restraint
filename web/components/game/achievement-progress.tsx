@@ -1,3 +1,9 @@
+import {
+  selectAchievementCards,
+  groupAchievementCards,
+  seriesForAchievement,
+  independentGroupForAchievement,
+} from '@/lib/ui/achievements/series';
 import { useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Check, LockKeyhole, Search, Trophy, Users } from 'lucide-react';
@@ -15,7 +21,6 @@ import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
   achievementListPresentation,
   selectAchievements,
-  groupAchievementEntries,
   type AchievementStatusFilter,
   type AchievementSort,
 } from '@/lib/ui/achievements/presentation';
@@ -102,7 +107,12 @@ export function AchievementProgress({
   const unlockedRoles = characterCatalog.filter(
     (c) => c.id === 'isaac' || view?.characterUnlocks[c.id],
   ).length;
-  const entries = selectAchievements(
+  const badgeEntries = selectAchievements(
+    { query, category, status, sort, tier },
+    progress,
+    achieved,
+  );
+  const entries = selectAchievementCards(
     { query, category, status, sort, tier },
     progress,
     achieved,
@@ -285,12 +295,13 @@ export function AchievementProgress({
           )}
           <div className="achievement-list-heading">
             <output>
-              显示 {entries.length} / {total} 项
+              显示 {entries.length} 张卡片，涵盖 {badgeEntries.length} / {total}{' '}
+              枚徽章
             </output>
             <span>按分类分组 · 分类内排序 · 点击徽章查看详情</span>
           </div>
           <div className="achievement-sections">
-            {groupAchievementEntries(entries).map(
+            {groupAchievementCards(entries).map(
               ({ category: group, items }) => (
                 <section
                   className="achievement-section"
@@ -316,11 +327,12 @@ export function AchievementProgress({
                           (a) => a.category === group.id && achieved[a.id],
                         ).length
                       }{' '}
-                      / {group.count} · 显示 {items.length} 项
+                      / {group.count} · 显示 {items.length} 张卡片
                     </span>
                   </header>
                   <div className="achievement-grid" data-columns={columns}>
-                    {items.map((a) => {
+                    {items.map((card) => {
+                      const a = card.definition;
                       const at = achieved[a.id],
                         value = progress[a.id] ?? 0,
                         listing = achievementListPresentation(a.id, !!at),
@@ -328,10 +340,18 @@ export function AchievementProgress({
                       return (
                         <button
                           type="button"
-                          id={`achievement-${a.id}`}
+                          id={`achievement-${card.id}`}
                           className="achievement-card"
-                          key={a.id}
-                          data-achieved={!!at}
+                          key={card.id}
+                          data-focused-id={a.id}
+                          data-achieved={
+                            card.series ? card.completed === 3 : !!at
+                          }
+                          data-partial={
+                            !!card.series &&
+                            card.completed > 0 &&
+                            card.completed < 3
+                          }
                           data-tier={badgeTier}
                           data-concealed={listing.hidden}
                           aria-label={`查看${a.id} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
@@ -346,7 +366,9 @@ export function AchievementProgress({
                           />
                           <span className="achievement-card-copy">
                             <span className="achievement-card-heading">
-                              <strong>{listing.name}</strong>
+                              <strong>
+                                {card.series ? card.name : listing.name}
+                              </strong>
                               <span
                                 className="achievement-tier"
                                 data-tier={badgeTier}
@@ -354,7 +376,9 @@ export function AchievementProgress({
                                 {achievementTierLabels[badgeTier]}徽章
                               </span>
                               <span className="achievement-card-state">
-                                {at ? (
+                                {card.series ? (
+                                  <span>已获 {card.completed} / 3</span>
+                                ) : at ? (
                                   <>
                                     <Check size={12} aria-hidden="true" />{' '}
                                     已达成
@@ -367,25 +391,56 @@ export function AchievementProgress({
                                 ) : null}
                               </span>
                             </span>
+                            {independentGroupForAchievement(a.id) && (
+                              <span className="achievement-series-stages">
+                                经典历程
+                              </span>
+                            )}
                             <span className="achievement-summary">
                               {listing.summary}
                             </span>
-                            {!listing.hidden && a.target > 1 && (
-                              <span className="achievement-card-progress">
-                                <span className="sr-only">
-                                  {a.kind === 'same-match'
-                                    ? '单局最高进度'
-                                    : '已记录进度'}
-                                  ：
-                                </span>
-                                {Math.min(value, a.target)} / {a.target}
-                                <progress
-                                  aria-label={`${a.name}进度`}
-                                  value={Math.min(value, a.target)}
-                                  max={a.target}
-                                />
+                            {card.series && (
+                              <span className="achievement-series-stages">
+                                {card.series.ids.map((id) => (
+                                  <span
+                                    key={id}
+                                    data-earned={!!achieved[id]}
+                                    data-tier={
+                                      achievementCollectionMetadata[id].tier
+                                    }
+                                  >
+                                    {
+                                      achievementTierLabels[
+                                        achievementCollectionMetadata[id].tier
+                                      ]
+                                    }{' '}
+                                    {achieved[id] ? '✓' : '○'}
+                                  </span>
+                                ))}
                               </span>
                             )}
+                            {!at && value >= a.target && (
+                              <span className="achievement-card-ready">
+                                待新正式结算确认
+                              </span>
+                            )}
+                            {!listing.hidden &&
+                              (a.target > 1 || !!card.series) && (
+                                <span className="achievement-card-progress">
+                                  <span className="sr-only">
+                                    {a.kind === 'same-match'
+                                      ? '单局最高进度'
+                                      : '已记录进度'}
+                                    ：
+                                  </span>
+                                  {Math.min(value, a.target)} / {a.target}
+                                  <progress
+                                    aria-label={`${a.name}进度`}
+                                    value={Math.min(value, a.target)}
+                                    max={a.target}
+                                  />
+                                </span>
+                              )}
                           </span>
                         </button>
                       );
@@ -529,6 +584,9 @@ export function AchievementProgress({
                 definition={detail}
                 progress={progress[detail.id] ?? 0}
                 achievedAt={achieved[detail.id]}
+                series={seriesForAchievement(detail.id)}
+                allProgress={progress}
+                allAchieved={achieved}
                 onShowRules={() => {
                   setSelected(null);
                   setRulesOpen(true);

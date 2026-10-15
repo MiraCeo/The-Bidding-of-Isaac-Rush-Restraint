@@ -1,3 +1,8 @@
+import {
+  createMilestoneScan,
+  cloneMilestoneScan,
+  scanMilestoneReceipt,
+} from './milestone-evaluation';
 import type { PlayerProfile, ProfileValue } from '../player-profile';
 import { canonicalJson } from '../../shared/json-facts';
 import {
@@ -12,6 +17,7 @@ import {
   achievementCatalog,
   achievementCatalogVersion,
   currentAchievementCatalogVersion,
+  milestoneAchievementCatalogVersion,
   characterAchievementRequirements,
   type AchievementId,
 } from './catalog';
@@ -24,6 +30,7 @@ import {
 import {
   achievementEventOrder,
   sameAchievementEventFacts,
+  isMilestoneEvent,
   encodeAchievementEvent,
   decodeAchievementEvent,
   eventRunAnalysis,
@@ -48,6 +55,7 @@ export interface AchievementRegistry {
   activatedAt: string;
   manualUnlockAllAt: string | null;
   receipts: AchievementReceipt[];
+  milestones?: { from: number; at: string };
 }
 function fail(): never {
   throw Error('成就成长模块损坏、版本不支持或容量超限，原档案保留。');
@@ -81,6 +89,7 @@ function hash(v: unknown): asserts v is string {
  * are rebuilt once per read; branches reuse the same already-recorded prefix. */
 function newScan() {
   return {
+    milestones: createMilestoneScan(),
     counters: emptyAchievementCounters(),
     snapshots: new Map<string, AchievementRunState>(),
     nodes: new Map<string, AchievementReceipt>(),
@@ -92,7 +101,7 @@ function newScan() {
   };
 }
 type ScanState = ReturnType<typeof newScan>;
-function scanReceipt(state: ScanState, r: AchievementReceipt) {
+function scanReceipt(state: ScanState, r: AchievementReceipt, active = false) {
   const { snapshots, nodes, authorityUnits, progress, achievedAt } = state;
 
   exact(r, [
@@ -152,12 +161,37 @@ function scanReceipt(state: ScanState, r: AchievementReceipt) {
     if (result.achieved.includes(a.id) && achievedAt[a.id] === undefined)
       achievedAt[a.id] = r.at;
   }
+  scanMilestoneReceipt(state.milestones, r, active);
   nodes.set(r.key, r);
   snapshots.set(r.key, result.runState);
 }
 function scan(registry: AchievementRegistry) {
   const state = newScan();
-  for (const r of registry.receipts) scanReceipt(state, r);
+  if (registry.milestones) {
+    exact(registry.milestones, ['from', 'at']);
+    date(registry.milestones.at);
+    const { from, at } = registry.milestones;
+    if (
+      !Number.isInteger(from) ||
+      from < 0 ||
+      from >= registry.receipts.length ||
+      registry.receipts[from]!.at !== at ||
+      !isMilestoneEvent(registry.receipts[from]!)
+    )
+      fail();
+  }
+  for (const [i, r] of registry.receipts.entries()) {
+    if (
+      isMilestoneEvent(r) &&
+      (!registry.milestones || i < registry.milestones.from)
+    )
+      fail();
+    scanReceipt(
+      state,
+      r,
+      !!registry.milestones && i >= registry.milestones.from,
+    );
+  }
   return state;
 }
 function projectScan(registry: AchievementRegistry, state: ScanState) {
@@ -193,7 +227,12 @@ function projectScan(registry: AchievementRegistry, state: ScanState) {
       },
     ),
   );
-  return { counters, progress, achievedAt, characterUnlocks };
+  return {
+    counters,
+    progress: { ...progress, ...state.milestones.progress },
+    achievedAt: { ...achievedAt, ...state.milestones.achievedAt },
+    characterUnlocks,
+  };
 }
 function authorityUnitIdentity(
   r: Pick<
@@ -270,7 +309,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   const v = object(value);
   exact(
     value,
-    v.version === 2 || v.version === 3
+    v.version === 2 || v.version === 3 || v.version === 4
       ? [
           'version',
           'catalogVersion',
@@ -279,6 +318,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
           'count',
           'roots',
           'data',
+          ...(v.version === 4 ? ['milestones'] : []),
         ]
       : [
           'version',
@@ -289,18 +329,24 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
         ],
   );
   if (
-    ![1, 2, 3].includes(v.version as number) ||
+    ![1, 2, 3, 4].includes(v.version as number) ||
     v.catalogVersion !==
-      (v.version === 3
-        ? currentAchievementCatalogVersion
-        : achievementCatalogVersion)
+      (v.version === 4
+        ? milestoneAchievementCatalogVersion
+        : v.version === 3
+          ? currentAchievementCatalogVersion
+          : achievementCatalogVersion)
   )
     fail();
+  if (v.version === 4) {
+    exact(v.milestones, ['from', 'at']);
+    date(object(v.milestones).at);
+  }
   date(v.activatedAt);
   if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
   if (new TextEncoder().encode(content).length > achievementRegistryByteLimit)
     fail();
-  if (v.version === 2 || v.version === 3)
+  if (v.version === 2 || v.version === 3 || v.version === 4)
     return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
   if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
     fail();
@@ -354,6 +400,7 @@ function install(
     | { version?: number }
     | undefined;
   const wire =
+    registry.milestones ||
     old?.version === 2 ||
     old?.version === 3 ||
     registry.receipts.some(isExpandedAchievementEvent) ||
@@ -456,6 +503,7 @@ export function createAchievementBatch(
   const state: ScanState = previous
     ? {
         ...previous.state,
+        milestones: cloneMilestoneScan(previous.state.milestones),
         counters: { ...previous.state.counters },
         progress: { ...previous.state.progress },
         achievedAt: { ...previous.state.achievedAt },
@@ -507,7 +555,9 @@ export function createAchievementBatch(
           return;
         }
         if (registry.receipts.length >= packedAchievementReceiptLimit) fail();
-        scanReceipt(state, r);
+        if (isMilestoneEvent(r) && !registry.milestones)
+          registry.milestones = { from: registry.receipts.length, at: r.at };
+        scanReceipt(state, r, !!registry.milestones);
         registry.receipts.push(r);
         changed = true;
       } catch (error) {

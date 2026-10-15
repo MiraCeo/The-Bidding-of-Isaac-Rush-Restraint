@@ -88,6 +88,7 @@ function classic(expanded = true): GameSession {
     }),
     -1,
     expanded ? -1 : 34,
+    34, // Freeze the original 0.5.3 catalog corpus; 0.5.6 has dedicated coverage.
   );
 }
 function step(s: GameSession) {
@@ -495,6 +496,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     const s = step(classic(false));
     const old = structuredClone(s);
     delete old.growth!.expansionFrom;
+    delete old.growth!.milestonesFrom;
     const before = canonicalJson(old),
       loaded = parseGameSave(serializeGameCheckpoint(old)).session;
     expect(loaded.growth!.expansionFrom).toBeUndefined();
@@ -502,7 +504,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.expansionFrom).toBe(1);
     expect(next.growth!.units[1]!.values).toHaveLength(5);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(6);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(8);
     expect(canonicalJson(old)).toBe(before);
     expect(parseGameSave(serializeGameCheckpoint(next)).session.growth).toEqual(
       next.growth,
@@ -527,6 +529,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
   it('does not backfill a legacy terminal or imported pending prefix, but a new classic terminal is awarded once', () => {
     const legacy = finish(classic(false));
     delete legacy.growth!.expansionFrom;
+    delete legacy.growth!.milestonesFrom;
     const loaded = parseGameSave(serializeGameCheckpoint(legacy)).session;
     const old = applyGrowthContext(
       createPlayerProfile(now),

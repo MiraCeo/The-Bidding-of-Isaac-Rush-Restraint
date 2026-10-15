@@ -10,15 +10,20 @@ import { readLiveScoreBeforeClear } from '../../game/item-scoring';
 export interface AchievementEntryFacts {
   floorIndex: number;
   roomIndex: number;
+  /** Present only on prospectively observed 0.5.6 authority stages. */
+  milestones?: true;
   stolenMoney: number;
   interestMoney: number;
 }
 export interface AchievementCompletionFacts {
+  milestones?: true;
   mode: 'classic' | 'survival';
   characterId: import('../../game/item-types').CharacterId;
   champion: boolean;
 }
 export interface AchievementRoomFacts {
+  milestoneFlags?: number;
+  saleSavings?: number;
   missedCooperation?: boolean;
   missedHighPrice?: boolean;
   floorIndex: number;
@@ -49,6 +54,7 @@ export interface AchievementRoomFacts {
   hiddenAwardCopies: number;
 }
 export interface AchievementFloorFacts {
+  milestones?: true;
   floorIndex: number;
   humanParticipated: boolean;
   humanSurvived: boolean;
@@ -56,6 +62,7 @@ export interface AchievementFloorFacts {
   lowestSurvivor: boolean;
 }
 export interface AchievementFinalFacts {
+  milestones?: true;
   humanSurvived: boolean;
   highestDifficulty: boolean;
   lastEliminationFloor: number;

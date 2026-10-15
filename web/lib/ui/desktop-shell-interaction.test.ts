@@ -130,7 +130,7 @@ it.each(['classic', 'survival'] as const)(
       node.querySelector('.page-context-bar .round-status')!.textContent,
     ).toContain('第 1 层');
     await click('成就');
-    expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
+    expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
     await click(
       '返回游戏',
       node.querySelector('.progress-stage > .ranking-page-heading')!,

@@ -5,6 +5,7 @@ import {
   achievementCategories,
   characterAchievementRequirements,
   type AchievementDefinition,
+  type AchievementId,
   achievementCatalog,
 } from '@/lib/ui/achievements/catalog';
 import { achievementPresentation } from '@/lib/ui/achievements/presentation';
@@ -21,11 +22,17 @@ export function AchievementDetail({
   progress,
   achievedAt,
   onShowRules,
+  series,
+  allProgress = {},
+  allAchieved = {},
 }: {
   definition: AchievementDefinition;
   progress: number;
   achievedAt?: string;
   onShowRules: () => void;
+  series?: { name: string; ids: readonly AchievementId[] };
+  allProgress?: Partial<Record<AchievementId, number>>;
+  allAchieved?: Partial<Record<AchievementId, string>>;
 }) {
   const roles = characterCatalog.filter((c) =>
     characterAchievementRequirements[c.id].includes(a.id),
@@ -121,14 +128,65 @@ export function AchievementDetail({
           </p>
         ))}
       </section>
-      <section className="achievement-collection-note" aria-label="收藏札记">
-        <h4>收藏札记</h4>
-        {achievedAt ? (
-          <blockquote>{achievementCollectionNotes[a.id]}</blockquote>
-        ) : (
-          <p>达成后解锁</p>
-        )}
-      </section>
+      {series && (
+        <section
+          className="achievement-series-detail"
+          aria-label="三级独立徽章"
+        >
+          <h4>
+            {series.name} · 已获{' '}
+            {series.ids.filter((id) => allAchieved[id]).length} / 3
+          </h4>
+          <ol>
+            {series.ids.map((id) => {
+              const level = achievementCatalog.find((d) => d.id === id)!,
+                at = allAchieved[id];
+              return (
+                <li key={id} data-tier={achievementCollectionMetadata[id].tier}>
+                  <div>
+                    <strong>
+                      {
+                        achievementTierLabels[
+                          achievementCollectionMetadata[id].tier
+                        ]
+                      }
+                      徽章 · {id}
+                    </strong>
+                    <span>{at ? '已达成' : '未达成'}</span>
+                  </div>
+                  <p>{level.condition}</p>
+                  <p>
+                    已记录进度：{allProgress[id] ?? 0} / {level.target}
+                  </p>
+                  {at ? (
+                    <time dateTime={at}>
+                      {new Date(at).toLocaleString('zh-CN')}
+                    </time>
+                  ) : (
+                    <p>尚未达成</p>
+                  )}
+                  <h5>收藏札记</h5>
+                  {at ? (
+                    <blockquote>{achievementCollectionNotes[id]}</blockquote>
+                  ) : (
+                    <p>达成后解锁</p>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+      {!series && (
+        <section className="achievement-collection-note" aria-label="收藏札记">
+          <h4>收藏札记</h4>
+          {achievedAt ? (
+            <blockquote>{achievementCollectionNotes[a.id]}</blockquote>
+          ) : (
+            <p>达成后解锁</p>
+          )}
+        </section>
+      )}
       <button
         type="button"
         className="achievement-system-rules-link"

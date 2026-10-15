@@ -1,3 +1,4 @@
+import { extractMilestoneRoomFacts } from './milestone-room-facts';
 import { readRoomNearMissEvidence } from '../../game/room-near-miss-evidence';
 import type { GameSession } from '../game-session';
 import type { SurvivalGameState } from '../../game/survival-session';
@@ -19,6 +20,7 @@ import {
 import {
   encodeAchievementEvent,
   sameAchievementEventFacts,
+  isMilestoneEvent,
   decodeAchievementEvent,
   achievementEventOrder,
   type EncodedAchievementEvent,
@@ -43,6 +45,8 @@ export interface GrowthContext {
   ignoredThrough?: number;
   /** 0.5.3 new-fact boundary; absent on legacy contexts, never inferred from a date. */
   expansionFrom?: number;
+  /** 0.5.6 prospective run/causal boundary; absent on older contexts. */
+  milestonesFrom?: number;
 }
 function fail(): never {
   throw Error('对局成长上下文不一致，原对局与档案保留。');
@@ -141,6 +145,7 @@ export function beginClassicGrowth(
   session: GameSession,
   excludedThrough = -1,
   expansionFrom = excludedThrough,
+  milestonesFrom = expansionFrom,
 ): GameSession {
   if (session.game.phase === 'character_selection' || !session.replay) fail();
   const ctx: GrowthContext = {
@@ -149,6 +154,7 @@ export function beginClassicGrowth(
     root: digest(['classic', session.replay.id]),
     excludedThrough,
     expansionFrom,
+    milestonesFrom,
     units: [],
     acknowledged: 0,
   };
@@ -158,6 +164,7 @@ export function beginSurvivalGrowth(
   session: SurvivalClientSession,
   excludedThrough = -1,
   expansionFrom = excludedThrough,
+  milestonesFrom = expansionFrom,
 ): SurvivalClientSession {
   const g = session.game;
   const id = survivalMatchId(
@@ -171,6 +178,7 @@ export function beginSurvivalGrowth(
     root: digest(['survival', id]),
     excludedThrough,
     expansionFrom,
+    milestonesFrom,
     units: [],
     acknowledged: 0,
   };
@@ -209,6 +217,12 @@ export function observeClassicGrowth(
             : classicGrowthOrder(next),
         }
       : ctx;
+  result = {
+    ...result,
+    milestonesFrom:
+      ctx.milestonesFrom ??
+      (before ? classicGrowthOrder(before) : classicGrowthOrder(next)),
+  };
   if (
     g.phase === 'room_action' &&
     (!before ||
@@ -220,11 +234,16 @@ export function observeClassicGrowth(
       result,
       {
         stage: 'entry',
-        facts: extractAchievementEntryFacts(
-          g.roomEntryEvents,
-          g.floorIndex,
-          g.roomIndex,
-        ),
+        facts: {
+          ...extractAchievementEntryFacts(
+            g.roomEntryEvents,
+            g.floorIndex,
+            g.roomIndex,
+          ),
+          ...(g.floorIndex * 11 + g.roomIndex * 2 > result.milestonesFrom!
+            ? { milestones: true as const }
+            : {}),
+        },
       },
       [classicPrefix(next), g.roomEntryEvents, g.players],
     );
@@ -241,11 +260,16 @@ export function observeClassicGrowth(
         result,
         {
           stage: 'room',
-          facts: withNearMissFacts(
-            g.roomSettlement,
-            facts,
-            g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.expansionFrom!,
-          ),
+          facts: {
+            ...withNearMissFacts(
+              g.roomSettlement,
+              facts,
+              g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.expansionFrom!,
+            ),
+            ...(g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.milestonesFrom!
+              ? extractMilestoneRoomFacts(g.roomSettlement)
+              : {}),
+          },
         },
         classicPrefix(next),
       );
@@ -263,6 +287,7 @@ export function observeClassicGrowth(
       {
         stage: 'complete',
         facts: {
+          ...(34 > result.milestonesFrom! ? { milestones: true as const } : {}),
           mode: 'classic',
           characterId: g.selectedCharacter,
           champion: !g.finalRanking.some(
@@ -289,6 +314,12 @@ export function observeSurvivalGrowth(
             : survivalGrowthOrder(next),
         }
       : ctx;
+  result = {
+    ...result,
+    milestonesFrom:
+      ctx.milestonesFrom ??
+      (before ? survivalGrowthOrder(before) : survivalGrowthOrder(next)),
+  };
   if (
     next.phase === 'room_action' &&
     next.activePlayerIds.includes('human') &&
@@ -300,11 +331,16 @@ export function observeSurvivalGrowth(
       result,
       {
         stage: 'entry',
-        facts: extractAchievementEntryFacts(
-          next.roomEntryEvents,
-          next.floorIndex,
-          next.roomIndex,
-        ),
+        facts: {
+          ...extractAchievementEntryFacts(
+            next.roomEntryEvents,
+            next.floorIndex,
+            next.roomIndex,
+          ),
+          ...(next.floorIndex * 11 + next.roomIndex * 2 > result.milestonesFrom!
+            ? { milestones: true as const }
+            : {}),
+        },
       },
       [survivalPrefix(next), next.roomEntryEvents, next.players],
     );
@@ -319,12 +355,18 @@ export function observeSurvivalGrowth(
         result,
         {
           stage: 'room',
-          facts: withNearMissFacts(
-            next.roomSettlement,
-            facts,
-            next.floorIndex * 11 + next.roomIndex * 2 + 1 >
-              result.expansionFrom!,
-          ),
+          facts: {
+            ...withNearMissFacts(
+              next.roomSettlement,
+              facts,
+              next.floorIndex * 11 + next.roomIndex * 2 + 1 >
+                result.expansionFrom!,
+            ),
+            ...(next.floorIndex * 11 + next.roomIndex * 2 + 1 >
+            result.milestonesFrom!
+              ? extractMilestoneRoomFacts(next.roomSettlement)
+              : {}),
+          },
         },
         survivalPrefix(next),
       );
@@ -334,7 +376,12 @@ export function observeSurvivalGrowth(
     (before?.floorRecords.length ?? next.floorRecords.length)
   ) {
     const record = next.floorRecords.at(-1)!,
-      facts = extractAchievementFloorFacts(record);
+      facts = {
+        ...extractAchievementFloorFacts(record),
+        ...(record.floorIndex * 11 + 10 > result.milestonesFrom!
+          ? { milestones: true as const }
+          : {}),
+      };
     if (facts.humanParticipated)
       result = append(result, { stage: 'floor', facts }, [
         survivalPrefix(next),
@@ -349,6 +396,10 @@ export function observeSurvivalGrowth(
       last = next.floorRecords.at(-1);
     if (!human || !last?.plan.shouldFinish) fail();
     const facts = {
+      ...(next.floorRecords.at(-1)!.floorIndex * 11 + 11 >
+      result.milestonesFrom!
+        ? { milestones: true as const }
+        : {}),
       humanSurvived: human.status === 'survived',
       highestDifficulty: next.aiDifficulty === 'highest',
       lastEliminationFloor: last.floorIndex,
@@ -374,6 +425,9 @@ export function observeSurvivalGrowth(
         {
           stage: 'complete',
           facts: {
+            ...(78 > result.milestonesFrom!
+              ? { milestones: true as const }
+              : {}),
             mode: 'survival',
             characterId: next.selectedCharacter,
             champion: next.championId === 'human',
@@ -394,9 +448,12 @@ export function validateGrowthContext(
 ): GrowthContext {
   const optional =
     value && typeof value === 'object'
-      ? ['profileEpoch', 'ignoredThrough', 'expansionFrom'].filter((key) =>
-          Object.hasOwn(value, key),
-        )
+      ? [
+          'profileEpoch',
+          'ignoredThrough',
+          'expansionFrom',
+          'milestonesFrom',
+        ].filter((key) => Object.hasOwn(value, key))
       : [];
   exact(value, [
     'version',
@@ -442,6 +499,15 @@ export function validateGrowthContext(
       c.expansionFrom > max)
   )
     fail();
+  if (
+    c.milestonesFrom !== undefined &&
+    (!Number.isInteger(c.milestonesFrom) ||
+      c.milestonesFrom < c.excludedThrough ||
+      c.milestonesFrom > max ||
+      c.expansionFrom === undefined ||
+      c.milestonesFrom < c.expansionFrom)
+  )
+    fail();
   let previous = c.excludedThrough;
   for (const unit of c.units) {
     exact(unit, ['stage', 'position', 'values', 'authorityHash']);
@@ -460,8 +526,13 @@ export function validateGrowthContext(
       (unit.stage === 'complete' &&
         unit.position !== (mode === 'classic' ? 0 : 1)) ||
       ((unit.stage === 'complete' ||
-        (unit.stage === 'room' && unit.values.length === 6)) &&
+        (unit.stage === 'room' && unit.values.length >= 6)) &&
         (c.expansionFrom === undefined || order <= c.expansionFrom))
+    )
+      fail();
+    if (
+      isMilestoneEvent(unit) &&
+      (c.milestonesFrom === undefined || order <= c.milestonesFrom)
     )
       fail();
     if (order <= previous || order > max) fail();
@@ -478,6 +549,7 @@ export function restoreGrowthContext(
   const authorityContext = (v: GrowthContext) => {
     const { profileEpoch: _epoch, ignoredThrough: _ignored, ...rest } = v;
     if (c.expansionFrom === undefined) delete rest.expansionFrom;
+    if (c.milestonesFrom === undefined) delete rest.milestonesFrom;
     return { ...rest, acknowledged: 0 };
   };
   if (
