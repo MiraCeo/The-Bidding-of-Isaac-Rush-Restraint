@@ -6,6 +6,7 @@ import type { BackupProfileGuard } from './use-backup-profile-guard';
 
 export function ModeFilePreview({
   candidate,
+  busy = false,
   restoreProfile,
   onProfileChange,
   onConfirm,
@@ -17,6 +18,7 @@ export function ModeFilePreview({
     ModeDataCandidate,
     { kind: 'survival-checkpoint' | 'survival-replay' | 'survival-backup' }
   >;
+  busy?: boolean;
   restoreProfile: boolean;
   onProfileChange: (value: boolean) => void;
   onConfirm: () => void;
@@ -74,6 +76,7 @@ export function ModeFilePreview({
           <label>
             <input
               type="checkbox"
+              disabled={busy}
               checked={restoreProfile}
               onChange={(event) => onProfileChange(event.target.checked)}
             />
@@ -94,7 +97,7 @@ export function ModeFilePreview({
       <div className="data-actions">
         <Button
           onClick={onConfirm}
-          disabled={restoreProfile && profileGuard.blocked}
+          disabled={busy || (restoreProfile && profileGuard.blocked)}
         >
           {candidate.kind === 'survival-replay'
             ? '打开生存回放'

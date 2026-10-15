@@ -1,24 +1,19 @@
 import { persistCompletionProfile } from '../completion-persistence';
-import { playerProfileKey, type PlayerProfile } from '../player-profile';
+import { type PlayerProfile } from '../player-profile';
 import type { SaveStorage } from '../game-save';
 import { applyGrowthContext, type GrowthContext } from './lifecycle';
+import {
+  profileWriteLockName,
+  browserProfileWriteCoordinator,
+  type ProfileWriteCoordinator,
+} from '../profile-write-coordinator';
 
-export const achievementProfileLockName = `bidding-profile-write:${playerProfileKey}`;
+export const achievementProfileLockName = profileWriteLockName;
 /** All future profile writers must join this lock before claiming global cross-tab
- * serialization. Existing completion/restore writers are not yet wired here. */
-export interface AchievementWriteCoordinator {
-  exclusive<T>(name: string, work: () => T, signal?: AbortSignal): Promise<T>;
-}
+ * serialization. Current UI completion/restore writers share this lock. */
+export type AchievementWriteCoordinator = ProfileWriteCoordinator;
 export function browserAchievementWriteCoordinator(): AchievementWriteCoordinator | null {
-  if (typeof navigator === 'undefined' || !navigator.locks) return null;
-  return {
-    exclusive: (name, work, signal) =>
-      navigator.locks.request(
-        name,
-        { mode: 'exclusive', ...(signal ? { signal } : {}) },
-        work,
-      ),
-  };
+  return browserProfileWriteCoordinator();
 }
 export async function persistAchievementProfile(
   storage: Pick<SaveStorage, 'getItem' | 'setItem'> | null,

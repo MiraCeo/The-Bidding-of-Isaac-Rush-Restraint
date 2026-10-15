@@ -8,11 +8,11 @@ import {
   readPlayerProfileSnapshot,
   readPlayerProfileBackup,
   serializePlayerProfileBackup,
-  restorePlayerProfileBackup,
   PlayerProfileChangedError,
   type PlayerProfileSnapshot,
   type PlayerProfileBackupDocument,
 } from '@/lib/ui/player-profile-file';
+import { replacePlayerProfileCoordinated } from '@/lib/ui/profile-operations';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import type { PlayerProfile } from '@/lib/ui/player-profile';
 import {
@@ -82,22 +82,26 @@ export function PlayerProfileManagement() {
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false),
     [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const operations = useRef({
     live: false,
     id: 0,
     read: null as AbortController | null,
     export: null as AbortController | null,
+    confirm: null as AbortController | null,
   });
   const cancel = useCallback(() => {
     const state = operations.current;
     state.id++;
     state.read?.abort();
+    state.confirm?.abort();
     state.export?.abort();
     setCandidate(null);
     setAcknowledged(false);
     setReading(false);
     setExporting(false);
+    setImporting(false);
     setMessage('已取消档案操作，未替换本机档案。');
   }, []);
   useEffect(() => {
@@ -115,6 +119,7 @@ export function PlayerProfileManagement() {
       state.live = false;
       state.id++;
       state.read?.abort();
+      state.confirm?.abort();
       state.export?.abort();
       unsubscribe();
       node?.removeEventListener('cancel', cancel);
@@ -134,6 +139,8 @@ export function PlayerProfileManagement() {
   async function read(file?: File) {
     const state = operations.current;
     state.read?.abort();
+    state.confirm?.abort();
+    setImporting(false);
     const controller = new AbortController();
     state.read = controller;
     const id = ++state.id;
@@ -195,20 +202,32 @@ export function PlayerProfileManagement() {
   }
   function recheck() {
     if (!candidate) return;
+    operations.current.confirm?.abort();
+    operations.current.id++;
+    setImporting(false);
     const local = readPlayerProfileSnapshot(getPreferenceStorage());
     setSnapshot(local);
     setCandidate({ ...candidate, local });
     setAcknowledged(false);
     setMessage('已重新核对本机档案；请查看两份档案，再明确确认替换。');
   }
-  function confirm() {
-    if (!candidate || !acknowledged || !candidate.local.available) return;
+  async function confirm() {
+    if (!candidate || !acknowledged || !candidate.local.available || importing)
+      return;
+    const state = operations.current,
+      id = state.id,
+      controller = new AbortController();
+    state.confirm?.abort();
+    state.confirm = controller;
+    setImporting(true);
     try {
-      const restored = restorePlayerProfileBackup(
+      const restored = await replacePlayerProfileCoordinated(
         getPreferenceStorage(),
         candidate.document.profile,
         candidate.local.source,
+        { signal: controller.signal },
       );
+      if (!state.live || id !== state.id || controller.signal.aborted) return;
       setSnapshot({ ...restored, available: true, message: '' });
       setCandidate(null);
       setAcknowledged(false);
@@ -218,11 +237,15 @@ export function PlayerProfileManagement() {
           : '档案内容一致，未重复写入；对局与回放库保持不变。',
       );
     } catch (error) {
+      if (!state.live || id !== state.id || controller.signal.aborted) return;
       if (error instanceof PlayerProfileChangedError) {
         setSnapshot(readPlayerProfileSnapshot(getPreferenceStorage()));
         setAcknowledged(false);
       }
       setMessage(errorText(error));
+    } finally {
+      if (state.live && id === state.id && !controller.signal.aborted)
+        setImporting(false);
     }
   }
   const changed =
@@ -242,7 +265,7 @@ export function PlayerProfileManagement() {
         <span>两种模式共用 · 不依附对局</span>
       </div>
       <p className="utility-notice">
-        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；当前不发放成就或解锁角色。
+        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色可用性界面尚未接入。
       </p>
       <div className="profile-local">
         <strong>
@@ -329,14 +352,19 @@ export function PlayerProfileManagement() {
             <input
               type="checkbox"
               checked={acknowledged && !changed}
-              disabled={changed || !candidate.local.available}
+              disabled={importing || changed || !candidate.local.available}
               onChange={(event) => setAcknowledged(event.target.checked)}
             />
             确认用文件档案替换本机档案（不合并）
           </label>
           <div className="data-actions">
             <Button
-              disabled={!acknowledged || changed || !candidate.local.available}
+              disabled={
+                importing ||
+                !acknowledged ||
+                changed ||
+                !candidate.local.available
+              }
               onClick={confirm}
             >
               确认恢复玩家档案

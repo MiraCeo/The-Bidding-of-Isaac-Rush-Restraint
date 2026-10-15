@@ -84,7 +84,12 @@ it.each(['classic', 'survival'] as const)(
       node<HTMLInputElement>('.data-candidate input[type="checkbox"]'),
     );
     await click(button(label));
-    expect(onImport).toHaveBeenCalledWith(expect.anything(), true, changed);
+    expect(onImport).toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+      changed,
+      expect.any(AbortSignal),
+    );
   },
 );
 afterEach(async () => {

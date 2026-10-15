@@ -74,7 +74,9 @@ it('describes existing profile data in the backup preview and cancels back to th
   await click('完整备份');
   const preview = container.querySelector('.data-backup-preview')!;
   expect(preview.textContent).toContain('完成记录、累计统计、去重凭据');
-  expect(preview.textContent).toContain('当前不发放成就或解锁角色');
+  expect(preview.textContent).toContain(
+    '恢复操作不额外发放成就；角色可用性界面尚未接入',
+  );
   expect(preview.textContent).not.toContain('已保存的解锁');
   expect(document.activeElement?.id).toBe('progress-title');
   await act(async () =>

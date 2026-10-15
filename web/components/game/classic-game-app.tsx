@@ -15,18 +15,21 @@ import {
   type GameSession,
 } from '@/lib/ui/game-session';
 import {
+  gameSaveKey,
   loadAutoSave,
   loadPlayerProfile,
-  persistGameSession,
 } from '@/lib/ui/game-save';
 import { readPlayerProfile, type PlayerProfile } from '@/lib/ui/player-profile';
 import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { CharacterId } from '@/lib/game/item-types';
 import { ReplayArchive } from './replay-viewer';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
-import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
+import { restoreClassicCoordinated } from '@/lib/ui/profile-operations';
+import { useLivePersistence, currentGrowthEpoch } from './use-live-persistence';
+import { mergeSavedGrowth } from '@/lib/ui/achievements/client-persistence';
 import {
   beginClassicGrowth,
+  bindGrowthEpoch,
   classicGrowthOrder,
 } from '@/lib/ui/achievements/lifecycle';
 
@@ -60,6 +63,7 @@ export interface ClassicGameAppProps {
     session: GameSession;
     profile?: PlayerProfile;
     revision: number;
+    source?: string | null;
   };
   externalReplay?: ReplayDocument | null;
   onCloseExternalReplay?: () => void;
@@ -111,6 +115,33 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     initial.session?.game.phase === 'game_result',
   );
   const game = session.game;
+  const liveSave = useLivePersistence({
+    mode: 'classic',
+    session,
+    revision: restoreRevision,
+    origin: () => (restoredTerminal.current ? 'restored' : 'live'),
+    enabled: () => {
+      if (game.phase !== 'character_selection') hasActiveSession.current = true;
+      return !(
+        game.phase === 'character_selection' &&
+        initial.message &&
+        !hasActiveSession.current &&
+        restoreRevision === 0
+      );
+    },
+    onAcknowledged: (snapshot, context) =>
+      setSession((current) => {
+        if (!current.growth || !snapshot.growth) return current;
+        const growth = mergeSavedGrowth(
+          current.growth,
+          snapshot.growth,
+          context,
+        );
+        return growth === current.growth ? current : { ...current, growth };
+      }),
+  });
+  const invalidateSave = liveSave.invalidate;
+  const acceptSaveSource = liveSave.acceptSource;
   const dispatch = (action: ClientGameAction) => {
     if (action.type === 'restart_game') setSelectedCharacter(null);
     if (action.type === 'start_game' || action.type === 'restart_game')
@@ -118,75 +149,85 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     if (action.type === 'start_game' || action.type === 'restart_game')
       setRestoreMessage('');
     setSession((current) => {
-      const source =
+      let source =
         !current.growth &&
         current.game.phase !== 'character_selection' &&
         current.game.phase !== 'game_result' &&
         action.type !== 'restart_game'
           ? beginClassicGrowth(current, classicGrowthOrder(current))
           : current;
+      const epoch = currentGrowthEpoch();
+      if (source.growth && epoch !== undefined)
+        source = { ...source, growth: bindGrowthEpoch(source.growth, epoch) };
       const next = reduceGameSession(source, action);
-      return action.type === 'start_game' && next !== source
-        ? beginClassicGrowth(next)
-        : next;
+      if (action.type !== 'start_game' || next === source) return next;
+      const tracked = beginClassicGrowth(next);
+      return epoch === undefined
+        ? tracked
+        : {
+            ...tracked,
+            growth: bindGrowthEpoch(tracked.growth!, epoch, { fresh: true }),
+          };
     });
   };
   useEffect(() => {
-    // Retain unreadable automatic files until the user starts/imports a valid game.
-    if (game.phase !== 'character_selection') hasActiveSession.current = true;
-    if (
-      game.phase === 'character_selection' &&
-      initial.message &&
-      !hasActiveSession.current &&
-      restoreRevision === 0
-    )
-      return;
-    const saved = persistGameSession(
-      getPreferenceStorage(),
-      session,
-      restoredTerminal.current ? 'restored' : 'live',
-    );
     let cancelled = false;
     queueMicrotask(() => {
-      if (!cancelled) {
-        if (session.growthIssue)
-          setRestoreMessage(
-            `本局成长捕获已暂停：${session.growthIssue} 对局仍按原规则推进，导出保留普通对局数据。`,
-          );
-        setAutoSaveStatus(
-          saved
-            ? game.phase === 'character_selection'
-              ? 'idle'
-              : 'saved'
-            : 'session',
-        );
-        if (saved && game.phase === 'game_result')
-          setProfile(loadPlayerProfile(getPreferenceStorage()).profile);
-      }
+      if (cancelled) return;
+      setAutoSaveStatus(
+        liveSave.saved
+          ? game.phase === 'character_selection'
+            ? 'idle'
+            : 'saved'
+          : 'session',
+      );
+      if (liveSave.saved && game.phase === 'game_result')
+        setProfile(loadPlayerProfile(getPreferenceStorage()).profile);
     });
     return () => {
       cancelled = true;
     };
-  }, [session, game.phase, initial, restoreRevision]);
+  }, [liveSave.saved, game.phase]);
   const onActivateClassic = props.onActivateClassic;
   const restore = useCallback(
-    (
+    async (
       next: GameSession,
       incomingProfile?: PlayerProfile,
       expectedProfileSource?: string | null,
+      signal?: AbortSignal,
+      restoredSource?: string | null,
     ) => {
+      invalidateSave();
+      let source =
+        restoredSource === undefined
+          ? (getPreferenceStorage()?.getItem(gameSaveKey) ?? null)
+          : restoredSource;
       if (incomingProfile) {
         const validated = readPlayerProfile(incomingProfile);
         const storage = getPreferenceStorage();
-        restoreClassicBackupProgress(
+        const committed = await restoreClassicCoordinated(
           storage,
           next,
           validated,
           expectedProfileSource,
+          { signal },
         );
+        source = committed.source;
         setProfile(validated);
         setProfileMessage('');
       }
+      if (signal?.aborted) return;
+      acceptSaveSource(source);
+      const epoch = currentGrowthEpoch();
+      if (next.growth)
+        next = {
+          ...next,
+          growth: bindGrowthEpoch(
+            next.growth,
+            epoch === undefined ? (next.growth.profileEpoch ?? null) : epoch,
+            { imported: true },
+          ),
+        };
       restoredTerminal.current = next.game.phase === 'game_result';
       setSession(next);
       onActivateClassic?.();
@@ -198,10 +239,11 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
       setRestoreRevision((current) => current + 1);
       window.scrollTo(0, 0);
     },
-    [onActivateClassic],
+    [onActivateClassic, invalidateSave, acceptSaveSource],
   );
   const activate = props.onActivateClassic;
   const newGame = useCallback(() => {
+    invalidateSave();
     restoredTerminal.current = false;
     setSelectedCharacter(null);
     setSession(createGameSession());
@@ -209,7 +251,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     setRestoreMessage('已返回选角；玩家进度、最近完成记录及原有导出文件保留。');
     setRestoreRevision((current) => current + 1);
     window.scrollTo(0, 0);
-  }, [activate]);
+  }, [activate, invalidateSave]);
   const [storedPreferences, setPreferences] = useState(() =>
     loadGamePreferences(getPreferenceStorage()),
   );
@@ -233,7 +275,17 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     if (props.incoming)
       queueMicrotask(() => {
         if (!cancelled) {
-          restore(props.incoming!.session, props.incoming!.profile);
+          void restore(
+            props.incoming!.session,
+            props.incoming!.profile,
+            undefined,
+            undefined,
+            props.incoming!.source,
+          ).catch((error) =>
+            setRestoreMessage(
+              error instanceof Error ? error.message : '载入失败。',
+            ),
+          );
           if (!props.incoming!.profile) {
             const loaded = loadPlayerProfile(getPreferenceStorage());
             if (!loaded.message) setProfile(loaded.profile);
@@ -441,6 +493,18 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
           data-reduce-motion={preferences.reduceMotion}
         >
           {page}
+          {liveSave.message && (
+            <output className="survival-save-message">
+              {liveSave.message}
+              <button
+                type="button"
+                disabled={liveSave.busy}
+                onClick={liveSave.retry}
+              >
+                重试保存
+              </button>
+            </output>
+          )}
         </div>
       </ItemArtProvider>
     </SessionContext.Provider>

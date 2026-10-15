@@ -35,6 +35,10 @@ export interface GrowthContext {
   excludedThrough: number;
   units: GrowthUnit[];
   acknowledged: number;
+  /** Local replacement generation; never part of match/authority identities. */
+  profileEpoch?: string | null;
+  /** Imported/replaced-profile prefix must not be granted merely by loading it. */
+  ignoredThrough?: number;
 }
 function fail(): never {
   throw Error('对局成长上下文不一致，原对局与档案保留。');
@@ -48,6 +52,23 @@ function exact(value: unknown, names: string[]) {
     names.some((n) => !Object.hasOwn(value, n))
   )
     fail();
+}
+export function bindGrowthEpoch(
+  context: GrowthContext,
+  epoch: string | null,
+  options: { fresh?: boolean; imported?: boolean } = {},
+): GrowthContext {
+  const changed =
+    context.profileEpoch !== epoch &&
+    !(context.profileEpoch === undefined && epoch === null);
+  return {
+    ...context,
+    profileEpoch: epoch,
+    ignoredThrough:
+      options.imported || (!options.fresh && changed)
+        ? context.units.length
+        : (context.ignoredThrough ?? 0),
+  };
 }
 /** Only the same unrounded knife explanation tails as existing completion
  * identities are normalized. All prices, authority scores and causes stay exact. */
@@ -269,6 +290,12 @@ export function validateGrowthContext(
   value: unknown,
   mode: 'classic' | 'survival',
 ): GrowthContext {
+  const optional =
+    value && typeof value === 'object'
+      ? ['profileEpoch', 'ignoredThrough'].filter((key) =>
+          Object.hasOwn(value, key),
+        )
+      : [];
   exact(value, [
     'version',
     'mode',
@@ -276,6 +303,7 @@ export function validateGrowthContext(
     'excludedThrough',
     'units',
     'acknowledged',
+    ...optional,
   ]);
   const c = value as GrowthContext;
   const max = mode === 'classic' ? 31 : 77;
@@ -292,6 +320,17 @@ export function validateGrowthContext(
     !Number.isInteger(c.acknowledged) ||
     c.acknowledged < 0 ||
     c.acknowledged > c.units.length
+  )
+    fail();
+  if (
+    (c.profileEpoch !== undefined &&
+      c.profileEpoch !== null &&
+      (typeof c.profileEpoch !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(c.profileEpoch))) ||
+    (c.ignoredThrough !== undefined &&
+      (!Number.isInteger(c.ignoredThrough) ||
+        c.ignoredThrough < 0 ||
+        c.ignoredThrough > c.units.length))
   )
     fail();
   let previous = c.excludedThrough;
@@ -319,10 +358,14 @@ export function restoreGrowthContext(
   currentOrder: number,
 ): GrowthContext {
   const c = validateGrowthContext(recorded, expected.mode);
+  const authorityContext = (v: GrowthContext) => {
+    const { profileEpoch: _epoch, ignoredThrough: _ignored, ...rest } = v;
+    return { ...rest, acknowledged: 0 };
+  };
   if (
     c.excludedThrough > currentOrder ||
-    canonicalJson({ ...c, acknowledged: 0 }) !==
-      canonicalJson({ ...expected, acknowledged: 0 })
+    canonicalJson(authorityContext(c)) !==
+      canonicalJson(authorityContext(expected))
   )
     fail();
   return c;
@@ -348,6 +391,14 @@ export function applyGrowthContext(
     );
   for (let i = 0; i < c.units.length; i++) {
     const unit = c.units[i]!;
+    if (i < (c.ignoredThrough ?? 0)) {
+      const known = find(next, unit);
+      if (known) {
+        if (canonicalJson(known.values) !== canonicalJson(unit.values)) fail();
+        parent = known.key;
+      }
+      continue;
+    }
     if (i < c.acknowledged) {
       const receipt = find(next, unit);
       if (!receipt)
@@ -383,7 +434,7 @@ export function validateGrowthProfilePair(
 ): void {
   const c = validateGrowthContext(context, context.mode),
     registry = readAchievementRegistry(profile);
-  for (const unit of c.units.slice(0, c.acknowledged)) {
+  for (const unit of c.units.slice(c.ignoredThrough ?? 0, c.acknowledged)) {
     const receipt = registry?.receipts.find(
       (r) =>
         r.mode === c.mode &&

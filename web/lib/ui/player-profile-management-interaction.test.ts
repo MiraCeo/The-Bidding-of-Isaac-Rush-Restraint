@@ -15,6 +15,7 @@ import {
   serializePlayerProfileBackup,
   parsePlayerProfileBackup,
 } from './player-profile-file';
+import { profileReplacementEpochKey } from './profile-write-coordinator';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { notifyPlayerProfileChanged } from './profile-events';
 import { packDataFile, unpackDataFile } from './compressed-file';
@@ -166,7 +167,9 @@ it('restores only after acknowledgement and preserves both match states, drafts,
     beforeS = localStorage.getItem(survivalSaveKey),
     before = new Map(
       Object.keys(localStorage)
-        .filter((k) => k !== playerProfileKey)
+        .filter(
+          (k) => k !== playerProfileKey && k !== profileReplacementEpochKey,
+        )
         .map((k) => [k, localStorage.getItem(k)]),
     );
   await preview(
@@ -180,13 +183,18 @@ it('restores only after acknowledgement and preserves both match states, drafts,
   await acknowledge();
   await click('确认恢复玩家档案');
   await waitUi(() => expect(container.textContent).toContain('已恢复玩家档案'));
+  expect(localStorage.getItem(profileReplacementEpochKey)).toMatch(
+    /^[a-f0-9]{64}$/,
+  );
   expect(JSON.parse(localStorage.getItem(playerProfileKey)!)).toEqual(
     profileFileFixture(),
   );
   expect(
     new Map(
       Object.keys(localStorage)
-        .filter((k) => k !== playerProfileKey)
+        .filter(
+          (k) => k !== playerProfileKey && k !== profileReplacementEpochKey,
+        )
         .map((k) => [k, localStorage.getItem(k)]),
     ),
   ).toEqual(before);

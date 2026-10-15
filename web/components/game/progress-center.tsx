@@ -102,7 +102,8 @@ export function ProgressCenter({
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
 }) {
   const tools = useSessionTools()!;
   const [tab, setTab] = useState<ProgressTab>(
@@ -353,7 +354,7 @@ export function ProgressCenter({
                 <output className="save-message">{profile.message}</output>
               )}
               <p className="utility-notice">
-                成就与角色解锁将在规则确定、功能实现后开放，当前不发放成就或限制角色。
+                正式结算在协调保存成功后记入成就进度；成就展示与角色可用性界面尚未接入，当前五角色仍可选。
               </p>
             </section>
           </>

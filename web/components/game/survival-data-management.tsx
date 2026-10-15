@@ -34,7 +34,8 @@ export function SurvivalDataManagement({
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   onReplay: (doc: SurvivalReplayDocument) => void;
   recentOverride?: { doc: SurvivalReplayDocument | null; error: string };
 }) {
@@ -42,10 +43,6 @@ export function SurvivalDataManagement({
   const [restoreProfile, setRestoreProfile] = useState(false);
   const profileGuard = useBackupProfileGuard();
   const clearProfileGuard = profileGuard.clear;
-  const recheckProfile = () => {
-    profileGuard.capture();
-    setRestoreProfile(false);
-  };
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const [backup, setBackup] = useState<{ source: string; name: string } | null>(
@@ -55,10 +52,20 @@ export function SurvivalDataManagement({
   const readController = useRef<AbortController | null>(null),
     exportController = useRef<AbortController | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const confirmController = useRef<AbortController | null>(null);
+  const recheckProfile = () => {
+    confirmController.current?.abort();
+    request.current++;
+    setImporting(false);
+    profileGuard.capture();
+    setRestoreProfile(false);
+  };
   useEffect(
     () => () => {
       request.current++;
       readController.current?.abort();
+      confirmController.current?.abort();
       exportController.current?.abort();
     },
     [],
@@ -83,8 +90,10 @@ export function SurvivalDataManagement({
     clearProfileGuard();
     request.current++;
     readController.current?.abort();
+    confirmController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
+    setImporting(false);
     setCandidate(null);
     setBackup(null);
     setReading(false);
@@ -113,6 +122,8 @@ export function SurvivalDataManagement({
   async function read(file?: File) {
     profileGuard.clear();
     readController.current?.abort();
+    confirmController.current?.abort();
+    setImporting(false);
     const controller = new AbortController();
     readController.current = controller;
     const id = ++request.current;
@@ -164,18 +175,32 @@ export function SurvivalDataManagement({
       if (!controller.signal.aborted) setExporting(false);
     }
   }
-  function confirm() {
-    if (!candidate) return;
+  async function confirm() {
+    if (!candidate || importing) return;
+    const controller = new AbortController(),
+      id = request.current;
+    confirmController.current?.abort();
+    confirmController.current = controller;
+    setImporting(true);
     try {
       const expectedProfileSource =
         restoreProfile &&
         (candidate.kind === 'backup' || candidate.kind === 'survival-backup')
           ? profileGuard.expectedSource()
           : undefined;
-      onImport(candidate, restoreProfile, expectedProfileSource);
-      cancel();
+      await onImport(
+        candidate,
+        restoreProfile,
+        expectedProfileSource,
+        controller.signal,
+      );
+      if (!controller.signal.aborted && id === request.current) cancel();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '未载入文件。');
+      if (!controller.signal.aborted && id === request.current)
+        setMessage(error instanceof Error ? error.message : '未载入文件。');
+    } finally {
+      if (!controller.signal.aborted && id === request.current)
+        setImporting(false);
     }
   }
   function prepareBackup() {
@@ -277,6 +302,7 @@ export function SurvivalDataManagement({
           profileGuard={profileGuard}
           onProfileRecheck={recheckProfile}
           onProfileChange={setRestoreProfile}
+          busy={importing}
           onConfirm={confirm}
           onCancel={cancel}
         />
@@ -298,6 +324,7 @@ export function SurvivalDataManagement({
                 <label>
                   <input
                     type="checkbox"
+                    disabled={importing}
                     checked={restoreProfile}
                     onChange={(e) => setRestoreProfile(e.target.checked)}
                   />
@@ -313,7 +340,7 @@ export function SurvivalDataManagement({
             <div className="data-actions">
               <Button
                 onClick={confirm}
-                disabled={restoreProfile && profileGuard.blocked}
+                disabled={importing || (restoreProfile && profileGuard.blocked)}
               >
                 确认{candidate.kind === 'replay' ? '打开回放' : '载入经典对局'}
               </Button>

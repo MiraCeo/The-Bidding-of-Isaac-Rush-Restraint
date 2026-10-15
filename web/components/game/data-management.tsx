@@ -66,6 +66,7 @@ export function DataManagement({
             candidate={candidate}
             restoreProfile={data.restoreProfile}
             onProfileChange={data.setRestoreProfile}
+            busy={data.importing}
             onConfirm={data.confirmImport}
             onCancel={data.cancel}
             profileGuard={data.profileGuard}
@@ -158,7 +159,10 @@ export function DataManagement({
               <Button
                 type="button"
                 onClick={data.confirmImport}
-                disabled={data.restoreProfile && data.profileGuard.blocked}
+                disabled={
+                  data.importing ||
+                  (data.restoreProfile && data.profileGuard.blocked)
+                }
               >
                 {candidate.kind === 'replay'
                   ? '打开回放'
@@ -219,7 +223,7 @@ export function DataManagement({
           </li>
           <li>
             <Check aria-hidden="true" />
-            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；当前不发放成就或解锁角色。
+            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；恢复操作不额外发放成就；角色可用性界面尚未接入。
           </li>
         </ul>
         {data.activeSession && data.showRecent && (
@@ -503,7 +507,7 @@ export function DataManagement({
               <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>
             )}
             <p>
-              玩家档案预留角色解锁、成就和扩展模块；当前不限制角色选择或发放成就。
+              正式结算在协调保存成功后记入成就进度；角色选择暂不限制，成就展示另批接入。
             </p>
           </details>
         </section>

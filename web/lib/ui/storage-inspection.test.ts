@@ -140,3 +140,15 @@ describe('read-only storage inventory', () => {
     });
   });
 });
+import { profileReplacementEpochKey } from './profile-write-coordinator';
+it('classifies the operational replacement epoch with profile storage, without reading it as achievements or exposing its value', () => {
+  const data = new Map([[profileReplacementEpochKey, 'a'.repeat(64)]]),
+    backend = storage(data),
+    report = inspectStorage(backend);
+  expect(report.entries[0]).toMatchObject({
+    group: 'profile',
+    label: '档案替换代次（本机协调）',
+  });
+  expect(JSON.stringify(report)).not.toContain('a'.repeat(64));
+  expect(backend.setItem).not.toHaveBeenCalled();
+});

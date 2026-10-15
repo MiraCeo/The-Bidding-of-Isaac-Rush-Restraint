@@ -11,7 +11,8 @@ export interface SessionTools {
     document: import('@/lib/ui/survival-persistence').SurvivalSaveDocument,
     profile?: PlayerProfile,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   onSurvivalReplayImport?: (
     document: import('@/lib/ui/survival-persistence').SurvivalReplayDocument,
   ) => void;
@@ -22,7 +23,8 @@ export interface SessionTools {
     session: GameSession,
     profile?: PlayerProfile,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   profile: PlayerProfile;
   profileMessage: string;
   onNewGame: () => void;

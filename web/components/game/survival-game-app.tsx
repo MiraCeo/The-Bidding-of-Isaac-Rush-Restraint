@@ -27,9 +27,11 @@ import {
   SurvivalReplayViewer,
 } from './survival-replay-viewer';
 import { useUtilityPages } from './use-utility-pages';
-import { persistCompletionProfile } from '@/lib/ui/completion-persistence';
+import { useLivePersistence, currentGrowthEpoch } from './use-live-persistence';
+import { mergeSavedGrowth } from '@/lib/ui/achievements/client-persistence';
 import {
   beginSurvivalGrowth,
+  bindGrowthEpoch,
   survivalGrowthOrder,
 } from '@/lib/ui/achievements/lifecycle';
 import {
@@ -41,15 +43,8 @@ import {
 import type { CharacterId, PlayerTurn } from '@/lib/game/item-types';
 import type { SurvivalGameAction } from '@/lib/game/survival-session';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import {
-  saveSurvivalProgress,
-  survivalSaveMessage,
-  type SurvivalReplayDocument,
-} from '@/lib/ui/survival-persistence';
-import {
-  getPreferenceStorage,
-  type GamePreferences,
-} from '@/lib/ui/game-preferences';
+import { type SurvivalReplayDocument } from '@/lib/ui/survival-persistence';
+import { type GamePreferences } from '@/lib/ui/game-preferences';
 import { getBuildSummary } from '@/lib/ui/player-build';
 import { survivalItemCatalog } from '@/lib/game/survival-content';
 import { survivalOfficialCutLines } from '@/lib/game/survival-rules';
@@ -58,14 +53,11 @@ import {
   type SurvivalDifficulty,
 } from '@/lib/game/survival-difficulty';
 import { itemPresentations } from '@/lib/game/item-presentation';
-import { loadPlayerProfile } from '@/lib/ui/game-save';
-import {
-  survivalCompletionKey,
-  recordSurvivalCompletedMatch,
-} from '@/lib/ui/survival-profile';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 
 export interface SurvivalGameAppProps {
+  persistenceRevision?: number;
+  persistenceSource?: { source: string | null };
   onSaveStatusChange?: (message: string) => void;
   selectedDifficulty: SurvivalDifficulty;
   onDifficultyChange: (difficulty: SurvivalDifficulty) => void;
@@ -86,7 +78,8 @@ export interface SurvivalGameAppProps {
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   restoreMessage?: string;
 }
 export function SurvivalGameApp(props: SurvivalGameAppProps) {
@@ -98,6 +91,24 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     game !== undefined && game.phase !== 'competition_complete',
   );
   const log = useMemo(() => (game ? createSurvivalReplay(game) : null), [game]);
+  const liveSave = useLivePersistence({
+    mode: 'survival',
+    session,
+    initialSource: props.persistenceSource,
+    revision: props.persistenceRevision ?? 0,
+    origin: () => (observedIncomplete.current ? 'live' : 'restored'),
+    survivalLog: log,
+    onAcknowledged: (snapshot, context) =>
+      setSession((current) => {
+        if (!current?.growth || !snapshot.growth) return current;
+        const growth = mergeSavedGrowth(
+          current.growth,
+          snapshot.growth,
+          context,
+        );
+        return growth === current.growth ? current : { ...current, growth };
+      }),
+  });
   const { utilityPanel: panel, changeUtilityPanel: setPanel } = useUtilityPages(
     !props.inactive,
   );
@@ -105,16 +116,24 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     'survival' | ClientRankingView
   >('survival');
   const [message, setMessage] = useState('');
-  const [saveStatus, setSaveStatus] = useState('');
+  const saveStatus =
+    liveSave.message ||
+    (liveSave.saved ? '生存进度已自动保存。' : '生存进度待保存。');
   const [restart, setRestart] = useState(false);
-  const [profileMessage, setProfileMessage] = useState('');
+  const profileMessage =
+    liveSave.saved && !liveSave.message
+      ? '生存结果已登记，重复载入不会重复计局。'
+      : '';
   const [teachingOpen, setTeachingOpen] = useState(false);
   const dispatch = (action: SurvivalGameAction) => {
     try {
       if (!session) return;
-      const source = session.growth
+      let source = session.growth
         ? session
         : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+      const epoch = currentGrowthEpoch();
+      if (source.growth && epoch !== undefined)
+        source = { ...source, growth: bindGrowthEpoch(source.growth, epoch) };
       const next = reduceSurvivalClient(source, action);
       setSession((current) => (current === session ? next : current));
       if (action.type === 'advance_room' || action.type === 'advance_floor') {
@@ -138,29 +157,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     };
   }, [props.imported, setPanel]);
   useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    const saved = saveSurvivalProgress(
-      getPreferenceStorage(),
-      session.game,
-      session.draft,
-      session.growthIssue ? undefined : session.growth,
-    );
-    queueMicrotask(() => {
-      if (!cancelled) {
-        const status =
-          survivalSaveMessage(saved) +
-          (session.growthIssue
-            ? `；本局成长捕获已暂停：${session.growthIssue} 对局仍按原规则推进，导出保留普通对局数据。`
-            : '');
-        setSaveStatus(status);
-        onSaveStatusChange?.(status);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, onSaveStatusChange]);
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
   useEffect(() => {
     if (
       !session ||
@@ -172,9 +170,12 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     const token = window.setTimeout(() => {
       try {
         const phase = session.game.phase;
-        const source = session.growth
+        let source = session.growth
           ? session
           : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+        const epoch = currentGrowthEpoch();
+        if (source.growth && epoch !== undefined)
+          source = { ...source, growth: bindGrowthEpoch(source.growth, epoch) };
         const next = reduceSurvivalClient(source, {
           type:
             phase === 'room_action'
@@ -193,40 +194,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.clearTimeout(token);
   }, [session, setSession, message]);
   useEffect(() => {
-    if (!game || !log) return;
-    if (game.phase !== 'competition_complete') {
+    if (!game) return;
+    if (game.phase !== 'competition_complete')
       observedIncomplete.current = true;
-      return;
-    }
-    let cancelled = false;
-    void survivalCompletionKey(log)
-      .then((key) => {
-        if (cancelled) return;
-        const storage = getPreferenceStorage();
-        const loaded = loadPlayerProfile(storage);
-        if (loaded.message) throw new Error(loaded.message);
-        const saved = persistCompletionProfile(storage, (profile) =>
-          recordSurvivalCompletedMatch(
-            profile,
-            log,
-            key,
-            new Date(),
-            observedIncomplete.current ? 'live' : 'restored',
-          ),
-        );
-        if (!saved.changed) return;
-        setProfileMessage('生存结果已登记，重复载入不会重复计局。');
-      })
-      .catch((error) => {
-        if (!cancelled)
-          setProfileMessage(
-            error instanceof Error ? error.message : '玩家进度未写入。',
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [game, log]);
+  }, [game]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && panel) {
@@ -689,6 +660,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           {message || saveStatus}
           {props.restoreMessage && <span> · {props.restoreMessage}</span>}
         </output>
+        {liveSave.message && (
+          <Button disabled={liveSave.busy} onClick={liveSave.retry}>
+            重试保存
+          </Button>
+        )}
         {message && game?.humanEliminatedAt !== null && (
           <Button onClick={() => setMessage('')}>重试AI续跑</Button>
         )}
@@ -703,6 +679,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             <p>不会删除经典存档、玩家进度与已导出的文件。</p>
             <Button
               onClick={() => {
+                liveSave.invalidate();
                 setRestart(false);
                 setPanel(null);
                 props.onNew();
