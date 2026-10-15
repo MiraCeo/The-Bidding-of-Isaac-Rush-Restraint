@@ -1,3 +1,4 @@
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -358,6 +359,11 @@ it('keeps AI continuation alive while progress is open and refreshes completed h
   expect(button('对局记录').getAttribute('aria-current')).toBe('page');
 }, 20000); // Full 77-command UI continuation, not a 5-second performance assertion.
 it('preserves an unstarted character selection through shared progress without starting a match', async () => {
+  localStorage.setItem(
+    playerProfileKey,
+    JSON.stringify(manuallyUnlockAchievementCharacters(createPlayerProfile())),
+  );
+
   localStorage.setItem(activeModeKey, 'classic');
   await mount();
   await act(async () =>

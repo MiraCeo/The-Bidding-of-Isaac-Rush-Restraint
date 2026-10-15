@@ -1,3 +1,4 @@
+import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { useState, useCallback } from 'react';
 import { ClassicGameApp, type ClassicGameAppProps } from './classic-game-app';
 import { SurvivalGameApp } from './survival-game-app';
@@ -337,6 +338,14 @@ export function GameApp() {
         session={survival}
         setSession={setSurvival}
         onStart={(character) => {
+          try {
+            requireCharacterAccess(getPreferenceStorage(), character);
+          } catch (error) {
+            setSurvivalMessage(
+              error instanceof Error ? error.message : '角色权限未核验。',
+            );
+            return;
+          }
           setSurvivalSource({
             source: getPreferenceStorage()?.getItem(survivalSaveKey) ?? null,
           });

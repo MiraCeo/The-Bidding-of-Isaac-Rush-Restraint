@@ -1,3 +1,5 @@
+import { useCharacterAccess } from './use-character-access';
+import { characterRequirementText } from '@/lib/ui/achievements/character-access';
 import { GameBrand } from './game-brand';
 import { useState, type ReactNode } from 'react';
 import { Check, Coins, PackageOpen } from 'lucide-react';
@@ -64,6 +66,7 @@ const characterPresentation: Readonly<
 
 interface CharacterSelectionProps {
   selected?: CharacterId | null;
+  startMessage?: string;
   onSelect?: (character: CharacterId) => void;
   aiDifficulty?: SurvivalDifficulty;
   onDifficultyChange?: (difficulty: SurvivalDifficulty) => void;
@@ -81,6 +84,7 @@ interface CharacterSelectionProps {
 
 export function CharacterSelection({
   selected,
+  startMessage,
   onSelect,
   aiDifficulty = 'standard',
   onDifficultyChange,
@@ -92,6 +96,7 @@ export function CharacterSelection({
   preferenceSaveStatus,
   onPreferencesChange,
 }: CharacterSelectionProps) {
+  const access = useCharacterAccess();
   const [localSelectedCharacter, setLocalSelectedCharacter] =
     useState<CharacterId | null>(null);
   const selectedCharacter =
@@ -160,7 +165,8 @@ export function CharacterSelection({
         <div className="character-grid" role="radiogroup" aria-label="可选角色">
           {characterCatalog.map((character) => {
             const presentation = characterPresentation[character.id];
-            const selected = selectedCharacter === character.id;
+            const unlocked = access.available.includes(character.id);
+            const selected = unlocked && selectedCharacter === character.id;
             return (
               <label
                 key={character.id}
@@ -171,6 +177,7 @@ export function CharacterSelection({
                   name="character"
                   value={character.id}
                   className="character-radio"
+                  disabled={!unlocked || access.busy}
                   checked={selected}
                   onChange={() => setSelectedCharacter(character.id)}
                   aria-label={`选择${character.name}`}
@@ -181,7 +188,13 @@ export function CharacterSelection({
                 <span className="character-emoji" aria-hidden="true">
                   {presentation.emoji}
                 </span>
-                <span className="character-name">{character.name}</span>
+                <span className="character-name">
+                  {character.name}
+                  {!unlocked && ' · 未解锁'}
+                </span>
+                <span className="character-unlock-condition">
+                  {characterRequirementText(character.id)}
+                </span>
                 <span className="character-detail">
                   <PackageOpen aria-hidden="true" />
                   <span>
@@ -203,6 +216,29 @@ export function CharacterSelection({
           })}
         </div>
 
+        <section
+          className="settings-group character-access"
+          aria-label="角色权限"
+        >
+          <p>
+            默认开放以撒；其余角色按成就解锁。已有续玩、教学及AI角色不受影响。
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              access.busy ||
+              access.invalid ||
+              access.available.length === characterCatalog.length
+            }
+            onClick={() => void access.unlockAll()}
+          >
+            一键解锁全部角色
+          </Button>
+          <output>
+            {startMessage || access.operationMessage || access.message}
+          </output>
+        </section>
         <footer className="character-footer">
           {onReturnMenu && (
             <Button type="button" variant="secondary" onClick={onReturnMenu}>
@@ -212,7 +248,7 @@ export function CharacterSelection({
           <div>
             <span>当前选择</span>
             <strong>
-              {selectedCharacter
+              {selectedCharacter && access.available.includes(selectedCharacter)
                 ? characterCatalog.find(
                     (character) => character.id === selectedCharacter,
                   )?.name
@@ -223,10 +259,16 @@ export function CharacterSelection({
             type="button"
             size="lg"
             className="character-start-button"
-            disabled={!selectedCharacter || utilityPanel !== null}
+            disabled={
+              !selectedCharacter ||
+              !access.available.includes(selectedCharacter) ||
+              access.busy ||
+              utilityPanel !== null
+            }
             onClick={() =>
               utilityPanel === null &&
               selectedCharacter &&
+              access.available.includes(selectedCharacter) &&
               onStart(selectedCharacter)
             }
           >

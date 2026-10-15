@@ -474,6 +474,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   if (!session)
     page = (
       <CharacterSelection
+        startMessage={props.restoreMessage}
         selected={selectedCharacter}
         onSelect={setSelectedCharacter}
         aiDifficulty={props.selectedDifficulty}

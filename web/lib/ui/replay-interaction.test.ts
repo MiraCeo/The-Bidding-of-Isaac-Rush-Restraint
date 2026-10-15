@@ -1,3 +1,4 @@
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { decodedDownload } from './file-export.test-helper';
 import { readFileSync } from 'node:fs';
@@ -720,6 +721,13 @@ describe('read-only replay UI', () => {
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
   });
   it('opens an imported replay before choosing a character and returns to the unchanged home page', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
+
     await mount();
     await click(
       element<HTMLInputElement>('input[name="character"][value="lost"]'),

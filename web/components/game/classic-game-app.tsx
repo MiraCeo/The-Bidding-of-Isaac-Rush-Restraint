@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
 import { ItemArtProvider } from './item-icon';
@@ -143,6 +144,16 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   const invalidateSave = liveSave.invalidate;
   const acceptSaveSource = liveSave.acceptSource;
   const dispatch = (action: ClientGameAction) => {
+    if (action.type === 'start_game') {
+      try {
+        requireCharacterAccess(getPreferenceStorage(), action.characterId);
+      } catch (error) {
+        setRestoreMessage(
+          error instanceof Error ? error.message : '角色权限未核验。',
+        );
+        return;
+      }
+    }
     if (action.type === 'restart_game') setSelectedCharacter(null);
     if (action.type === 'start_game' || action.type === 'restart_game')
       restoredTerminal.current = false;
@@ -317,6 +328,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   } else if (game.phase === 'character_selection') {
     page = (
       <CharacterSelection
+        startMessage={restoreMessage}
         selected={selectedCharacter}
         onSelect={setSelectedCharacter}
         onReturnMenu={props.onReturnMenu}
