@@ -1,3 +1,7 @@
+import {
+  packAchievementRegistry,
+  packedAchievementReceiptLimit,
+} from './ledger-codec';
 import { it, expect } from 'vitest';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -13,6 +17,7 @@ import {
   readPlayerProfile,
   playerProfileKey,
   type PlayerProfile,
+  type ProfileValue,
 } from '../player-profile';
 import {
   readAchievementRegistry,
@@ -115,11 +120,19 @@ it.runIf(enabled)(
       start = performance.now(),
       heapStart = process.memoryUsage().heapUsed;
     for (const shape of ['classic', 'mixed', 'structural'] as CapacityShape[])
-      for (const count of [64, 256, 1024, 2000, 2048]) {
-        const f = capacityFixture(traces, count, shape, 200, 32768),
+      for (const { count, packed } of [
+        ...[64, 256, 1024, 2000, 2048].map((count) => ({
+          count,
+          packed: false,
+        })),
+        ...[4096, 8192, 12288, 16384].map((count) => ({ count, packed: true })),
+      ]) {
+        const f = capacityFixture(traces, count, shape, 200, 32768, packed),
           raw = JSON.stringify(f.profile),
           bytes = profileBytes(f.profile),
-          moduleBytes = Buffer.byteLength(canonicalJson(f.registry));
+          moduleBytes = Buffer.byteLength(
+            canonicalJson(f.profile.progression.modules.achievementRegistryV1),
+          );
         let valid: PlayerProfile;
         try {
           valid = readPlayerProfile(JSON.parse(raw));
@@ -127,6 +140,7 @@ it.runIf(enabled)(
           rows.push({
             shape,
             count,
+            packed,
             profileBytes: bytes,
             moduleBytes,
             status: 'budget-rejected',
@@ -138,7 +152,7 @@ it.runIf(enabled)(
         const read = timing(() => readPlayerProfile(JSON.parse(raw))),
           project = timing(() => projectAchievementRegistry(valid));
         const append = timing(() => {
-          if (count === achievementReceiptLimit)
+          if (count === packedAchievementReceiptLimit)
             expect(() => appendAchievementEvent(valid, nextUnit)).toThrow(
               '容量',
             );
@@ -159,6 +173,7 @@ it.runIf(enabled)(
         rows.push({
           shape,
           count,
+          packed,
           fixtureScope: f.scope,
           completedTemplates: f.completedTemplates,
           historyRows: valid.history.length,
@@ -180,6 +195,7 @@ it.runIf(enabled)(
     const nearResult = await clientSave(near, base.probe);
     expect(nearResult.profileUnchanged).toBe(true);
     const combined = capacityFixture(traces, 2048, 'mixed', 200, 32768).profile;
+    const fixedCombinedRegistry = readAchievementRegistry(combined)!;
     const completion = combined.progression.modules
       .completionRegistryV1 as unknown as { receipts: Record<string, boolean> };
     for (
@@ -192,6 +208,22 @@ it.runIf(enabled)(
       ] = false;
     const combinedBytes = profileBytes(combined);
     expect(() => readPlayerProfile(combined)).toThrow();
+    // The old combined fixture exceeds 1MiB, so use the pure codec for a wire
+    // budget experiment, not a migration API that accepts invalid source profiles.
+    const combinedPacked = {
+      ...combined,
+      progression: {
+        ...combined.progression,
+        modules: {
+          ...combined.progression.modules,
+          achievementRegistryV1: packAchievementRegistry(
+            fixedCombinedRegistry,
+          ) as unknown as ProfileValue,
+        },
+      },
+    };
+    const combinedPackedBytes = profileBytes(combinedPacked);
+    expect(readPlayerProfile(combinedPacked)).toEqual(combinedPacked);
     const report = {
       date: '2026-10-15',
       scope:
@@ -203,6 +235,8 @@ it.runIf(enabled)(
             './growth-capacity.test-helper.ts',
             './client-persistence.ts',
             './registry.ts',
+            './ledger-codec.ts',
+            '../profile-write-coordinator.ts',
             './lifecycle.ts',
             './event-codec.ts',
             './evaluation.ts',
@@ -234,7 +268,8 @@ it.runIf(enabled)(
         arch: process.arch,
       },
       limits: {
-        growthReceipts: achievementReceiptLimit,
+        legacyGrowthReceipts: achievementReceiptLimit,
+        compactGrowthReceipts: packedAchievementReceiptLimit,
         growthModuleBytes: achievementRegistryByteLimit,
         profileBytes: 1024 * 1024,
         completionReceipts: completionReceiptLimit,
@@ -251,15 +286,17 @@ it.runIf(enabled)(
         history: 200,
         padding: 32768,
         profileBytes: combinedBytes,
-        rejected: true,
+        legacyRejected: true,
+        packedProfileBytes: combinedPackedBytes,
+        packedAccepted: true,
         note: 'Separate module receipt caps are not a promise they fit the shared 1MiB profile.',
       },
       theoreticalReceiptOnly: {
-        classic30UnitMatches: Math.floor(2048 / 30),
-        classicRemainingUnits: 2048 % 30,
-        synthetic78UnitMatches: Math.floor(2048 / 78),
-        syntheticRemainingUnits: 2048 % 78,
-        note: 'Arithmetic only; branches, human elimination, extensions and byte cap change actual lifetime. Not 68 played matches.',
+        classic30UnitMatches: Math.floor(packedAchievementReceiptLimit / 30),
+        classicRemainingUnits: packedAchievementReceiptLimit % 30,
+        synthetic78UnitMatches: Math.floor(packedAchievementReceiptLimit / 78),
+        syntheticRemainingUnits: packedAchievementReceiptLimit % 78,
+        note: 'Arithmetic only; branches, human elimination, extensions and byte cap change actual lifetime. Not a played-match count or a guarantee all 16384 receipts fit the byte caps.',
       },
       elapsedMs: performance.now() - start,
       heapUsedStart: heapStart,
@@ -267,12 +304,13 @@ it.runIf(enabled)(
       memoryNote:
         'Process snapshots only; no forced GC and not peak or browser memory.',
     };
-    const dir = new URL('../../../work/v050-stability/step3/', import.meta.url);
+    const dir = new URL('../../../work/v050-ledger/', import.meta.url);
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       new URL('growth-capacity.json', dir),
       JSON.stringify(report, null, 2),
     );
   },
-  120000,
+  // 27 scale points through 16384; explicit opt-in report only, not a global test budget.
+  600000,
 );

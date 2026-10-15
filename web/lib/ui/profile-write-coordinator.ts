@@ -1,3 +1,4 @@
+import { withAchievementVerificationScope } from './achievements/registry';
 import { sha256Hex } from '../shared/sha256';
 
 export const profileWriteLockName =
@@ -44,7 +45,7 @@ export function coordinateProfileWrite<T>(
   const checked = () => {
     if (signal?.aborted)
       throw new DOMException('保存已取消，原资料保留。', 'AbortError');
-    return work();
+    return withAchievementVerificationScope(work);
   };
   if (!coordinator) {
     if (requireCoordinator)

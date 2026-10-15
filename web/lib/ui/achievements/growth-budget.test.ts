@@ -27,14 +27,19 @@ const submission = {
     values: [0, 10],
   }),
 };
-it('bounded scale fixture with chained receipts, completion data and 200 rows remains valid; 2049th distinct growth receipt is not evicted in', () => {
+it('bounded scale fixture with chained receipts, completion data and 200 rows remains valid; 2049th migrates losslessly instead of evicting history', () => {
   const f = capacityFixture(traces, 2048, 'mixed', 200, 32768),
     p = readPlayerProfile(f.profile),
     before = canonicalJson(p);
   expect(readAchievementRegistry(p)!.receipts).toHaveLength(2048);
   expect(p.history).toHaveLength(200);
   expect(profileBytes(p)).toBeLessThanOrEqual(1024 * 1024);
-  expect(() => appendAchievementEvent(p, submission)).toThrow('容量');
+  const next = appendAchievementEvent(p, submission);
+  expect(readAchievementRegistry(next)!.receipts).toHaveLength(2049);
+  expect(readAchievementRegistry(next)!.receipts.slice(0, 2048)).toEqual(
+    readAchievementRegistry(p)!.receipts,
+  );
+  expect(profileBytes(next)).toBeLessThan(profileBytes(p) / 2);
   expect(canonicalJson(p)).toBe(before);
   const corrupt = structuredClone(p);
   (

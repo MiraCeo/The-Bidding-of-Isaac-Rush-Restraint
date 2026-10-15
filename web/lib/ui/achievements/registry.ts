@@ -1,6 +1,12 @@
 import type { PlayerProfile, ProfileValue } from '../player-profile';
 import { canonicalJson } from '../../shared/json-facts';
-import { sha256Hex } from '../../shared/sha256';
+import {
+  achievementReceiptKey as receiptKey,
+  packAchievementRegistry,
+  unpackAchievementRegistry,
+  packedAchievementReceiptLimit,
+  type PackedAchievementRegistry,
+} from './ledger-codec';
 import {
   achievementCatalog,
   achievementCatalogVersion,
@@ -67,94 +73,89 @@ function date(v: unknown): asserts v is string {
 function hash(v: unknown): asserts v is string {
   if (typeof v !== 'string' || !/^[a-f0-9]{64}$/.test(v)) fail();
 }
-function receiptKey(r: Omit<AchievementReceipt, 'key' | 'at'>) {
-  return sha256Hex(
-    canonicalJson([
-      r.mode,
-      r.root,
-      r.parent,
-      r.authorityHash,
-      r.stage,
-      r.position,
-    ]),
-  );
-}
 /** Compact factual ledger: counters and achievement times are derived from bounded
  * receipts, so persisted totals cannot silently contradict them. Parent snapshots
  * are rebuilt once per read; branches reuse the same already-recorded prefix. */
-function scan(registry: AchievementRegistry) {
-  let counters = emptyAchievementCounters();
-  const snapshots = new Map<string, AchievementRunState>(),
-    nodes = new Map<string, AchievementReceipt>();
-  const authorityUnits = new Set<string>();
-  const progress = Object.fromEntries(
-    achievementCatalog.map((a) => [a.id, 0]),
-  ) as Record<AchievementId, number>;
-  const achievedAt: Partial<Record<AchievementId, string>> = {};
-  for (const r of registry.receipts) {
-    exact(r, [
-      'key',
-      'root',
-      'parent',
-      'authorityHash',
-      'mode',
-      'at',
-      'stage',
-      'position',
-      'values',
-    ]);
-    hash(r.key);
-    hash(r.root);
-    hash(r.authorityHash);
-    date(r.at);
-    if (r.parent !== null) hash(r.parent);
-    if (
-      !['classic', 'survival'].includes(r.mode) ||
-      r.key !== receiptKey(r) ||
-      nodes.has(r.key)
-    )
-      fail();
-    decodeAchievementEvent(r);
-    const identity = canonicalJson([
-      r.mode,
-      r.root,
-      r.authorityHash,
-      r.stage,
-      r.position,
-    ]);
-    if (authorityUnits.has(identity)) fail();
-    authorityUnits.add(identity);
-    if (
-      r.mode === 'classic' &&
-      (r.stage === 'floor' || r.stage === 'final' || r.position >= 15)
-    )
-      fail();
-    const parent = r.parent === null ? null : nodes.get(r.parent);
-    if (
-      r.parent !== null &&
-      (!parent ||
-        parent.root !== r.root ||
-        parent.mode !== r.mode ||
-        parent.stage === 'final' ||
-        achievementEventOrder(parent) >= achievementEventOrder(r))
-    )
-      fail();
-    const input = eventRunAnalysis(r.mode, r);
-    const result = evaluateAchievementRun(
-      input,
-      counters,
-      parent ? snapshots.get(parent.key)! : emptyAchievementRunState(),
-    );
-    if (result.unresolvedEvidence.length) fail();
-    counters = result.counters;
-    for (const a of achievementCatalog) {
-      progress[a.id] = Math.max(progress[a.id], result.progress[a.id]);
-      if (result.achieved.includes(a.id) && achievedAt[a.id] === undefined)
-        achievedAt[a.id] = r.at;
-    }
-    nodes.set(r.key, r);
-    snapshots.set(r.key, result.runState);
+function newScan() {
+  return {
+    counters: emptyAchievementCounters(),
+    snapshots: new Map<string, AchievementRunState>(),
+    nodes: new Map<string, AchievementReceipt>(),
+    authorityUnits: new Map<string, AchievementReceipt>(),
+    progress: Object.fromEntries(
+      achievementCatalog.map((a) => [a.id, 0]),
+    ) as Record<AchievementId, number>,
+    achievedAt: {} as Partial<Record<AchievementId, string>>,
+  };
+}
+type ScanState = ReturnType<typeof newScan>;
+function scanReceipt(state: ScanState, r: AchievementReceipt) {
+  const { snapshots, nodes, authorityUnits, progress, achievedAt } = state;
+
+  exact(r, [
+    'key',
+    'root',
+    'parent',
+    'authorityHash',
+    'mode',
+    'at',
+    'stage',
+    'position',
+    'values',
+  ]);
+  hash(r.key);
+  hash(r.root);
+  hash(r.authorityHash);
+  date(r.at);
+  if (r.parent !== null) hash(r.parent);
+  if (
+    !['classic', 'survival'].includes(r.mode) ||
+    r.key !== receiptKey(r) ||
+    nodes.has(r.key)
+  )
+    fail();
+  decodeAchievementEvent(r);
+  const identity = authorityUnitIdentity(r);
+  if (authorityUnits.has(identity)) fail();
+  authorityUnits.set(identity, r);
+  if (
+    r.mode === 'classic' &&
+    (r.stage === 'floor' || r.stage === 'final' || r.position >= 15)
+  )
+    fail();
+  const parent = r.parent === null ? null : nodes.get(r.parent);
+  if (
+    r.parent !== null &&
+    (!parent ||
+      parent.root !== r.root ||
+      parent.mode !== r.mode ||
+      parent.stage === 'final' ||
+      achievementEventOrder(parent) >= achievementEventOrder(r))
+  )
+    fail();
+  const input = eventRunAnalysis(r.mode, r);
+  const result = evaluateAchievementRun(
+    input,
+    state.counters,
+    parent ? snapshots.get(parent.key)! : emptyAchievementRunState(),
+  );
+  if (result.unresolvedEvidence.length) fail();
+  state.counters = result.counters;
+  for (const a of achievementCatalog) {
+    progress[a.id] = Math.max(progress[a.id], result.progress[a.id]);
+    if (result.achieved.includes(a.id) && achievedAt[a.id] === undefined)
+      achievedAt[a.id] = r.at;
   }
+  nodes.set(r.key, r);
+  snapshots.set(r.key, result.runState);
+}
+function scan(registry: AchievementRegistry) {
+  const state = newScan();
+  for (const r of registry.receipts) scanReceipt(state, r);
+  return state;
+}
+function projectScan(registry: AchievementRegistry, state: ScanState) {
+  const { counters, progress, achievedAt } = state;
   const characterUnlocks = Object.fromEntries(
     Object.entries(characterAchievementRequirements).flatMap(
       ([id, required]) => {
@@ -186,32 +187,123 @@ function scan(registry: AchievementRegistry) {
       },
     ),
   );
-  return { counters, progress, achievedAt, characterUnlocks, snapshots, nodes };
+  return { counters, progress, achievedAt, characterUnlocks };
+}
+function authorityUnitIdentity(
+  r: Pick<
+    AchievementReceipt,
+    'mode' | 'root' | 'authorityHash' | 'stage' | 'position'
+  >,
+) {
+  return canonicalJson([r.mode, r.root, r.authorityHash, r.stage, r.position]);
+}
+/** Cache is bounded to one synchronous write/verification operation and keyed by
+ * the entire serialized ledger, never mutable profile identity or a short hash. */
+let verificationScope: Map<
+  string,
+  { registry: AchievementRegistry; state: ScanState }
+> | null = null;
+export function withAchievementVerificationScope<T>(work: () => T): T {
+  const previous = verificationScope;
+  verificationScope = new Map();
+  try {
+    return work();
+  } finally {
+    verificationScope = previous;
+  }
+}
+/** Canonical content identity must not collapse sparse/non-JSON arrays into a
+ * previously valid snapshot. Parsed JSON is dense; direct API inputs must be too. */
+function ledgerContent(value: unknown): string {
+  let nodes = 0;
+  function encode(v: unknown, depth: number): string {
+    if (depth > 16 || ++nodes > 500000) fail();
+    if (v === null || typeof v === 'string' || typeof v === 'boolean')
+      return JSON.stringify(v);
+    if (typeof v === 'number') {
+      if (!Number.isFinite(v)) fail();
+      return JSON.stringify(v);
+    }
+    if (!v || typeof v !== 'object') fail();
+    if (Array.isArray(v)) {
+      const keys = Object.keys(v);
+      if (keys.length !== v.length || keys.some((key, i) => key !== String(i)))
+        fail();
+      return `[${v.map((item) => encode(item, depth + 1)).join(',')}]`;
+    }
+    if (
+      Object.getPrototypeOf(v) !== Object.prototype &&
+      Object.getPrototypeOf(v) !== null
+    )
+      fail();
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${encode(o[key], depth + 1)}`)
+      .join(',')}}`;
+  }
+  return encode(value, 0);
+}
+function analyze(value: unknown) {
+  const fingerprint = ledgerContent(value);
+  const cached = verificationScope?.get(fingerprint);
+  if (cached) return cached;
+  const decoded = validateHeader(value, fingerprint),
+    registry = object(value).version === 2 ? decoded : structuredClone(decoded),
+    state = scan(registry);
+  // Both the index and decoded view are private; caller mutations cannot poison them.
+  const result = { registry, state };
+  if (verificationScope) {
+    if (verificationScope.size >= 4)
+      verificationScope.delete(verificationScope.keys().next().value!);
+    verificationScope.set(fingerprint, result);
+  }
+  return result;
+}
+function validateHeader(value: unknown, content: string): AchievementRegistry {
+  const v = object(value);
+  exact(
+    value,
+    v.version === 2
+      ? [
+          'version',
+          'catalogVersion',
+          'activatedAt',
+          'manualUnlockAllAt',
+          'count',
+          'roots',
+          'data',
+        ]
+      : [
+          'version',
+          'catalogVersion',
+          'activatedAt',
+          'manualUnlockAllAt',
+          'receipts',
+        ],
+  );
+  if (
+    (v.version !== 1 && v.version !== 2) ||
+    v.catalogVersion !== achievementCatalogVersion
+  )
+    fail();
+  date(v.activatedAt);
+  if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
+  if (new TextEncoder().encode(content).length > achievementRegistryByteLimit)
+    fail();
+  if (v.version === 2)
+    return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
+  if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
+    fail();
+  return v as unknown as AchievementRegistry;
 }
 export function validateAchievementRegistry(
   value: unknown,
 ): AchievementRegistry {
-  exact(value, [
-    'version',
-    'catalogVersion',
-    'activatedAt',
-    'manualUnlockAllAt',
-    'receipts',
-  ]);
-  const v = object(value);
-  if (v.version !== 1 || v.catalogVersion !== achievementCatalogVersion) fail();
-  date(v.activatedAt);
-  if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
-  if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
-    fail();
-  if (
-    new TextEncoder().encode(canonicalJson(v)).length >
-    achievementRegistryByteLimit
-  )
-    fail();
-  const registry = v as unknown as AchievementRegistry;
-  scan(registry);
-  return registry;
+  const analysis = analyze(value);
+  return object(value).version === 1
+    ? (value as AchievementRegistry)
+    : structuredClone(analysis.registry);
 }
 export function readAchievementRegistry(
   profile: PlayerProfile,
@@ -222,18 +314,37 @@ export function readAchievementRegistry(
       )
     : null;
 }
+function analyzeProfile(profile: PlayerProfile) {
+  return Object.hasOwn(profile.progression.modules, achievementRegistryModule)
+    ? analyze(profile.progression.modules[achievementRegistryModule])
+    : null;
+}
+/** Validation-only consumers avoid allocating an exposed decoded receipt clone. */
+export function validateProfileAchievementRegistry(
+  profile: PlayerProfile,
+): void {
+  analyzeProfile(profile);
+}
 export function projectAchievementRegistry(profile: PlayerProfile) {
-  const registry = readAchievementRegistry(profile);
-  if (!registry) return null;
-  const { snapshots: _snapshots, nodes: _nodes, ...view } = scan(registry);
-  return view;
+  const analysis = analyzeProfile(profile);
+  return analysis
+    ? structuredClone(projectScan(analysis.registry, analysis.state))
+    : null;
 }
 function install(
   profile: PlayerProfile,
   registry: AchievementRegistry,
   now: Date,
 ): PlayerProfile {
-  validateAchievementRegistry(registry);
+  // Only writes migrate; read/preview/duplicate-only operations never alter storage.
+  const old = profile.progression.modules[achievementRegistryModule] as
+    | { version?: number }
+    | undefined;
+  const wire =
+    old?.version === 2 || registry.receipts.length >= 256
+      ? packAchievementRegistry(registry)
+      : structuredClone(registry);
+  validateAchievementRegistry(wire);
   const next = {
     ...profile,
     updatedAt: now.toISOString(),
@@ -241,7 +352,38 @@ function install(
       ...profile.progression,
       modules: {
         ...profile.progression.modules,
-        [achievementRegistryModule]: registry as unknown as ProfileValue,
+        [achievementRegistryModule]: wire as unknown as ProfileValue,
+      },
+    },
+  };
+  if (new TextEncoder().encode(canonicalJson(next)).length > 1024 * 1024)
+    fail();
+  return next;
+}
+/** Lossless explicit maintenance operation: preserve achievement and profile times.
+ * Persistence callers must use the existing coordinated transaction boundary. */
+export function compactAchievementProfile(
+  profile: PlayerProfile,
+): PlayerProfile {
+  const analysis = analyzeProfile(profile);
+  if (
+    !analysis ||
+    (
+      profile.progression.modules[achievementRegistryModule] as {
+        version?: number;
+      }
+    ).version === 2
+  )
+    return profile;
+  const wire = packAchievementRegistry(analysis.registry);
+  validateAchievementRegistry(wire);
+  const next = {
+    ...profile,
+    progression: {
+      ...profile.progression,
+      modules: {
+        ...profile.progression.modules,
+        [achievementRegistryModule]: wire as unknown as ProfileValue,
       },
     },
   };
@@ -279,6 +421,100 @@ export interface AchievementSubmission {
   authorityHash: string;
   event: AchievementEvent;
 }
+/** One validated snapshot, indexed prefix lookups, incremental local evaluation,
+ * and one candidate installation. No storage or partial batch publication. */
+export function createAchievementBatch(
+  profile: PlayerProfile,
+  now = new Date(),
+) {
+  const previous = analyzeProfile(profile);
+  const registry: AchievementRegistry = previous
+    ? { ...previous.registry, receipts: [...previous.registry.receipts] }
+    : {
+        version: 1,
+        catalogVersion: 1,
+        activatedAt: now.toISOString(),
+        manualUnlockAllAt: null,
+        receipts: [],
+      };
+  const state: ScanState = previous
+    ? {
+        ...previous.state,
+        counters: { ...previous.state.counters },
+        progress: { ...previous.state.progress },
+        achievedAt: { ...previous.state.achievedAt },
+        nodes: new Map(previous.state.nodes),
+        snapshots: new Map(previous.state.snapshots),
+        authorityUnits: new Map(previous.state.authorityUnits),
+      }
+    : newScan();
+  let changed = false,
+    failed = false,
+    finished: PlayerProfile | undefined;
+  return {
+    find(
+      identity: Pick<
+        AchievementReceipt,
+        'mode' | 'root' | 'authorityHash' | 'stage' | 'position'
+      >,
+    ) {
+      const receipt = state.authorityUnits.get(authorityUnitIdentity(identity));
+      return receipt ? structuredClone(receipt) : undefined;
+    },
+    append(submission: AchievementSubmission) {
+      if (failed || finished) fail();
+      try {
+        if (
+          !['live', 'historical', 'read-only', 'tutorial'].includes(
+            submission.source,
+          )
+        )
+          fail();
+        if (submission.source !== 'live') return;
+        const encoded = encodeAchievementEvent(submission.event);
+        const candidate = {
+          ...encoded,
+          root: submission.root,
+          parent: submission.parent,
+          authorityHash: submission.authorityHash,
+          mode: submission.mode,
+          at: now.toISOString(),
+        };
+        const r: AchievementReceipt = {
+          ...candidate,
+          key: receiptKey(candidate),
+        };
+        const prior = state.authorityUnits.get(authorityUnitIdentity(r));
+        if (prior) {
+          if (
+            canonicalJson([prior.stage, prior.position, prior.values]) !==
+            canonicalJson([r.stage, r.position, r.values])
+          )
+            throw Error('同一权威结算的成长证据发生冲突，未重复记账。');
+          return;
+        }
+        if (registry.receipts.length >= packedAchievementReceiptLimit) fail();
+        scanReceipt(state, r);
+        registry.receipts.push(r);
+        changed = true;
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    },
+    finish() {
+      if (failed) fail();
+      if (finished) return finished;
+      try {
+        finished = changed ? install(profile, registry, now) : profile;
+        return finished;
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    },
+  };
+}
 export function appendAchievementEvent(
   profile: PlayerProfile,
   submission: AchievementSubmission,
@@ -289,43 +525,9 @@ export function appendAchievementEvent(
   )
     fail();
   if (submission.source !== 'live') return profile;
-  // Activation and receipt are one candidate; neither reaches storage on failure.
-  const active = activateAchievementRegistry(profile, now),
-    registry = readAchievementRegistry(active)!;
-  const encoded = encodeAchievementEvent(submission.event);
-  const candidate = {
-    ...encoded,
-    root: submission.root,
-    parent: submission.parent,
-    authorityHash: submission.authorityHash,
-    mode: submission.mode,
-    at: now.toISOString(),
-  };
-  const r: AchievementReceipt = { ...candidate, key: receiptKey(candidate) };
-  // Restoring another checkpoint of the same authority prefix must not create a
-  // second receipt just because its local predecessor cursor differs.
-  const prior = registry.receipts.find(
-    (row) =>
-      row.mode === r.mode &&
-      row.root === r.root &&
-      row.authorityHash === r.authorityHash &&
-      row.stage === r.stage &&
-      row.position === r.position,
-  );
-  if (prior) {
-    if (
-      canonicalJson([prior.stage, prior.position, prior.values]) !==
-      canonicalJson([r.stage, r.position, r.values])
-    )
-      throw Error('同一权威结算的成长证据发生冲突，未重复记账。');
-    return profile;
-  }
-  if (registry.receipts.length >= achievementReceiptLimit) fail();
-  return install(
-    active,
-    { ...registry, receipts: [...registry.receipts, r] },
-    now,
-  );
+  const batch = createAchievementBatch(profile, now);
+  batch.append(submission);
+  return batch.finish();
 }
 export function manuallyUnlockAchievementCharacters(
   profile: PlayerProfile,

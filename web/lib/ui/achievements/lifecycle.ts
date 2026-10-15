@@ -22,7 +22,7 @@ import {
   type EncodedAchievementEvent,
   type AchievementEvent,
 } from './event-codec';
-import { appendAchievementEvent, readAchievementRegistry } from './registry';
+import { createAchievementBatch } from './registry';
 
 export interface GrowthUnit extends EncodedAchievementEvent {
   authorityHash: string;
@@ -378,21 +378,14 @@ export function applyGrowthContext(
   now = new Date(),
 ) {
   const c = validateGrowthContext(context, context.mode);
-  let next = profile,
-    parent: string | null = null;
-  const find = (p: PlayerProfile, unit: GrowthUnit) =>
-    readAchievementRegistry(p)?.receipts.find(
-      (r) =>
-        r.root === c.root &&
-        r.mode === c.mode &&
-        r.authorityHash === unit.authorityHash &&
-        r.stage === unit.stage &&
-        r.position === unit.position,
-    );
+  const batch = createAchievementBatch(profile, now);
+  let parent: string | null = null;
+  const find = (unit: GrowthUnit) =>
+    batch.find({ ...unit, mode: c.mode, root: c.root });
   for (let i = 0; i < c.units.length; i++) {
     const unit = c.units[i]!;
     if (i < (c.ignoredThrough ?? 0)) {
-      const known = find(next, unit);
+      const known = find(unit);
       if (known) {
         if (canonicalJson(known.values) !== canonicalJson(unit.values)) fail();
         parent = known.key;
@@ -400,7 +393,7 @@ export function applyGrowthContext(
       continue;
     }
     if (i < c.acknowledged) {
-      const receipt = find(next, unit);
+      const receipt = find(unit);
       if (!receipt)
         throw Error('已确认成长凭据不在当前档案中，未重新补发；当前对局保留。');
       if (
@@ -411,21 +404,20 @@ export function applyGrowthContext(
       parent = receipt.key;
       continue;
     }
-    next = appendAchievementEvent(
-      next,
-      {
-        source: 'live',
-        mode: c.mode,
-        root: c.root,
-        parent,
-        authorityHash: unit.authorityHash,
-        event: decodeAchievementEvent(unit),
-      },
-      now,
-    );
-    parent = find(next, unit)!.key;
+    batch.append({
+      source: 'live',
+      mode: c.mode,
+      root: c.root,
+      parent,
+      authorityHash: unit.authorityHash,
+      event: decodeAchievementEvent(unit),
+    });
+    parent = find(unit)!.key;
   }
-  return { profile: next, context: { ...c, acknowledged: c.units.length } };
+  return {
+    profile: batch.finish(),
+    context: { ...c, acknowledged: c.units.length },
+  };
 }
 /** Paired-backup consistency only. No activation, counters, replay or writes. */
 export function validateGrowthProfilePair(
@@ -433,16 +425,9 @@ export function validateGrowthProfilePair(
   context: GrowthContext,
 ): void {
   const c = validateGrowthContext(context, context.mode),
-    registry = readAchievementRegistry(profile);
+    batch = createAchievementBatch(profile);
   for (const unit of c.units.slice(c.ignoredThrough ?? 0, c.acknowledged)) {
-    const receipt = registry?.receipts.find(
-      (r) =>
-        r.mode === c.mode &&
-        r.root === c.root &&
-        r.authorityHash === unit.authorityHash &&
-        r.stage === unit.stage &&
-        r.position === unit.position,
-    );
+    const receipt = batch.find({ ...unit, mode: c.mode, root: c.root });
     if (
       !receipt ||
       canonicalJson(receipt.values) !== canonicalJson(unit.values)

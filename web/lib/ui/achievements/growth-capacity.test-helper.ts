@@ -1,3 +1,7 @@
+import {
+  packAchievementRegistry,
+  packedAchievementReceiptLimit,
+} from './ledger-codec';
 /** Measurement fixtures only. Never imported by the client. Copied metrics from
  * fixed real classic/survival traces; identities at scale are synthetic and are
  * NOT played matches, player receipts, or importable authority proofs. */
@@ -124,8 +128,9 @@ export function capacityFixture(
   shape: CapacityShape = 'classic',
   historyRows = 200,
   paddingChars = 0,
+  packed = false,
 ) {
-  if (count < 29 || count > 2048)
+  if (count < 29 || count > (packed ? packedAchievementReceiptLimit : 2048))
     throw Error('Measurement count outside planned range');
   const receipts: AchievementReceipt[] = [];
   let completedTemplates = 0,
@@ -192,7 +197,9 @@ export function capacityFixture(
       ...initialized.progression,
       modules: {
         ...initialized.progression.modules,
-        [achievementRegistryModule]: registry as unknown as ProfileValue,
+        [achievementRegistryModule]: (packed
+          ? packAchievementRegistry(registry)
+          : registry) as unknown as ProfileValue,
       },
     },
   };

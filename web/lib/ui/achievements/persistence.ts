@@ -1,3 +1,4 @@
+import { withAchievementVerificationScope } from './registry';
 import { persistCompletionProfile } from '../completion-persistence';
 import { type PlayerProfile } from '../player-profile';
 import type { SaveStorage } from '../game-save';
@@ -31,7 +32,9 @@ export async function persistAchievementProfile(
     achievementProfileLockName,
     () => {
       check();
-      return persistCompletionProfile(storage, compute);
+      return withAchievementVerificationScope(() =>
+        persistCompletionProfile(storage, compute),
+      );
     },
     signal,
   );

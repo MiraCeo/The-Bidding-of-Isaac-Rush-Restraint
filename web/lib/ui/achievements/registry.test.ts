@@ -436,7 +436,7 @@ describe('strict compact factual ledger, activation and branches', () => {
       }),
     ).toThrow();
   });
-  it('refuses to evict receipts at the distinct growth limit and measures a maximal compact module', () => {
+  it('keeps legacy validation bounds and migrates independent roots without eviction', () => {
     const p = append(createPlayerProfile(now), '0'),
       base = readAchievementRegistry(p)!;
     const template = base.receipts[0]!;
@@ -477,7 +477,12 @@ describe('strict compact factual ledger, activation and branches', () => {
       },
     };
     const before = canonicalJson(bounded);
-    expect(() => append(bounded, 'over-limit')).toThrow('容量');
+    expect(
+      readAchievementRegistry(append(bounded, 'over-limit'))!.receipts,
+    ).toHaveLength(achievementReceiptLimit + 1);
+    expect(() =>
+      validateAchievementRegistry({ ...r, receipts: [...r.receipts, {}] }),
+    ).toThrow('容量');
     expect(canonicalJson(bounded)).toBe(before);
     expect(new TextEncoder().encode(before).length).toBeLessThan(1024 * 1024);
     const directory = new URL(
