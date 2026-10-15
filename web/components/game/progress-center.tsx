@@ -1,3 +1,4 @@
+import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Coins } from 'lucide-react';
@@ -37,7 +38,12 @@ import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import { PlayerStatistics, type StatisticsFilters } from './player-statistics';
 export { progressChangedEvent } from '@/lib/ui/profile-events';
 
-type ProgressTab = 'overview' | 'records' | 'statistics' | 'files';
+type ProgressTab =
+  | 'overview'
+  | 'records'
+  | 'statistics'
+  | 'achievements'
+  | 'files';
 export interface ProgressSelection {
   tab: ProgressTab;
   mode: 'classic' | 'survival';
@@ -264,6 +270,7 @@ export function ProgressCenter({
               ['overview', '总览'],
               ['records', '对局记录'],
               ['statistics', '统计'],
+              ['achievements', '成就'],
               ['files', '存档与备份'],
             ] as const
           ).map(([key, label]) => (
@@ -354,10 +361,15 @@ export function ProgressCenter({
                 <output className="save-message">{profile.message}</output>
               )}
               <p className="utility-notice">
-                正式结算在协调保存成功后记入成就进度；成就展示与角色可用性界面尚未接入，当前五角色仍可选。
+                正式结算保存成功后记入成就进度；在“成就”分类查看条件和角色解锁关系。默认开放以撒，一键授权不会完成成就。
               </p>
             </section>
           </>
+        ) : tab === 'achievements' ? (
+          <AchievementProgress
+            profile={profile.profile}
+            message={profile.message}
+          />
         ) : (
           <>
             <div className="progress-mode-tabs" aria-label="记录与存档模式">

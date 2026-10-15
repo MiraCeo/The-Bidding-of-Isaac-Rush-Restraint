@@ -265,7 +265,7 @@ export function PlayerProfileManagement() {
         <span>两种模式共用 · 不依附对局</span>
       </div>
       <p className="utility-notice">
-        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色可用性界面尚未接入。
+        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
       </p>
       <div className="profile-local">
         <strong>

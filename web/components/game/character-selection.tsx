@@ -235,9 +235,8 @@ export function CharacterSelection({
           >
             一键解锁全部角色
           </Button>
-          <output>
-            {startMessage || access.operationMessage || access.message}
-          </output>
+          <output>{access.operationMessage || access.message}</output>
+          {startMessage && <output>{startMessage}</output>}
         </section>
         <footer className="character-footer">
           {onReturnMenu && (

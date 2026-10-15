@@ -105,7 +105,7 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
   definition(
     'C07',
     '祸不单行',
-    '同一局两种清零效果各自触发，可在同房出现。',
+    '同一局分别触发永恒六面骰和巴比伦大淫妇的清零效果，可在同房出现。',
     2,
     'same-match',
   ),
@@ -155,7 +155,7 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
   definition(
     'F03',
     '吊车尾',
-    '真人属于当层存活者最低survivalScore档，并列均满足。',
+    '以当层存活者最低的层结算成绩（survivalScore）通过淘汰，并列均满足。',
   ),
   definition(
     'F04',

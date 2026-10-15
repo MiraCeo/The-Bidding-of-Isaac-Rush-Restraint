@@ -1,3 +1,4 @@
+import { achievementCatalog } from '@/lib/ui/achievements/catalog';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
@@ -57,6 +58,10 @@ export function useLivePersistence(options: {
       hasGrowth: !!options.session?.growth && !options.session.growthIssue,
     };
   }, [options.origin, options.enabled, options.session]);
+  const [notice, setNotice] = useState<{ anchor: string; text: string } | null>(
+    null,
+  );
+  const dismissNotice = useCallback(() => setNotice(null), []);
   const [retryRevision, setRetryRevision] = useState(0);
   const [status, setStatus] = useState({
     saved: false,
@@ -72,6 +77,7 @@ export function useLivePersistence(options: {
         const next = currentGrowthEpoch();
         if (next === undefined || next === epoch) return;
         epoch = next;
+        setNotice(null);
         // A replacement invalidates only operational receipt interpretation, never
         // gameplay. Persist the ignored prefix even before the next user action so
         // paired export immediately reflects the explicitly restored profile.
@@ -141,15 +147,22 @@ export function useLivePersistence(options: {
         const issue = snapshot.growthIssue
           ? `本局成长捕获已暂停：${snapshot.growthIssue}`
           : '';
+        if (result.newlyAchieved.length)
+          setNotice({
+            anchor,
+            text:
+              '成就已保存：' +
+              result.newlyAchieved
+                .map(
+                  (id) =>
+                    achievementCatalog.find((a) => a.id === id)?.name ?? id,
+                )
+                .join('、'),
+          });
         setStatus({
           saved: true,
           busy: false,
-          message:
-            result.message ||
-            issue ||
-            (result.newlyAchieved.length
-              ? `已保存并达成${result.newlyAchieved.length}项成就。`
-              : ''),
+          message: result.message || issue || '',
         });
         if (result.session.growth && result.message === '')
           acknowledgement.current(snapshot, result.session.growth);
@@ -176,7 +189,14 @@ export function useLivePersistence(options: {
     key,
     retryRevision,
   ]);
-  return { ...status, retry, invalidate, acceptSource };
+  return {
+    ...status,
+    retry,
+    invalidate,
+    acceptSource,
+    achievementNotice: notice?.anchor === anchor ? notice.text : '',
+    dismissNotice,
+  };
 }
 /** Temporary read failures never stop the game; the writer re-checks the epoch
  * inside its lock before awarding anything. */

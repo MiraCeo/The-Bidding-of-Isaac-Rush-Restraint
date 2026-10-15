@@ -1311,3 +1311,17 @@
 .statistics-floors span { padding:.6rem .85rem; border:1px solid #4a3f2e; border-radius:.5rem; color:#bfb095; }
 .statistics-floors strong { color:#edbc50; margin-left:.45rem; }
 .statistics-elimination summary { color:#d1b176; cursor:pointer; }
+.achievement-grid, .achievement-character-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:12px; }
+.achievement-card, .achievement-role { min-width:0; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--card); scroll-margin-top:100px; }
+.achievement-card[data-achieved="true"], .achievement-role[data-unlocked="true"] { border-color:var(--primary); }
+.achievement-card-heading { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+.achievement-card-heading h4 { margin:0; overflow-wrap:anywhere; }
+.achievement-card-heading span, .achievement-meta, .achievement-card time, .achievement-role time { color:var(--muted-foreground); font-size:.78rem; }
+.achievement-card p, .achievement-role p, .achievement-role li { overflow-wrap:anywhere; }
+.achievement-card progress { display:block; width:100%; height:8px; margin:8px 0 12px; accent-color:var(--primary); }
+.achievement-role ul { padding-left:20px; margin:8px 0; }
+.achievement-role a { text-decoration:underline; text-underline-offset:3px; }
+.character-card:has(.character-radio:disabled) { opacity:.7; cursor:not-allowed; transform:none; }
+.character-unlock-condition { color:var(--muted-foreground); font-size:.75rem; line-height:1.5; }
+.character-access { margin:20px 0; }.character-access output { display:block; margin-top:8px; }
+.achievement-notice { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:12px; margin:12px; }

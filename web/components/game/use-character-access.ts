@@ -11,7 +11,7 @@ import {
   persistAchievementProfile,
 } from '@/lib/ui/achievements/persistence';
 
-export function useCharacterAccess() {
+export function useCharacterAccess(initialize = true) {
   const [access, setAccess] = useState(() =>
     readCharacterAccess(getPreferenceStorage()),
   );
@@ -31,7 +31,7 @@ export function useCharacterAccess() {
     const unsubscribe = subscribePlayerProfileChanges(onChange);
     const coordinator = browserAchievementWriteCoordinator(),
       controller = new AbortController();
-    if (coordinator)
+    if (coordinator && initialize)
       void persistAchievementProfile(
         getPreferenceStorage(),
         activateAchievementRegistry,
@@ -51,7 +51,7 @@ export function useCharacterAccess() {
       controller.abort();
       operation.current?.abort();
     };
-  }, [refresh]);
+  }, [refresh, initialize]);
   const unlockAll = async () => {
     if (busy) return;
     const controller = new AbortController();

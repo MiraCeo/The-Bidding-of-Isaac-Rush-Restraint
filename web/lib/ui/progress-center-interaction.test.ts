@@ -76,7 +76,7 @@ it('describes existing profile data in the backup preview and cancels back to th
   const preview = container.querySelector('.data-backup-preview')!;
   expect(preview.textContent).toContain('完成记录、累计统计、去重凭据');
   expect(preview.textContent).toContain(
-    '恢复操作不额外发放成就；角色可用性界面尚未接入',
+    '恢复操作不额外发放成就；角色权限按恢复后的档案快照生效',
   );
   expect(preview.textContent).not.toContain('已保存的解锁');
   expect(document.activeElement?.id).toBe('progress-title');
@@ -295,7 +295,7 @@ it('routes the progress header to settings and rules without restarting the curr
   ).toBe('17');
   expect(localStorage.getItem(gameSaveKey)).toBe(before);
 });
-it('shows truthful limited history by mode and does not expose unimplemented achievements', async () => {
+it('shows truthful limited history by mode alongside the implemented achievement entry', async () => {
   const p = createPlayerProfile();
   p.history = [
     {
@@ -324,7 +324,8 @@ it('shows truthful limited history by mode and does not expose unimplemented ach
   await click('进度');
   expect(
     container.querySelectorAll('nav[aria-label="进度分类"] button'),
-  ).toHaveLength(4);
+  ).toHaveLength(5);
+  expect(button('成就')).toBeDefined();
   await click('对局记录');
   expect(container.querySelector('table')!.textContent).toContain('123.00');
   expect(container.querySelector('table')!.textContent).not.toContain('456.00');

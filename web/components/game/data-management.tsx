@@ -223,7 +223,7 @@ export function DataManagement({
           </li>
           <li>
             <Check aria-hidden="true" />
-            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；恢复操作不额外发放成就；角色可用性界面尚未接入。
+            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
           </li>
         </ul>
         {data.activeSession && data.showRecent && (
@@ -507,7 +507,7 @@ export function DataManagement({
               <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>
             )}
             <p>
-              正式结算在协调保存成功后记入成就进度；角色选择暂不限制，成就展示另批接入。
+              正式结算在协调保存成功后记入成就进度；角色权限与成就展示可在进度中查看。
             </p>
           </details>
         </section>
