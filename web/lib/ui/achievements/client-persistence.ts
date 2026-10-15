@@ -1,6 +1,7 @@
 import {
   coordinateProfileWrite,
   readProfileReplacementEpoch,
+  profileReplacementEpochKey,
   type ProfileWriteCoordinator,
 } from '../profile-write-coordinator';
 import { restoreBackupWrites } from '../backup-restore';
@@ -82,6 +83,30 @@ const survivalCache = new WeakMap<
     core: string;
   }
 >();
+class StaleProfileWriteError extends Error {
+  constructor() {
+    super('档案已明确替换，旧保存任务已取消；当前内存对局保留。');
+  }
+}
+function scheduledProfileEpoch(
+  storage: SaveStorage | null,
+): string | null | undefined {
+  try {
+    return storage?.getItem(profileReplacementEpochKey) ?? null;
+  } catch {
+    return undefined;
+  } // A temporary read failure must not stop gameplay.
+}
+function assertScheduledProfileEpoch(
+  storage: SaveStorage,
+  expected: string | null | undefined,
+) {
+  if (
+    expected !== undefined &&
+    storage.getItem(profileReplacementEpochKey) !== expected
+  )
+    throw new StaleProfileWriteError();
+}
 function committed(options: ClientSaveOptions, source: string | null) {
   try {
     options.onCommitted?.(source);
@@ -171,9 +196,11 @@ export function saveClassicClient(
   session: GameSession,
   options: ClientSaveOptions,
 ): Promise<ClientSaveResult<GameSession>> {
+  const scheduledEpoch = scheduledProfileEpoch(storage);
   return coordinateProfileWrite<ClientSaveResult<GameSession>>(
     () => {
       if (!storage) throw Error('对局存储不可用，当前内存对局保留。');
+      assertScheduledProfileEpoch(storage, scheduledEpoch);
       assertSource(storage, gameSaveKey, options.expectedSource);
       if (
         !session.growth ||
@@ -263,7 +290,14 @@ export function saveClassicClient(
     },
     { coordinator: options.coordinator, signal: options.signal },
   ).catch((error) =>
-    checkpointFallback(storage, session, gameSaveKey, options, error),
+    checkpointFallback(
+      storage,
+      session,
+      gameSaveKey,
+      options,
+      error,
+      scheduledEpoch,
+    ),
   );
 }
 export function saveSurvivalClient(
@@ -271,9 +305,11 @@ export function saveSurvivalClient(
   session: SurvivalClientSession,
   options: ClientSaveOptions,
 ): Promise<ClientSaveResult<SurvivalClientSession>> {
+  const scheduledEpoch = scheduledProfileEpoch(storage);
   return coordinateProfileWrite<ClientSaveResult<SurvivalClientSession>>(
     () => {
       if (!storage) throw Error('对局存储不可用，当前内存对局保留。');
+      assertScheduledProfileEpoch(storage, scheduledEpoch);
       assertSource(storage, survivalSaveKey, options.expectedSource);
       const loaded = load(storage);
       const growthAllowed =
@@ -390,7 +426,14 @@ export function saveSurvivalClient(
     },
     { coordinator: options.coordinator, signal: options.signal },
   ).catch((error) =>
-    checkpointFallback(storage, session, survivalSaveKey, options, error),
+    checkpointFallback(
+      storage,
+      session,
+      survivalSaveKey,
+      options,
+      error,
+      scheduledEpoch,
+    ),
   );
 }
 function checkpointFallback<T extends GameSession | SurvivalClientSession>(
@@ -399,9 +442,11 @@ function checkpointFallback<T extends GameSession | SurvivalClientSession>(
   key: string,
   options: ClientSaveOptions,
   error: unknown,
+  scheduledEpoch: string | null | undefined,
 ): Promise<ClientSaveResult<T>> {
   if (
     !storage ||
+    error instanceof StaleProfileWriteError ||
     options.signal?.aborted ||
     (error instanceof DOMException && error.name === 'AbortError') ||
     (error instanceof Error && error.message.includes('浏览器未能恢复旧存储'))
@@ -409,6 +454,7 @@ function checkpointFallback<T extends GameSession | SurvivalClientSession>(
     return Promise.reject(error);
   return coordinateProfileWrite(
     () => {
+      assertScheduledProfileEpoch(storage, scheduledEpoch);
       assertSource(storage, key, options.expectedSource);
       if (session.game.phase === 'character_selection') throw error;
       const source =

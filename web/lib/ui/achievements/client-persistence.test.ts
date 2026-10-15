@@ -319,7 +319,7 @@ it('explicit older standalone profile replacement rolls back growth/manual permi
   expect(readAchievementRegistry(profile(store))!.receipts).toHaveLength(2);
   expect(readAchievementRegistry(profile(store))!.manualUnlockAllAt).toBeNull();
 });
-it('epoch replacement while writer waits ignores old unacknowledged prefix rather than re-awarding rollback', async () => {
+it('epoch replacement rejects the old queued write; a fresh retry skips the old prefix without re-awarding', async () => {
   const store = memory(),
     coordinator = locks();
   const old = createPlayerProfile(new Date('2026-01-01'));
@@ -335,8 +335,17 @@ it('epoch replacement while writer waits ignores old unacknowledged prefix rathe
     submit(start()),
     options(store, gameSaveKey, coordinator),
   );
+  const rejected = expect(save).rejects.toThrow('档案已明确替换');
   await restore;
-  expect((await save).session.growth!.ignoredThrough).toBe(2);
+  await rejected;
+  expect(store.getItem(gameSaveKey)).toBeNull();
+  expect(store.getItem(playerProfileKey)).toBe(JSON.stringify(old));
+  const retry = await saveClassicClient(
+    store,
+    submit(start()),
+    options(store, gameSaveKey, coordinator),
+  );
+  expect(retry.session.growth!.ignoredThrough).toBe(2);
   expect(store.getItem(playerProfileKey)).toBe(JSON.stringify(old));
 });
 it('failed epoch stamp rolls back both exact profile and paired match before publishing anything', async () => {
