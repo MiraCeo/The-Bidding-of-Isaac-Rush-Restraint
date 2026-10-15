@@ -17,7 +17,8 @@
     "test": "vitest run",
     "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",
     "lint": "oxlint",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "verify:offline": "node scripts/verify-offline.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

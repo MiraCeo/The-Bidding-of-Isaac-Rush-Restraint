@@ -1,5 +1,8 @@
 # 以撒的竞合：冲 · 慎
 
+当前交付目录：`web/dist-offline/`。
+固定入口：`web/dist-offline/以撒的竞合.html`。
+
 *The Bidding of Isaac: Rush & Restraint*
 
 一款围绕 **20人共同市场、秘密报价、资源管理与连续道具构筑** 的浏览器博弈游戏。每局1名真人＋19名AI，游戏逻辑在本地浏览器中运行，无需业务后端。

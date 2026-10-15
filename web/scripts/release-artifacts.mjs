@@ -100,7 +100,7 @@ export function createArtifactManifest(
   };
 }
 export function releaseReadme(manifest) {
-  return `# 以撒的竞合 ${manifest.version}\n\n构建：${manifest.buildId}\n\n分发文件：${manifest.artifact.filename}\n\n${manifest.releaseNotes.highlights.map((text) => `- ${text}`).join('\n')}\n\n## 存档与回放\n\n${manifest.releaseNotes.compatibility}\n\n- 存档与回放是独立JSON文件，不写入HTML。\n- 更换HTML文件名或位置时，浏览器自动存档不保证迁移，原入口先导出JSON，再在新文件设置页读取。\n- 读取回放只做只读查看，不替换正在玩的对局。\n- ${manifest.validation ? '自动门禁已通过；真实界面与游玩效果由用户验收。' : '本次仅完成离线构建，不能把它记为全量发布门禁通过。'}\n- 源代码：${manifest.source.commit ?? '未取得Git提交'}${manifest.source.dirty === true ? '（包含未提交改动）' : manifest.source.dirty === false ? '（已提交状态）' : '（状态未知）'}。\n`;
+  return `# 以撒的竞合 ${manifest.version}\n\n构建：${manifest.buildId}\n\n分发文件：${manifest.artifact.filename}\n\n${manifest.releaseNotes.highlights.map((text) => `- ${text}`).join('\n')}\n\n## 存档与回放\n\n${manifest.releaseNotes.compatibility}\n\n- 存档与回放是独立JSON文件，不写入HTML。\n- 更换HTML文件名或位置时，浏览器自动存档不保证迁移，原入口先导出JSON，再在新文件的进度 → 存档与备份中读取。\n- 读取回放只做只读查看，不替换正在玩的对局。\n- ${manifest.validation ? '自动门禁已通过；真实界面与游玩效果由用户验收。' : '本次仅完成离线构建，不能把它记为全量发布门禁通过。'}\n- 源代码：${manifest.source.commit ?? '未取得Git提交'}${manifest.source.dirty === true ? '（包含未提交改动）' : manifest.source.dirty === false ? '（已提交状态）' : '（状态未知）'}。\n`;
 }
 /** Writes only validated basenames underneath the caller's output directory. */
 export async function writeOfflineArtifacts(
