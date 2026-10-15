@@ -2,6 +2,11 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
+import {
+  achievementCatalog,
+  characterAchievementRequirements,
+} from './catalog';
+import { characterCatalog } from '@/lib/game';
 import { AchievementProgress } from '@/components/game/achievement-progress';
 import { GameApp } from '@/components/game/game-app';
 import { ClassicGameApp } from '@/components/game/classic-game-app';
@@ -48,6 +53,13 @@ function button(text: string) {
   return b;
 }
 const click = async (label: string) => act(async () => button(label).click());
+async function closeDialog() {
+  await act(async () =>
+    (
+      document.querySelector('[aria-label="关闭成就详情"]') as HTMLButtonElement
+    ).click(),
+  );
+}
 function locks() {
   let tail = Promise.resolve<unknown>(undefined);
   Object.defineProperty(navigator, 'locks', {
@@ -83,34 +95,60 @@ it('shows exactly 30 catalog cards in six categories and six prerequisites versu
   await mount();
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(30);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
-  expect(
-    [...node.querySelectorAll('.achievement-meta')].filter((n) =>
-      n.textContent?.includes('角色前置'),
-    ),
-  ).toHaveLength(6);
-  expect(
-    [...node.querySelectorAll('.achievement-meta')].filter((n) =>
-      n.textContent?.includes('收藏挑战'),
-    ),
-  ).toHaveLength(24);
-  expect(node.textContent).toContain('成就 · 0 / 30');
+  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(30);
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(7);
+  expect(node.textContent).toContain('成就总览0 / 30');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });
+it.each(achievementCatalog)(
+  'preserves $id full metadata in a detail modal without activation',
+  async (a) => {
+    await mount();
+    await act(async () =>
+      (node.querySelector(`#achievement-${a.id}`) as HTMLButtonElement).click(),
+    );
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain(a.condition);
+    expect(dialog.textContent).toContain(
+      a.scope === 'shared' ? '正式经典 / 生存通用' : '仅正式生存模式',
+    );
+    expect(dialog.textContent).toContain(a.target.toString());
+    expect(dialog.textContent).toContain(
+      characterCatalog.some((c) =>
+        characterAchievementRequirements[c.id].includes(a.id),
+      )
+        ? '6项角色前置之一'
+        : '无 · 收藏挑战',
+    );
+    await closeDialog();
+    expect(localStorage.length).toBe(0);
+  },
+);
 it('shows saved progress, exact ISO completion time, scope and same-match peak labels', async () => {
   await mount(earned());
   const card = node.querySelector('#achievement-A01')!;
   expect(card.textContent).toContain('已达成');
-  expect(card.querySelector('time')!.dateTime).toBe('2026-10-15T00:00:00.000Z');
+  expect(card.querySelector('time')).toBeNull();
+  expect(card.querySelector('progress')).toBeNull();
+  await act(async () => (card as HTMLButtonElement).click());
+  expect(
+    document.querySelector('[role="dialog"] time')!.getAttribute('datetime'),
+  ).toBe('2026-10-15T00:00:00.000Z');
+  await closeDialog();
   expect(node.querySelector('#achievement-A02')!.textContent).toContain(
     '1 / 10',
   );
   expect(node.querySelector('#achievement-A03')!.textContent).toContain(
     '单局最高进度',
   );
-  expect(node.querySelector('#achievement-F02')!.textContent).toContain(
-    '仅生存',
+  await act(async () =>
+    (node.querySelector('#achievement-F02') as HTMLButtonElement).click(),
   );
+  expect(document.querySelector('[role="dialog"]')!.textContent).toContain(
+    '仅正式生存模式',
+  );
+  await closeDialog();
 });
 it('manual authorization opens all role cards but marks none of their prerequisites complete', async () => {
   const p = manuallyUnlockAchievementCharacters(createPlayerProfile());
@@ -121,8 +159,22 @@ it('manual authorization opens all role cards but marks none of their prerequisi
   expect(
     node.querySelectorAll('.achievement-card[data-achieved=true]'),
   ).toHaveLength(0);
-  expect(node.textContent).toContain('手动授权；不代表下列成就已完成');
-  expect(node.querySelectorAll('.achievement-role a')).toHaveLength(6);
+  expect(node.querySelectorAll('.achievement-role-state')).toHaveLength(5);
+  expect(
+    [...node.querySelectorAll('.achievement-role-state')].filter(
+      (n) => n.textContent === '手动授权',
+    ),
+  ).toHaveLength(4);
+  expect(node.querySelectorAll('.achievement-role li button')).toHaveLength(6);
+  await act(async () =>
+    (
+      node.querySelector('.achievement-role li button') as HTMLButtonElement
+    ).click(),
+  );
+  expect(document.querySelector('[role=dialog]')!.textContent).toContain(
+    '一键解锁仅改变角色权限，不完成任何前置',
+  );
+  await closeDialog();
 });
 it('unreadable or unknown profile is not displayed as zero and does not reset the source', async () => {
   const p = createPlayerProfile();

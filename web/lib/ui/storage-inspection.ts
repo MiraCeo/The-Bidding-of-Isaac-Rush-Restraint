@@ -11,6 +11,7 @@ import {
 import { profileReplacementEpochKey } from './profile-write-coordinator';
 import { playerProfileKey } from './player-profile';
 import { gamePreferencesKey } from './game-preferences';
+import { achievementLayoutKey } from './achievements/layout-preferences';
 import { activeModeKey } from './survival-client';
 
 type InspectableStorage = Pick<Storage, 'length' | 'key' | 'getItem'>;
@@ -49,6 +50,7 @@ const knownKeys: Record<string, { label: string; group: StorageGroup }> = {
     group: 'profile',
   },
   [gamePreferencesKey]: { label: '显示偏好', group: 'preferences' },
+  [achievementLayoutKey]: { label: '成就排列偏好', group: 'preferences' },
   [activeModeKey]: { label: '上次活动模式', group: 'preferences' },
 };
 const legacyKeys = new Set([
