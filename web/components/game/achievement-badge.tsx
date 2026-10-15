@@ -29,6 +29,12 @@ import {
   Gauge,
   ListChecks,
   Hourglass,
+  Ungroup,
+  Target,
+  Compass,
+  Award,
+  UsersRound,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import type { AchievementId } from '@/lib/ui/achievements/catalog';
@@ -42,6 +48,8 @@ export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
   B02: Coins,
   B03: Split,
   B04: Eye,
+  B05: Ungroup,
+  B06: Target,
   C01: Flag,
   C02: ShieldCheck,
   C03: Sunrise,
@@ -60,11 +68,15 @@ export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
   E03: Crown,
   E04: Flame,
   E05: Gift,
+  E06: Compass,
+  E07: Award,
+  E08: UsersRound,
   F01: Hourglass,
   F02: DoorOpen,
   F03: Gauge,
   F04: ListChecks,
   F05: HeartCrack,
+  F06: Trophy,
 };
 export function AchievementBadge({
   id,

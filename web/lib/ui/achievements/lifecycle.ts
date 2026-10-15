@@ -1,3 +1,4 @@
+import { readRoomNearMissEvidence } from '../../game/room-near-miss-evidence';
 import type { GameSession } from '../game-session';
 import type { SurvivalGameState } from '../../game/survival-session';
 import type { SurvivalClientSession } from '../survival-client';
@@ -17,6 +18,7 @@ import {
 } from './facts';
 import {
   encodeAchievementEvent,
+  sameAchievementEventFacts,
   decodeAchievementEvent,
   achievementEventOrder,
   type EncodedAchievementEvent,
@@ -39,6 +41,8 @@ export interface GrowthContext {
   profileEpoch?: string | null;
   /** Imported/replaced-profile prefix must not be granted merely by loading it. */
   ignoredThrough?: number;
+  /** 0.5.3 new-fact boundary; absent on legacy contexts, never inferred from a date. */
+  expansionFrom?: number;
 }
 function fail(): never {
   throw Error('对局成长上下文不一致，原对局与档案保留。');
@@ -120,21 +124,23 @@ export function classicGrowthOrder(session: GameSession): number {
   const g = session.game;
   return g.phase === 'character_selection'
     ? -1
-    : g.floorIndex * 11 + g.roomIndex * 2 + Number(g.phase !== 'room_action');
+    : g.phase === 'game_result'
+      ? 34
+      : g.floorIndex * 11 + g.roomIndex * 2 + Number(g.phase !== 'room_action');
 }
 export function survivalGrowthOrder(game: SurvivalGameState): number {
+  if (game.phase === 'competition_complete') return 78;
   return (
     game.floorIndex * 11 +
-    (game.phase === 'competition_complete'
-      ? 11
-      : game.phase === 'floor_result'
-        ? 10
-        : game.roomIndex * 2 + Number(game.phase === 'room_result'))
+    (game.phase === 'floor_result'
+      ? 10
+      : game.roomIndex * 2 + Number(game.phase === 'room_result'))
   );
 }
 export function beginClassicGrowth(
   session: GameSession,
   excludedThrough = -1,
+  expansionFrom = excludedThrough,
 ): GameSession {
   if (session.game.phase === 'character_selection' || !session.replay) fail();
   const ctx: GrowthContext = {
@@ -142,6 +148,7 @@ export function beginClassicGrowth(
     mode: 'classic',
     root: digest(['classic', session.replay.id]),
     excludedThrough,
+    expansionFrom,
     units: [],
     acknowledged: 0,
   };
@@ -150,6 +157,7 @@ export function beginClassicGrowth(
 export function beginSurvivalGrowth(
   session: SurvivalClientSession,
   excludedThrough = -1,
+  expansionFrom = excludedThrough,
 ): SurvivalClientSession {
   const g = session.game;
   const id = survivalMatchId(
@@ -162,12 +170,27 @@ export function beginSurvivalGrowth(
     mode: 'survival',
     root: digest(['survival', id]),
     excludedThrough,
+    expansionFrom,
     units: [],
     acknowledged: 0,
   };
   return {
     ...session,
     growth: observeSurvivalGrowth(undefined, session.game, ctx),
+  };
+}
+function withNearMissFacts(
+  record: import('../../game/client-session').ClientRoomSettlementRecord,
+  facts: NonNullable<ReturnType<typeof extractAchievementRoomFacts>>,
+  expanded: boolean,
+) {
+  if (!expanded) return facts;
+  const evidence = readRoomNearMissEvidence(record.scoreBreakdowns);
+  if (!evidence) throw Error('新结算缺少真实落选次序证据，成长待核验。');
+  return {
+    ...facts,
+    missedCooperation: evidence.some((e) => e.cooperationLost),
+    missedHighPrice: evidence.some((e) => e.nextHighPrice),
   };
 }
 export function observeClassicGrowth(
@@ -177,7 +200,15 @@ export function observeClassicGrowth(
 ): GrowthContext {
   const g = next.game;
   if (g.phase === 'character_selection') fail();
-  let result = ctx;
+  let result =
+    ctx.expansionFrom === undefined
+      ? {
+          ...ctx,
+          expansionFrom: before
+            ? classicGrowthOrder(before)
+            : classicGrowthOrder(next),
+        }
+      : ctx;
   if (
     g.phase === 'room_action' &&
     (!before ||
@@ -206,7 +237,41 @@ export function observeClassicGrowth(
   ) {
     const facts = extractAchievementRoomFacts(g.roomSettlement);
     if (facts)
-      result = append(result, { stage: 'room', facts }, classicPrefix(next));
+      result = append(
+        result,
+        {
+          stage: 'room',
+          facts: withNearMissFacts(
+            g.roomSettlement,
+            facts,
+            g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.expansionFrom!,
+          ),
+        },
+        classicPrefix(next),
+      );
+  }
+  if (
+    before &&
+    g.phase === 'game_result' &&
+    before.game.phase !== 'game_result' &&
+    result.expansionFrom! < 34
+  ) {
+    const human = g.finalRanking.find((r) => r.playerId === g.humanPlayerId);
+    if (!human) fail();
+    result = append(
+      result,
+      {
+        stage: 'complete',
+        facts: {
+          mode: 'classic',
+          characterId: g.selectedCharacter,
+          champion: !g.finalRanking.some(
+            (r) => r.finalScore > human.finalScore,
+          ),
+        },
+      },
+      [classicPrefix(next), g.finalRanking, g.selectedCharacter],
+    );
   }
   return result;
 }
@@ -215,7 +280,15 @@ export function observeSurvivalGrowth(
   next: SurvivalGameState,
   ctx: GrowthContext,
 ): GrowthContext {
-  let result = ctx;
+  let result =
+    ctx.expansionFrom === undefined
+      ? {
+          ...ctx,
+          expansionFrom: before
+            ? survivalGrowthOrder(before)
+            : survivalGrowthOrder(next),
+        }
+      : ctx;
   if (
     next.phase === 'room_action' &&
     next.activePlayerIds.includes('human') &&
@@ -242,7 +315,19 @@ export function observeSurvivalGrowth(
   ) {
     const facts = extractAchievementRoomFacts(next.roomSettlement);
     if (facts)
-      result = append(result, { stage: 'room', facts }, survivalPrefix(next));
+      result = append(
+        result,
+        {
+          stage: 'room',
+          facts: withNearMissFacts(
+            next.roomSettlement,
+            facts,
+            next.floorIndex * 11 + next.roomIndex * 2 + 1 >
+              result.expansionFrom!,
+          ),
+        },
+        survivalPrefix(next),
+      );
   }
   if (
     next.floorRecords.length >
@@ -283,6 +368,23 @@ export function observeSurvivalGrowth(
       next.floorRecords.map(({ build: _build, ...r }) => r),
       final,
     ]);
+    if (before && result.expansionFrom! < 78)
+      result = append(
+        result,
+        {
+          stage: 'complete',
+          facts: {
+            mode: 'survival',
+            characterId: next.selectedCharacter,
+            champion: next.championId === 'human',
+          },
+        },
+        [
+          survivalPrefix(next),
+          next.floorRecords.map(({ build: _build, ...r }) => r),
+          final,
+        ],
+      );
   }
   return result;
 }
@@ -292,7 +394,7 @@ export function validateGrowthContext(
 ): GrowthContext {
   const optional =
     value && typeof value === 'object'
-      ? ['profileEpoch', 'ignoredThrough'].filter((key) =>
+      ? ['profileEpoch', 'ignoredThrough', 'expansionFrom'].filter((key) =>
           Object.hasOwn(value, key),
         )
       : [];
@@ -306,7 +408,7 @@ export function validateGrowthContext(
     ...optional,
   ]);
   const c = value as GrowthContext;
-  const max = mode === 'classic' ? 31 : 77;
+  const max = mode === 'classic' ? 34 : 78;
   if (
     c.version !== 1 ||
     c.mode !== mode ||
@@ -316,7 +418,7 @@ export function validateGrowthContext(
     c.excludedThrough < -1 ||
     c.excludedThrough > max ||
     !Array.isArray(c.units) ||
-    c.units.length > (mode === 'classic' ? 30 : 78) ||
+    c.units.length > (mode === 'classic' ? 31 : 79) ||
     !Number.isInteger(c.acknowledged) ||
     c.acknowledged < 0 ||
     c.acknowledged > c.units.length
@@ -333,6 +435,13 @@ export function validateGrowthContext(
         c.ignoredThrough > c.units.length))
   )
     fail();
+  if (
+    c.expansionFrom !== undefined &&
+    (!Number.isInteger(c.expansionFrom) ||
+      c.expansionFrom < c.excludedThrough ||
+      c.expansionFrom > max)
+  )
+    fail();
   let previous = c.excludedThrough;
   for (const unit of c.units) {
     exact(unit, ['stage', 'position', 'values', 'authorityHash']);
@@ -343,10 +452,18 @@ export function validateGrowthContext(
       (mode === 'classic' &&
         (unit.stage === 'floor' ||
           unit.stage === 'final' ||
-          unit.position >= 15))
+          (unit.stage !== 'complete' && unit.position >= 15)))
     )
       fail();
     const order = achievementEventOrder(unit);
+    if (
+      (unit.stage === 'complete' &&
+        unit.position !== (mode === 'classic' ? 0 : 1)) ||
+      ((unit.stage === 'complete' ||
+        (unit.stage === 'room' && unit.values.length === 6)) &&
+        (c.expansionFrom === undefined || order <= c.expansionFrom))
+    )
+      fail();
     if (order <= previous || order > max) fail();
     previous = order;
   }
@@ -360,6 +477,7 @@ export function restoreGrowthContext(
   const c = validateGrowthContext(recorded, expected.mode);
   const authorityContext = (v: GrowthContext) => {
     const { profileEpoch: _epoch, ignoredThrough: _ignored, ...rest } = v;
+    if (c.expansionFrom === undefined) delete rest.expansionFrom;
     return { ...rest, acknowledged: 0 };
   };
   if (
@@ -387,7 +505,7 @@ export function applyGrowthContext(
     if (i < (c.ignoredThrough ?? 0)) {
       const known = find(unit);
       if (known) {
-        if (canonicalJson(known.values) !== canonicalJson(unit.values)) fail();
+        if (!sameAchievementEventFacts(known, unit)) fail();
         parent = known.key;
       }
       continue;
@@ -396,11 +514,7 @@ export function applyGrowthContext(
       const receipt = find(unit);
       if (!receipt)
         throw Error('已确认成长凭据不在当前档案中，未重新补发；当前对局保留。');
-      if (
-        canonicalJson([receipt.stage, receipt.position, receipt.values]) !==
-        canonicalJson([unit.stage, unit.position, unit.values])
-      )
-        fail();
+      if (!sameAchievementEventFacts(receipt, unit)) fail();
       parent = receipt.key;
       continue;
     }
@@ -428,10 +542,7 @@ export function validateGrowthProfilePair(
     batch = createAchievementBatch(profile);
   for (const unit of c.units.slice(c.ignoredThrough ?? 0, c.acknowledged)) {
     const receipt = batch.find({ ...unit, mode: c.mode, root: c.root });
-    if (
-      !receipt ||
-      canonicalJson(receipt.values) !== canonicalJson(unit.values)
-    )
+    if (!receipt || !sameAchievementEventFacts(receipt, unit))
       throw Error('完整备份的已确认成长凭据与配套档案不一致。');
   }
 }

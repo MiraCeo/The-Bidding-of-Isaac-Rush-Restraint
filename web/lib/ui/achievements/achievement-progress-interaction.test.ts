@@ -91,13 +91,13 @@ function earned() {
     new Date('2026-10-15T00:00:00.000Z'),
   );
 }
-it('shows exactly 30 catalog cards in six categories and six prerequisites versus 24 collection challenges without activating a profile', async () => {
+it('shows exactly 36 catalog cards in six categories and six prerequisites versus 30 collection challenges without activating a profile', async () => {
   await mount();
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(30);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
-  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(30);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(7);
-  expect(node.textContent).toContain('成就总览0 / 30');
+  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(36);
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(8);
+  expect(node.textContent).toContain('成就总览0 / 36');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });
@@ -111,14 +111,18 @@ it.each(achievementCatalog)(
     const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain(a.condition);
     expect(dialog.textContent).toContain(
-      a.scope === 'shared' ? '正式经典 / 生存通用' : '仅正式生存模式',
+      a.scope === 'shared'
+        ? '正式经典 / 生存通用'
+        : a.scope === 'classic'
+          ? '仅正式经典模式'
+          : '仅正式生存模式',
     );
     expect(dialog.textContent).toContain(a.target.toString());
     expect(dialog.textContent).toContain(
       characterCatalog.some((c) =>
         characterAchievementRequirements[c.id].includes(a.id),
       )
-        ? '6项角色前置之一'
+        ? '前置：'
         : '无 · 收藏挑战',
     );
     await closeDialog();
@@ -172,7 +176,7 @@ it('manual authorization opens all role cards but marks none of their prerequisi
     ).click(),
   );
   expect(document.querySelector('[role=dialog]')!.textContent).toContain(
-    '一键解锁仅改变角色权限，不完成任何前置',
+    '游魂前置：非将军之过 + 屡败屡战',
   );
   await closeDialog();
 });
@@ -187,14 +191,14 @@ it('unreadable or unknown profile is not displayed as zero and does not reset th
   expect(localStorage.getItem(playerProfileKey)).toBe(source);
   await mount(createPlayerProfile(), '档案读取失败');
   expect(node.textContent).toContain('档案读取失败');
-  expect(node.textContent).not.toContain('0 / 30');
+  expect(node.textContent).not.toContain('0 / 36');
 });
 it('shared progress achievement tab is read-only until explicit grant, then reloads current role permissions without awarding', async () => {
   locks();
   await act(async () => root.render(createElement(GameApp)));
   await click('进度');
   await click('成就');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(30);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(36);
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
   expect(node.querySelector('.progress-mode-tabs')).toBeNull();
   await click('一键解锁全部角色');

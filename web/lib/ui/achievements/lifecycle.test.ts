@@ -234,7 +234,7 @@ it('accepts old v5 with absent metadata but rejects known/unknown or tampered ex
     expect(() => parseGameSave(stringifyChecked(doc))).toThrow();
   }
 });
-it('captures all 30 classic units and preserves the same gameplay facts through intermediate file roundtrips', () => {
+it('captures 30 classic room units plus the new formal completion and preserves the same gameplay facts through intermediate file roundtrips', () => {
   let s = start(),
     control = start(false);
   for (let i = 0; i < 15; i++) {
@@ -246,7 +246,7 @@ it('captures all 30 classic units and preserves the same gameplay facts through 
     s = reduceGameSession(s, { type: 'advance_room' });
     control = reduceGameSession(control, { type: 'advance_room' });
   }
-  expect(s.growth!.units).toHaveLength(30);
+  expect(s.growth!.units).toHaveLength(31);
   expect(s.game).toEqual(control.game);
   expect(parseGameSave(serializeGameCheckpoint(s)).session.growth).toEqual(
     s.growth,
@@ -325,7 +325,7 @@ it('rewrites a metadata-only acknowledgement despite unchanged game identity and
     s = reduceGameSession(submit(s), { type: 'advance_room' });
   expect(persistGameSession(store, s)).toBe(true);
   expect(store.getItem(gameSaveKey)).not.toBeNull();
-  expect(loadAutoSave(store).session!.growth!.units).toHaveLength(30);
+  expect(loadAutoSave(store).session!.growth!.units).toHaveLength(31);
   const committed = applyGrowthContext(
     readPlayerProfile(JSON.parse(store.getItem(playerProfileKey)!)),
     s.growth!,
@@ -369,11 +369,11 @@ it('uses one profile candidate for final completion statistics and growth', asyn
   );
   expect(store.writes).toHaveLength(1);
   expect(readCompletionRegistry(result.profile)).not.toBeNull();
-  expect(readAchievementRegistry(result.profile)!.receipts).toHaveLength(30);
+  expect(readAchievementRegistry(result.profile)!.receipts).toHaveLength(31);
   const restored = parseGameSave(
     serializeGameBackup({ ...s, growth: result.context }, result.profile),
   );
-  expect(restored.session.growth!.acknowledged).toBe(30);
+  expect(restored.session.growth!.acknowledged).toBe(31);
   expect(projectAchievementRegistry(restored.profile!)!.counters).toEqual(
     projectAchievementRegistry(result.profile)!.counters,
   );
@@ -389,7 +389,8 @@ it('captures survival entry/room/floor/terminal, freezes human scope after elimi
     }
   }
   expect(s.growth!.units.map((u) => u.stage)).toContain('floor');
-  expect(s.growth!.units.at(-1)!.stage).toBe('final');
+  expect(s.growth!.units.at(-1)!.stage).toBe('complete');
+  expect(s.growth!.units.at(-2)!.stage).toBe('final');
   const humanLast = s.game.humanEliminatedAt;
   if (humanLast !== null)
     expect(

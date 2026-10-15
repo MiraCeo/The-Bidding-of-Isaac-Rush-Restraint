@@ -1,14 +1,22 @@
 import type { CharacterId } from '../../game/item-types';
 
 /** Product catalog v1. No RNG, storage, rewards or new-game restrictions. */
-export const achievementCatalogVersion = 1;
+export const achievementCatalogVersion = 1; // Legacy ledger schema1/2 identity stays fixed.
+export const currentAchievementCatalogVersion = 2;
+export const achievementCharacters = [
+  'isaac',
+  'lost',
+  'azazel',
+  'eden',
+  'jacob_esau',
+] as const;
 export const achievementCategories = [
   { id: 'A', name: '竞拍失败', count: 3 },
-  { id: 'B', name: '竞拍与策略', count: 4 },
+  { id: 'B', name: '竞拍与策略', count: 6 },
   { id: 'C', name: '扰乱与结算奇遇', count: 7 },
   { id: 'D', name: '资金与道具', count: 6 },
-  { id: 'E', name: '角色道具与探索', count: 5 },
-  { id: 'F', name: '生存淘汰', count: 5 },
+  { id: 'E', name: '角色道具与探索', count: 8 },
+  { id: 'F', name: '生存淘汰', count: 6 },
 ] as const;
 export type AchievementCategory = (typeof achievementCategories)[number]['id'];
 export type AchievementId =
@@ -19,6 +27,8 @@ export type AchievementId =
   | 'B02'
   | 'B03'
   | 'B04'
+  | 'B05'
+  | 'B06'
   | 'C01'
   | 'C02'
   | 'C03'
@@ -37,18 +47,22 @@ export type AchievementId =
   | 'E03'
   | 'E04'
   | 'E05'
+  | 'E06'
+  | 'E07'
+  | 'E08'
   | 'F01'
   | 'F02'
   | 'F03'
   | 'F04'
-  | 'F05';
+  | 'F05'
+  | 'F06';
 export interface AchievementDefinition {
   id: AchievementId;
   category: AchievementCategory;
   name: string;
   condition: string;
   target: number;
-  scope: 'shared' | 'survival';
+  scope: 'shared' | 'classic' | 'survival';
   kind: 'event' | 'cumulative' | 'same-match' | 'final';
 }
 function definition(
@@ -57,6 +71,9 @@ function definition(
   condition: string,
   target = 1,
   kind: AchievementDefinition['kind'] = 'event',
+  scope: AchievementDefinition['scope'] = id.startsWith('F')
+    ? 'survival'
+    : 'shared',
 ): AchievementDefinition {
   return {
     id,
@@ -65,7 +82,7 @@ function definition(
     condition,
     target,
     kind,
-    scope: id.startsWith('F') ? 'survival' : 'shared',
+    scope,
   };
 }
 export const achievementCatalog: readonly AchievementDefinition[] = [
@@ -95,6 +112,16 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
     'B04',
     '坐山观虎斗',
     '观望一个至少有奖励名额因扰乱而实际轮空的房间。',
+  ),
+  definition(
+    'B05',
+    '和而不同',
+    '正常竞拍进入合作区但合作排名落选，本组未取得其他奖励资格且未获得道具。',
+  ),
+  definition(
+    'B06',
+    '失之交臂',
+    '正常竞拍在本组正式高价排序中恰为名额后的第1位，未取得其他奖励资格且未获得道具。',
   ),
   definition('C01', '鸠占鹊巢', '真人通过扰乱占据奖励名额并使其实际轮空。'),
   definition('C02', '塞翁失马', '正常竞拍失败后通过屏障实际退回资金。'),
@@ -144,6 +171,29 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
     3,
     'cumulative',
   ),
+  definition(
+    'E06',
+    '初出茅庐',
+    '首次完成一局新的正式经典对局。',
+    1,
+    'final',
+    'classic',
+  ),
+  definition(
+    'E07',
+    '独占鳌头',
+    '首次取得新的经典正式最终排名第一，并列第一也计入。',
+    1,
+    'final',
+    'classic',
+  ),
+  definition(
+    'E08',
+    '各显神通',
+    '分别使用五名角色完成新的正式对局；生存以正式终局存在个人结果为准，淘汰也计入。',
+    5,
+    'cumulative',
+  ),
   definition('F01', '马失前蹄', '真人首次在生存第一层有效淘汰结算被淘汰。'),
   definition(
     'F02',
@@ -171,7 +221,17 @@ export const achievementCatalog: readonly AchievementDefinition[] = [
     1,
     'final',
   ),
+  definition(
+    'F06',
+    '冠绝全场',
+    '首次成为新的生存对局正式冠军，不限制AI难度。',
+    1,
+    'final',
+  ),
 ];
+export const legacyAchievementCatalog = achievementCatalog.filter(
+  (a) => !['B05', 'B06', 'E06', 'E07', 'E08', 'F06'].includes(a.id),
+);
 
 export const characterAchievementRequirements: Readonly<
   Record<CharacterId, readonly AchievementId[]>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/ui/achievements/layout-preferences';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import { AchievementBadge } from './achievement-badge';
+import { AchievementSystemRules } from './achievement-system-rules';
 import { AchievementDetail } from './achievement-detail';
 import { useCharacterAccess } from './use-character-access';
 const roleSymbols = {
@@ -54,6 +55,7 @@ export function AchievementProgress({
       loadAchievementColumns(getPreferenceStorage()),
     ),
     [layoutMessage, setLayoutMessage] = useState('');
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [selected, setSelected] = useState<AchievementId | null>(null);
   const origin = useRef<HTMLButtonElement | null>(null),
     search = useRef<HTMLInputElement | null>(null);
@@ -121,9 +123,12 @@ export function AchievementProgress({
   };
   return (
     <Dialog.Root
-      open={!!detail}
+      open={!!detail || rulesOpen}
       onOpenChange={(open) => {
-        if (!open) setSelected(null);
+        if (!open) {
+          setSelected(null);
+          setRulesOpen(false);
+        }
       }}
     >
       <section className="achievement-progress" aria-label="成就与角色解锁">
@@ -312,6 +317,18 @@ export function AchievementProgress({
               </Button>
             </div>
           )}
+          <button
+            type="button"
+            className="achievement-system-rules-link"
+            aria-haspopup="dialog"
+            onClick={(e) => {
+              origin.current = e.currentTarget;
+              setSelected(null);
+              setRulesOpen(true);
+            }}
+          >
+            成就统计规则
+          </button>
           <p className="achievement-browser-note">
             只展示已成功保存的进度
             {!view ? '；尚无0.5成长记账，不据旧对局补发' : ''}。
@@ -416,12 +433,20 @@ export function AchievementProgress({
             origin.current?.isConnected ? origin.current : search.current
           }
         >
-          {detail && (
-            <AchievementDetail
-              definition={detail}
-              progress={progress[detail.id] ?? 0}
-              achievedAt={achieved[detail.id]}
-            />
+          {rulesOpen ? (
+            <AchievementSystemRules />
+          ) : (
+            detail && (
+              <AchievementDetail
+                definition={detail}
+                progress={progress[detail.id] ?? 0}
+                achievedAt={achieved[detail.id]}
+                onShowRules={() => {
+                  setSelected(null);
+                  setRulesOpen(true);
+                }}
+              />
+            )
           )}
         </Dialog.Popup>
       </Dialog.Portal>

@@ -41,6 +41,8 @@ export function fixedCapacityTraces() {
       type: 'start_game',
       characterId: 'lost',
     }),
+    -1,
+    34, // Frozen schema1/2 measurement corpus, not the new completion extension.
   );
   for (let i = 0; i < 15; i++) {
     classic = reduceGameSession(classic, {
@@ -52,7 +54,11 @@ export function fixedCapacityTraces() {
     });
     classic = reduceGameSession(classic, { type: 'advance_room' });
   }
-  let survival = beginSurvivalGrowth(startSurvivalClient('lost', 3, 'highest'));
+  let survival = beginSurvivalGrowth(
+    startSurvivalClient('lost', 3, 'highest'),
+    -1,
+    78,
+  );
   while (survival.game.phase !== 'competition_complete')
     survival = reduceSurvivalClient(survival, longRunAction(survival.game));
   const structural: GrowthUnit[] = [];

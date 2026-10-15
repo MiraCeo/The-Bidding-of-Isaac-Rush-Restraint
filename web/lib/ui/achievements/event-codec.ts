@@ -1,5 +1,8 @@
+import { canonicalJson } from '../../shared/json-facts';
+import { achievementCharacters } from './catalog';
 import type {
   AchievementEntryFacts,
+  AchievementCompletionFacts,
   AchievementRoomFacts,
   AchievementFloorFacts,
   AchievementFinalFacts,
@@ -10,7 +13,8 @@ export type AchievementEvent =
   | { stage: 'entry'; facts: AchievementEntryFacts }
   | { stage: 'room'; facts: AchievementRoomFacts }
   | { stage: 'floor'; facts: AchievementFloorFacts }
-  | { stage: 'final'; facts: AchievementFinalFacts };
+  | { stage: 'final'; facts: AchievementFinalFacts }
+  | { stage: 'complete'; facts: AchievementCompletionFacts };
 export type AchievementStage = AchievementEvent['stage'];
 export interface EncodedAchievementEvent {
   stage: AchievementStage;
@@ -86,6 +90,12 @@ export function encodeAchievementEvent(
         int(e.highestAwardOpportunities, 2),
         int(e.hiddenAwardCopies, 4),
         e.scoreBeforeClear ?? null,
+        ...(e.missedCooperation !== undefined || e.missedHighPrice !== undefined
+          ? [
+              Number(bool(e.missedCooperation)) +
+                2 * Number(bool(e.missedHighPrice)),
+            ]
+          : []),
       ],
     };
   } else if (event.stage === 'floor') {
@@ -109,6 +119,17 @@ export function encodeAchievementEvent(
         Number(bool(e.humanSurvived)),
         Number(bool(e.highestDifficulty)),
         e.humanEliminationFloor,
+      ],
+    };
+  } else if (event.stage === 'complete') {
+    const e = event.facts;
+    if (e.mode !== 'classic' && e.mode !== 'survival') fail();
+    encoded = {
+      stage: 'complete',
+      position: e.mode === 'classic' ? 0 : 1,
+      values: [
+        int(achievementCharacters.indexOf(e.characterId), 4),
+        Number(bool(e.champion)),
       ],
     };
   } else {
@@ -140,7 +161,7 @@ export function decodeAchievementEvent(
     };
   }
   if (encoded.stage === 'room') {
-    if (v.length !== 5) fail();
+    if (v.length !== 5 && v.length !== 6) fail();
     const code = int(v[0], 6),
       mask = int(v[1], 2 ** roomFlags.length - 1),
       score = v[4];
@@ -159,6 +180,12 @@ export function decodeAchievementEvent(
         : code < 3
           ? [code === 2]
           : [code >= 5, (code - 3) % 2 === 1];
+    if (
+      v.length === 6 &&
+      int(v[5], 3) > 0 &&
+      !bidSuccesses.some((success) => !success)
+    )
+      fail();
     const flags = Object.fromEntries(
       roomFlags.map((key, i) => [key, (mask & (2 ** i)) !== 0]),
     ) as Pick<AchievementRoomFacts, (typeof roomFlags)[number]>;
@@ -169,6 +196,12 @@ export function decodeAchievementEvent(
         roomIndex,
         bidSuccesses,
         ...flags,
+        ...(v.length === 6
+          ? {
+              missedCooperation: (int(v[5], 3) & 1) !== 0,
+              missedHighPrice: (int(v[5], 3) & 2) !== 0,
+            }
+          : {}),
         highestAwardOpportunities: int(v[2], 2),
         hiddenAwardCopies: int(v[3], 4),
         ...(score === null ? {} : { scoreBeforeClear: score }),
@@ -218,10 +251,23 @@ export function decodeAchievementEvent(
       },
     };
   }
+  if (encoded.stage === 'complete') {
+    int(p, 1);
+    if (v.length !== 2) fail();
+    return {
+      stage: 'complete',
+      facts: {
+        mode: p === 0 ? 'classic' : 'survival',
+        characterId: achievementCharacters[int(v[0], 4)]!,
+        champion: int(v[1], 1) === 1,
+      },
+    };
+  }
   fail();
 }
 export function achievementEventOrder(e: EncodedAchievementEvent): number {
   decodeAchievementEvent(e);
+  if (e.stage === 'complete') return e.position === 0 ? 34 : 78;
   return e.stage === 'entry' || e.stage === 'room'
     ? Math.floor(e.position / 5) * 11 +
         (e.position % 5) * 2 +
@@ -246,7 +292,29 @@ export function eventRunAnalysis(
     input.rooms = [{ eligible: true, facts: event.facts }];
   if (event.stage === 'floor')
     input.floors = [{ eligible: true, facts: event.facts }];
+  if (event.stage === 'complete') {
+    if (event.facts.mode !== mode) fail();
+    input.complete = { eligible: true, facts: event.facts };
+  }
   if (event.stage === 'final')
     input.final = { eligible: true, facts: event.facts };
   return input;
+}
+
+/** A legacy room proof lacks new-catalog causes. Treat it as the same already
+ * recorded authority unit, never enrich it retroactively or overwrite its time.
+ * Two expanded proofs must still agree on every cause bit. */
+export function sameAchievementEventFacts(
+  a: EncodedAchievementEvent,
+  b: EncodedAchievementEvent,
+): boolean {
+  if (a.stage !== b.stage || a.position !== b.position) return false;
+  const comparable =
+    a.stage === 'room' && (a.values.length === 5 || b.values.length === 5)
+      ? 5
+      : undefined;
+  return (
+    canonicalJson(a.values.slice(0, comparable)) ===
+    canonicalJson(b.values.slice(0, comparable))
+  );
 }

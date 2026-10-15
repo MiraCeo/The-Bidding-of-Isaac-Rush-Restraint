@@ -1,3 +1,4 @@
+import { achievementCollectionNotes } from './collection-notes';
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -78,25 +79,25 @@ function earned(): PlayerProfile {
     new Date('2026-10-15T00:00:00Z'),
   );
 }
-it('shows saved global totals rather than filtered denominators; neither candidates nor migration on browsing', async () => {
+it('shows saved global totals rather than filtered denominators; new entries are read-only without migration on browsing', async () => {
   const p = compactAchievementProfile(earned()),
     before = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, before);
   await mount(p);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 30',
+    '1 / 36',
   );
   expect(
     node.querySelector('.achievement-overview-caption')!.textContent,
-  ).toContain('3.3%');
-  expect(cards()).toHaveLength(30);
+  ).toContain('2.8%');
+  expect(cards()).toHaveLength(36);
   expect(cards()[0]!.querySelector('progress')).toBeNull();
   expect(cards()[0]!.querySelector('time')).toBeNull();
-  expect(node.textContent).not.toContain('初出茅庐');
+  expect(node.textContent).toContain('初出茅庐');
   await select(0, 'achieved');
   expect(cards().map((c) => c.id)).toEqual(['achievement-A01']);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 30',
+    '1 / 36',
   );
   expect(localStorage.getItem(playerProfileKey)).toBe(before);
   expect(JSON.stringify(p)).toBe(before);
@@ -116,7 +117,7 @@ it('combines category/name/ID/status and offers empty reset without changing lay
       (b) => b.textContent === '清除筛选',
     )!,
   );
-  expect(cards()).toHaveLength(30);
+  expect(cards()).toHaveLength(36);
   expect(
     node.querySelector('.achievement-grid')!.getAttribute('data-columns'),
   ).toBe('2');
@@ -131,7 +132,7 @@ it('sorts actual saved progress without changing records', async () => {
       .map((c) => c.id),
   ).toEqual(['achievement-A01', 'achievement-A03', 'achievement-A02']);
   await select(0, 'pending');
-  expect(cards()).toHaveLength(29);
+  expect(cards()).toHaveLength(35);
   await select(1, 'recent');
   expect(cards()[0]!.id).toBe('achievement-A02');
   await select(0, 'all');
@@ -161,18 +162,30 @@ it('preference quota failures do not affect filtering or player data', async () 
   const p = earned(),
     raw = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, raw);
-  vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
-    throw Error('quota');
+  const source = window.localStorage,
+    descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')!;
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: source.getItem.bind(source),
+      setItem: () => {
+        throw Error('quota');
+      },
+    },
   });
-  await mount(p);
-  await select(2, '1');
-  expect(
-    node.querySelector('.achievement-grid')!.getAttribute('data-columns'),
-  ).toBe('1');
-  expect(node.textContent).toContain('本地偏好未保存');
-  await select(0, 'achieved');
-  expect(cards()).toHaveLength(1);
-  expect(localStorage.getItem(playerProfileKey)).toBe(raw);
+  try {
+    await mount(p);
+    await select(2, '1');
+    expect(
+      node.querySelector('.achievement-grid')!.getAttribute('data-columns'),
+    ).toBe('1');
+    expect(node.textContent).toContain('本地偏好未保存');
+    await select(0, 'achieved');
+    expect(cards()).toHaveLength(1);
+    expect(source.getItem(playerProfileKey)).toBe(raw);
+  } finally {
+    Object.defineProperty(window, 'localStorage', descriptor);
+  }
 });
 it('opens named modal with complete metadata and stable grid; close and Escape return focus', async () => {
   await mount(earned());
@@ -231,4 +244,54 @@ it('open details reflect profile rollback; invalid profile removes the modal ins
   expect(popup()).toBeNull();
   expect(node.querySelector('.achievement-overview')).toBeNull();
   expect(node.textContent).toContain('读取失败');
+});
+
+it('unlocks only the earned flavor text and hides it again on explicit rollback without writing a note flag', async () => {
+  const p = earned(),
+    raw = JSON.stringify(p);
+  localStorage.setItem(playerProfileKey, raw);
+  await mount(p);
+  await click(node.querySelector('#achievement-A01') as HTMLElement);
+  expect(
+    popup().querySelector('.achievement-collection-note blockquote')!
+      .textContent,
+  ).toBe(achievementCollectionNotes.A01);
+  expect(popup().textContent).not.toContain('重复导入');
+  await mount(createPlayerProfile());
+  expect(
+    popup().querySelector('.achievement-collection-note blockquote'),
+  ).toBeNull();
+  expect(
+    popup().querySelector('.achievement-collection-note')!.textContent,
+  ).toContain('达成后解锁');
+  expect(localStorage.getItem(playerProfileKey)).toBe(raw);
+  expect(JSON.stringify(p)).toBe(raw);
+});
+it('moves common rules to one discoverable dialog and returns to the original achievement without losing filters', async () => {
+  await mount(earned());
+  await search('A01');
+  const origin = node.querySelector<HTMLButtonElement>('#achievement-A01')!;
+  origin.focus();
+  await click(origin);
+  expect(popup().textContent).toContain('屏障退款仍计入');
+  expect(popup().textContent).not.toContain('重复恢复');
+  await click(
+    [...popup().querySelectorAll('button')].find(
+      (b) => b.textContent === '查看通用统计规则',
+    )!,
+  );
+  expect(popup().textContent).toContain('成就统计规则');
+  expect(popup().textContent).toContain('重复恢复');
+  expect(popup().textContent).toContain('0.5.3');
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
+  await close();
+  expect(document.activeElement).toBe(origin);
+  expect(localStorage.getItem(playerProfileKey)).toBeNull();
+  await click(
+    [...node.querySelectorAll('button')].find(
+      (b) => b.textContent === '成就统计规则',
+    )!,
+  );
+  expect(popup().textContent).toContain('一键解锁全部角色');
+  await close();
 });

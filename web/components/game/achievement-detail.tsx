@@ -5,8 +5,10 @@ import {
   achievementCategories,
   characterAchievementRequirements,
   type AchievementDefinition,
+  achievementCatalog,
 } from '@/lib/ui/achievements/catalog';
 import { achievementPresentation } from '@/lib/ui/achievements/presentation';
+import { achievementCollectionNotes } from '@/lib/ui/achievements/collection-notes';
 import { AchievementBadge } from './achievement-badge';
 
 /** Full saved metadata stays here; the collection only needs a compact summary. */
@@ -14,10 +16,12 @@ export function AchievementDetail({
   definition: a,
   progress,
   achievedAt,
+  onShowRules,
 }: {
   definition: AchievementDefinition;
   progress: number;
   achievedAt?: string;
+  onShowRules: () => void;
 }) {
   const roles = characterCatalog.filter((c) =>
     characterAchievementRequirements[c.id].includes(a.id),
@@ -50,7 +54,11 @@ export function AchievementDetail({
         <div>
           <dt>适用模式</dt>
           <dd>
-            {a.scope === 'shared' ? '正式经典 / 生存通用' : '仅正式生存模式'}
+            {a.scope === 'shared'
+              ? '正式经典 / 生存通用'
+              : a.scope === 'classic'
+                ? '仅正式经典模式'
+                : '仅正式生存模式'}
           </dd>
         </div>
         <div>
@@ -79,15 +87,31 @@ export function AchievementDetail({
       <section className="achievement-detail-note">
         <h4>判定说明</h4>
         <p>{achievementPresentation[a.id].note}</p>
-        {roles.length > 0 && (
-          <p>
-            6项角色前置之一。需完成该角色的全部前置成就；一键解锁仅改变角色权限，不完成任何前置。
+        {roles.map((c) => (
+          <p key={c.id}>
+            {c.name}前置：
+            {characterAchievementRequirements[c.id]
+              .map((id) => achievementCatalog.find((a) => a.id === id)!.name)
+              .join(' + ')}
+            。
           </p>
-        )}
-        <p>
-          仅统计真人的新正式结算，不计教学或AI个人成就。只读回放、重复导入、恢复及重复登记不额外增加进度；旧历史不补发。明确替换档案可回到快照。
-        </p>
+        ))}
       </section>
+      <section className="achievement-collection-note" aria-label="收藏札记">
+        <h4>收藏札记</h4>
+        {achievedAt ? (
+          <blockquote>{achievementCollectionNotes[a.id]}</blockquote>
+        ) : (
+          <p>达成后解锁</p>
+        )}
+      </section>
+      <button
+        type="button"
+        className="achievement-system-rules-link"
+        onClick={onShowRules}
+      >
+        查看通用统计规则
+      </button>
       <Dialog.Close className="achievement-detail-done">返回列表</Dialog.Close>
     </>
   );

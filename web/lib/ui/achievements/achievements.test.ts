@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   achievementCatalog,
+  legacyAchievementCatalog,
   achievementCategories,
   characterAchievementRequirements,
   availableAchievementCharacters,
@@ -189,15 +190,16 @@ function floorRecord(
 }
 
 describe('0.5 product catalog and independent character permission', () => {
-  it('has exactly the confirmed 30 IDs, six categories and six unlocking conditions', () => {
+  it('retains the original 30 and adds six collection IDs without changing role prerequisites', () => {
     const ids = achievementCatalog.map((a) => a.id);
-    expect(ids).toHaveLength(30);
-    expect(new Set(ids).size).toBe(30);
+    expect(ids).toHaveLength(36);
+    expect(legacyAchievementCatalog).toHaveLength(30);
+    expect(new Set(ids).size).toBe(36);
     expect(
       achievementCategories.map(
         (c) => ids.filter((id) => id.startsWith(c.id)).length,
       ),
-    ).toEqual([3, 4, 7, 6, 5, 5]);
+    ).toEqual([3, 6, 7, 6, 8, 6]);
     const prerequisites = new Set(
       Object.values(characterAchievementRequirements).flat(),
     );
@@ -222,7 +224,7 @@ describe('0.5 product catalog and independent character permission', () => {
       expect(achievementCatalog.some((a) => a.name === removed)).toBe(false);
     expect(
       achievementCatalog.filter((a) => a.scope === 'survival').map((a) => a.id),
-    ).toEqual(['F01', 'F02', 'F03', 'F04', 'F05']);
+    ).toEqual(['F01', 'F02', 'F03', 'F04', 'F05', 'F06']);
   });
   it('requires both conditions, defaults to Isaac and never mutates achievements on manual authorization', () => {
     const earned = new Set<AchievementId>(['E01', 'E03']);

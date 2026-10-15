@@ -280,7 +280,7 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
     buildId: doc.startedBuild,
   });
   const recordedGrowth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'survival') : undefined;
-  let growth = recordedGrowth ? beginSurvivalGrowth({ game, draft: null }, recordedGrowth.excludedThrough).growth! : undefined;
+  let growth = recordedGrowth ? beginSurvivalGrowth({ game, draft: null }, recordedGrowth.excludedThrough, recordedGrowth.expansionFrom ?? 78).growth! : undefined;
   const commands = doc.commands.map(command);
   for (const entry of commands) {
     game = withSurvivalBuild(game, entry.build);

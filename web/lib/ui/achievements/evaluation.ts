@@ -1,6 +1,11 @@
-import { achievementCatalog, type AchievementId } from './catalog';
+import {
+  achievementCatalog,
+  achievementCharacters,
+  type AchievementId,
+} from './catalog';
 import type {
   AchievementEntryFacts,
+  AchievementCompletionFacts,
   AchievementRoomFacts,
   AchievementFloorFacts,
   AchievementFinalFacts,
@@ -11,6 +16,7 @@ export interface AchievementCounters {
   highestAwards: number;
   interestMoney: number;
   hiddenCopies: number;
+  completedCharacters?: number;
 }
 export function emptyAchievementCounters(): AchievementCounters {
   return { failedBids: 0, highestAwards: 0, interestMoney: 0, hiddenCopies: 0 };
@@ -46,6 +52,7 @@ export interface AchievementRunAnalysis {
   rooms: readonly AchievementAnalysisUnit<AchievementRoomFacts>[];
   floors: readonly AchievementAnalysisUnit<AchievementFloorFacts>[];
   final?: AchievementAnalysisUnit<AchievementFinalFacts>;
+  complete?: AchievementAnalysisUnit<AchievementCompletionFacts>;
 }
 function integer(n: number, max = Number.MAX_SAFE_INTEGER) {
   if (!Number.isSafeInteger(n) || n < 0 || n > max)
@@ -160,6 +167,8 @@ export function evaluateAchievementRun(
         counters.hiddenCopies,
         integer(r.hiddenAwardCopies, 4),
       );
+      mark('B05', r.missedCooperation === true);
+      mark('B06', r.missedHighPrice === true);
       mark('B01', r.cooperativeAward);
       mark('B03', r.optionsDestroyed);
       mark('B04', r.watchedVacancy);
@@ -212,6 +221,22 @@ export function evaluateAchievementRun(
           eliminatedFloors.has(f.lastEliminationFloor),
       );
     }
+    if (input.complete?.eligible) {
+      const f = input.complete.facts,
+        index = achievementCharacters.indexOf(f.characterId);
+      if (f.mode !== input.mode || index < 0 || typeof f.champion !== 'boolean')
+        throw Error('正式完成事实不一致。');
+      counters.completedCharacters =
+        integer(counters.completedCharacters ?? 0, 31) | (2 ** index);
+      mark('E06', input.mode === 'classic');
+      mark('E07', input.mode === 'classic' && f.champion);
+      mark('F06', input.mode === 'survival' && f.champion);
+    }
+    if (counters.completedCharacters !== undefined)
+      integer(counters.completedCharacters, 31);
+    progress.E08 = (counters.completedCharacters ?? 0)
+      .toString(2)
+      .replaceAll('0', '').length;
     progress.A01 = counters.failedBids;
     progress.A02 = counters.failedBids;
     progress.A03 = peakStreak;

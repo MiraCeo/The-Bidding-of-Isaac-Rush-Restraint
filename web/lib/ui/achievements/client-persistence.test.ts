@@ -425,7 +425,7 @@ it('classic terminal transaction combines actual growth, completion and replay; 
     saved = await saveClassicClient(store, s, options(store));
   expect(saved.message).toBe('');
   const p = profile(store);
-  expect(readAchievementRegistry(p)!.receipts).toHaveLength(30);
+  expect(readAchievementRegistry(p)!.receipts).toHaveLength(31);
   expect(
     sumCounters(Object.values(readCompletionRegistry(p)!.groups)).completed,
   ).toBe(1);

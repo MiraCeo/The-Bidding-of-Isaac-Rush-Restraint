@@ -1,3 +1,4 @@
+import { achievementCollectionNotes } from './collection-notes';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { achievementCatalog } from './catalog';
@@ -20,12 +21,15 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('presentation-only catalog and deterministic filters', () => {
-  it('covers exactly the 30 existing IDs with concise summaries, detailed notes and unique local glyphs', () => {
+  it('covers exactly the 36 existing IDs with concise summaries, detailed notes and unique local glyphs', () => {
     const ids = achievementCatalog.map((a) => a.id).sort();
     expect(Object.keys(achievementPresentation).sort()).toEqual(ids);
+    expect(Object.keys(achievementCollectionNotes).sort()).toEqual(ids);
     expect(Object.keys(achievementGlyphs).sort()).toEqual(ids);
-    expect(new Set(Object.values(achievementGlyphs)).size).toBe(30);
+    expect(new Set(Object.values(achievementGlyphs)).size).toBe(36);
     for (const a of achievementCatalog) {
+      expect(achievementCollectionNotes[a.id].length).toBeGreaterThan(3);
+      expect(achievementCollectionNotes[a.id].length).toBeLessThanOrEqual(60);
       expect(achievementPresentation[a.id].summary.length).toBeLessThanOrEqual(
         25,
       );
@@ -81,7 +85,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         .slice(0, 4)
         .map((a) => a.id),
     ).toEqual(['A01', 'E05', 'A02', 'D03']);
-    expect(selectAchievements(all, {}, {})).toHaveLength(30);
+    expect(selectAchievements(all, {}, {})).toHaveLength(36);
   });
 });
 describe('optional display preference and static responsive contract', () => {

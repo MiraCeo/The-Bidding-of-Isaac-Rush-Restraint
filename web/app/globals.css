@@ -1464,3 +1464,10 @@
   .room-intro h2 { font-size:1.3rem; }
   .final-hero { padding:12px 0 24px; }
 }
+
+.achievement-system-rules-link { display:block; color:var(--primary); font-size:.74rem; text-decoration:underline; text-underline-offset:3px; cursor:pointer; margin-top:14px; border-radius:4px; }
+.achievement-system-rules-link:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.achievement-collection-note { margin-top:18px; padding:16px; border:1px solid #735532; border-radius:9px; background:linear-gradient(115deg,#342719,#251e16); }
+.achievement-collection-note h4 { font-size:.72rem; color:var(--primary); font-weight:750; margin-bottom:9px; }
+.achievement-collection-note blockquote { font-size:.88rem; line-height:1.9; color:#ead4ac; }
+.achievement-collection-note p { font-size:.76rem; color:var(--muted-foreground); }

@@ -341,7 +341,7 @@ export function parseGameSave(source: string): SaveDocument {
     characterId: game.selectedCharacter as CharacterId,
   });
   const growth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'classic') : undefined;
-  if (growth) verified = beginClassicGrowth(verified, growth.excludedThrough);
+  if (growth) verified = beginClassicGrowth(verified, growth.excludedThrough, growth.expansionFrom ?? 34);
   const turns = saved.turns.map(readTurn);
   for (let i = 0; i < turns.length; i++) {
     const next = reduceGameSession(verified, {

@@ -180,6 +180,7 @@ export function mergeAcknowledgedGrowth(
   if (
     current.root !== saved.root ||
     current.excludedThrough !== saved.excludedThrough ||
+    current.expansionFrom !== saved.expansionFrom ||
     current.profileEpoch !== saved.profileEpoch ||
     (current.ignoredThrough ?? 0) !== (saved.ignoredThrough ?? 0) ||
     current.units.length < saved.units.length ||
@@ -489,6 +490,7 @@ export function mergeSavedGrowth(
   if (
     current.root !== saved.root ||
     current.excludedThrough !== saved.excludedThrough ||
+    current.expansionFrom !== saved.expansionFrom ||
     current.units.length < saved.units.length ||
     saved.units.some(
       (u, i) => u.authorityHash !== current.units[i]?.authorityHash,

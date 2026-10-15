@@ -13,7 +13,14 @@ export interface AchievementEntryFacts {
   stolenMoney: number;
   interestMoney: number;
 }
+export interface AchievementCompletionFacts {
+  mode: 'classic' | 'survival';
+  characterId: import('../../game/item-types').CharacterId;
+  champion: boolean;
+}
 export interface AchievementRoomFacts {
+  missedCooperation?: boolean;
+  missedHighPrice?: boolean;
   floorIndex: number;
   roomIndex: number;
   /** Empty = withdraw/disrupt. Outcomes describe market qualification, not delivery. */

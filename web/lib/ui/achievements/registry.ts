@@ -3,6 +3,7 @@ import { canonicalJson } from '../../shared/json-facts';
 import {
   achievementReceiptKey as receiptKey,
   packAchievementRegistry,
+  isExpandedAchievementEvent,
   unpackAchievementRegistry,
   packedAchievementReceiptLimit,
   type PackedAchievementRegistry,
@@ -10,6 +11,7 @@ import {
 import {
   achievementCatalog,
   achievementCatalogVersion,
+  currentAchievementCatalogVersion,
   characterAchievementRequirements,
   type AchievementId,
 } from './catalog';
@@ -21,6 +23,7 @@ import {
 } from './evaluation';
 import {
   achievementEventOrder,
+  sameAchievementEventFacts,
   encodeAchievementEvent,
   decodeAchievementEvent,
   eventRunAnalysis,
@@ -118,6 +121,8 @@ function scanReceipt(state: ScanState, r: AchievementReceipt) {
   const identity = authorityUnitIdentity(r);
   if (authorityUnits.has(identity)) fail();
   authorityUnits.set(identity, r);
+  if (r.stage === 'complete' && r.position !== (r.mode === 'classic' ? 0 : 1))
+    fail();
   if (
     r.mode === 'classic' &&
     (r.stage === 'floor' || r.stage === 'final' || r.position >= 15)
@@ -129,7 +134,8 @@ function scanReceipt(state: ScanState, r: AchievementReceipt) {
     (!parent ||
       parent.root !== r.root ||
       parent.mode !== r.mode ||
-      parent.stage === 'final' ||
+      parent.stage === 'complete' ||
+      (parent.stage === 'final' && r.stage !== 'complete') ||
       achievementEventOrder(parent) >= achievementEventOrder(r))
   )
     fail();
@@ -264,7 +270,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   const v = object(value);
   exact(
     value,
-    v.version === 2
+    v.version === 2 || v.version === 3
       ? [
           'version',
           'catalogVersion',
@@ -283,17 +289,24 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
         ],
   );
   if (
-    (v.version !== 1 && v.version !== 2) ||
-    v.catalogVersion !== achievementCatalogVersion
+    ![1, 2, 3].includes(v.version as number) ||
+    v.catalogVersion !==
+      (v.version === 3
+        ? currentAchievementCatalogVersion
+        : achievementCatalogVersion)
   )
     fail();
   date(v.activatedAt);
   if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
   if (new TextEncoder().encode(content).length > achievementRegistryByteLimit)
     fail();
-  if (v.version === 2)
+  if (v.version === 2 || v.version === 3)
     return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
   if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
+    fail();
+  if (
+    v.receipts.some((r) => isExpandedAchievementEvent(r as AchievementReceipt))
+  )
     fail();
   return v as unknown as AchievementRegistry;
 }
@@ -341,8 +354,11 @@ function install(
     | { version?: number }
     | undefined;
   const wire =
-    old?.version === 2 || registry.receipts.length >= 256
-      ? packAchievementRegistry(registry)
+    old?.version === 2 ||
+    old?.version === 3 ||
+    registry.receipts.some(isExpandedAchievementEvent) ||
+    registry.receipts.length >= 256
+      ? packAchievementRegistry(registry, old?.version === 3)
       : structuredClone(registry);
   validateAchievementRegistry(wire);
   const next = {
@@ -372,7 +388,7 @@ export function compactAchievementProfile(
       profile.progression.modules[achievementRegistryModule] as {
         version?: number;
       }
-    ).version === 2
+    ).version !== 1
   )
     return profile;
   const wire = packAchievementRegistry(analysis.registry);
@@ -486,10 +502,7 @@ export function createAchievementBatch(
         };
         const prior = state.authorityUnits.get(authorityUnitIdentity(r));
         if (prior) {
-          if (
-            canonicalJson([prior.stage, prior.position, prior.values]) !==
-            canonicalJson([r.stage, r.position, r.values])
-          )
+          if (!sameAchievementEventFacts(prior, r))
             throw Error('同一权威结算的成长证据发生冲突，未重复记账。');
           return;
         }

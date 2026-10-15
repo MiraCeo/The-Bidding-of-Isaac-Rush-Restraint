@@ -5,8 +5,8 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2;
-  catalogVersion: 1;
+  version: 2 | 3;
+  catalogVersion: 1 | 2;
   activatedAt: string;
   manualUnlockAllAt: string | null;
   count: number;
@@ -60,12 +60,22 @@ function hashBytes(hash: string) {
 function hex(bytes: Uint8Array) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
-const stages = ['entry', 'room', 'floor', 'final'] as const;
+const stages = ['entry', 'room', 'floor', 'final', 'complete'] as const;
+export function isExpandedAchievementEvent(
+  r: Pick<AchievementReceipt, 'stage' | 'values'>,
+) {
+  return (
+    r.stage === 'complete' || (r.stage === 'room' && r.values.length === 6)
+  );
+}
 /** Lossless wire encoding only. Semantic validation and achievement evaluation
  * remain in registry.ts; all hashes are kept at the full 256-bit width. */
 export function packAchievementRegistry(
   registry: AchievementRegistry,
+  forceExpanded = false,
 ): PackedAchievementRegistry {
+  const expanded =
+    forceExpanded || registry.receipts.some(isExpandedAchievementEvent);
   if (registry.receipts.length > packedAchievementReceiptLimit) fail();
   const roots: PackedAchievementRegistry['roots'] = [],
     rootIndices = new Map<string, number>(),
@@ -103,6 +113,7 @@ export function packAchievementRegistry(
       for (const n of v.slice(0, 4)) uint(n!);
       uint(v[4] === null ? 0 : 1);
       if (v[4] !== null) uint(Math.round(v[4]! * 10000));
+      if (expanded) uint(v.length === 6 ? v[5]! + 1 : 0);
     } else if (r.stage === 'final') {
       uint(v[0]!);
       uint(v[1]!);
@@ -115,8 +126,8 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: 2,
-    catalogVersion: 1,
+    version: expanded ? 3 : 2,
+    catalogVersion: expanded ? 2 : 1,
     activatedAt: registry.activatedAt,
     manualUnlockAllAt: registry.manualUnlockAllAt,
     count: registry.receipts.length,
@@ -129,6 +140,13 @@ export function packAchievementRegistry(
 export function unpackAchievementRegistry(
   value: PackedAchievementRegistry,
 ): AchievementRegistry {
+  if (
+    !(
+      (value.version === 2 && value.catalogVersion === 1) ||
+      (value.version === 3 && value.catalogVersion === 2)
+    )
+  )
+    fail();
   if (
     !Number.isSafeInteger(value.count) ||
     value.count < 0 ||
@@ -193,7 +211,7 @@ export function unpackAchievementRegistry(
     const stage = stages[byte()],
       position = byte(),
       delta = uint();
-    if (!stage) fail();
+    if (!stage || (stage === 'complete' && value.version !== 3)) fail();
     time += delta % 2 ? -(delta + 1) / 2 : delta / 2;
     if (
       !Number.isSafeInteger(time) ||
@@ -205,7 +223,7 @@ export function unpackAchievementRegistry(
     const authorityHash = hex(bytes.subarray(offset, offset + 32));
     offset += 32;
     let values: (number | null)[];
-    if (stage === 'entry') values = [uint(), uint()];
+    if (stage === 'entry' || stage === 'complete') values = [uint(), uint()];
     else if (stage === 'floor') values = [uint()];
     else if (stage === 'final') {
       values = [uint(), uint()];
@@ -216,6 +234,11 @@ export function unpackAchievementRegistry(
       const present = uint();
       if (present > 1) fail();
       values.push(present ? uint() / 10000 : null);
+      if (value.version === 3) {
+        const code = uint();
+        if (code > 4) fail();
+        if (code) values.push(code - 1);
+      }
     }
     const candidate = {
       ...roots[rootIndex]!,
