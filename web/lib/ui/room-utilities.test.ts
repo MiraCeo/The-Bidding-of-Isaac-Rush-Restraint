@@ -1,3 +1,5 @@
+import { createPlayerProfile, playerProfileKey } from './player-profile';
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { decodedDownload } from './file-export.test-helper';
 
@@ -410,6 +412,12 @@ describe('room utility interaction without a real browser', () => {
   });
 
   it('preserves the chosen home-page character and only initializes the game after an explicit start', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
     const generate = vi.spyOn(roomGeneration, 'generateFloor');
     await mount(createElement(GameApp));
     const selected = element<HTMLInputElement>(
@@ -478,6 +486,12 @@ describe('room utility interaction without a real browser', () => {
   });
 
   it('restores the home-page selection and scroll position after reading rules with Escape', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
     await mount(createElement(GameApp));
     await click(
       element<HTMLInputElement>('input[name="character"][value="eden"]'),
