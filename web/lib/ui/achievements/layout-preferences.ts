@@ -1,5 +1,5 @@
 export const achievementLayoutKey = 'bidding-achievement-layout-v1';
-export const achievementColumns = ['auto', '1', '2', '3'] as const;
+export const achievementColumns = ['auto', '1', '2', '3', '4'] as const;
 export type AchievementColumns = (typeof achievementColumns)[number];
 type LayoutStorage = Pick<Storage, 'getItem' | 'setItem'>;
 export function loadAchievementColumns(

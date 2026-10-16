@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { characterCatalog } from '@/lib/game';
@@ -8,7 +9,7 @@ import {
   type AchievementId,
   achievementCatalog,
 } from '@/lib/ui/achievements/catalog';
-import { achievementPresentation } from '@/lib/ui/achievements/presentation';
+import { achievementDetailPresentation } from '@/lib/ui/achievements/detail-presentation';
 import { achievementNumber } from '@/lib/ui/achievements/numbering';
 import { achievementCollectionNotes } from '@/lib/ui/achievements/collection-notes';
 import {
@@ -17,7 +18,7 @@ import {
 } from '@/lib/ui/achievements/collection-metadata';
 import { AchievementBadge } from './achievement-badge';
 
-/** Full saved metadata stays here; the collection only needs a compact summary. */
+/** Shared conditions once, independent rows/time preserved; browsing never writes. */
 export function AchievementDetail({
   definition: a,
   progress,
@@ -35,9 +36,19 @@ export function AchievementDetail({
   allProgress?: Partial<Record<AchievementId, number>>;
   allAchieved?: Partial<Record<AchievementId, string>>;
 }) {
+  const [noteId, setNoteId] = useState(a.id);
+  const ids = series?.ids ?? [a.id];
   const roles = characterCatalog.filter((c) =>
-    characterAchievementRequirements[c.id].includes(a.id),
+    characterAchievementRequirements[c.id].some((id) => ids.includes(id)),
   );
+  const copy = achievementDetailPresentation(a);
+  const noteAt = series ? allAchieved[noteId] : achievedAt;
+  const scope =
+    a.scope === 'shared'
+      ? '经典 / 生存'
+      : a.scope === 'classic'
+        ? '经典模式'
+        : '生存模式';
   return (
     <>
       <div className="achievement-detail-heading">
@@ -47,10 +58,20 @@ export function AchievementDetail({
             {achievementNumber(a.id)} ·{' '}
             {achievementCategories.find((c) => c.id === a.category)!.name}
           </span>
-          <Dialog.Title>{a.name}</Dialog.Title>
-          <span className="achievement-detail-state">
-            {achievedAt ? '已达成' : '未达成'}
-          </span>
+          <Dialog.Title>{series?.name ?? a.name}</Dialog.Title>
+          <div className="achievement-detail-meta">
+            <span className="achievement-detail-state">
+              {series
+                ? `已获 ${series.ids.filter((id) => allAchieved[id]).length} / ${series.ids.length}`
+                : achievedAt
+                  ? '已达成'
+                  : '未达成'}
+            </span>
+            <span>{scope}</span>
+            {achievementCollectionMetadata[a.id].hidden && (
+              <span>隐藏成就</span>
+            )}
+          </div>
         </div>
         <Dialog.Close
           className="achievement-detail-close"
@@ -60,142 +81,140 @@ export function AchievementDetail({
         </Dialog.Close>
       </div>
       <Dialog.Description className="achievement-detail-condition">
-        {a.condition}
+        {copy.summary}
       </Dialog.Description>
-      <dl className="achievement-detail-facts">
-        <div>
-          <dt>徽章等级</dt>
-          <dd>
-            <span
-              className="achievement-tier"
-              data-tier={achievementCollectionMetadata[a.id].tier}
-            >
-              {achievementTierLabels[achievementCollectionMetadata[a.id].tier]}
-              徽章
-            </span>
-          </dd>
-        </div>
-        {achievementCollectionMetadata[a.id].hidden && (
-          <div>
-            <dt>展示属性</dt>
-            <dd>
-              隐藏成就 · 未达成时列表隐藏名称与专属图标，详情可查看真实条件。
-            </dd>
-          </div>
-        )}
-        <div>
-          <dt>适用模式</dt>
-          <dd>
-            {a.scope === 'shared'
-              ? '正式经典 / 生存通用'
-              : a.scope === 'classic'
-                ? '仅正式经典模式'
-                : '仅正式生存模式'}
-          </dd>
-        </div>
-        <div>
-          <dt>{a.kind === 'same-match' ? '单局最高进度' : '已记录进度'}</dt>
-          <dd>
-            {progress} / {a.target}
-          </dd>
-        </div>
-        <div>
-          <dt>达成时间</dt>
-          <dd>
-            {achievedAt ? (
-              <time dateTime={achievedAt}>
-                {new Date(achievedAt).toLocaleString('zh-CN')}
-              </time>
-            ) : (
-              '尚未达成'
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt>角色关联</dt>
-          <dd>{roles.map((c) => c.name).join('、') || '无 · 收藏挑战'}</dd>
-        </div>
-      </dl>
-      <section className="achievement-detail-note">
-        <h4>判定说明</h4>
-        <p>{achievementPresentation[a.id].note}</p>
-        {roles.map((c) => (
-          <p key={c.id}>
-            {c.name}前置：
-            {characterAchievementRequirements[c.id]
-              .map(
-                (id) =>
-                  `${achievementNumber(id)} ${achievementCatalog.find((a) => a.id === id)!.name}`,
-              )
-              .join(' + ')}
-            。
-          </p>
-        ))}
-      </section>
-      {series && (
+      {series ? (
         <section
           className="achievement-series-detail"
           aria-label="三级独立徽章"
         >
-          <h4>
-            {series.name} · 已获{' '}
-            {series.ids.filter((id) => allAchieved[id]).length} / 3
-          </h4>
+          <div className="achievement-level-head" aria-hidden="true">
+            <span>等级 / 编号</span>
+            <span>目标</span>
+            <span>{a.kind === 'same-match' ? '单局最高进度' : '进度'}</span>
+            <span>状态 / 达成日期</span>
+          </div>
           <ol>
             {series.ids.map((id) => {
               const level = achievementCatalog.find((d) => d.id === id)!,
                 at = allAchieved[id];
+              const tier = achievementCollectionMetadata[id].tier;
               return (
                 <li
                   key={id}
                   data-achievement-id={id}
                   data-achievement-number={achievementNumber(id)}
-                  data-tier={achievementCollectionMetadata[id].tier}
+                  data-tier={tier}
+                  data-selected={id === a.id}
+                  aria-label={level.name}
                 >
-                  <div>
-                    <strong>
-                      {
-                        achievementTierLabels[
-                          achievementCollectionMetadata[id].tier
-                        ]
-                      }
-                      徽章 · {achievementNumber(id)}
-                    </strong>
-                    <span>{at ? '已达成' : '未达成'}</span>
-                  </div>
-                  <p>{level.condition}</p>
-                  <p>
-                    已记录进度：{allProgress[id] ?? 0} / {level.target}
-                  </p>
-                  {at ? (
-                    <time dateTime={at}>
-                      {new Date(at).toLocaleString('zh-CN')}
-                    </time>
-                  ) : (
-                    <p>尚未达成</p>
-                  )}
-                  <h5>收藏札记</h5>
-                  {at ? (
-                    <blockquote>{achievementCollectionNotes[id]}</blockquote>
-                  ) : (
-                    <p>达成后解锁</p>
-                  )}
+                  <strong title={level.name}>
+                    {achievementTierLabels[tier]} · {achievementNumber(id)}
+                  </strong>
+                  <span className="achievement-level-target">
+                    {level.target}
+                    {copy.unit}
+                  </span>
+                  <span
+                    className="achievement-level-progress"
+                    aria-label={`${level.name}${level.kind === 'same-match' ? '单局最高进度' : '已记录进度'}`}
+                  >
+                    {allProgress[id] ?? 0} / {level.target}
+                  </span>
+                  <span className="achievement-level-state">
+                    {at ? (
+                      <>
+                        <span>已达成</span>
+                        <details className="achievement-time">
+                          <summary>
+                            <time dateTime={at}>
+                              {new Date(at).toLocaleDateString('zh-CN')}
+                            </time>
+                          </summary>
+                          <span className="achievement-exact-time">
+                            {new Date(at).toLocaleString('zh-CN')}
+                          </span>
+                        </details>
+                      </>
+                    ) : (
+                      '未达成'
+                    )}
+                  </span>
                 </li>
               );
             })}
           </ol>
         </section>
-      )}
-      {!series && (
-        <section className="achievement-collection-note" aria-label="收藏札记">
-          <h4>收藏札记</h4>
-          {achievedAt ? (
-            <blockquote>{achievementCollectionNotes[a.id]}</blockquote>
-          ) : (
-            <p>达成后解锁</p>
+      ) : (
+        <dl className="achievement-detail-facts">
+          <div>
+            <dt>{a.kind === 'same-match' ? '单局最高进度' : '已记录进度'}</dt>
+            <dd>
+              {progress} / {a.target}
+            </dd>
+          </div>
+          {achievedAt && (
+            <div>
+              <dt>达成时间</dt>
+              <dd>
+                <time dateTime={achievedAt}>
+                  {new Date(achievedAt).toLocaleString('zh-CN')}
+                </time>
+              </dd>
+            </div>
           )}
+        </dl>
+      )}
+      {roles.length > 0 && (
+        <section
+          className="achievement-role-requirements"
+          aria-label="角色解锁前置"
+        >
+          {roles.map((c) => (
+            <p key={c.id}>
+              {c.name}前置：
+              {characterAchievementRequirements[c.id]
+                .map(
+                  (id) =>
+                    `${achievementNumber(id)} ${achievementCatalog.find((d) => d.id === id)!.name}`,
+                )
+                .join(' + ')}
+              。
+            </p>
+          ))}
         </section>
       )}
+      <details className="achievement-detail-note">
+        <summary>判定细则</summary>
+        {copy.rules.map((rule) => (
+          <p key={rule}>{rule}</p>
+        ))}
+      </details>
+      <details className="achievement-collection-note" aria-label="收藏札记">
+        <summary>收藏札记</summary>
+        {series && (
+          <fieldset className="achievement-note-selector" aria-label="札记等级">
+            {series.ids.map((id) => (
+              <button
+                type="button"
+                key={id}
+                aria-pressed={noteId === id}
+                onClick={() => setNoteId(id)}
+              >
+                {achievementTierLabels[achievementCollectionMetadata[id].tier]}
+                徽章
+              </button>
+            ))}
+          </fieldset>
+        )}
+        {noteAt ? (
+          <blockquote data-note-id={noteId}>
+            {achievementCollectionNotes[noteId]}
+          </blockquote>
+        ) : (
+          <p>达成后解锁</p>
+        )}
+      </details>
       <button
         type="button"
         className="achievement-system-rules-link"

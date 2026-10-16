@@ -1,3 +1,5 @@
+import { achievementDetailPresentation } from './detail-presentation';
+import { seriesForAchievement } from './series';
 // @vitest-environment happy-dom
 import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
@@ -126,22 +128,33 @@ it.each(achievementCatalog)(
         .querySelector('.achievement-card')!
         .getAttribute('data-achievement-number'),
     ).toBe(achievementNumber(a.id));
-    expect(dialog.textContent).toContain(a.condition);
+    const copy = achievementDetailPresentation(a);
+    expect(dialog.textContent).toContain(copy.summary);
+    for (const rule of copy.rules) expect(dialog.textContent).toContain(rule);
+    if (seriesForAchievement(a.id)) {
+      const row = dialog.querySelector(`[data-achievement-id=${a.id}]`)!;
+      expect(row.getAttribute('aria-label')).toBe(a.name);
+      expect(row.querySelector('.achievement-level-target')!.textContent).toBe(
+        `${a.target}${copy.unit}`,
+      );
+    } else expect(dialog.textContent).toContain(a.condition);
     expect(dialog.textContent).toContain(
       a.scope === 'shared'
-        ? '正式经典 / 生存通用'
+        ? '经典 / 生存'
         : a.scope === 'classic'
-          ? '仅正式经典模式'
-          : '仅正式生存模式',
+          ? '经典模式'
+          : '生存模式',
     );
     expect(dialog.textContent).toContain(a.target.toString());
-    expect(dialog.textContent).toContain(
-      characterCatalog.some((c) =>
-        characterAchievementRequirements[c.id].includes(a.id),
-      )
-        ? '前置：'
-        : '无 · 收藏挑战',
+    const related = characterCatalog.some((c) =>
+      characterAchievementRequirements[c.id].some((id) =>
+        (seriesForAchievement(a.id)?.ids ?? [a.id]).includes(id),
+      ),
     );
+    expect(!!dialog.querySelector('.achievement-role-requirements')).toBe(
+      related,
+    );
+    expect(dialog.textContent).not.toContain('无 · 收藏挑战');
     await closeDialog();
     expect(localStorage.length).toBe(0);
   },
@@ -175,7 +188,7 @@ it('shows saved progress, exact ISO completion time, scope and same-match peak l
     (node.querySelector('#achievement-F02') as HTMLButtonElement).click(),
   );
   expect(document.querySelector('[role="dialog"]')!.textContent).toContain(
-    '仅正式生存模式',
+    '生存模式',
   );
   await closeDialog();
 });

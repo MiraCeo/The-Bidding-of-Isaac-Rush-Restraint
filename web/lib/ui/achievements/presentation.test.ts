@@ -246,7 +246,7 @@ describe('optional display preference and static responsive contract', () => {
       '{}',
       '{"version":2,"columns":"3"}',
       '{"version":1,"columns":3}',
-      '{"version":1,"columns":"4"}',
+      '{"version":1,"columns":"5"}',
     ])
       expect(
         loadAchievementColumns({
@@ -311,7 +311,9 @@ describe('optional display preference and static responsive contract', () => {
       '@container achievement-collection (min-width:620px)',
       '.achievement-grid:not([data-columns="1"])',
       '@container achievement-collection (min-width:980px)',
-      '.achievement-grid[data-columns="auto"],.achievement-grid[data-columns="3"]',
+      '.achievement-grid[data-columns="auto"],.achievement-grid[data-columns="3"],.achievement-grid[data-columns="4"]',
+      '@container achievement-collection (min-width:1480px)',
+      '.achievement-grid[data-columns="auto"],.achievement-grid[data-columns="4"]',
       'max-height:calc(100dvh - 40px); overflow-y:auto',
     ])
       expect(css).toContain(source);

@@ -24,7 +24,6 @@ import { achievementNumber } from '@/lib/ui/achievements/numbering';
 import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
   achievementListPresentation,
-  selectAchievements,
   type AchievementStatusFilter,
   type AchievementSort,
 } from '@/lib/ui/achievements/presentation';
@@ -111,11 +110,6 @@ export function AchievementProgress({
   const unlockedRoles = characterCatalog.filter(
     (c) => c.id === 'isaac' || view?.characterUnlocks[c.id],
   ).length;
-  const badgeEntries = selectAchievements(
-    { query, category, status, sort, tier },
-    progress,
-    achieved,
-  );
   // Category buttons are navigation facets: query/status/tier affect every
   // count, but selecting A must not zero the other available categories.
   const matchingCards = selectAchievementCards(
@@ -261,6 +255,7 @@ export function AchievementProgress({
                 <option value="1">1 列</option>
                 <option value="2">2 列</option>
                 <option value="3">3 列</option>
+                <option value="4">4 列</option>
               </select>
             </label>
             <label>
@@ -321,13 +316,7 @@ export function AchievementProgress({
             </output>
           )}
           <div className="achievement-list-heading">
-            <output>
-              显示 {entries.length} 张卡片，涵盖 {badgeEntries.length} / {total}{' '}
-              枚徽章
-            </output>
-            <span title={cardCountHint}>
-              分类按卡片计数 · 分类内排序 · 点击徽章查看详情
-            </span>
+            <output title={cardCountHint}>显示 {entries.length} 项</output>
           </div>
           <div className="achievement-sections">
             {groupAchievementCards(entries).map(
@@ -349,11 +338,6 @@ export function AchievementProgress({
                       className="achievement-section-rule"
                       aria-hidden="true"
                     />
-                    <span className="achievement-section-count">
-                      已获卡片{' '}
-                      {summarizeAchievementCards(items, achieved).earned} /{' '}
-                      {items.length}
-                    </span>
                   </header>
                   <div className="achievement-grid" data-columns={columns}>
                     {items.map((card) => {
@@ -384,7 +368,7 @@ export function AchievementProgress({
                           }
                           data-tier={badgeTier}
                           data-concealed={listing.hidden}
-                          aria-label={`查看${achievementNumber(a.id)} ${listing.hidden ? '隐藏成就' : listing.name}详情，${at ? '已获' : '未获'}${achievementTierLabels[badgeTier]}徽章`}
+                          aria-label={`查看${achievementNumber(a.id)} ${listing.hidden ? '隐藏成就' : listing.name}详情，${at ? '已获' : '未获'}${achievementTierLabels[badgeTier]}徽章${card.series ? `，筛选内已获${card.matchingCompleted}/${card.matchingIds.length}级` : ''}${showGoal ? `，${at ? '下一阶' : '目标'}：${goalListing!.summary}，进度${Math.min(value, goal.target)}/${goal.target}` : ''}`}
                           aria-haspopup="dialog"
                           aria-controls={detail ? dialogId : undefined}
                           onClick={(e) => openDetail(a.id, e)}
@@ -399,34 +383,59 @@ export function AchievementProgress({
                               <strong>
                                 {card.series ? card.name : listing.name}
                               </strong>
-                              <span className="achievement-card-state">
-                                {card.series && card.matchingIds.length > 1 ? (
-                                  <span>
-                                    已获 {card.matchingCompleted} /{' '}
-                                    {card.matchingIds.length}
-                                    {card.completed ===
-                                      card.series.ids.length && ' · 全部达成'}
+                              {card.series ? (
+                                <span
+                                  className="achievement-card-state achievement-stage-dots"
+                                  aria-label={
+                                    card.matchingIds.length === 1
+                                      ? at
+                                        ? '已达成'
+                                        : '未达成'
+                                      : `已获 ${card.matchingCompleted} / ${card.matchingIds.length}${card.completed === card.series.ids.length ? '，全部达成' : ''}`
+                                  }
+                                >
+                                  <span className="sr-only">
+                                    {card.matchingIds.length === 1
+                                      ? at
+                                        ? '已达成'
+                                        : '未达成'
+                                      : `已获 ${card.matchingCompleted} / ${card.matchingIds.length}${card.completed === card.series.ids.length ? '，全部达成' : ''}`}
                                   </span>
-                                ) : at ? (
-                                  <>
-                                    <Check size={12} aria-hidden="true" />{' '}
-                                    已达成
-                                  </>
-                                ) : card.series ||
-                                  listing.hidden ||
-                                  a.target === 1 ? (
-                                  <>
-                                    <LockKeyhole size={12} aria-hidden="true" />
-                                    <span
-                                      className={
-                                        card.series ? undefined : 'sr-only'
-                                      }
-                                    >
-                                      未达成
-                                    </span>
-                                  </>
-                                ) : null}
-                              </span>
+                                  {card.matchingIds.map((id) => {
+                                    const label = `${achievementTierLabels[achievementCollectionMetadata[id].tier]}徽章：${achieved[id] ? '已达成' : '未达成'}`;
+                                    return (
+                                      <span
+                                        key={id}
+                                        data-earned={!!achieved[id]}
+                                        data-tier={
+                                          achievementCollectionMetadata[id].tier
+                                        }
+                                        title={label}
+                                        aria-label={label}
+                                      >
+                                        {achieved[id] ? '●' : '○'}
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              ) : (
+                                <span className="achievement-card-state">
+                                  {at ? (
+                                    <>
+                                      <Check size={12} aria-hidden="true" />
+                                      <span className="sr-only">已达成</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <LockKeyhole
+                                        size={12}
+                                        aria-hidden="true"
+                                      />
+                                      <span className="sr-only">未达成</span>
+                                    </>
+                                  )}
+                                </span>
+                              )}
                             </span>
                             {independentGroupForAchievement(a.id) && (
                               <span className="achievement-series-stages">
@@ -435,29 +444,11 @@ export function AchievementProgress({
                             )}
                             <span className="achievement-summary">
                               {showGoal && card.series
-                                ? `${at ? '下一目标' : '当前目标'}：${goalListing!.summary}`
-                                : listing.summary}
+                                ? `${at ? '下一阶：' : ''}${goalListing!.summary}`
+                                : listing.hidden
+                                  ? '隐藏成就'
+                                  : listing.summary}
                             </span>
-                            {card.series && (
-                              <span className="achievement-series-stages">
-                                {card.matchingIds.map((id) => (
-                                  <span
-                                    key={id}
-                                    data-earned={!!achieved[id]}
-                                    data-tier={
-                                      achievementCollectionMetadata[id].tier
-                                    }
-                                  >
-                                    {
-                                      achievementTierLabels[
-                                        achievementCollectionMetadata[id].tier
-                                      ]
-                                    }{' '}
-                                    {achieved[id] ? '✓' : '○'}
-                                  </span>
-                                ))}
-                              </span>
-                            )}
                             {showGoal && value >= goal.target && (
                               <span className="achievement-card-ready">
                                 待新正式结算确认
@@ -642,6 +633,7 @@ export function AchievementProgress({
           ) : (
             detail && (
               <AchievementDetail
+                key={detail.id}
                 definition={detail}
                 progress={progress[detail.id] ?? 0}
                 achievedAt={achieved[detail.id]}

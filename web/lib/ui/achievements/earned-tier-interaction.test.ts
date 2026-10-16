@@ -80,9 +80,11 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
       '铜',
     );
     expect(card(id).getAttribute('aria-label')).toContain('已获铜徽章');
-    expect(card(id).querySelector('.achievement-card-state')!.textContent).toBe(
-      '已获 1 / 3',
-    );
+    expect(
+      card(id)
+        .querySelector('.achievement-card-state')!
+        .getAttribute('aria-label'),
+    ).toBe('已获 1 / 3');
     expect(card(id).dataset.partial).toBe('true');
   }
   expect(facets().textContent).toContain('2/57');
@@ -90,7 +92,7 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
   expect(card('A01').querySelector('progress')!.max).toBe(20);
   expect(card('A01').querySelector('progress')!.value).toBe(1);
   expect(card('A01').querySelector('.achievement-summary')!.textContent).toBe(
-    '下一目标：累计正常竞拍失败20次',
+    '下一阶：累计正常竞拍失败20次',
   );
   expect(card('B05').dataset.goalId).toBe('B18');
   expect(card('B05').querySelector('progress')!.max).toBe(5);
@@ -110,18 +112,20 @@ it.each(['silver', 'gold'] as const)(
     for (const id of ['A01', 'B05']) {
       expect(card(id).dataset.partial).toBe('false');
       expect(
-        card(id).querySelector('.achievement-card-state')!.textContent,
+        card(id)
+          .querySelector('.achievement-card-state')!
+          .getAttribute('aria-label'),
       ).toBe('未达成');
       expect(
-        card(id).querySelector('.achievement-card-state')!.textContent,
+        card(id)
+          .querySelector('.achievement-card-state')!
+          .getAttribute('aria-label'),
       ).not.toContain('已获');
       expect(
-        card(id).querySelectorAll(
-          '.achievement-series-stages [data-earned=true]',
-        ),
+        card(id).querySelectorAll('.achievement-stage-dots [data-earned=true]'),
       ).toHaveLength(0);
       expect(
-        card(id).querySelectorAll('.achievement-series-stages > span'),
+        card(id).querySelectorAll('.achievement-stage-dots > [data-tier]'),
       ).toHaveLength(1);
     }
     expect(facets().dataset.earned).toBe('0');
@@ -166,17 +170,23 @@ it('keeps explicit child-ID and pending searches locked without borrowing lower-
   await select(0, 'pending');
   expectStage('A01', 'A08', 'silver', false);
   expect(
-    card('A01').querySelector('.achievement-card-state')!.textContent!.trim(),
+    card('A01')
+      .querySelector('.achievement-card-state')!
+      .getAttribute('aria-label')!
+      .trim(),
   ).toBe('已获 0 / 2');
   expect(card('A01').dataset.partial).toBe('false');
   expect(facets().dataset.earned).toBe('0');
   await select(0, 'achieved');
   expectStage('A01', 'A01', 'bronze', true);
   expect(
-    card('A01').querySelector('.achievement-card-state')!.textContent!.trim(),
+    card('A01')
+      .querySelector('.achievement-card-state')!
+      .getAttribute('aria-label')!
+      .trim(),
   ).toBe('已达成');
   expect(card('A01').querySelector('progress')).toBeNull();
-  expect(card('A01').textContent).not.toContain('下一目标');
+  expect(card('A01').textContent).not.toContain('下一阶');
 });
 it('keeps full three-level details and real dates while filtered cards show only their own acquisition state', async () => {
   const p = bronzeProfile(),

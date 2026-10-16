@@ -76,9 +76,7 @@ it('shows default 2/57 cards instead of 3/107 badges in category navigation whil
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
     '3 / 107',
   );
-  expect(node.querySelector('.achievement-section-count')!.textContent).toBe(
-    '已获卡片 1 / 5',
-  );
+  expect(node.querySelector('.achievement-section-count')).toBeNull();
   expect(cards()).toHaveLength(57);
 });
 it('updates status and tier facets using the same matching child, including partially earned cards', async () => {
@@ -112,15 +110,11 @@ it('keeps other category facets available when one category is selected and matc
   expect(count('C')).toEqual({ earned: 1, total: 4 });
   expect(count('A')).toEqual({ earned: 0, total: 5 });
   expect(cards()).toHaveLength(5);
-  expect(node.querySelector('.achievement-section-count')!.textContent).toBe(
-    '已获卡片 0 / 5',
-  );
+  expect(node.querySelector('.achievement-section-count')).toBeNull();
   await click(facet('C'));
   expect(cards()).toHaveLength(4);
   expect(count('A')).toEqual({ earned: 0, total: 5 });
-  expect(node.querySelector('.achievement-section-count')!.textContent).toBe(
-    '已获卡片 1 / 4',
-  );
+  expect(node.querySelector('.achievement-section-count')).toBeNull();
 });
 it('updates all facets for names and child IDs, preserves hidden names, handles zero results and resets to 57', async () => {
   await mount(partialProfile());

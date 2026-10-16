@@ -240,7 +240,7 @@ it('open details reflect profile rollback; invalid profile removes the modal ins
   expect(popup().querySelector('time')).not.toBeNull();
   await mount(createPlayerProfile());
   expect(popup().querySelector('time')).toBeNull();
-  expect(popup().textContent).toContain('尚未达成');
+  expect(popup().textContent).toContain('未达成');
   await mount(createPlayerProfile(), '读取失败');
   expect(popup()).toBeNull();
   expect(node.querySelector('.achievement-overview')).toBeNull();
@@ -254,16 +254,16 @@ it('unlocks only the earned flavor text and hides it again on explicit rollback 
   await mount(p);
   await click(node.querySelector('#achievement-A01') as HTMLElement);
   expect(
-    popup().querySelector('li[data-achievement-id="A01"] blockquote')!
+    popup().querySelector('.achievement-collection-note blockquote')!
       .textContent,
   ).toBe(achievementCollectionNotes.A01);
   expect(popup().textContent).not.toContain('重复导入');
   await mount(createPlayerProfile());
   expect(
-    popup().querySelector('li[data-achievement-id="A01"] blockquote'),
+    popup().querySelector('.achievement-collection-note blockquote'),
   ).toBeNull();
   expect(
-    popup().querySelector('li[data-achievement-id="A01"]')!.textContent,
+    popup().querySelector('.achievement-collection-note')!.textContent,
   ).toContain('达成后解锁');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
   expect(JSON.stringify(p)).toBe(raw);
@@ -312,9 +312,7 @@ it('creates six independent category grids with separators and respects filtered
     groups().map((g) => g.querySelectorAll('.achievement-card').length),
   ).toEqual([5, 10, 9, 10, 14, 9]);
   expect(node.querySelectorAll('.achievement-section-rule')).toHaveLength(6);
-  expect(
-    groups()[0]!.querySelector('.achievement-section-count')!.textContent,
-  ).toContain('已获卡片 1 / 5');
+  expect(node.querySelector('.achievement-section-count')).toBeNull();
   await select(2, '2');
   expect(
     [...node.querySelectorAll('.achievement-grid')].every(

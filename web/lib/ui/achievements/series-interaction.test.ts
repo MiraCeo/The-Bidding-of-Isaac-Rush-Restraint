@@ -100,7 +100,7 @@ it('renders 57 cards for 107 badges and keeps a legacy silver without inventing 
   localStorage.setItem(playerProfileKey, raw);
   await mount(p);
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
-  expect(node.textContent).toContain('57 张卡片，涵盖 107 / 107 枚徽章');
+  expect(node.textContent).toContain('显示 57 项');
   expect(card().textContent).toContain('已获 1 / 3');
   expect(card().textContent).not.toContain('待新正式结算确认');
   expect(card().getAttribute('data-focused-id')).toBe('B02');
@@ -113,9 +113,10 @@ it('renders 57 cards for 107 badges and keeps a legacy silver without inventing 
     oldAt.toISOString(),
   );
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
-  expect(levels[1]!.querySelector('blockquote')!.textContent).toBe(
-    achievementCollectionNotes.B02,
-  );
+  expect(
+    popup().querySelector('.achievement-collection-note blockquote')!
+      .textContent,
+  ).toBe(achievementCollectionNotes.B02);
   expect(levels[2]!.querySelector('blockquote')).toBeNull();
   await close();
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
@@ -139,7 +140,9 @@ it('updates independent times after confirmed inheritance and relocks new grades
   await mount(old);
   levels = popup().querySelectorAll('.achievement-series-detail li');
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
-  expect(levels[1]!.querySelector('blockquote')).not.toBeNull();
+  expect(
+    popup().querySelector('.achievement-collection-note blockquote'),
+  ).not.toBeNull();
   expect(projectAchievementRegistry(old)!.achievedAt.B07).toBeUndefined();
   expect(localStorage.length).toBe(0);
 });
@@ -150,9 +153,7 @@ it('finds every child ID through the one stable card and intersects tier/status 
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
   expect(card().getAttribute('data-focused-id')).toBe('B08');
   await click(card());
-  expect(popup().textContent).toContain(
-    '累计50次通过最高价资格实际取得本组道具',
-  );
+  expect(popup().textContent).toContain('累计通过最高价资格实际获得道具。');
   await close();
   await search(achievementNumber('B07'));
   await select(3, 'silver');
