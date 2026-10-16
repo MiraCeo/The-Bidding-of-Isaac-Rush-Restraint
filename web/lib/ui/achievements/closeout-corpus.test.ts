@@ -35,6 +35,7 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       'survival-3-withdraw',
       'survival-3-pace',
       'survival-easy-3-pace',
+      'survival-easy-3-fixed-300',
     ]);
     for (const t of traces) {
       const context = validateGrowthContext(t.context, t.mode);
@@ -73,6 +74,22 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       traces[0]!.context.units.filter((u) => u.stage === 'room'),
     ).toHaveLength(15);
     expect(traces[1]!.humanEliminatedAt).not.toBeNull();
+    const multi = traces.at(-1)!;
+    expect(multi.humanEliminatedAt).toBe(4);
+    expect(multi.context.units).toHaveLength(57);
+    expect(
+      multi.context.units
+        .filter((u) => u.stage === 'floor')
+        .map((u) => u.position),
+    ).toEqual([0, 1, 2, 3, 4]);
+    expect(multi.context.units.filter((u) => u.stage === 'room')).toHaveLength(
+      25,
+    );
+    expect(
+      multi.context.units
+        .filter((u) => u.stage === 'room')
+        .every((u) => u.position <= 24),
+    ).toBe(true);
   });
   it.each(currentCorpusShapes)(
     'scales %s without changing metrics, parent links, full digests or input traces',

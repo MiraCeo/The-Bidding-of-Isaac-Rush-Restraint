@@ -17,6 +17,14 @@ import {
   writeCorpusJson,
 } from './ledger-corpus-output.mjs';
 const roots = [];
+it('allocates capacity runs separately and rejects accidental reuse of a corpus run', () => {
+  const root = fixture(),
+    capacity = allocateCorpusRun(root, 'capacity'),
+    corpus = allocateCorpusRun(root);
+  expect(assertCorpusRun(root, capacity, 'capacity')).toBe(capacity);
+  expect(() => assertCorpusRun(root, corpus, 'capacity')).toThrow('purpose');
+  expect(() => allocateCorpusRun(root, 'unknown')).toThrow('purpose');
+});
 function fixture() {
   const root = mkdtempSync(resolve(tmpdir(), 'isaac-corpus-output-'));
   roots.push(root);

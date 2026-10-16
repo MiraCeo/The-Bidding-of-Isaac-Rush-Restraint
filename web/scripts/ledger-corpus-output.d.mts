@@ -1,5 +1,12 @@
-export function allocateCorpusRun(webRoot: string): string;
-export function assertCorpusRun(webRoot: string, directory: string): string;
+export function allocateCorpusRun(
+  webRoot: string,
+  purpose?: 'corpus' | 'capacity',
+): string;
+export function assertCorpusRun(
+  webRoot: string,
+  directory: string,
+  expectedPurpose?: 'corpus' | 'capacity',
+): string;
 export function writeCorpusJson(
   webRoot: string,
   directory: string,

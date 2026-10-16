@@ -15,7 +15,9 @@ import { resolve, dirname, basename, sep } from 'node:path';
 function outputRoot(webRoot) {
   return resolve(realpathSync(webRoot), 'work/v05-closeout-ledger');
 }
-export function allocateCorpusRun(webRoot) {
+export function allocateCorpusRun(webRoot, purpose = 'corpus') {
+  if (!['corpus', 'capacity'].includes(purpose))
+    throw Error('Unknown ledger report purpose');
   const root = realpathSync(webRoot),
     parent = outputRoot(root);
   // Check existing ancestors BEFORE mkdir: do not create a child through a
@@ -33,13 +35,14 @@ export function allocateCorpusRun(webRoot) {
     lstatSync(parent).isSymbolicLink()
   )
     throw Error('Corpus output must stay inside this workspace');
-  const directory = mkdtempSync(resolve(parent, 'corpus-'));
+  const directory = mkdtempSync(resolve(parent, purpose + '-'));
   writeFileSync(
     resolve(directory, 'run.json'),
     JSON.stringify(
       {
         kind: 'schema6-corpus-run',
         version: 1,
+        purpose,
         id: randomUUID(),
         allocatedAt: new Date().toISOString(),
       },
@@ -50,12 +53,12 @@ export function allocateCorpusRun(webRoot) {
   );
   return directory;
 }
-export function assertCorpusRun(webRoot, directory) {
+export function assertCorpusRun(webRoot, directory, expectedPurpose) {
   const target = resolve(directory),
     parent = outputRoot(webRoot);
   if (
     dirname(target) !== parent ||
-    !/^corpus-[a-zA-Z0-9-]+$/.test(basename(target)) ||
+    !/^(corpus|capacity)-[a-zA-Z0-9-]+$/.test(basename(target)) ||
     lstatSync(target).isSymbolicLink() ||
     realpathSync(target) !== target
   )
@@ -67,6 +70,8 @@ export function assertCorpusRun(webRoot, directory) {
     typeof marker.id !== 'string'
   )
     throw Error('Unknown corpus run marker');
+  if (expectedPurpose && (marker.purpose ?? 'corpus') !== expectedPurpose)
+    throw Error('Ledger report purpose does not match its allocated run');
   return target;
 }
 export function writeCorpusJson(webRoot, directory, filename, value) {

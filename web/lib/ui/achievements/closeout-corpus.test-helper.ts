@@ -49,7 +49,7 @@ export interface CurrentCorpusTrace {
   mode: 'classic' | 'survival';
   seed: number;
   character: 'isaac';
-  policy: 'bid' | 'withdraw' | 'pace';
+  policy: 'bid' | 'withdraw' | 'pace' | 'fixed-300';
   difficulty?: 'highest' | 'easy';
   context: GrowthContext;
   humanEliminatedAt?: number | null;
@@ -110,6 +110,7 @@ export function captureCurrentCorpus(): CurrentCorpusTrace[] {
     { policy: 'withdraw', difficulty: 'highest' },
     { policy: 'pace', difficulty: 'highest' },
     { policy: 'pace', difficulty: 'easy' },
+    { policy: 'fixed-300', difficulty: 'easy' },
   ] as const) {
     let survival = beginSurvivalGrowth(
       startSurvivalClient('isaac', 3, difficulty),
@@ -117,10 +118,28 @@ export function captureCurrentCorpus(): CurrentCorpusTrace[] {
     let steps = 0;
     while (survival.game.phase !== 'competition_complete') {
       if (++steps > 160) throw Error('Survival corpus exceeded command bound');
-      survival = reduceSurvivalClient(
-        survival,
-        longRunAction(survival.game, policy),
+      const game = survival.game;
+      const action = longRunAction(
+        game,
+        policy === 'withdraw' ? 'withdraw' : 'pace',
       );
+      if (
+        policy === 'fixed-300' &&
+        game.phase === 'room_action' &&
+        game.activePlayerIds.includes('human')
+      ) {
+        const money = game.players.find((p) => p.isHuman)!.money;
+        survival = reduceSurvivalClient(survival, {
+          type: 'submit_player_turn',
+          turn: {
+            playerId: 'human',
+            actions:
+              money > 0
+                ? [{ type: 'bid', group: 'A', amount: Math.min(300, money) }]
+                : [{ type: 'withdraw' }],
+          },
+        });
+      } else survival = reduceSurvivalClient(survival, action);
       if (survival.growthIssue) throw Error(survival.growthIssue);
     }
     traces.push(
