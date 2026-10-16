@@ -357,7 +357,11 @@ describe('room utility interaction without a real browser', () => {
           ),
         ).toBe(false);
       else expect(container.querySelector('.data-management')).toBeNull();
+      expect(container.querySelector('.page-context-bar')).toBeNull();
       await click(button('规则', element('nav')));
+      expect(container.querySelector('.page-context-bar')).toBeNull();
+      expect(container.querySelector('[aria-label="查看角色构筑"]')).toBeNull();
+      await click(button('返回游戏'));
       await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
       await click(button('返回游戏'));
       expect(localStorage.getItem(gameSaveKey)).toBe(before);

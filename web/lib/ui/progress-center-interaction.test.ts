@@ -177,7 +177,7 @@ it('uses the same heading skeleton for all four progress categories and keeps th
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
 });
 it.each(['classic', 'survival'] as const)(
-  'shows the %s source match context in progress and preserves draft through its build shortcut',
+  'hides the %s HUD in progress and preserves draft when returning to game before opening build',
   async (mode) => {
     const c = classic(),
       s = survival();
@@ -189,15 +189,13 @@ it.each(['classic', 'survival'] as const)(
     const game = mode === 'classic' ? c.game : s.game;
     if (game.phase === 'character_selection')
       throw Error('Expected a started source match');
-    expect(
-      container.querySelector('.page-context-bar .round-status')?.textContent,
-    ).toContain('第 1 层');
-    expect(
-      container.querySelector('.page-context-bar .status-chip-money strong')
-        ?.textContent,
-    ).toBe(String(game.players.find((p) => p.isHuman)!.money));
+    expect(container.querySelector('.page-context-bar')).toBeNull();
     await click('对局记录');
     await click(mode === 'classic' ? '生存' : '经典');
+    expect(container.querySelector('.page-context-bar')).toBeNull();
+    expect(localStorage.getItem(gameSaveKey)).toBe(beforeC);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(beforeS);
+    await click('返回游戏');
     expect(
       container.querySelector('.page-context-bar .status-chip-money strong')
         ?.textContent,

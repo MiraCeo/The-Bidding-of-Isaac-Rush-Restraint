@@ -76,42 +76,49 @@ function checkedTrace(trace: CurrentCorpusTrace) {
     throw Error('Corpus did not activate schema6');
   return trace;
 }
-export function captureCurrentCorpus(): CurrentCorpusTrace[] {
-  let classic = beginClassicGrowth(
-    reduceGameSession(createGameSession(42), {
-      type: 'start_game',
-      characterId: 'isaac',
-    }),
-  );
-  for (let i = 0; i < 15; i++) {
-    classic = reduceGameSession(classic, {
-      type: 'submit_player_turn',
-      turn: {
-        playerId: 'human',
-        actions: [{ type: 'bid', group: 'A', amount: 1 }],
-      },
-    });
-    if (classic.growthIssue) throw Error(classic.growthIssue);
-    classic = reduceGameSession(classic, { type: 'advance_room' });
+/** Optional scope is test-only: independently recapture one full scenario.
+ * The default report/corpus path still captures all five in their fixed order. */
+export function captureCurrentCorpus(onlyTrace?: string): CurrentCorpusTrace[] {
+  const traces: CurrentCorpusTrace[] = [];
+  if (!onlyTrace || onlyTrace === 'classic-42-bid') {
+    let classic = beginClassicGrowth(
+      reduceGameSession(createGameSession(42), {
+        type: 'start_game',
+        characterId: 'isaac',
+      }),
+    );
+    for (let i = 0; i < 15; i++) {
+      classic = reduceGameSession(classic, {
+        type: 'submit_player_turn',
+        turn: {
+          playerId: 'human',
+          actions: [{ type: 'bid', group: 'A', amount: 1 }],
+        },
+      });
+      if (classic.growthIssue) throw Error(classic.growthIssue);
+      classic = reduceGameSession(classic, { type: 'advance_room' });
+    }
+    if (classic.game.phase !== 'game_result' || classic.growthIssue)
+      throw Error('Classic corpus did not finish');
+    traces.push(
+      checkedTrace({
+        id: 'classic-42-bid',
+        mode: 'classic',
+        seed: 42,
+        character: 'isaac',
+        policy: 'bid',
+        context: classic.growth!,
+      }),
+    );
   }
-  if (classic.game.phase !== 'game_result' || classic.growthIssue)
-    throw Error('Classic corpus did not finish');
-  const traces = [
-    checkedTrace({
-      id: 'classic-42-bid',
-      mode: 'classic',
-      seed: 42,
-      character: 'isaac',
-      policy: 'bid',
-      context: classic.growth!,
-    }),
-  ];
   for (const { policy, difficulty } of [
     { policy: 'withdraw', difficulty: 'highest' },
     { policy: 'pace', difficulty: 'highest' },
     { policy: 'pace', difficulty: 'easy' },
     { policy: 'fixed-300', difficulty: 'easy' },
   ] as const) {
+    const id = `survival-${difficulty === 'easy' ? 'easy-' : ''}3-${policy}`;
+    if (onlyTrace && onlyTrace !== id) continue;
     let survival = beginSurvivalGrowth(
       startSurvivalClient('isaac', 3, difficulty),
     );
@@ -144,7 +151,7 @@ export function captureCurrentCorpus(): CurrentCorpusTrace[] {
     }
     traces.push(
       checkedTrace({
-        id: `survival-${difficulty === 'easy' ? 'easy-' : ''}3-${policy}`,
+        id,
         mode: 'survival',
         seed: 3,
         character: 'isaac',
@@ -155,7 +162,10 @@ export function captureCurrentCorpus(): CurrentCorpusTrace[] {
       }),
     );
   }
-  return traces;
+  if (!onlyTrace) return traces;
+  const selected = traces.filter((trace) => trace.id === onlyTrace);
+  if (!selected.length) throw Error('Unknown current corpus trace');
+  return selected;
 }
 
 export interface CurrentCorpusOptions {

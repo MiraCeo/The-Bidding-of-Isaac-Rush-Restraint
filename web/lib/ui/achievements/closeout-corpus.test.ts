@@ -218,8 +218,23 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
     });
     expect(() => readPlayerProfile(oversized.profile)).toThrow();
   });
-  it('is deterministic with immutable source facts, identities and timestamps for identical options', () => {
-    expect(captureCurrentCorpus()).toEqual(traces);
+  // Each complete-game capture retains the default timeout and full comparison;
+  // do not bundle five independent matches under one ordinary test deadline.
+  it.each([
+    'classic-42-bid',
+    'survival-3-withdraw',
+    'survival-3-pace',
+    'survival-easy-3-pace',
+    'survival-easy-3-fixed-300',
+  ])(
+    'recaptures the immutable facts, identities and timestamps for %s',
+    (id) => {
+      expect(captureCurrentCorpus(id)).toEqual(
+        traces.filter((t) => t.id === id),
+      );
+    },
+  );
+  it('keeps fixture identities and timestamps deterministic for identical options', () => {
     expect(buildCurrentLedgerFixture(traces, 64, 'mixed-branches')).toEqual(
       buildCurrentLedgerFixture(traces, 64, 'mixed-branches'),
     );
