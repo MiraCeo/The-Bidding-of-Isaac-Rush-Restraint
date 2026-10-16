@@ -19,11 +19,31 @@ import {
 } from './registry';
 import { packAchievementRegistry } from './ledger-codec';
 import { canonicalJson } from '../../shared/json-facts';
+import {
+  serializePlayerProfileBackup,
+  parsePlayerProfileBackup,
+} from '../player-profile-file';
+import { packDataFile, unpackDataFile } from '../compressed-file';
 let traces: CurrentCorpusTrace[];
 beforeAll(() => {
   traces = captureCurrentCorpus();
 });
 afterEach(() => vi.useRealTimers());
+it('round-trips the production compressed-file result structure and exact profile backup bytes', async () => {
+  const p = buildCurrentLedgerFixture(traces, 64, 'mixed-branches', {
+    paddingChars: 32768,
+  }).profile;
+  const text = serializePlayerProfileBackup(
+    p,
+    'capacity-round-trip',
+    capacityClock,
+  );
+  const packed = await packDataFile(text),
+    unpacked = await unpackDataFile(packed.source);
+  expect(packed.compressed).toBe(true);
+  expect(unpacked.source).toBe(text);
+  expect(parsePlayerProfileBackup(unpacked.source).profile).toEqual(p);
+});
 it('keeps schema6 exact 1MiB valid, rejects the next byte and preserves the source on denied append', () => {
   const base = buildCurrentLedgerFixture(traces, 64, 'mixed-branches').profile;
   const near = padCurrentProfileTo(base, 1024 * 1024),

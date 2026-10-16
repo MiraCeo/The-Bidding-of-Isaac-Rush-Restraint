@@ -166,7 +166,7 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
             const packed = await packDataFile(text),
               unpacked = await unpackDataFile(packed.source);
             const compressionRoundTripMs = performance.now() - t2;
-            expect(unpacked).toBe(text);
+            expect(unpacked.source).toBe(text);
             backup = {
               roundTripMs,
               compressionRoundTripMs,
