@@ -96,11 +96,9 @@ it('uses three compact rows, no redundant stage dots and one rule section; notes
   const rules = popup().querySelector<HTMLDetailsElement>(
     '.achievement-detail-note',
   )!;
-  const notes = popup().querySelector<HTMLDetailsElement>(
-    '.achievement-collection-note',
-  )!;
+  expect(popup().querySelector('.achievement-collection-note')).toBeNull();
+  expect(popup().querySelector('.achievement-note-selector')).toBeNull();
   expect(rules.open).toBe(false);
-  expect(notes.open).toBe(false);
   expect(popup().querySelector('time')!.dateTime).toBe(cfNow.toISOString());
   expect(
     popup().querySelector<HTMLDetailsElement>('.achievement-time')!.open,
@@ -108,18 +106,25 @@ it('uses three compact rows, no redundant stage dots and one rule section; notes
   expect(popup().querySelector('.achievement-exact-time')!.textContent).toBe(
     cfNow.toLocaleString('zh-CN'),
   );
-  expect(notes.querySelector('blockquote')!.textContent).toBe(
+  const levels = [...popup().querySelectorAll('.achievement-series-detail li')];
+  expect(levels.map((li) => li.querySelector('h3')!.textContent)).toEqual(
+    Array(3).fill('失败乃成功之母'),
+  );
+  expect(
+    levels.map((li) =>
+      li.querySelector('.achievement-badge')!.getAttribute('data-tier'),
+    ),
+  ).toEqual(['bronze', 'silver', 'gold']);
+  expect(levels[0]!.querySelector('blockquote')!.textContent).toBe(
     achievementCollectionNotes.A01,
   );
-  const choices = notes.querySelectorAll<HTMLButtonElement>('button');
-  await click(choices[2]!);
-  expect(choices[2]!.getAttribute('aria-pressed')).toBe('true');
-  expect(notes.querySelector('blockquote')).toBeNull();
-  expect(notes.textContent).toContain('达成后解锁');
-  await click(choices[0]!);
-  expect(notes.querySelector('blockquote')!.textContent).toBe(
-    achievementCollectionNotes.A01,
-  );
+  expect(levels[1]!.querySelector('blockquote')).toBeNull();
+  expect(levels[2]!.querySelector('blockquote')).toBeNull();
+  expect(
+    levels.every((li) => !li.querySelector('h3')!.textContent!.includes('A0')),
+  ).toBe(true);
+  expect(popup().textContent).not.toContain('收藏札记');
+  expect(popup().textContent).not.toContain('达成后解锁');
   await act(async () =>
     root.render(
       createElement(AchievementProgress, {
@@ -127,7 +132,7 @@ it('uses three compact rows, no redundant stage dots and one rule section; notes
       }),
     ),
   );
-  expect(notes.querySelector('blockquote')).toBeNull();
+  expect(popup().querySelector('blockquote')).toBeNull();
   expect(popup().querySelector('time')).toBeNull();
   await click(popup().querySelector('[aria-label="关闭成就详情"]')!);
   expect(document.activeElement).toBe(card());
@@ -168,4 +173,45 @@ it('persists explicit four-column preference without five columns or player/chec
   ).toBe('4');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
   expect(localStorage.getItem(gameSaveKey)).toBe('keep');
+});
+it('shows each earned stage own text at the same time and removes only the rolled-back stage without note state', async () => {
+  const bronze = appendCf(createPlayerProfile(cfNow), cfRoom(0, { code: 1 }));
+  let silver = bronze;
+  for (let i = 1; i < 20; i++)
+    silver = appendCf(silver, cfRoom(0, { code: 1 }));
+  const raw = JSON.stringify(silver);
+  localStorage.setItem(playerProfileKey, raw);
+  await act(async () =>
+    root.render(createElement(AchievementProgress, { profile: silver })),
+  );
+  await click(card());
+  const notes = () =>
+    [...popup().querySelectorAll<HTMLElement>('.achievement-stage-note')].map(
+      (el) => [el.dataset.noteId, el.textContent],
+    );
+  expect(notes()).toEqual([
+    ['A01', achievementCollectionNotes.A01],
+    ['A08', achievementCollectionNotes.A08],
+  ]);
+  expect(
+    popup().querySelector('[data-achievement-id=A09] blockquote'),
+  ).toBeNull();
+  expect(
+    popup().querySelector('[data-achievement-id=A01] .achievement-badge svg'),
+  ).not.toBeNull();
+  expect(
+    popup()
+      .querySelector('[data-achievement-id=A08] time')!
+      .getAttribute('datetime'),
+  ).toBe(cfNow.toISOString());
+  await act(async () =>
+    root.render(createElement(AchievementProgress, { profile: bronze })),
+  );
+  expect(notes()).toEqual([['A01', achievementCollectionNotes.A01]]);
+  expect(popup().querySelector('[data-achievement-id=A08] time')).toBeNull();
+  expect(
+    popup().querySelector('[data-achievement-id=A08] progress'),
+  ).not.toBeNull();
+  expect(localStorage.getItem(playerProfileKey)).toBe(raw);
+  expect(JSON.stringify(silver)).toBe(raw);
 });

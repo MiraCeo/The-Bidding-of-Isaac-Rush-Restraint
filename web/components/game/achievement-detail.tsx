@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Check, X } from 'lucide-react';
 import { characterCatalog } from '@/lib/game';
@@ -36,13 +35,11 @@ export function AchievementDetail({
   allProgress?: Partial<Record<AchievementId, number>>;
   allAchieved?: Partial<Record<AchievementId, string>>;
 }) {
-  const [noteId, setNoteId] = useState(a.id);
   const ids = series?.ids ?? [a.id];
   const roles = characterCatalog.filter((c) =>
     characterAchievementRequirements[c.id].some((id) => ids.includes(id)),
   );
   const copy = achievementDetailPresentation(a);
-  const noteAt = series ? allAchieved[noteId] : achievedAt;
   const scope =
     a.scope === 'shared'
       ? '经典 / 生存'
@@ -92,28 +89,29 @@ export function AchievementDetail({
             {series.ids.map((id) => {
               const level = achievementCatalog.find((d) => d.id === id)!,
                 at = allAchieved[id];
-              const tier = achievementCollectionMetadata[id].tier;
               return (
                 <li
                   key={id}
                   data-achievement-id={id}
                   data-achievement-number={achievementNumber(id)}
-                  data-tier={tier}
+                  data-tier={achievementCollectionMetadata[id].tier}
                   data-selected={id === a.id}
                   data-achieved={!!at}
                   aria-label={level.name}
+                  aria-description={`${achievementTierLabels[achievementCollectionMetadata[id].tier]}徽章 · ${achievementNumber(id)}`}
                 >
-                  <strong title={level.name}>
-                    <span
-                      className="achievement-level-medal"
-                      aria-hidden="true"
+                  <div className="achievement-stage-heading">
+                    <AchievementBadge id={id} achieved={!!at} />
+                    <h3 title={level.name}>{series.name}</h3>
+                  </div>
+                  {at && (
+                    <blockquote
+                      className="achievement-stage-note"
+                      data-note-id={id}
                     >
-                      {achievementTierLabels[tier]}
-                    </span>
-                    <span>
-                      {achievementTierLabels[tier]}章 · {achievementNumber(id)}
-                    </span>
-                  </strong>
+                      {achievementCollectionNotes[id]}
+                    </blockquote>
+                  )}
                   {!at && (
                     <>
                       <span
@@ -139,7 +137,7 @@ export function AchievementDetail({
                       {copy.unit}
                     </span>
                   )}
-                  <span className="achievement-level-state">
+                  <div className="achievement-level-state">
                     {at ? (
                       <>
                         <span className="achievement-level-earned">
@@ -160,31 +158,38 @@ export function AchievementDetail({
                     ) : (
                       <span className="sr-only">未达成</span>
                     )}
-                  </span>
+                  </div>
                 </li>
               );
             })}
           </ol>
         </section>
       ) : (
-        <dl className="achievement-detail-facts">
-          <div>
-            <dt>{a.kind === 'same-match' ? '单局最高进度' : '已记录进度'}</dt>
-            <dd>
-              {progress} / {a.target}
-            </dd>
-          </div>
+        <div className="achievement-single-unit">
           {achievedAt && (
+            <blockquote className="achievement-stage-note" data-note-id={a.id}>
+              {achievementCollectionNotes[a.id]}
+            </blockquote>
+          )}
+          <dl className="achievement-detail-facts">
             <div>
-              <dt>达成时间</dt>
+              <dt>{a.kind === 'same-match' ? '单局最高进度' : '已记录进度'}</dt>
               <dd>
-                <time dateTime={achievedAt}>
-                  {new Date(achievedAt).toLocaleString('zh-CN')}
-                </time>
+                {progress} / {a.target}
               </dd>
             </div>
-          )}
-        </dl>
+            {achievedAt && (
+              <div>
+                <dt>达成时间</dt>
+                <dd>
+                  <time dateTime={achievedAt}>
+                    {new Date(achievedAt).toLocaleString('zh-CN')}
+                  </time>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
       )}
       {roles.length > 0 && (
         <section
@@ -210,31 +215,6 @@ export function AchievementDetail({
         {copy.rules.map((rule) => (
           <p key={rule}>{rule}</p>
         ))}
-      </details>
-      <details className="achievement-collection-note" aria-label="收藏札记">
-        <summary>收藏札记</summary>
-        {series && (
-          <fieldset className="achievement-note-selector" aria-label="札记等级">
-            {series.ids.map((id) => (
-              <button
-                type="button"
-                key={id}
-                aria-pressed={noteId === id}
-                onClick={() => setNoteId(id)}
-              >
-                {achievementTierLabels[achievementCollectionMetadata[id].tier]}
-                徽章
-              </button>
-            ))}
-          </fieldset>
-        )}
-        {noteAt ? (
-          <blockquote data-note-id={noteId}>
-            {achievementCollectionNotes[noteId]}
-          </blockquote>
-        ) : (
-          <p>达成后解锁</p>
-        )}
       </details>
       <footer className="achievement-detail-footer">
         <button

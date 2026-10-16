@@ -253,18 +253,14 @@ it('unlocks only the earned flavor text and hides it again on explicit rollback 
   localStorage.setItem(playerProfileKey, raw);
   await mount(p);
   await click(node.querySelector('#achievement-A01') as HTMLElement);
-  expect(
-    popup().querySelector('.achievement-collection-note blockquote')!
-      .textContent,
-  ).toBe(achievementCollectionNotes.A01);
+  expect(popup().querySelector('.achievement-stage-note')!.textContent).toBe(
+    achievementCollectionNotes.A01,
+  );
   expect(popup().textContent).not.toContain('重复导入');
   await mount(createPlayerProfile());
-  expect(
-    popup().querySelector('.achievement-collection-note blockquote'),
-  ).toBeNull();
-  expect(
-    popup().querySelector('.achievement-collection-note')!.textContent,
-  ).toContain('达成后解锁');
+  expect(popup().querySelector('.achievement-stage-note')).toBeNull();
+  expect(popup().querySelector('.achievement-collection-note')).toBeNull();
+  expect(popup().textContent).not.toContain('达成后解锁');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
   expect(JSON.stringify(p)).toBe(raw);
 });

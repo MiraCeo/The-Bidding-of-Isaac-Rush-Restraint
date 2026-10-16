@@ -134,6 +134,12 @@ it.each(achievementCatalog)(
     if (seriesForAchievement(a.id)) {
       const row = dialog.querySelector(`[data-achievement-id=${a.id}]`)!;
       expect(row.getAttribute('aria-label')).toBe(a.name);
+      expect(row.querySelector('h3')!.textContent).toBe(
+        seriesForAchievement(a.id)!.name,
+      );
+      expect(row.querySelector('.achievement-badge svg')).not.toBeNull();
+      expect(row.textContent).not.toContain(achievementNumber(a.id));
+      expect(row.querySelector('blockquote')).toBeNull();
       expect(
         row.querySelector('.achievement-level-progress')!.textContent,
       ).toBe(`0 / ${a.target}${copy.unit}`);

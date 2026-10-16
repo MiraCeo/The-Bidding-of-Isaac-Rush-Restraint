@@ -114,8 +114,7 @@ it('renders 57 cards for 107 badges and keeps a legacy silver without inventing 
   );
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
   expect(
-    popup().querySelector('.achievement-collection-note blockquote')!
-      .textContent,
+    popup().querySelector('[data-achievement-id=B02] blockquote')!.textContent,
   ).toBe(achievementCollectionNotes.B02);
   expect(levels[2]!.querySelector('blockquote')).toBeNull();
   await close();
@@ -141,7 +140,7 @@ it('updates independent times after confirmed inheritance and relocks new grades
   levels = popup().querySelectorAll('.achievement-series-detail li');
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
   expect(
-    popup().querySelector('.achievement-collection-note blockquote'),
+    popup().querySelector('[data-achievement-id=B02] blockquote'),
   ).not.toBeNull();
   expect(projectAchievementRegistry(old)!.achievedAt.B07).toBeUndefined();
   expect(localStorage.length).toBe(0);

@@ -126,7 +126,8 @@ it.each(['C07', 'F02'] as const)(
     expect(dialog().querySelector('.achievement-badge-rank')!.textContent).toBe(
       '金',
     );
-    expect(dialog().textContent).toContain('达成后解锁');
+    expect(dialog().querySelector('blockquote')).toBeNull();
+    expect(dialog().textContent).not.toContain('达成后解锁');
     expect(dialog().textContent).not.toContain(achievementCollectionNotes[id]);
     expect(
       dialog()
