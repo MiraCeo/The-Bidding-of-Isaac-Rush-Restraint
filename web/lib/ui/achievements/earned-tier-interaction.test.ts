@@ -82,7 +82,7 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
     expect(card(id).getAttribute('aria-label')).toContain('已获铜徽章');
     expect(
       card(id)
-        .querySelector('.achievement-card-state')!
+        .querySelector('.achievement-card-status')!
         .getAttribute('aria-label'),
     ).toBe('已获 1 / 3');
     expect(card(id).dataset.partial).toBe('true');
@@ -92,7 +92,7 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
   expect(card('A01').querySelector('progress')!.max).toBe(20);
   expect(card('A01').querySelector('progress')!.value).toBe(1);
   expect(card('A01').querySelector('.achievement-summary')!.textContent).toBe(
-    '下一阶：累计正常竞拍失败20次',
+    '累计正常竞拍失败20次',
   );
   expect(card('B05').dataset.goalId).toBe('B18');
   expect(card('B05').querySelector('progress')!.max).toBe(5);
@@ -113,12 +113,12 @@ it.each(['silver', 'gold'] as const)(
       expect(card(id).dataset.partial).toBe('false');
       expect(
         card(id)
-          .querySelector('.achievement-card-state')!
+          .querySelector('.achievement-card-status')!
           .getAttribute('aria-label'),
       ).toBe('未达成');
       expect(
         card(id)
-          .querySelector('.achievement-card-state')!
+          .querySelector('.achievement-card-status')!
           .getAttribute('aria-label'),
       ).not.toContain('已获');
       expect(
@@ -126,7 +126,7 @@ it.each(['silver', 'gold'] as const)(
       ).toHaveLength(0);
       expect(
         card(id).querySelectorAll('.achievement-stage-dots > [data-tier]'),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
     }
     expect(facets().dataset.earned).toBe('0');
     await select(0, 'achieved');
@@ -171,7 +171,7 @@ it('keeps explicit child-ID and pending searches locked without borrowing lower-
   expectStage('A01', 'A08', 'silver', false);
   expect(
     card('A01')
-      .querySelector('.achievement-card-state')!
+      .querySelector('.achievement-card-status')!
       .getAttribute('aria-label')!
       .trim(),
   ).toBe('已获 0 / 2');
@@ -181,7 +181,7 @@ it('keeps explicit child-ID and pending searches locked without borrowing lower-
   expectStage('A01', 'A01', 'bronze', true);
   expect(
     card('A01')
-      .querySelector('.achievement-card-state')!
+      .querySelector('.achievement-card-status')!
       .getAttribute('aria-label')!
       .trim(),
   ).toBe('已达成');

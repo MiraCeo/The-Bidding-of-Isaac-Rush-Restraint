@@ -25,7 +25,7 @@ afterEach(async () => {
 const click = (element: HTMLElement) => act(async () => element.click());
 const popup = () => document.querySelector<HTMLElement>('[role=dialog]')!;
 const card = () => node.querySelector<HTMLButtonElement>('#achievement-A01')!;
-it('uses three compact rows, matching stage dots and one rule section; notes stay gated and browsing stays byte-identical', async () => {
+it('uses three compact rows, no redundant stage dots and one rule section; notes stay gated and browsing stays byte-identical', async () => {
   const p = appendCf(createPlayerProfile(cfNow), cfRoom(0, { code: 1 })),
     raw = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, raw);
@@ -37,14 +37,20 @@ it('uses three compact rows, matching stage dots and one rule section; notes sta
     3,
   );
   expect(
-    card().querySelector('.achievement-stage-dots')!.getAttribute('aria-label'),
+    card()
+      .querySelector('.achievement-card-status')!
+      .getAttribute('aria-label'),
   ).toBe('已获 1 / 3');
   expect(
     card().querySelectorAll('.achievement-stage-dots [data-earned=true]'),
-  ).toHaveLength(1);
+  ).toHaveLength(0);
   expect(card().querySelector('.achievement-summary')!.textContent).toBe(
-    '下一阶：累计正常竞拍失败20次',
+    '累计正常竞拍失败20次',
   );
+  expect(card().querySelector('.achievement-goal-tier')!.textContent).toBe(
+    '冲刺银章',
+  );
+  expect(card().querySelector('.achievement-stage-dots')).toBeNull();
   expect(node.querySelector('.achievement-section-count')).toBeNull();
   await click(card());
   expect(popup().querySelector('h2')!.textContent).toBe('失败乃成功之母');
@@ -52,6 +58,40 @@ it('uses three compact rows, matching stage dots and one rule section; notes sta
     popup().querySelectorAll('.achievement-series-detail li'),
   ).toHaveLength(3);
   expect(popup().querySelector('.achievement-detail-facts')).toBeNull();
+  expect(popup().querySelector('.achievement-level-head')).toBeNull();
+  expect(popup().querySelector('.achievement-level-target')).toBeNull();
+  expect(
+    [...popup().querySelectorAll('.achievement-series-detail li')].map((li) => [
+      li.getAttribute('data-tier'),
+      li.getAttribute('data-achieved'),
+      li.getAttribute('data-selected'),
+    ]),
+  ).toEqual([
+    ['bronze', 'true', 'true'],
+    ['silver', 'false', 'false'],
+    ['gold', 'false', 'false'],
+  ]);
+  expect(
+    popup().querySelector('[data-achievement-id=A01] progress'),
+  ).toBeNull();
+  expect(
+    popup().querySelector<HTMLProgressElement>(
+      '[data-achievement-id=A08] progress',
+    )!.max,
+  ).toBe(20);
+  expect(
+    popup().querySelector<HTMLProgressElement>(
+      '[data-achievement-id=A09] progress',
+    )!.value,
+  ).toBe(1);
+  expect(
+    card().querySelector('.achievement-card-heading .achievement-card-state'),
+  ).toBeNull();
+  expect(
+    popup().querySelector(
+      '.achievement-detail-footer .achievement-detail-done',
+    )!.textContent,
+  ).toBe('关闭');
   expect(popup().textContent!.split('屏障退款仍计入')).toHaveLength(2);
   const rules = popup().querySelector<HTMLDetailsElement>(
     '.achievement-detail-note',

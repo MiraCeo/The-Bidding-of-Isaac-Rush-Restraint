@@ -317,6 +317,20 @@ export function AchievementProgress({
           )}
           <div className="achievement-list-heading">
             <output title={cardCountHint}>显示 {entries.length} 项</output>
+            {columns !== 'auto' && (
+              <span
+                className="achievement-column-feedback"
+                data-columns={columns}
+              >
+                {[1, 2, 3, 4].map((actual) => (
+                  <span key={actual} data-actual={actual}>
+                    {Number(columns) > actual
+                      ? `已选${columns}列 · 当前宽度显示${actual}列`
+                      : `当前显示${columns}列`}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
           <div className="achievement-sections">
             {groupAchievementCards(entries).map(
@@ -383,59 +397,22 @@ export function AchievementProgress({
                               <strong>
                                 {card.series ? card.name : listing.name}
                               </strong>
-                              {card.series ? (
-                                <span
-                                  className="achievement-card-state achievement-stage-dots"
-                                  aria-label={
-                                    card.matchingIds.length === 1
-                                      ? at
-                                        ? '已达成'
-                                        : '未达成'
-                                      : `已获 ${card.matchingCompleted} / ${card.matchingIds.length}${card.completed === card.series.ids.length ? '，全部达成' : ''}`
-                                  }
-                                >
-                                  <span className="sr-only">
-                                    {card.matchingIds.length === 1
-                                      ? at
-                                        ? '已达成'
-                                        : '未达成'
-                                      : `已获 ${card.matchingCompleted} / ${card.matchingIds.length}${card.completed === card.series.ids.length ? '，全部达成' : ''}`}
-                                  </span>
-                                  {card.matchingIds.map((id) => {
-                                    const label = `${achievementTierLabels[achievementCollectionMetadata[id].tier]}徽章：${achieved[id] ? '已达成' : '未达成'}`;
-                                    return (
-                                      <span
-                                        key={id}
-                                        data-earned={!!achieved[id]}
-                                        data-tier={
-                                          achievementCollectionMetadata[id].tier
-                                        }
-                                        title={label}
-                                        aria-label={label}
-                                      >
-                                        {achieved[id] ? '●' : '○'}
-                                      </span>
-                                    );
-                                  })}
-                                </span>
-                              ) : (
-                                <span className="achievement-card-state">
-                                  {at ? (
-                                    <>
-                                      <Check size={12} aria-hidden="true" />
-                                      <span className="sr-only">已达成</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <LockKeyhole
-                                        size={12}
-                                        aria-hidden="true"
-                                      />
-                                      <span className="sr-only">未达成</span>
-                                    </>
-                                  )}
-                                </span>
-                              )}
+                              <span
+                                className="sr-only achievement-card-status"
+                                aria-label={
+                                  card.series && card.matchingIds.length > 1
+                                    ? `已获 ${card.matchingCompleted} / ${card.matchingIds.length}`
+                                    : at
+                                      ? '已达成'
+                                      : '未达成'
+                                }
+                              >
+                                {card.series && card.matchingIds.length > 1
+                                  ? `已获 ${card.matchingCompleted} / ${card.matchingIds.length}`
+                                  : at
+                                    ? '已达成'
+                                    : '未达成'}
+                              </span>
                             </span>
                             {independentGroupForAchievement(a.id) && (
                               <span className="achievement-series-stages">
@@ -444,11 +421,21 @@ export function AchievementProgress({
                             )}
                             <span className="achievement-summary">
                               {showGoal && card.series
-                                ? `${at ? '下一阶：' : ''}${goalListing!.summary}`
+                                ? goalListing!.summary
                                 : listing.hidden
                                   ? '隐藏成就'
                                   : listing.summary}
                             </span>
+
+                            {!goal && at && (
+                              <span className="achievement-card-complete">
+                                <Check size={12} aria-hidden="true" />
+                                {card.series &&
+                                card.completed === card.series.ids.length
+                                  ? '全部达成'
+                                  : '已达成'}
+                              </span>
+                            )}
                             {showGoal && value >= goal.target && (
                               <span className="achievement-card-ready">
                                 待新正式结算确认
@@ -456,13 +443,27 @@ export function AchievementProgress({
                             )}
                             {showGoal && (goal.target > 1 || !!card.series) && (
                               <span className="achievement-card-progress">
+                                {at && (
+                                  <span className="achievement-goal-tier">
+                                    冲刺
+                                    {
+                                      achievementTierLabels[
+                                        achievementCollectionMetadata[goal.id]
+                                          .tier
+                                      ]
+                                    }
+                                    章
+                                  </span>
+                                )}
                                 <span className="sr-only">
                                   {goal.kind === 'same-match'
                                     ? '单局最高进度'
                                     : '已记录进度'}
                                   ：
                                 </span>
-                                {Math.min(value, goal.target)} / {goal.target}
+                                <span className="achievement-progress-value">
+                                  {Math.min(value, goal.target)} / {goal.target}
+                                </span>
                                 <progress
                                   aria-label={`${goal.name}${at ? '下一目标' : '当前目标'}进度`}
                                   value={Math.min(value, goal.target)}

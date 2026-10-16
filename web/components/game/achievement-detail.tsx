@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { characterCatalog } from '@/lib/game';
 import {
   achievementCategories,
@@ -88,12 +88,6 @@ export function AchievementDetail({
           className="achievement-series-detail"
           aria-label="三级独立徽章"
         >
-          <div className="achievement-level-head" aria-hidden="true">
-            <span>等级 / 编号</span>
-            <span>目标</span>
-            <span>{a.kind === 'same-match' ? '单局最高进度' : '进度'}</span>
-            <span>状态 / 达成日期</span>
-          </div>
           <ol>
             {series.ids.map((id) => {
               const level = achievementCatalog.find((d) => d.id === id)!,
@@ -106,25 +100,52 @@ export function AchievementDetail({
                   data-achievement-number={achievementNumber(id)}
                   data-tier={tier}
                   data-selected={id === a.id}
+                  data-achieved={!!at}
                   aria-label={level.name}
                 >
                   <strong title={level.name}>
-                    {achievementTierLabels[tier]} · {achievementNumber(id)}
+                    <span
+                      className="achievement-level-medal"
+                      aria-hidden="true"
+                    >
+                      {achievementTierLabels[tier]}
+                    </span>
+                    <span>
+                      {achievementTierLabels[tier]}章 · {achievementNumber(id)}
+                    </span>
                   </strong>
-                  <span className="achievement-level-target">
-                    {level.target}
-                    {copy.unit}
-                  </span>
-                  <span
-                    className="achievement-level-progress"
-                    aria-label={`${level.name}${level.kind === 'same-match' ? '单局最高进度' : '已记录进度'}`}
-                  >
-                    {allProgress[id] ?? 0} / {level.target}
-                  </span>
+                  {!at && (
+                    <>
+                      <span
+                        className="achievement-level-progress"
+                        aria-label={`${level.name}${level.kind === 'same-match' ? '单局最高进度' : '已记录进度'}`}
+                      >
+                        {allProgress[id] ?? 0} / {level.target}
+                        {copy.unit}
+                      </span>
+                      <progress
+                        aria-label={`${level.name}进度`}
+                        value={Math.min(allProgress[id] ?? 0, level.target)}
+                        max={level.target}
+                      />
+                    </>
+                  )}
+                  {at && (
+                    <span
+                      className="sr-only achievement-level-progress"
+                      aria-label={`${level.name}已记录进度`}
+                    >
+                      {allProgress[id] ?? 0} / {level.target}
+                      {copy.unit}
+                    </span>
+                  )}
                   <span className="achievement-level-state">
                     {at ? (
                       <>
-                        <span>已达成</span>
+                        <span className="achievement-level-earned">
+                          <Check size={13} aria-hidden="true" />
+                          已达成
+                        </span>
                         <details className="achievement-time">
                           <summary>
                             <time dateTime={at}>
@@ -137,7 +158,7 @@ export function AchievementDetail({
                         </details>
                       </>
                     ) : (
-                      '未达成'
+                      <span className="sr-only">未达成</span>
                     )}
                   </span>
                 </li>
@@ -215,14 +236,16 @@ export function AchievementDetail({
           <p>达成后解锁</p>
         )}
       </details>
-      <button
-        type="button"
-        className="achievement-system-rules-link"
-        onClick={onShowRules}
-      >
-        查看通用统计规则
-      </button>
-      <Dialog.Close className="achievement-detail-done">返回列表</Dialog.Close>
+      <footer className="achievement-detail-footer">
+        <button
+          type="button"
+          className="achievement-system-rules-link"
+          onClick={onShowRules}
+        >
+          查看通用统计规则
+        </button>
+        <Dialog.Close className="achievement-detail-done">关闭</Dialog.Close>
+      </footer>
     </>
   );
 }

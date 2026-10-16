@@ -312,8 +312,9 @@ describe('optional display preference and static responsive contract', () => {
       '.achievement-grid:not([data-columns="1"])',
       '@container achievement-collection (min-width:980px)',
       '.achievement-grid[data-columns="auto"],.achievement-grid[data-columns="3"],.achievement-grid[data-columns="4"]',
-      '@container achievement-collection (min-width:1480px)',
-      '.achievement-grid[data-columns="auto"],.achievement-grid[data-columns="4"]',
+      '@container achievement-collection (min-width:1280px)',
+      '@container achievement-collection (min-width:1440px)',
+      '.achievement-grid[data-columns="4"] { grid-template-columns:repeat(4,minmax(0,1fr)); }',
       'max-height:calc(100dvh - 40px); overflow-y:auto',
     ])
       expect(css).toContain(source);

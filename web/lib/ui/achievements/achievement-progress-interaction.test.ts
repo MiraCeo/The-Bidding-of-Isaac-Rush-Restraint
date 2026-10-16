@@ -134,9 +134,9 @@ it.each(achievementCatalog)(
     if (seriesForAchievement(a.id)) {
       const row = dialog.querySelector(`[data-achievement-id=${a.id}]`)!;
       expect(row.getAttribute('aria-label')).toBe(a.name);
-      expect(row.querySelector('.achievement-level-target')!.textContent).toBe(
-        `${a.target}${copy.unit}`,
-      );
+      expect(
+        row.querySelector('.achievement-level-progress')!.textContent,
+      ).toBe(`0 / ${a.target}${copy.unit}`);
     } else expect(dialog.textContent).toContain(a.condition);
     expect(dialog.textContent).toContain(
       a.scope === 'shared'
@@ -180,9 +180,11 @@ it('shows saved progress, exact ISO completion time, scope and same-match peak l
   await act(async () =>
     (node.querySelector('#achievement-A03') as HTMLButtonElement).click(),
   );
-  expect(document.querySelector('[role=dialog]')!.textContent).toContain(
-    '单局最高进度',
-  );
+  expect(
+    document
+      .querySelector('[role=dialog] .achievement-level-progress')!
+      .getAttribute('aria-label'),
+  ).toContain('单局最高进度');
   await closeDialog();
   await act(async () =>
     (node.querySelector('#achievement-F02') as HTMLButtonElement).click(),
