@@ -361,13 +361,11 @@ export function AchievementProgress({
                           className="achievement-card"
                           key={card.id}
                           data-focused-id={a.id}
-                          data-achieved={
-                            card.series ? card.completed === 3 : !!at
-                          }
+                          data-achieved={!!at}
                           data-partial={
                             !!card.series &&
-                            card.completed > 0 &&
-                            card.completed < 3
+                            card.matchingCompleted > 0 &&
+                            card.matchingCompleted < card.matchingIds.length
                           }
                           data-tier={badgeTier}
                           data-concealed={listing.hidden}
@@ -393,17 +391,28 @@ export function AchievementProgress({
                                 {achievementTierLabels[badgeTier]}徽章
                               </span>
                               <span className="achievement-card-state">
-                                {card.series ? (
-                                  <span>已获 {card.completed} / 3</span>
+                                {card.series && card.matchingIds.length > 1 ? (
+                                  <span>
+                                    已获 {card.matchingCompleted} /{' '}
+                                    {card.matchingIds.length}
+                                  </span>
                                 ) : at ? (
                                   <>
                                     <Check size={12} aria-hidden="true" />{' '}
                                     已达成
                                   </>
-                                ) : listing.hidden || a.target === 1 ? (
+                                ) : card.series ||
+                                  listing.hidden ||
+                                  a.target === 1 ? (
                                   <>
                                     <LockKeyhole size={12} aria-hidden="true" />
-                                    <span className="sr-only">未达成</span>
+                                    <span
+                                      className={
+                                        card.series ? undefined : 'sr-only'
+                                      }
+                                    >
+                                      未达成
+                                    </span>
                                   </>
                                 ) : null}
                               </span>
@@ -418,7 +427,7 @@ export function AchievementProgress({
                             </span>
                             {card.series && (
                               <span className="achievement-series-stages">
-                                {card.series.ids.map((id) => (
+                                {card.matchingIds.map((id) => (
                                   <span
                                     key={id}
                                     data-earned={!!achieved[id]}

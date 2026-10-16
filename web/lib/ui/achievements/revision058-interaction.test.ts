@@ -56,13 +56,13 @@ it('shows 107 medals as 57 category-separated cards with current grades and neve
     expect(card(id).textContent).toContain('???');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
 });
-it('focuses six/eighteen/sixty-six independently and reveals every child target in the detail modal', async () => {
+it('shows the highest earned six/eighteen/sixty-six stage and reveals every child target in the detail modal', async () => {
   let p = createPlayerProfile(now);
   for (let i = 0; i < 6; i++) p = append(p, room(0, { mask: 256 }));
   await mount(p);
   expect(card('C06').textContent).toContain('已获 1 / 3');
-  expect(card('C06').getAttribute('data-focused-id')).toBe('C14');
-  expect(card('C06').querySelector('progress')!.max).toBe(18);
+  expect(card('C06').getAttribute('data-focused-id')).toBe('C06');
+  expect(card('C06').querySelector('progress')!.max).toBe(6);
   await click(card('C06'));
   for (const [id, target] of [
     ['C06', 6],
@@ -72,7 +72,9 @@ it('focuses six/eighteen/sixty-six independently and reveals every child target 
     const child = dialog().querySelector('[data-achievement-id=' + id + ']')!;
     expect(child.textContent).toContain(String(target));
   }
-  expect(dialog().querySelectorAll('time')).toHaveLength(1);
+  expect(
+    dialog().querySelectorAll('.achievement-series-detail time'),
+  ).toHaveLength(1);
 });
 it('does not reveal hidden redemption after one room and reveals only after the second same-branch room', async () => {
   let p = append(createPlayerProfile(now), room(0, { mask: 32, flags: 4 }), {
@@ -95,8 +97,8 @@ it('keeps the role prerequisite on the three-copy bronze while the series contin
   const p = append(createPlayerProfile(now), room(0, { copies: 3 }));
   await mount(p);
   expect(card('E05').textContent).toContain('已获 1 / 3');
-  expect(card('E05').getAttribute('data-focused-id')).toBe('E17');
-  expect(card('E05').querySelector('progress')!.max).toBe(10);
+  expect(card('E05').getAttribute('data-focused-id')).toBe('E05');
+  expect(card('E05').querySelector('progress')!.max).toBe(3);
   expect(
     node.querySelector('[aria-label="角色解锁"]')?.textContent ??
       node.textContent,

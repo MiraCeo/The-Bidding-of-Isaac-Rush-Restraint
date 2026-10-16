@@ -150,7 +150,7 @@ it('preserves retired history and the already earned Lost permission without inv
   expect(JSON.stringify(p)).toBe(before);
   expect(localStorage.length).toBe(0);
 });
-it('shows two group misses as two rather than one room, using the next tier as the card focus', async () => {
+it('shows the earned bronze and retains both group misses in the silver detail instead of changing the card metal', async () => {
   const p = append(createPlayerProfile(), {
     stage: 'room',
     position: 0,
@@ -158,9 +158,14 @@ it('shows two group misses as two rather than one room, using the next tier as t
   });
   await mount(p);
   expect(card('B05').textContent).toContain('已获 1 / 3');
-  expect(card('B05').textContent).toContain('2 / 5');
-  expect(card('B06').textContent).toContain('2 / 5');
-  expect(card('B05').getAttribute('data-focused-id')).toBe('B18');
+  expect(card('B05').getAttribute('data-focused-id')).toBe('B05');
+  expect(card('B06').getAttribute('data-focused-id')).toBe('B06');
+  expect(projectAchievementRegistry(p)!.progress.B18).toBe(2);
+  expect(projectAchievementRegistry(p)!.progress.B20).toBe(2);
+  await click(card('B05'));
+  expect(
+    dialog().querySelector('[data-achievement-id=B18]')!.textContent,
+  ).toContain('2 / 5');
 });
 it('keeps new vacancy medals hidden until a saved fact, then reveals both with distinct metal grades', async () => {
   await mount(createPlayerProfile());

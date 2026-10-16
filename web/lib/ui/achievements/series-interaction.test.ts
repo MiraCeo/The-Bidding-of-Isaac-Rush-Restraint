@@ -101,9 +101,9 @@ it('renders 57 cards for 107 badges and keeps a legacy silver without inventing 
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.textContent).toContain('57 张卡片，涵盖 107 / 107 枚徽章');
   expect(card().textContent).toContain('已获 1 / 3');
-  expect(card().textContent).toContain('待新正式结算确认');
-  expect(card().getAttribute('data-focused-id')).toBe('B07');
-  expect(card().getAttribute('data-achieved')).toBe('false');
+  expect(card().textContent).not.toContain('待新正式结算确认');
+  expect(card().getAttribute('data-focused-id')).toBe('B02');
+  expect(card().getAttribute('data-achieved')).toBe('true');
   await click(card());
   const levels = popup().querySelectorAll('.achievement-series-detail li');
   expect(levels).toHaveLength(3);
@@ -125,7 +125,7 @@ it('updates independent times after confirmed inheritance and relocks new grades
     p = activate(old);
   await mount(p);
   expect(card().textContent).toContain('已获 2 / 3');
-  expect(card().getAttribute('data-focused-id')).toBe('B08');
+  expect(card().getAttribute('data-focused-id')).toBe('B02');
   await click(card());
   let levels = popup().querySelectorAll('.achievement-series-detail li');
   expect(levels[0]!.querySelector('time')!.getAttribute('datetime')).toBe(

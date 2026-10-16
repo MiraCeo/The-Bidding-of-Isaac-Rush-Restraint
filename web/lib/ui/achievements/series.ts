@@ -25,10 +25,10 @@ export function selectAchievementCards(
     const ids = series?.ids ?? [a.id],
       eligible = ids.filter((id) => matched.has(id));
     if (!eligible.length) return [];
+    // Show the highest earned MATCHING stage, never a future tier in place of
+    // an owned medal. Pending/tier/child-ID filters still restrict the focus.
     const focus =
-      (filters.status === 'achieved'
-        ? [...eligible].reverse().find((id) => achieved[id])
-        : eligible.find((id) => !achieved[id])) ?? eligible.at(-1)!;
+      [...eligible].reverse().find((id) => achieved[id]) ?? eligible[0]!;
     return [
       {
         id: a.id,
@@ -36,6 +36,7 @@ export function selectAchievementCards(
         definition: achievementCatalog.find((d) => d.id === focus)!,
         series,
         matchingIds: eligible,
+        matchingCompleted: eligible.filter((id) => achieved[id]).length,
         completed: ids.filter((id) => achieved[id]).length,
       },
     ];

@@ -91,7 +91,7 @@ it('shows saved global totals rather than filtered denominators; new entries are
     node.querySelector('.achievement-overview-caption')!.textContent,
   ).toContain('0.9%');
   expect(cards()).toHaveLength(57);
-  expect(cards()[0]!.querySelector('progress')!.max).toBe(20);
+  expect(cards()[0]!.querySelector('progress')!.max).toBe(1);
   expect(cards()[0]!.querySelector('time')).toBeNull();
   expect(node.textContent).toContain('初出茅庐');
   await select(0, 'achieved');
@@ -130,7 +130,7 @@ it('sorts actual saved progress without changing records', async () => {
     cards()
       .slice(0, 3)
       .map((c) => c.id),
-  ).toEqual(['achievement-A03', 'achievement-A01', 'achievement-A05']);
+  ).toEqual(['achievement-A01', 'achievement-A03', 'achievement-A05']);
   await select(0, 'pending');
   expect(cards()).toHaveLength(57);
   await select(1, 'recent');

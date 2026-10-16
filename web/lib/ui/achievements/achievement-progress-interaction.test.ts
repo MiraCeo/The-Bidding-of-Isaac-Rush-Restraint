@@ -142,7 +142,7 @@ it('shows saved progress, exact ISO completion time, scope and same-match peak l
   const card = node.querySelector('#achievement-A01')!;
   expect(card.textContent).toContain('已获 1 / 3');
   expect(card.querySelector('time')).toBeNull();
-  expect(card.querySelector('progress')!.max).toBe(20);
+  expect(card.querySelector('progress')!.max).toBe(1);
   await act(async () => (card as HTMLButtonElement).click());
   expect(
     document.querySelector('[role="dialog"] time')!.getAttribute('datetime'),

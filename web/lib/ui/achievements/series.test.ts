@@ -60,17 +60,17 @@ it('requires the same child badge to satisfy tier/status/query intersections', (
       .completed,
   ).toBe(1);
 });
-it('shows the next unmatched stage, retains an old silver without inventing bronze, and never treats partial as fully complete', () => {
+it('shows the highest earned matching stage, retains an old silver without inventing bronze, and keeps total earned stages separate', () => {
   const p = { B02: 15, B07: 15, B08: 15 };
   const legacy = selectAchievementCards(all, p, { B02: at }).find(
     (c) => c.id === 'B02',
   )!;
-  expect(legacy.definition.id).toBe('B07');
+  expect(legacy.definition.id).toBe('B02');
   expect(legacy.completed).toBe(1);
   const partial = selectAchievementCards(all, p, { B07: at, B02: at }).find(
     (c) => c.id === 'B02',
   )!;
-  expect(partial.definition.id).toBe('B08');
+  expect(partial.definition.id).toBe('B02');
   expect(partial.completed).toBe(2);
   const complete = selectAchievementCards(all, p, {
     B07: at,
@@ -175,4 +175,65 @@ it('does not change counts when only ordering changes and never mutates the matc
   }
   expect(progress).toEqual({ B08: 17 });
   expect(earned).toEqual({ B07: at, B02: at });
+});
+it('chooses the highest earned matching tier independently of sort order and never previews a future owned tier', () => {
+  for (const sort of ['catalog', 'recent', 'progress'] as const) {
+    for (const [earned, focus] of [
+      [{}, 'A01'],
+      [{ A01: at }, 'A01'],
+      [{ A01: at, A08: at }, 'A08'],
+      [{ A01: at, A08: at, A09: at }, 'A09'],
+      [{ A08: at }, 'A08'],
+    ] as const) {
+      const card = selectAchievementCards(
+        { ...all, query: '失败乃成功之母', sort },
+        { A01: 100, A08: 100, A09: 100 },
+        earned,
+      )[0]!;
+      expect(card.definition.id).toBe(focus);
+      expect(card.matchingCompleted).toBe(Object.keys(earned).length);
+      expect(card.completed).toBe(Object.keys(earned).length);
+    }
+  }
+});
+it('keeps matching earned count separate from global collection when a tier, child ID or pending filter is applied', () => {
+  const earned = { A01: at, A08: at };
+  const select = (f: Partial<AchievementFilters>) =>
+    selectAchievementCards(
+      { ...all, query: '失败乃成功之母', ...f },
+      {},
+      earned,
+    )[0]!;
+  expect(select({ tier: 'gold' })).toMatchObject({
+    definition: { id: 'A09' },
+    matchingIds: ['A09'],
+    matchingCompleted: 0,
+    completed: 2,
+  });
+  expect(select({ tier: 'silver' })).toMatchObject({
+    definition: { id: 'A08' },
+    matchingIds: ['A08'],
+    matchingCompleted: 1,
+    completed: 2,
+  });
+  expect(select({ status: 'pending' })).toMatchObject({
+    definition: { id: 'A09' },
+    matchingCompleted: 0,
+    completed: 2,
+  });
+  expect(select({ query: 'A09' })).toMatchObject({
+    definition: { id: 'A09' },
+    matchingCompleted: 0,
+  });
+  expect(select({ query: 'A01' })).toMatchObject({
+    definition: { id: 'A01' },
+    matchingCompleted: 1,
+  });
+  expect(
+    selectAchievementCards(
+      { ...all, query: 'A09', status: 'achieved' },
+      {},
+      earned,
+    ),
+  ).toHaveLength(0);
 });
