@@ -163,7 +163,7 @@ describe('approved 0.5.7 runtime catalog and frozen historical semantics', () =>
     ).toHaveLength(8);
   });
   it('enables approved rules without mutating frozen 0.5.6 reconstruction semantics', () => {
-    expect(achievementCatalog).toHaveLength(87);
+    expect(achievementCatalog).toHaveLength(107);
     expect(frozenCatalog).toHaveLength(60);
     expect(frozenCatalog.find((a) => a.id === 'A02')!.condition).toBe(
       '累计正常竞拍失败10次。',

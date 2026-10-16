@@ -63,14 +63,14 @@ function append(
   );
 }
 
-it('shows the revised 87/57 catalog without writing and publicly exposes the streak series', async () => {
+it('shows the revised 107/57 catalog without writing and publicly exposes the streak series', async () => {
   const p = createPlayerProfile(),
     before = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, before);
   await mount(p);
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '0 / 87',
+    '0 / 107',
   );
   expect(card('A03').textContent).toContain('屡战屡败');
   expect(card('A03').textContent).not.toContain('???');
@@ -145,7 +145,7 @@ it('preserves retired history and the already earned Lost permission without inv
   expect(card('A10').textContent).toContain('0 / 5');
   expect(projectAchievementRegistry(p)!.achievedAt.A10).toBeUndefined();
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '2 / 87',
+    '2 / 107',
   );
   expect(JSON.stringify(p)).toBe(before);
   expect(localStorage.length).toBe(0);

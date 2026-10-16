@@ -264,9 +264,9 @@ it('retains a large saved batch without dropping entries or starting any dismiss
       }),
     ),
   );
-  expect(node.querySelectorAll('.achievement-notice-item')).toHaveLength(87);
+  expect(node.querySelectorAll('.achievement-notice-item')).toHaveLength(107);
   expect(node.querySelector('.achievement-notice')!.textContent).toContain(
-    '87 枚新徽章',
+    '107 枚新徽章',
   );
   expect(timer).not.toHaveBeenCalled();
   timer.mockRestore();

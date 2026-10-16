@@ -498,6 +498,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     delete old.growth!.expansionFrom;
     delete old.growth!.milestonesFrom;
     delete old.growth!.revisionsFrom;
+    delete old.growth!.cfFrom;
     const before = canonicalJson(old),
       loaded = parseGameSave(serializeGameCheckpoint(old)).session;
     expect(loaded.growth!.expansionFrom).toBeUndefined();
@@ -505,7 +506,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.expansionFrom).toBe(1);
     expect(next.growth!.units[1]!.values).toHaveLength(5);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(14);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(17);
     expect(canonicalJson(old)).toBe(before);
     expect(parseGameSave(serializeGameCheckpoint(next)).session.growth).toEqual(
       next.growth,
@@ -532,6 +533,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     delete legacy.growth!.expansionFrom;
     delete legacy.growth!.milestonesFrom;
     delete legacy.growth!.revisionsFrom;
+    delete legacy.growth!.cfFrom;
     const loaded = parseGameSave(serializeGameCheckpoint(legacy)).session;
     const old = applyGrowthContext(
       createPlayerProfile(now),

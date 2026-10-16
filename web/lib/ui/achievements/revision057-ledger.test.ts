@@ -380,7 +380,7 @@ describe('real lifecycle and recovery of revision facts', () => {
   }
   it('captures v5 stages and restores a fresh classic prefix exactly', () => {
     let s = classic();
-    expect(s.growth!.units[0]!.values).toHaveLength(4);
+    expect(s.growth!.units[0]!.values).toHaveLength(5);
     s = reduceGameSession(s, {
       type: 'submit_player_turn',
       turn: {
@@ -389,13 +389,14 @@ describe('real lifecycle and recovery of revision facts', () => {
       },
     });
     expect(s.growthIssue).toBeUndefined();
-    expect(s.growth!.units.at(-1)!.values).toHaveLength(14);
+    expect(s.growth!.units.at(-1)!.values).toHaveLength(17);
     const loaded = parseGameSave(serializeGameCheckpoint(s)).session;
     expect(loaded.growth).toEqual(s.growth);
   });
   it('does not add revision fields to an old checkpoint, but starts at its next genuinely new authority stage', () => {
     let old = classic(true);
     delete old.growth!.revisionsFrom;
+    delete old.growth!.cfFrom;
     const prior = structuredClone(old.growth),
       loaded = parseGameSave(serializeGameCheckpoint(old)).session;
     expect(loaded.growth).toEqual(prior);
@@ -407,7 +408,7 @@ describe('real lifecycle and recovery of revision facts', () => {
     expect(old.growthIssue).toBeUndefined();
     expect(old.growth!.revisionsFrom).toBe(0);
     expect(old.growth!.units[0]!.values).toHaveLength(3);
-    expect(old.growth!.units[1]!.values).toHaveLength(14);
+    expect(old.growth!.units[1]!.values).toHaveLength(17);
   });
   it('records the actual classic terminal ranking and never counts an imported pending prefix twice', () => {
     let s = classic();

@@ -85,11 +85,11 @@ it('shows saved global totals rather than filtered denominators; new entries are
   localStorage.setItem(playerProfileKey, before);
   await mount(p);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 87',
+    '1 / 107',
   );
   expect(
     node.querySelector('.achievement-overview-caption')!.textContent,
-  ).toContain('1.1%');
+  ).toContain('0.9%');
   expect(cards()).toHaveLength(57);
   expect(cards()[0]!.querySelector('progress')!.max).toBe(20);
   expect(cards()[0]!.querySelector('time')).toBeNull();
@@ -97,7 +97,7 @@ it('shows saved global totals rather than filtered denominators; new entries are
   await select(0, 'achieved');
   expect(cards().map((c) => c.id)).toEqual(['achievement-A01']);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 87',
+    '1 / 107',
   );
   expect(localStorage.getItem(playerProfileKey)).toBe(before);
   expect(JSON.stringify(p)).toBe(before);
@@ -329,7 +329,7 @@ it('creates six independent category grids with separators and respects filtered
     '角色道具与探索',
     '生存淘汰',
   ]);
-  expect(cards()).toHaveLength(23);
+  expect(cards()).toHaveLength(33);
   await select(3, 'all');
   await search('B0');
   expect(groups()).toHaveLength(1);

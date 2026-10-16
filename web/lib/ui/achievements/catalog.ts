@@ -1,11 +1,11 @@
 import type { CharacterId } from '../../game/item-types';
+import { revision057CharacterRequirements } from './revision057-catalog';
 import {
-  revision057Catalog,
-  revision057Categories,
-  revision057CharacterRequirements,
-  type Revision057Id,
-  type Revision057Definition,
-} from './revision057-catalog';
+  revision058Catalog,
+  revision058Categories,
+  type Revision058Id,
+  type Revision058Definition,
+} from './revision058-catalog';
 export {
   achievementCatalogVersion,
   currentAchievementCatalogVersion,
@@ -16,10 +16,11 @@ export {
   legacyAchievementCatalog,
 } from './v056-catalog';
 export const revisionAchievementCatalogVersion = 4;
-export const achievementCatalog = revision057Catalog;
-export const achievementCategories = revision057Categories;
-export type AchievementId = Revision057Id;
-export type AchievementDefinition = Revision057Definition;
+export const cfAchievementCatalogVersion = 5;
+export const achievementCatalog = revision058Catalog;
+export const achievementCategories = revision058Categories;
+export type AchievementId = Revision058Id;
+export type AchievementDefinition = Revision058Definition;
 export type AchievementCategory = (typeof achievementCategories)[number]['id'];
 export const characterAchievementRequirements: Readonly<
   Record<CharacterId, readonly AchievementId[]>

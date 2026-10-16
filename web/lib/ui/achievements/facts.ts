@@ -13,10 +13,12 @@ export interface AchievementEntryFacts {
   /** Present only on prospectively observed 0.5.6 authority stages. */
   milestones?: true;
   revisions?: true;
+  cf?: true;
   stolenMoney: number;
   interestMoney: number;
 }
 export interface AchievementCompletionFacts {
+  cf?: true;
   milestones?: true;
   revisions?: true;
   mode: 'classic' | 'survival';
@@ -26,6 +28,7 @@ export interface AchievementCompletionFacts {
 }
 export interface AchievementRoomFacts {
   milestoneFlags?: number;
+  cfCounts?: readonly [number, number, number];
   revisionCounts?: readonly [number, number, number, number, number];
   revisionFlags?: number;
   saleSavings?: number;
@@ -59,6 +62,7 @@ export interface AchievementRoomFacts {
   hiddenAwardCopies: number;
 }
 export interface AchievementFloorFacts {
+  cf?: true;
   milestones?: true;
   revisions?: true;
   floorIndex: number;
@@ -68,6 +72,7 @@ export interface AchievementFloorFacts {
   lowestSurvivor: boolean;
 }
 export interface AchievementFinalFacts {
+  cf?: true;
   milestones?: true;
   revisions?: true;
   humanSurvived: boolean;

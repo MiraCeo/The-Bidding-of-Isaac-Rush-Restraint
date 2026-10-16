@@ -91,13 +91,13 @@ function earned() {
     new Date('2026-10-15T00:00:00.000Z'),
   );
 }
-it('shows 87 badges as 57 cards in six categories with six prerequisites and 81 collection badges without activating a profile', async () => {
+it('shows 107 badges as 57 cards in six categories with six prerequisites and 101 collection badges without activating a profile', async () => {
   await mount();
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
   expect(node.querySelectorAll('.achievement-badge')).toHaveLength(57);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(22);
-  expect(node.textContent).toContain('成就总览0 / 87');
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(29);
+  expect(node.textContent).toContain('成就总览0 / 107');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });

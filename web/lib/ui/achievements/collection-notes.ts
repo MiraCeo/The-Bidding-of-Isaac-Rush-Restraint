@@ -1,6 +1,13 @@
-import { revision057Catalog, revision057NewSeries } from './revision057-catalog';
+import {
+  revision057Catalog,
+  revision057NewSeries,
+} from './revision057-catalog';
 import type { AchievementId as V056Id } from './v056-catalog';
 import type { AchievementId } from './catalog';
+import {
+  revision058Catalog,
+  revision058NewSeries,
+} from './revision058-catalog';
 /** Flavor only. Earned state comes from verified records, never a second unlock flag. */
 const legacyCollectionNotes: Readonly<Record<V056Id, string>> = {
   A01: '母亲已经来了，成功呢？',
@@ -84,4 +91,18 @@ export const achievementCollectionNotes = {
         ];
       }),
   ),
+  ...Object.fromEntries(
+    revision058NewSeries.flatMap((s) =>
+      s.ids.map((id) => {
+        const a = revision058Catalog.find((a) => a.id === id)!;
+        return [
+          id,
+          id in legacyCollectionNotes
+            ? legacyCollectionNotes[id as keyof typeof legacyCollectionNotes]
+            : `${s.name}的这一页，记下了${a.target}${s.unit === 'money' ? '资金' : s.unit === 'copy' ? '件礼物' : s.unit === 'prefix' ? '层连续过关' : s.unit === 'room' ? '个房间' : '次经历'}。`,
+        ];
+      }),
+    ),
+  ),
+  C08: '不只是一回走运，两次都把自己的位置换成了真正的收获。',
 } as Readonly<Record<AchievementId, string>>;

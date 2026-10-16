@@ -243,8 +243,10 @@ describe('prospective causes and single-parent run combinations', () => {
         room(0, flag, mask, bid, awards),
       );
       expect(projectAchievementRegistry(p)!.achievedAt[id]).toBe(
-        now.toISOString(),
+        id === 'C08' ? undefined : now.toISOString(),
       );
+      if (id === 'C08')
+        expect(projectAchievementRegistry(p)!.progress.C08).toBe(1);
     },
   );
   it('does not borrow old failures, same-room mixed failures, or another branch for recovery/win composites', () => {
@@ -370,8 +372,8 @@ describe('prospective causes and single-parent run combinations', () => {
 describe('live recovery transcripts and legacy boundaries', () => {
   it('round-trips new contexts, refuses re-signed cause changes and never awards imported prefixes', () => {
     const s = step(freshClassic());
-    expect(s.growth!.units[0]!.values).toHaveLength(4);
-    expect(s.growth!.units[1]!.values).toHaveLength(14);
+    expect(s.growth!.units[0]!.values).toHaveLength(5);
+    expect(s.growth!.units[1]!.values).toHaveLength(17);
     expect(parseGameSave(serializeGameCheckpoint(s)).session.growth).toEqual(
       s.growth,
     );
@@ -409,11 +411,12 @@ describe('live recovery transcripts and legacy boundaries', () => {
     legacy = step(legacy);
     delete legacy.growth!.milestonesFrom;
     delete legacy.growth!.revisionsFrom;
+    delete legacy.growth!.cfFrom;
     const loaded = parseGameSave(serializeGameCheckpoint(legacy)).session;
     expect(loaded.growth!.milestonesFrom).toBeUndefined();
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.units[0]!.values).toHaveLength(2);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(14);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(17);
     expect(next.growth!.milestonesFrom).toBe(1);
   });
   it('round-trips an eliminated survival personal result and counts it once', () => {
@@ -437,11 +440,11 @@ describe('live recovery transcripts and legacy boundaries', () => {
       expect(achievementCatalog.some((a) => (a.id as string) === id)).toBe(
         false,
       );
-    expect(achievementCatalog).toHaveLength(87);
+    expect(achievementCatalog).toHaveLength(107);
   });
 });
 
-it('atomically rolls back schema5 activation on quota failure and retries the pending prefix exactly once', async () => {
+it('atomically rolls back schema6 activation on quota failure and retries the pending prefix exactly once', async () => {
   const s = step(freshClassic()),
     values = new Map<string, string>();
   let blocked = true,
@@ -481,7 +484,7 @@ it('atomically rolls back schema5 activation on quota failure and retries the pe
         version: number;
       }
     ).version,
-  ).toBe(5);
+  ).toBe(6);
   const again = await saveClassicClient(storage, saved.session, {
     expectedSource: storage.getItem(gameSaveKey),
     coordinator,

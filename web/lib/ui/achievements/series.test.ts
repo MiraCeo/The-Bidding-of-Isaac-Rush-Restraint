@@ -14,8 +14,8 @@ const all: AchievementFilters = {
   tier: 'all',
 };
 const at = '2026-10-15T00:00:00.000Z';
-it('keeps 87 independent badges as 57 cards and preserves the original three series orders', () => {
-  expect(achievementCatalog).toHaveLength(87);
+it('keeps 107 independent badges as 57 cards and preserves the original three series orders', () => {
+  expect(achievementCatalog).toHaveLength(107);
   const cards = selectAchievementCards(all, {}, {});
   expect(cards).toHaveLength(57);
   expect(groupAchievementCards(cards).map((g) => g.items.length)).toEqual([

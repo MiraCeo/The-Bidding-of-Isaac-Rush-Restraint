@@ -190,16 +190,16 @@ function floorRecord(
 }
 
 describe('0.5 product catalog and independent character permission', () => {
-  it('retains the frozen original 30 and publishes the revised 87 with updated Lost prerequisites', () => {
+  it('retains the frozen original 30 and publishes the revised 107 with updated Lost prerequisites', () => {
     const ids = achievementCatalog.map((a) => a.id);
-    expect(ids).toHaveLength(87);
+    expect(ids).toHaveLength(107);
     expect(legacyAchievementCatalog).toHaveLength(30);
-    expect(new Set(ids).size).toBe(87);
+    expect(new Set(ids).size).toBe(107);
     expect(
       achievementCategories.map(
         (c) => ids.filter((id) => id.startsWith(c.id)).length,
       ),
-    ).toEqual([13, 24, 9, 16, 14, 11]);
+    ).toEqual([13, 24, 15, 22, 18, 15]);
     const prerequisites = new Set(
       Object.values(characterAchievementRequirements).flat(),
     );
@@ -212,7 +212,7 @@ describe('0.5 product catalog and independent character permission', () => {
       'E05',
     ]);
     expect(achievementCatalog.find((a) => a.id === 'D05')!.name).toBe(
-      '意外之喜',
+      '意外之喜 I',
     );
     for (const removed of [
       '不劳而获',
@@ -236,6 +236,10 @@ describe('0.5 product catalog and independent character permission', () => {
       'F09',
       'F10',
       'F12',
+      'F13',
+      'F14',
+      'F15',
+      'F16',
     ]);
   });
   it('requires both conditions, defaults to Isaac and never mutates achievements on manual authorization', () => {

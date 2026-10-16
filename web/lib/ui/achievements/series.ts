@@ -8,8 +8,8 @@ import {
   achievementCollectionMetadata,
   achievementTiers,
 } from './collection-metadata';
-import { revision057Series } from './revision057-catalog';
-export const achievementSeries = revision057Series;
+import { revision058Series } from './revision058-catalog';
+export const achievementSeries = revision058Series;
 export const seriesForAchievement = (id: AchievementId) =>
   achievementSeries.find((s) => s.ids.includes(id));
 export function selectAchievementCards(

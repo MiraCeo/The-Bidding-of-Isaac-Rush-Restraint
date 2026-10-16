@@ -31,7 +31,7 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('presentation-only catalog and deterministic filters', () => {
-  it('covers 87 active and two retired IDs with concise summaries and stable family glyphs', () => {
+  it('covers 107 active and two retired IDs with concise summaries and stable family glyphs', () => {
     const ids = [...achievementCatalog.map((a) => a.id), 'A02', 'A04'].sort();
     expect(Object.keys(achievementPresentation).sort()).toEqual(ids);
     expect(Object.keys(achievementCollectionNotes).sort()).toEqual(ids);
@@ -61,7 +61,7 @@ describe('presentation-only catalog and deterministic filters', () => {
     ).toEqual(['A03', 'A05', 'A06', 'A07', 'A08', 'A09']);
     expect(
       selectAchievements({ ...all, query: '礼物' }, {}, {}).map((a) => a.id),
-    ).toEqual(['E05']);
+    ).toEqual(['E05', 'E17', 'E18']);
     expect(
       selectAchievements({ ...all, query: 'a01', category: 'F' }, {}, achieved),
     ).toEqual([]);
@@ -95,7 +95,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         .slice(0, 4)
         .map((a) => a.id),
     ).toEqual(['A01', 'E05', 'A10', 'D03']);
-    expect(selectAchievements(all, {}, {})).toHaveLength(87);
+    expect(selectAchievements(all, {}, {})).toHaveLength(107);
   });
 });
 describe('metal config and soft-concealed list policy', () => {
@@ -110,14 +110,26 @@ describe('metal config and soft-concealed list policy', () => {
             (a) => achievementCollectionMetadata[a.id].tier === t,
           ).length,
       ),
-    ).toEqual([32, 32, 23]);
+    ).toEqual([38, 36, 33]);
     expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
     expect(
       Object.entries(achievementCollectionMetadata)
         .filter(([, m]) => m.hidden)
         .map(([id]) => id)
         .sort(),
-    ).toEqual(['A05', 'B03', 'B12', 'B13', 'C07', 'C09', 'F02', 'F12']);
+    ).toEqual([
+      'A05',
+      'B03',
+      'B12',
+      'B13',
+      'C07',
+      'C08',
+      'C09',
+      'E11',
+      'F02',
+      'F05',
+      'F12',
+    ]);
     for (const ids of Object.values(characterAchievementRequirements))
       for (const id of ids)
         expect(achievementCollectionMetadata[id].hidden).toBe(false);
@@ -125,7 +137,19 @@ describe('metal config and soft-concealed list policy', () => {
     expect(achievementCollectionMetadata.A02.tier).toBe('silver');
     expect(achievementCollectionMetadata.A03.tier).toBe('silver');
   });
-  it.each(['A05', 'B03', 'B12', 'B13', 'C07', 'C09', 'F02', 'F12'] as const)(
+  it.each([
+    'A05',
+    'B03',
+    'B12',
+    'B13',
+    'C07',
+    'C08',
+    'C09',
+    'E11',
+    'F02',
+    'F05',
+    'F12',
+  ] as const)(
     'does not match concealed %s by true name until earned; ID and generic search remain usable',
     (id) => {
       const a = achievementCatalog.find((a) => a.id === id)!;
@@ -169,22 +193,32 @@ describe('metal config and soft-concealed list policy', () => {
       'B23',
       'B25',
       'C07',
+      'C08',
       'C09',
+      'C11',
+      'C13',
+      'C15',
       'D08',
       'D14',
       'D16',
-      'E08',
+      'D18',
+      'D20',
+      'D22',
       'E10',
+      'E18',
+      'E20',
       'F02',
       'F09',
       'F10',
       'F12',
+      'F14',
+      'F16',
     ]);
     expect(
       selectAchievements({ ...all, tier: 'gold', category: 'E' }, {}, {}).map(
         (a) => a.id,
       ),
-    ).toEqual(['E08', 'E10']);
+    ).toEqual(['E10', 'E18', 'E20']);
     const secret = Object.freeze({ A05: 1, C07: 1 }),
       at = '2026-10-15T00:00:00.000Z';
     expect(
@@ -297,9 +331,9 @@ describe('category sections preserve sorted input within a real category boundar
       'E',
       'F',
     ]);
-    expect(groups.map((g) => g.items.length)).toEqual([13, 24, 9, 16, 14, 11]);
+    expect(groups.map((g) => g.items.length)).toEqual([13, 24, 15, 22, 18, 15]);
     expect(new Set(groups.flatMap((g) => g.items.map((a) => a.id))).size).toBe(
-      87,
+      107,
     );
     for (const g of groups)
       expect(g.items).toEqual(

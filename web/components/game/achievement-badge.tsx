@@ -1,5 +1,6 @@
 import type { AchievementId as V056Id } from '@/lib/ui/achievements/v056-catalog';
 import { revision057NewSeries } from '@/lib/ui/achievements/revision057-catalog';
+import { revision058NewSeries } from '@/lib/ui/achievements/revision058-catalog';
 import {
   RotateCcw,
   Unplug,
@@ -141,7 +142,7 @@ const legacyGlyphs: Readonly<Record<V056Id, LucideIcon>> = {
 export const achievementGlyphs = {
   ...legacyGlyphs,
   ...Object.fromEntries(
-    revision057NewSeries.flatMap((s) =>
+    [...revision057NewSeries, ...revision058NewSeries].flatMap((s) =>
       s.ids.map((id) => [
         id,
         legacyGlyphs[

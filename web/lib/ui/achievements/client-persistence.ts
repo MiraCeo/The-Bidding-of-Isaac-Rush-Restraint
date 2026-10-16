@@ -183,6 +183,7 @@ export function mergeAcknowledgedGrowth(
     current.expansionFrom !== saved.expansionFrom ||
     current.milestonesFrom !== saved.milestonesFrom ||
     current.revisionsFrom !== saved.revisionsFrom ||
+    current.cfFrom !== saved.cfFrom ||
     current.profileEpoch !== saved.profileEpoch ||
     (current.ignoredThrough ?? 0) !== (saved.ignoredThrough ?? 0) ||
     current.units.length < saved.units.length ||
@@ -495,6 +496,7 @@ export function mergeSavedGrowth(
     current.expansionFrom !== saved.expansionFrom ||
     current.milestonesFrom !== saved.milestonesFrom ||
     current.revisionsFrom !== saved.revisionsFrom ||
+    current.cfFrom !== saved.cfFrom ||
     current.units.length < saved.units.length ||
     saved.units.some(
       (u, i) => u.authorityHash !== current.units[i]?.authorityHash,

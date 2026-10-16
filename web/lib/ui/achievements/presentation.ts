@@ -1,4 +1,11 @@
-import { revision057Catalog, revision057NewSeries } from './revision057-catalog';
+import {
+  revision057Catalog,
+  revision057NewSeries,
+} from './revision057-catalog';
+import {
+  revision058Catalog,
+  revision058NewSeries,
+} from './revision058-catalog';
 import type { AchievementId as V056Id } from './v056-catalog';
 import {
   achievementCatalog,
@@ -292,6 +299,37 @@ export const achievementPresentation = {
               (s?.unit === 'group'
                 ? ' 五项按A、B分别计数；旧布尔缺少组数，不追溯补造，新累计从0.5.7新结算开始，旧一级时间保留。'
                 : ''),
+          },
+        ];
+      }),
+  ),
+  ...Object.fromEntries(
+    revision058Catalog
+      .filter(
+        (a) =>
+          a.id === 'C08' ||
+          revision058NewSeries.some((s) => s.ids.includes(a.id)),
+      )
+      .map((a) => {
+        const s = revision058NewSeries.find((s) => s.ids.includes(a.id));
+        const unit =
+          s?.unit === 'money'
+            ? '资金'
+            : s?.unit === 'copy'
+              ? '件'
+              : s?.unit === 'room'
+                ? '房'
+                : '次';
+        return [
+          a.id,
+          {
+            summary:
+              a.id === 'C08'
+                ? '同局两房将扰乱转为实际道具'
+                : s?.unit === 'prefix'
+                  ? `同局连续通过前${a.target}层淘汰`
+                  : `${s!.name}：累计${a.target}${unit}`,
+            note: a.condition,
           },
         ];
       }),

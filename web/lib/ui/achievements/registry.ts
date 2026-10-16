@@ -1,3 +1,9 @@
+import {
+  createRevision058Scan,
+  cloneRevision058Scan,
+  scanRevision058Receipt,
+  revision058EvaluatedIds,
+} from './revision058-evaluation';
 import { achievementCatalog as v056Catalog } from './v056-catalog';
 import {
   createRevision057Scan,
@@ -25,6 +31,7 @@ import {
   currentAchievementCatalogVersion,
   milestoneAchievementCatalogVersion,
   revisionAchievementCatalogVersion,
+  cfAchievementCatalogVersion,
   characterAchievementRequirements,
   type AchievementId,
 } from './catalog';
@@ -39,6 +46,7 @@ import {
   sameAchievementEventFacts,
   isMilestoneEvent,
   isRevisionEvent,
+  isCfEvent,
   encodeAchievementEvent,
   decodeAchievementEvent,
   eventRunAnalysis,
@@ -65,6 +73,7 @@ export interface AchievementRegistry {
   receipts: AchievementReceipt[];
   milestones?: { from: number; at: string };
   revisions?: { from: number; at: string };
+  cf?: { from: number; at: string };
 }
 function fail(): never {
   throw Error('成就成长模块损坏、版本不支持或容量超限，原档案保留。');
@@ -100,6 +109,7 @@ function newScan() {
   return {
     milestones: createMilestoneScan(),
     revisions: createRevision057Scan(),
+    cf: createRevision058Scan(),
     legacyAchievements: {} as Partial<Record<'A02' | 'A04', string>>,
     legacyLostAt: null as string | null,
     counters: emptyAchievementCounters(),
@@ -118,6 +128,7 @@ function scanReceipt(
   r: AchievementReceipt,
   active = false,
   revisionActive = false,
+  cfActive = false,
 ) {
   const { snapshots, nodes, authorityUnits, progress, achievedAt } = state;
 
@@ -180,6 +191,7 @@ function scanReceipt(
   }
   scanMilestoneReceipt(state.milestones, r, active);
   scanRevision057Receipt(state.revisions, r, revisionActive);
+  scanRevision058Receipt(state.cf, r, cfActive);
   if (!revisionActive) {
     for (const id of ['A02', 'A04'] as const) {
       const at = achievedAt[id] ?? state.milestones.achievedAt[id];
@@ -221,7 +233,23 @@ function scan(registry: AchievementRegistry) {
     )
       fail();
   }
+  if (registry.cf) {
+    exact(registry.cf, ['from', 'at']);
+    date(registry.cf.at);
+    const { from, at } = registry.cf;
+    if (
+      !Number.isInteger(from) ||
+      from < 0 ||
+      from >= registry.receipts.length ||
+      !registry.revisions ||
+      from < registry.revisions.from ||
+      registry.receipts[from]!.at !== at ||
+      !isCfEvent(registry.receipts[from]!)
+    )
+      fail();
+  }
   for (const [i, r] of registry.receipts.entries()) {
+    if (isCfEvent(r) && (!registry.cf || i < registry.cf.from)) fail();
     if (
       isRevisionEvent(r) &&
       (!registry.revisions || i < registry.revisions.from)
@@ -237,6 +265,7 @@ function scan(registry: AchievementRegistry) {
       r,
       !!registry.milestones && i >= registry.milestones.from,
       !!registry.revisions && i >= registry.revisions.from,
+      !!registry.cf && i >= registry.cf.from,
     );
   }
   return state;
@@ -247,12 +276,21 @@ function projectScan(registry: AchievementRegistry, state: ScanState) {
     ...state.progress,
     ...state.milestones.progress,
     ...state.revisions.progress,
+    ...state.cf.progress,
   };
   const achievedAt = {
     ...state.revisions.achievedAt,
     ...state.milestones.achievedAt,
     ...state.achievedAt,
   };
+  // Changed meanings use the current rule, not a prior first-event grant.
+  // Unchanged thresholds keep ordinary earned-state inheritance (notably E05's
+  // role prerequisite). No extra old-time conversion or cleanup is performed.
+  delete achievedAt.C06;
+  delete achievedAt.C08;
+  for (const id of revision058EvaluatedIds)
+    if (state.cf.achievedAt[id] !== undefined && achievedAt[id] === undefined)
+      achievedAt[id] = state.cf.achievedAt[id];
   delete achievedAt.A02;
   delete achievedAt.A04;
   const progress = Object.fromEntries(
@@ -390,7 +428,11 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   const v = object(value);
   exact(
     value,
-    v.version === 2 || v.version === 3 || v.version === 4 || v.version === 5
+    v.version === 2 ||
+      v.version === 3 ||
+      v.version === 4 ||
+      v.version === 5 ||
+      v.version === 6
       ? [
           'version',
           'catalogVersion',
@@ -400,7 +442,8 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
           'roots',
           'data',
           ...((v.version as number) >= 4 ? ['milestones'] : []),
-          ...(v.version === 5 ? ['revisions'] : []),
+          ...((v.version as number) >= 5 ? ['revisions'] : []),
+          ...(v.version === 6 ? ['cf'] : []),
         ]
       : [
           'version',
@@ -411,18 +454,24 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
         ],
   );
   if (
-    ![1, 2, 3, 4, 5].includes(v.version as number) ||
+    ![1, 2, 3, 4, 5, 6].includes(v.version as number) ||
     v.catalogVersion !==
-      (v.version === 5
-        ? revisionAchievementCatalogVersion
-        : v.version === 4
-          ? milestoneAchievementCatalogVersion
-          : v.version === 3
-            ? currentAchievementCatalogVersion
-            : achievementCatalogVersion)
+      (v.version === 6
+        ? cfAchievementCatalogVersion
+        : v.version === 5
+          ? revisionAchievementCatalogVersion
+          : v.version === 4
+            ? milestoneAchievementCatalogVersion
+            : v.version === 3
+              ? currentAchievementCatalogVersion
+              : achievementCatalogVersion)
   )
     fail();
-  if (v.version === 5) {
+  if (v.version === 6) {
+    exact(v.cf, ['from', 'at']);
+    date(object(v.cf).at);
+  }
+  if ((v.version as number) >= 5) {
     exact(v.revisions, ['from', 'at']);
     date(object(v.revisions).at);
   }
@@ -434,7 +483,13 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
   if (new TextEncoder().encode(content).length > achievementRegistryByteLimit)
     fail();
-  if (v.version === 2 || v.version === 3 || v.version === 4 || v.version === 5)
+  if (
+    v.version === 2 ||
+    v.version === 3 ||
+    v.version === 4 ||
+    v.version === 5 ||
+    v.version === 6
+  )
     return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
   if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
     fail();
@@ -593,6 +648,7 @@ export function createAchievementBatch(
         ...previous.state,
         milestones: cloneMilestoneScan(previous.state.milestones),
         revisions: cloneRevision057Scan(previous.state.revisions),
+        cf: cloneRevision058Scan(previous.state.cf),
         legacyAchievements: { ...previous.state.legacyAchievements },
         counters: { ...previous.state.counters },
         progress: { ...previous.state.progress },
@@ -649,7 +705,15 @@ export function createAchievementBatch(
           registry.milestones = { from: registry.receipts.length, at: r.at };
         if (isRevisionEvent(r) && !registry.revisions)
           registry.revisions = { from: registry.receipts.length, at: r.at };
-        scanReceipt(state, r, !!registry.milestones, !!registry.revisions);
+        if (isCfEvent(r) && !registry.cf)
+          registry.cf = { from: registry.receipts.length, at: r.at };
+        scanReceipt(
+          state,
+          r,
+          !!registry.milestones,
+          !!registry.revisions,
+          !!registry.cf,
+        );
         registry.receipts.push(r);
         changed = true;
       } catch (error) {

@@ -93,13 +93,13 @@ function activate(p: PlayerProfile) {
     now,
   );
 }
-it('renders 57 cards for 87 badges and keeps a legacy silver without inventing a bronze or changing its timestamp', async () => {
+it('renders 57 cards for 107 badges and keeps a legacy silver without inventing a bronze or changing its timestamp', async () => {
   const p = legacy(),
     raw = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, raw);
   await mount(p);
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
-  expect(node.textContent).toContain('57 张卡片，涵盖 87 / 87 枚徽章');
+  expect(node.textContent).toContain('57 张卡片，涵盖 107 / 107 枚徽章');
   expect(card().textContent).toContain('已获 1 / 3');
   expect(card().textContent).toContain('待新正式结算确认');
   expect(card().getAttribute('data-focused-id')).toBe('B07');

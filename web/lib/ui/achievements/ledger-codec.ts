@@ -1,4 +1,4 @@
-import { isMilestoneEvent, isRevisionEvent } from './event-codec';
+import { isMilestoneEvent, isRevisionEvent, isCfEvent } from './event-codec';
 import type { AchievementReceipt, AchievementRegistry } from './registry';
 import { canonicalJson } from '../../shared/json-facts';
 import { sha256Hex } from '../../shared/sha256';
@@ -6,12 +6,13 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2 | 3 | 4 | 5;
-  catalogVersion: 1 | 2 | 3 | 4;
+  version: 2 | 3 | 4 | 5 | 6;
+  catalogVersion: 1 | 2 | 3 | 4 | 5;
   activatedAt: string;
   manualUnlockAllAt: string | null;
   milestones?: { from: number; at: string };
   revisions?: { from: number; at: string };
+  cf?: { from: number; at: string };
   count: number;
   roots: [0 | 1, string][];
   data: string[];
@@ -79,7 +80,9 @@ export function packAchievementRegistry(
   registry: AchievementRegistry,
   forceExpanded = false,
 ): PackedAchievementRegistry {
+  const v6 = !!registry.cf;
   const v5 = !!registry.revisions;
+  if ((v6 && !v5) || (!v6 && registry.receipts.some(isCfEvent))) fail();
   const v4 = !!registry.milestones;
   if ((v5 && !v4) || (!v5 && registry.receipts.some(isRevisionEvent))) fail();
   if (!v4 && registry.receipts.some(isMilestoneEvent)) fail();
@@ -138,9 +141,14 @@ export function packAchievementRegistry(
     if (v5) {
       uint(isRevisionEvent(r) ? 1 : 0);
       if (isRevisionEvent(r)) {
-        if (r.stage === 'room') for (const n of v.slice(8)) uint(n!);
+        if (r.stage === 'room') for (const n of v.slice(8, 14)) uint(n!);
         else if (r.stage === 'complete') uint(v[3]!);
       }
+    }
+    if (v6) {
+      uint(isCfEvent(r) ? 1 : 0);
+      if (isCfEvent(r) && r.stage === 'room')
+        for (const n of v.slice(14)) uint(n!);
     }
     nodes.set(r.key, nodes.size + 1);
   }
@@ -149,10 +157,11 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
-    catalogVersion: v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
+    version: v6 ? 6 : v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
+    catalogVersion: v6 ? 5 : v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
     ...(registry.milestones ? { milestones: { ...registry.milestones } } : {}),
     ...(registry.revisions ? { revisions: { ...registry.revisions } } : {}),
+    ...(registry.cf ? { cf: { ...registry.cf } } : {}),
     activatedAt: registry.activatedAt,
     manualUnlockAllAt: registry.manualUnlockAllAt,
     count: registry.receipts.length,
@@ -170,7 +179,8 @@ export function unpackAchievementRegistry(
       (value.version === 2 && value.catalogVersion === 1) ||
       (value.version === 3 && value.catalogVersion === 2) ||
       (value.version === 4 && value.catalogVersion === 3) ||
-      (value.version === 5 && value.catalogVersion === 4)
+      (value.version === 5 && value.catalogVersion === 4) ||
+      (value.version === 6 && value.catalogVersion === 5)
     )
   )
     fail();
@@ -277,7 +287,7 @@ export function unpackAchievementRegistry(
         } else values.push(1);
       }
     }
-    if (value.version === 5) {
+    if (value.version >= 5) {
       const present = uint();
       if (present > 1) fail();
       if (present) {
@@ -292,6 +302,23 @@ export function unpackAchievementRegistry(
           if (values.length !== oldLength) fail();
           values.push(1);
         }
+      }
+    }
+    if (value.version === 6) {
+      const present = uint();
+      if (present > 1) fail();
+      if (present) {
+        const priorLength =
+          stage === 'room'
+            ? 14
+            : stage === 'entry' || stage === 'complete'
+              ? 4
+              : stage === 'floor'
+                ? 3
+                : 5;
+        if (values.length !== priorLength) fail();
+        if (stage === 'room') values.push(uint(), uint(), uint());
+        else values.push(1);
       }
     }
     const candidate = {
@@ -313,6 +340,7 @@ export function unpackAchievementRegistry(
     manualUnlockAllAt: value.manualUnlockAllAt,
     receipts,
     ...(value.version >= 4 ? { milestones: value.milestones } : {}),
-    ...(value.version === 5 ? { revisions: value.revisions } : {}),
+    ...(value.version >= 5 ? { revisions: value.revisions } : {}),
+    ...(value.version === 6 ? { cf: value.cf } : {}),
   };
 }
