@@ -226,8 +226,9 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
           { signal },
         );
         source = committed.source;
-        setProfile(validated);
-        setProfileMessage('');
+        const committedProfile = loadPlayerProfile(storage);
+        setProfile(committedProfile.profile);
+        setProfileMessage(committedProfile.message);
       }
       if (signal?.aborted) return;
       acceptSaveSource(source);

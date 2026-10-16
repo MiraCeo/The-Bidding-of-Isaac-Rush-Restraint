@@ -1,3 +1,4 @@
+import { prepareAchievementBaseline } from './achievements/registry';
 import type { SurvivalGameState } from '../game/survival-session';
 import {
   validateGrowthProfilePair,
@@ -33,7 +34,9 @@ export function restoreSurvivalBackupProgress(
       new Date(),
       growth,
     ),
-    playerProfile = JSON.stringify(readPlayerProfile(profile));
+    playerProfile = JSON.stringify(
+      readPlayerProfile(prepareAchievementBaseline(readPlayerProfile(profile))),
+    );
   const writes = [
     [survivalSaveKey, checkpoint],
     [playerProfileKey, playerProfile],

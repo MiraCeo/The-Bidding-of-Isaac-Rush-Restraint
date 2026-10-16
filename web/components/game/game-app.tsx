@@ -1,4 +1,5 @@
 import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
+import { AchievementBaselineMaintenance } from './achievement-baseline-maintenance';
 import { useState, useCallback } from 'react';
 import { ClassicGameApp, type ClassicGameAppProps } from './classic-game-app';
 import { SurvivalGameApp } from './survival-game-app';
@@ -301,6 +302,7 @@ export function GameApp() {
         consumePage: () => setPendingPage(undefined),
       }}
     >
+      <AchievementBaselineMaintenance />
       <ClassicGameApp
         inactive={screen === 'survival' || progressOpen}
         onToolsChange={setClassicTools}

@@ -1,4 +1,7 @@
-import { withAchievementVerificationScope } from './registry';
+import {
+  withAchievementVerificationScope,
+  prepareAchievementBaseline,
+} from './registry';
 import { persistCompletionProfile } from '../completion-persistence';
 import { type PlayerProfile } from '../player-profile';
 import type { SaveStorage } from '../game-save';
@@ -33,7 +36,9 @@ export async function persistAchievementProfile(
     () => {
       check();
       return withAchievementVerificationScope(() =>
-        persistCompletionProfile(storage, compute),
+        persistCompletionProfile(storage, (profile) =>
+          compute(prepareAchievementBaseline(profile)),
+        ),
       );
     },
     signal,
@@ -48,10 +53,13 @@ export async function persistGrowthContext(
   signal?: AbortSignal,
   additionalProfileUpdate?: (profile: PlayerProfile) => PlayerProfile,
 ) {
+  let committedContext = context;
   const result = await persistAchievementProfile(
     storage,
     (profile) => {
-      const candidate = applyGrowthContext(profile, context).profile;
+      const applied = applyGrowthContext(profile, context);
+      committedContext = applied.context;
+      const candidate = applied.profile;
       return additionalProfileUpdate
         ? additionalProfileUpdate(candidate)
         : candidate;
@@ -61,6 +69,6 @@ export async function persistGrowthContext(
   );
   return {
     ...result,
-    context: { ...context, acknowledged: context.units.length },
+    context: committedContext,
   };
 }

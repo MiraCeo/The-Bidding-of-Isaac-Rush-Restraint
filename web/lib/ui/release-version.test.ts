@@ -20,7 +20,7 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.5.10');
+    expect(appVersion).toBe('0.5.11');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
@@ -47,7 +47,7 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.5.4')!.compatibility,
     ).toContain('纯展示');
-    expect(appReleaseNotes[0]!.version).toBe('0.5.10');
+    expect(appReleaseNotes[0]!.version).toBe('0.5.11');
     expect(appReleaseNotes.find((n) => n.version === '0.5.5')!.title).toContain(
       '达成回显',
     );
@@ -67,8 +67,13 @@ describe('UI release version independent of save compatibility', () => {
     const countFix = appReleaseNotes.find((n) => n.version === '0.5.9')!;
     expect(countFix.highlights.join(' ')).toContain('57张');
     expect(countFix.compatibility).toContain('纯展示');
-    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('最高等级');
-    expect(appReleaseNotes[0]!.compatibility).toContain('纯只读展示');
+    const tierFix = appReleaseNotes.find((n) => n.version === '0.5.10')!;
+    expect(tierFix.highlights.join(' ')).toContain('最高等级');
+    expect(tierFix.compatibility).toContain('纯只读展示');
+    expect(appReleaseNotes[0]!.compatibility).toContain(
+      'achievementBaselineV1',
+    );
+    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('手动一键解锁');
     const desktop = appReleaseNotes.find((n) => n.version === '0.5.2')!;
     expect(desktop.title).toContain('PC');
     expect(desktop.highlights.join(' ')).toContain('主菜单版本胶囊');

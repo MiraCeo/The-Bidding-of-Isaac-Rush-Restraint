@@ -18,6 +18,7 @@ import {
   type AchievementId,
   type AchievementCategory,
 } from '@/lib/ui/achievements/catalog';
+import { hasCurrentAchievementBaseline } from '@/lib/ui/achievements/baseline';
 import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
   achievementListPresentation,
@@ -168,6 +169,11 @@ export function AchievementProgress({
       }}
     >
       <section className="achievement-progress" aria-label="成就与角色解锁">
+        {!hasCurrentAchievementBaseline(profile) && (
+          <output className="save-message">
+            旧版本成就已停用，清理尚待成功保存；对局、回放及手动角色授权保留。
+          </output>
+        )}
         <header className="achievement-overview">
           <div className="achievement-overview-heading">
             <div>

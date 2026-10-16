@@ -184,6 +184,7 @@ export function mergeAcknowledgedGrowth(
     current.milestonesFrom !== saved.milestonesFrom ||
     current.revisionsFrom !== saved.revisionsFrom ||
     current.cfFrom !== saved.cfFrom ||
+    current.baseline !== saved.baseline ||
     current.profileEpoch !== saved.profileEpoch ||
     (current.ignoredThrough ?? 0) !== (saved.ignoredThrough ?? 0) ||
     current.units.length < saved.units.length ||
@@ -491,12 +492,20 @@ export function mergeSavedGrowth(
   saved: GrowthContext,
 ): GrowthContext {
   if (
+    !snapshot.baseline &&
+    !current.baseline &&
+    saved.baseline === 1 &&
+    canonicalJson(current) === canonicalJson(snapshot)
+  )
+    return saved;
+  if (
     current.root !== saved.root ||
     current.excludedThrough !== saved.excludedThrough ||
     current.expansionFrom !== saved.expansionFrom ||
     current.milestonesFrom !== saved.milestonesFrom ||
     current.revisionsFrom !== saved.revisionsFrom ||
     current.cfFrom !== saved.cfFrom ||
+    current.baseline !== saved.baseline ||
     current.units.length < saved.units.length ||
     saved.units.some(
       (u, i) => u.authorityHash !== current.units[i]?.authorityHash,

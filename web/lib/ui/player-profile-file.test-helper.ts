@@ -38,6 +38,7 @@ export function profileFileFixture(): PlayerProfile {
   ];
   profile.progression.statistics = { existingCounter: 3 };
   profile.progression.modules = {
+    ...profile.progression.modules,
     extension: {
       note: '已有扩展字段只保留，不新增玩法',
       values: [1, null, true, '测试'],

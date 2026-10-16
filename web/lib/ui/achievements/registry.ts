@@ -4,6 +4,11 @@ import {
   scanRevision058Receipt,
   revision058EvaluatedIds,
 } from './revision058-evaluation';
+import {
+  achievementBaselineModule,
+  currentAchievementBaseline,
+  hasCurrentAchievementBaseline,
+} from './baseline';
 import { achievementCatalog as v056Catalog } from './v056-catalog';
 import {
   createRevision057Scan,
@@ -528,10 +533,47 @@ export function validateProfileAchievementRegistry(
   analyzeProfile(profile);
 }
 export function projectAchievementRegistry(profile: PlayerProfile) {
-  const analysis = analyzeProfile(profile);
+  const analysis = analyzeProfile(prepareAchievementBaseline(profile));
   return analysis
     ? structuredClone(projectScan(analysis.registry, analysis.state))
     : null;
+}
+/** Pure candidate only; callers commit under the original coordinated profile
+ * transaction. Unknown/corrupt old ledgers fail BEFORE any data is removed. */
+export function prepareAchievementBaseline(
+  profile: PlayerProfile,
+  now = new Date(),
+): PlayerProfile {
+  if (hasCurrentAchievementBaseline(profile)) return profile;
+  const previous = analyzeProfile(profile);
+  const manual = previous?.registry.manualUnlockAllAt ?? null;
+  const modules = { ...profile.progression.modules };
+  delete modules[achievementRegistryModule];
+  modules[achievementBaselineModule] = { version: currentAchievementBaseline };
+  if (previous)
+    modules[achievementRegistryModule] = {
+      version: 1,
+      catalogVersion: 1,
+      activatedAt: now.toISOString(),
+      manualUnlockAllAt: manual,
+      receipts: [],
+    };
+  const characterUnlocks = Object.fromEntries(
+    Object.entries(profile.progression.characterUnlocks).filter(
+      ([, grant]) =>
+        !/^(?:legacy:)?[A-F]\d{2}(?:\+[A-F]\d{2})*$/.test(grant.conditionId),
+    ),
+  );
+  return {
+    ...profile,
+    updatedAt: now.toISOString(),
+    progression: {
+      ...profile.progression,
+      achievements: {},
+      characterUnlocks,
+      modules,
+    },
+  };
 }
 function install(
   profile: PlayerProfile,
@@ -604,6 +646,7 @@ export function activateAchievementRegistry(
   profile: PlayerProfile,
   now = new Date(),
 ): PlayerProfile {
+  profile = prepareAchievementBaseline(profile, now);
   if (readAchievementRegistry(profile)) return profile;
   return install(
     profile,
@@ -744,6 +787,7 @@ export function appendAchievementEvent(
   )
     fail();
   if (submission.source !== 'live') return profile;
+  profile = prepareAchievementBaseline(profile, now);
   const batch = createAchievementBatch(profile, now);
   batch.append(submission);
   return batch.finish();
@@ -754,7 +798,7 @@ export function manuallyUnlockAchievementCharacters(
 ) {
   const active = activateAchievementRegistry(profile, now),
     registry = readAchievementRegistry(active)!;
-  if (registry.manualUnlockAllAt !== null) return profile;
+  if (registry.manualUnlockAllAt !== null) return active;
   return install(
     active,
     { ...registry, manualUnlockAllAt: now.toISOString() },

@@ -1,5 +1,5 @@
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
-import { beginSurvivalGrowth, observeSurvivalGrowth, restoreGrowthContext, validateGrowthContext,
+import { resetLegacyGrowthContext, beginSurvivalGrowth, observeSurvivalGrowth, restoreGrowthContext, validateGrowthContext,
   survivalGrowthOrder, validateGrowthProfilePair, type GrowthContext } from './achievements/lifecycle';
 import { playerProfileKey, readPlayerProfile } from './player-profile';
 import { measurePersistence } from './persistence-metrics';
@@ -203,6 +203,7 @@ export function serializeSurvivalCheckpoint(
   now = new Date(),
   growth?: GrowthContext,
 ): string {
+  if (growth) growth = resetLegacyGrowthContext(growth, survivalGrowthOrder(game));
   const facts = createSurvivalRuleFacts(survivalParameters(game));
   return stringifyChecked({
     format: 'the-bidding-of-isaac-save',

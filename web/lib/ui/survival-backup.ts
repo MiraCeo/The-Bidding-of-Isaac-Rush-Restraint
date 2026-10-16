@@ -1,3 +1,4 @@
+import { prepareAchievementBaseline } from './achievements/registry';
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import { validateGrowthProfilePair, type GrowthContext } from './achievements/lifecycle';
 import type { SurvivalGameState } from '../game/survival-session';
@@ -55,7 +56,7 @@ export function serializeSurvivalBackup(
         now,
       ),
     ),
-    profile: readPlayerProfile(profile),
+    profile: prepareAchievementBaseline(readPlayerProfile(profile), now),
   });
 }
 export function parseSurvivalBackup(source: string): SurvivalBackupDocument {

@@ -33,13 +33,19 @@ import {
   type EncodedAchievementEvent,
   type AchievementEvent,
 } from './event-codec';
-import { createAchievementBatch } from './registry';
+import { createAchievementBatch, prepareAchievementBaseline } from './registry';
+import {
+  currentAchievementBaseline,
+  hasCurrentAchievementBaseline,
+} from './baseline';
 
 export interface GrowthUnit extends EncodedAchievementEvent {
   authorityHash: string;
 }
 export interface GrowthContext {
   version: 1;
+  /** Fixed achievement data generation; missing means pre-cleanup facts. */
+  baseline?: 1;
   mode: 'classic' | 'survival';
   root: string;
   /** Monotonic authority-stage boundary, not a room count or an export timestamp. */
@@ -60,6 +66,42 @@ export interface GrowthContext {
 }
 function fail(): never {
   throw Error('对局成长上下文不一致，原对局与档案保留。');
+}
+/** Drop obsolete achievement-only pending/acknowledged units, not game turns or
+ * replay facts. The existing authority exclusion boundary prevents backfill. */
+export function resetLegacyGrowthContext(
+  context: GrowthContext,
+  currentOrder?: number,
+): GrowthContext {
+  if (context.baseline === currentAchievementBaseline) return context;
+  const c = validateGrowthContext(context, context.mode);
+  const boundary =
+    currentOrder ??
+    (c.units.length
+      ? achievementEventOrder(c.units.at(-1)!)
+      : c.excludedThrough);
+  const excludedThrough = Math.max(c.excludedThrough, boundary);
+  return {
+    ...c,
+    baseline: currentAchievementBaseline,
+    excludedThrough,
+    expansionFrom: Math.max(
+      c.expansionFrom ?? excludedThrough,
+      excludedThrough,
+    ),
+    milestonesFrom: Math.max(
+      c.milestonesFrom ?? excludedThrough,
+      excludedThrough,
+    ),
+    revisionsFrom: Math.max(
+      c.revisionsFrom ?? excludedThrough,
+      excludedThrough,
+    ),
+    cfFrom: Math.max(c.cfFrom ?? excludedThrough, excludedThrough),
+    units: [],
+    acknowledged: 0,
+    ...(c.ignoredThrough !== undefined ? { ignoredThrough: 0 } : {}),
+  };
 }
 function exact(value: unknown, names: string[]) {
   if (
@@ -162,6 +204,7 @@ export function beginClassicGrowth(
   if (session.game.phase === 'character_selection' || !session.replay) fail();
   const ctx: GrowthContext = {
     version: 1,
+    baseline: currentAchievementBaseline,
     mode: 'classic',
     root: digest(['classic', session.replay.id]),
     excludedThrough,
@@ -190,6 +233,7 @@ export function beginSurvivalGrowth(
   );
   const ctx: GrowthContext = {
     version: 1,
+    baseline: currentAchievementBaseline,
     mode: 'survival',
     root: digest(['survival', id]),
     excludedThrough,
@@ -245,6 +289,10 @@ export function observeClassicGrowth(
 ): GrowthContext {
   const g = next.game;
   if (g.phase === 'character_selection') fail();
+  ctx = resetLegacyGrowthContext(
+    ctx,
+    before ? classicGrowthOrder(before) : classicGrowthOrder(next),
+  );
   let result =
     ctx.expansionFrom === undefined
       ? {
@@ -364,6 +412,10 @@ export function observeSurvivalGrowth(
   next: SurvivalGameState,
   ctx: GrowthContext,
 ): GrowthContext {
+  ctx = resetLegacyGrowthContext(
+    ctx,
+    before ? survivalGrowthOrder(before) : survivalGrowthOrder(next),
+  );
   let result =
     ctx.expansionFrom === undefined
       ? {
@@ -551,6 +603,7 @@ export function validateGrowthContext(
           'milestonesFrom',
           'revisionsFrom',
           'cfFrom',
+          'baseline',
         ].filter((key) => Object.hasOwn(value, key))
       : [];
   exact(value, [
@@ -624,6 +677,8 @@ export function validateGrowthContext(
       c.cfFrom < c.revisionsFrom)
   )
     fail();
+  if (c.baseline !== undefined && c.baseline !== currentAchievementBaseline)
+    fail();
   let previous = c.excludedThrough;
   for (const unit of c.units) {
     exact(unit, ['stage', 'position', 'values', 'authorityHash']);
@@ -675,6 +730,7 @@ export function restoreGrowthContext(
     if (c.milestonesFrom === undefined) delete rest.milestonesFrom;
     if (c.revisionsFrom === undefined) delete rest.revisionsFrom;
     if (c.cfFrom === undefined) delete rest.cfFrom;
+    if (c.baseline === undefined) delete rest.baseline;
     return { ...rest, acknowledged: 0 };
   };
   if (
@@ -692,7 +748,10 @@ export function applyGrowthContext(
   context: GrowthContext,
   now = new Date(),
 ) {
-  const c = validateGrowthContext(context, context.mode);
+  const c = resetLegacyGrowthContext(
+    validateGrowthContext(context, context.mode),
+  );
+  profile = prepareAchievementBaseline(profile, now);
   const batch = createAchievementBatch(profile, now);
   let parent: string | null = null;
   const find = (unit: GrowthUnit) =>
@@ -735,8 +794,13 @@ export function validateGrowthProfilePair(
   profile: PlayerProfile,
   context: GrowthContext,
 ): void {
-  const c = validateGrowthContext(context, context.mode),
-    batch = createAchievementBatch(profile);
+  const c = validateGrowthContext(context, context.mode);
+  // Legacy files are verified against their original legacy profile first.
+  // A cleared current profile makes an unmarked old prefix explicitly excluded.
+  const current = hasCurrentAchievementBaseline(profile);
+  if (!c.baseline && current) return;
+  if (c.baseline && !current) throw Error('成长基线与配套档案不一致。');
+  const batch = createAchievementBatch(profile);
   for (const unit of c.units.slice(c.ignoredThrough ?? 0, c.acknowledged)) {
     const receipt = batch.find({ ...unit, mode: c.mode, root: c.root });
     if (!receipt || !sameAchievementEventFacts(receipt, unit))

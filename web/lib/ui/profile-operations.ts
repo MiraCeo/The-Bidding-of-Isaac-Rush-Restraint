@@ -8,6 +8,7 @@ import {
   readPlayerProfile,
   type PlayerProfile,
 } from './player-profile';
+import { prepareAchievementBaseline } from './achievements/registry';
 import { PlayerProfileChangedError } from './player-profile-file';
 import {
   restoreBackupWrites,
@@ -30,7 +31,7 @@ export function replacePlayerProfileCoordinated(
 ) {
   return coordinateProfileWrite(() => {
     if (!storage) throw Error('玩家档案存储不可用，未恢复。');
-    const profile = readPlayerProfile(value),
+    const profile = prepareAchievementBaseline(readPlayerProfile(value)),
       source = JSON.stringify(profile);
     if (storage.getItem(playerProfileKey) !== expected)
       throw new PlayerProfileChangedError();

@@ -6,6 +6,7 @@ import {
   createPlayerProfile,
 } from '../player-profile';
 import { checkedJson } from '../file-json';
+import { hasCurrentAchievementBaseline } from './baseline';
 import { projectAchievementRegistry } from './registry';
 import {
   characterAchievementRequirements,
@@ -39,7 +40,9 @@ export function readCharacterAccess(
         ? (Object.keys(view.characterUnlocks) as CharacterId[])
         : ['isaac'],
       invalid: false,
-      message: '',
+      message: hasCurrentAchievementBaseline(profile)
+        ? ''
+        : '旧版本成就已停用，等待清理保存；手动角色授权保留。',
     };
   } catch (error) {
     return {

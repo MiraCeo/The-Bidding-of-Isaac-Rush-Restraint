@@ -7,6 +7,7 @@ import {
 import { checkedJson } from './file-json';
 import { notifyPlayerProfileChanged } from './profile-events';
 import type { SaveStorage } from './game-save';
+import { prepareAchievementBaseline } from './achievements/registry';
 
 /** Re-read/rebase if a profile changed during fact hashing. One profile write
  * commits counters+receipts+history together; this is not a cross-tab lock/CAS. */
@@ -21,7 +22,7 @@ export function persistCompletionProfile(
       source === null
         ? createPlayerProfile()
         : readPlayerProfile(checkedJson(source));
-    const next = compute(current);
+    const next = compute(prepareAchievementBaseline(current));
     if (next === current) return { profile: current, changed: false };
     const validated = readPlayerProfile(next),
       target = JSON.stringify(validated);

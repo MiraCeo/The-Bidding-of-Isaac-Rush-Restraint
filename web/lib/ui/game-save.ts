@@ -1,3 +1,4 @@
+import { prepareAchievementBaseline } from './achievements/registry';
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
@@ -23,7 +24,7 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
 import { measurePersistence } from './persistence-metrics';
 import type { CompletionOrigin } from './completion-registry';
-import { beginClassicGrowth, restoreGrowthContext, validateGrowthContext, classicGrowthOrder, validateGrowthProfilePair } from './achievements/lifecycle';
+import { resetLegacyGrowthContext, beginClassicGrowth, restoreGrowthContext, validateGrowthContext, classicGrowthOrder, validateGrowthProfilePair } from './achievements/lifecycle';
 import { persistCompletionProfile } from './completion-persistence';
 import {
   preserveKnifeExplanationTails,
@@ -248,6 +249,12 @@ function encodeCurrent(
 ): string {
   if ('mode' in session.game)
     fail('不能将带生存模式身份的状态导出为经典存档。');
+  if (profile) {
+    profile = readPlayerProfile(profile);
+    if (session.growth && !session.growthIssue) validateGrowthProfilePair(profile, session.growth);
+    profile = prepareAchievementBaseline(profile, now);
+  }
+  if (session.growth && !session.growthIssue) session = { ...session, growth: resetLegacyGrowthContext(session.growth, classicGrowthOrder(session)) };
   const doc = {
     format,
     version: currentFileVersion,

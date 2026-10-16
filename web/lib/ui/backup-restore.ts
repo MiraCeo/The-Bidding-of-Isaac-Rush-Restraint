@@ -14,6 +14,7 @@ import {
 } from './player-profile';
 import { PlayerProfileChangedError } from './player-profile-file';
 import { notifyPlayerProfileChanged } from './profile-events';
+import { prepareAchievementBaseline } from './achievements/registry';
 import type { GameSession } from './game-session';
 import { validateGrowthProfilePair } from './achievements/lifecycle';
 import {
@@ -102,7 +103,14 @@ export function restoreClassicBackupProgress(
         draftSaveKey,
         JSON.stringify({ token: shortHash(core), draft: session.draft }),
       ],
-      [playerProfileKey, JSON.stringify(readPlayerProfile(profile))],
+      [
+        playerProfileKey,
+        JSON.stringify(
+          readPlayerProfile(
+            prepareAchievementBaseline(readPlayerProfile(profile)),
+          ),
+        ),
+      ],
     ],
     expectedProfileSource,
     { replaceProfile: stampReplacement },
