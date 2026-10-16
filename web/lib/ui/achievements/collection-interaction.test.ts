@@ -313,7 +313,7 @@ it('creates six independent category grids with separators and respects filtered
   expect(node.querySelectorAll('.achievement-section-rule')).toHaveLength(6);
   expect(
     groups()[0]!.querySelector('.achievement-section-count')!.textContent,
-  ).toContain('已达成 1 / 13');
+  ).toContain('已获卡片 1 / 5');
   await select(2, '2');
   expect(
     [...node.querySelectorAll('.achievement-grid')].every(

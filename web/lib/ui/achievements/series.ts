@@ -72,6 +72,20 @@ export function groupAchievementCards(
     return items.length ? [{ category, items }] : [];
   });
 }
+/** Browser counts are cards, not child badges. A partial series counts once if
+ * an earned child matches ALL active filters; a different earned tier cannot
+ * satisfy a pending/silver-only card. This never changes collection records. */
+export function summarizeAchievementCards(
+  cards: ReturnType<typeof selectAchievementCards>,
+  achieved: Partial<Record<AchievementId, string>>,
+) {
+  return {
+    earned: cards.filter((card) =>
+      card.matchingIds.some((id) => !!achieved[id]),
+    ).length,
+    total: cards.length,
+  };
+}
 export function tierForStage(id: AchievementId) {
   return achievementTiers.indexOf(achievementCollectionMetadata[id].tier) + 1;
 }

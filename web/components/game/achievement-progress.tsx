@@ -3,6 +3,7 @@ import {
   groupAchievementCards,
   seriesForAchievement,
   independentGroupForAchievement,
+  summarizeAchievementCards,
 } from '@/lib/ui/achievements/series';
 import { useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
@@ -112,11 +113,27 @@ export function AchievementProgress({
     progress,
     achieved,
   );
-  const entries = selectAchievementCards(
-    { query, category, status, sort, tier },
+  // Category buttons are navigation facets: query/status/tier affect every
+  // count, but selecting A must not zero the other available categories.
+  const matchingCards = selectAchievementCards(
+    { query, category: 'all', status, sort, tier },
     progress,
     achieved,
   );
+  const entries =
+    category === 'all'
+      ? matchingCards
+      : matchingCards.filter((card) => card.definition.category === category);
+  const allCards = summarizeAchievementCards(matchingCards, achieved);
+  const categoryCards = achievementCategories.map((c) => ({
+    ...c,
+    ...summarizeAchievementCards(
+      matchingCards.filter((card) => card.definition.category === c.id),
+      achieved,
+    ),
+  }));
+  const cardCountHint =
+    '已获卡片 / 当前筛选匹配卡片；系列任一级达成计一张，仅统计匹配的子级';
   const detail = achievementCatalog.find((a) => a.id === selected);
   const openDetail = (
     id: AchievementId,
@@ -256,34 +273,36 @@ export function AchievementProgress({
             </label>
           </div>
           <fieldset className="achievement-categories">
-            <legend className="sr-only">成就分类</legend>
+            <legend className="sr-only">成就分类，按当前筛选统计卡片</legend>
             <button
               type="button"
               aria-pressed={category === 'all'}
               onClick={() => setCategory('all')}
+              title={cardCountHint}
+              data-category="all"
+              data-earned={allCards.earned}
+              data-total={allCards.total}
             >
               全部{' '}
               <span>
-                {completed}/{total}
+                {allCards.earned}/{allCards.total}
               </span>
             </button>
-            {achievementCategories.map((c) => (
+            {categoryCards.map((c) => (
               <button
                 type="button"
                 id={`achievement-category-${c.id}`}
                 key={c.id}
                 aria-pressed={category === c.id}
                 onClick={() => setCategory(c.id)}
+                title={cardCountHint}
+                data-category={c.id}
+                data-earned={c.earned}
+                data-total={c.total}
               >
                 {c.name}{' '}
                 <span>
-                  {
-                    achievementCatalog.filter(
-                      (a) => a.category === c.id && achieved[a.id],
-                    ).length
-                  }
-                  /
-                  {achievementCatalog.filter((a) => a.category === c.id).length}
+                  {c.earned}/{c.total}
                 </span>
               </button>
             ))}
@@ -298,7 +317,9 @@ export function AchievementProgress({
               显示 {entries.length} 张卡片，涵盖 {badgeEntries.length} / {total}{' '}
               枚徽章
             </output>
-            <span>按分类分组 · 分类内排序 · 点击徽章查看详情</span>
+            <span title={cardCountHint}>
+              分类按卡片计数 · 分类内排序 · 点击徽章查看详情
+            </span>
           </div>
           <div className="achievement-sections">
             {groupAchievementCards(entries).map(
@@ -321,13 +342,9 @@ export function AchievementProgress({
                       aria-hidden="true"
                     />
                     <span className="achievement-section-count">
-                      已达成{' '}
-                      {
-                        achievementCatalog.filter(
-                          (a) => a.category === group.id && achieved[a.id],
-                        ).length
-                      }{' '}
-                      / {group.count} · 显示 {items.length} 张卡片
+                      已获卡片{' '}
+                      {summarizeAchievementCards(items, achieved).earned} /{' '}
+                      {items.length}
                     </span>
                   </header>
                   <div className="achievement-grid" data-columns={columns}>

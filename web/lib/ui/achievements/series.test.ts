@@ -3,6 +3,7 @@ import {
   selectAchievementCards,
   groupAchievementCards,
   achievementSeries,
+  summarizeAchievementCards,
 } from './series';
 import { achievementCatalog } from './catalog';
 import type { AchievementFilters } from './presentation';
@@ -89,4 +90,89 @@ it('keeps selectors read-only and uses matching achievement dates rather than an
   expect(card.matchingIds).toEqual(['B07']);
   expect(card.definition.id).toBe('B07');
   expect(progress.B02).toBe(5);
+});
+it('counts one card for any number of earned stages, with exact default per-category card totals', () => {
+  const earned = Object.freeze({ B07: at, B02: at, B08: at, E06: at });
+  const cards = selectAchievementCards(all, {}, earned);
+  expect(summarizeAchievementCards(cards, earned)).toEqual({
+    earned: 2,
+    total: 57,
+  });
+  expect(
+    groupAchievementCards(cards).map((g) =>
+      summarizeAchievementCards(g.items, earned),
+    ),
+  ).toEqual([
+    { earned: 0, total: 5 },
+    { earned: 1, total: 10 },
+    { earned: 0, total: 9 },
+    { earned: 0, total: 10 },
+    { earned: 1, total: 14 },
+    { earned: 0, total: 9 },
+  ]);
+});
+it('includes a partially collected card once but never borrows an earned bronze for silver or pending counts', () => {
+  const earned = Object.freeze({ B07: at });
+  const count = (filter: Partial<AchievementFilters>) =>
+    summarizeAchievementCards(
+      selectAchievementCards({ ...all, query: 'B02', ...filter }, {}, earned),
+      earned,
+    );
+  // B02 is a child ID: its bronze sibling does not satisfy this query.
+  expect(count({})).toEqual({ earned: 0, total: 1 });
+  expect(count({ query: '财大气粗' })).toEqual({ earned: 1, total: 1 });
+  expect(count({ query: '财大气粗', status: 'achieved' })).toEqual({
+    earned: 1,
+    total: 1,
+  });
+  expect(count({ query: '财大气粗', status: 'pending' })).toEqual({
+    earned: 0,
+    total: 1,
+  });
+  expect(count({ query: '财大气粗', tier: 'silver' })).toEqual({
+    earned: 0,
+    total: 1,
+  });
+  expect(count({ tier: 'silver', status: 'achieved' })).toEqual({
+    earned: 0,
+    total: 0,
+  });
+});
+it('keeps hidden names concealed and applies query, tier and status before counting cards', () => {
+  const earned = Object.freeze({ B07: at, B02: at });
+  const count = (filters: Partial<AchievementFilters>) =>
+    summarizeAchievementCards(
+      selectAchievementCards({ ...all, ...filters }, {}, earned),
+      earned,
+    );
+  expect(count({ query: '不存在' })).toEqual({ earned: 0, total: 0 });
+  expect(count({ query: '祸不单行' })).toEqual({ earned: 0, total: 0 });
+  expect(count({ query: 'C07' })).toEqual({ earned: 0, total: 1 });
+  expect(count({ query: 'B08', tier: 'bronze' })).toEqual({
+    earned: 0,
+    total: 0,
+  });
+  expect(count({ tier: 'silver', status: 'achieved' })).toEqual({
+    earned: 1,
+    total: 1,
+  });
+  expect(count({ tier: 'gold', status: 'achieved' })).toEqual({
+    earned: 0,
+    total: 0,
+  });
+});
+it('does not change counts when only ordering changes and never mutates the matching card list', () => {
+  const earned = Object.freeze({ B07: at, B02: at }),
+    progress = Object.freeze({ B08: 17 });
+  for (const sort of ['catalog', 'recent', 'progress'] as const) {
+    const cards = selectAchievementCards({ ...all, sort }, progress, earned);
+    const before = JSON.stringify(cards);
+    expect(summarizeAchievementCards(cards, earned)).toEqual({
+      earned: 1,
+      total: 57,
+    });
+    expect(JSON.stringify(cards)).toBe(before);
+  }
+  expect(progress).toEqual({ B08: 17 });
+  expect(earned).toEqual({ B07: at, B02: at });
 });

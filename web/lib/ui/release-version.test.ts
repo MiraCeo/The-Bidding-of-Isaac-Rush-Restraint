@@ -20,7 +20,7 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.5.8');
+    expect(appVersion).toBe('0.5.9');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
@@ -47,7 +47,7 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.5.4')!.compatibility,
     ).toContain('纯展示');
-    expect(appReleaseNotes[0]!.version).toBe('0.5.8');
+    expect(appReleaseNotes[0]!.version).toBe('0.5.9');
     expect(appReleaseNotes.find((n) => n.version === '0.5.5')!.title).toContain(
       '达成回显',
     );
@@ -59,10 +59,13 @@ describe('UI release version independent of save compatibility', () => {
     expect(ab.compatibility).toContain('catalog4');
     expect(ab.highlights.join(' ')).toContain('87枚');
     expect(ab.highlights.join(' ')).toContain('双重保障');
-    expect(appReleaseNotes[0]!.compatibility).toContain('schema6');
-    expect(appReleaseNotes[0]!.compatibility).toContain('catalogVersion5');
-    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('107枚');
-    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('6／18／66');
+    const cf = appReleaseNotes.find((n) => n.version === '0.5.8')!;
+    expect(cf.compatibility).toContain('schema6');
+    expect(cf.compatibility).toContain('catalogVersion5');
+    expect(cf.highlights.join(' ')).toContain('107枚');
+    expect(cf.highlights.join(' ')).toContain('6／18／66');
+    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('57张');
+    expect(appReleaseNotes[0]!.compatibility).toContain('纯展示');
     const desktop = appReleaseNotes.find((n) => n.version === '0.5.2')!;
     expect(desktop.title).toContain('PC');
     expect(desktop.highlights.join(' ')).toContain('主菜单版本胶囊');
