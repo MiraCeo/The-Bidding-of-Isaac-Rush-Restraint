@@ -323,6 +323,10 @@ export function playAchievementStudy(
   role: CharacterId,
   policy: StudyPolicy,
   difficulty: 'classic' | SurvivalDifficulty = 'classic',
+  observer?: {
+    room?: (record: ClientRoomSettlementRecord) => void;
+    complete?: (context: GrowthContext) => void;
+  },
 ): StudyMatch {
   const ctrl = controller(seed, policy),
     actions: StudyMatch['actions'] = {
@@ -343,6 +347,7 @@ export function playAchievementStudy(
   const observe = (r: ClientRoomSettlementRecord) => {
     const p = r.playersBefore.find((p) => p.id === 'human');
     if (!p) return;
+    observer?.room?.(r);
     for (const [key, item] of [
       ['interestRooms', 'interest'],
       ['bagRooms', 'money_bag'],
@@ -387,6 +392,7 @@ export function playAchievementStudy(
       if (s.growthIssue) throw Error(s.growthIssue);
     }
     const human = s.game.finalRanking.find((p) => p.playerId === 'human')!;
+    observer?.complete?.(s.growth!);
     return summarize(s.growth!, {
       mode: 'classic',
       difficulty,
@@ -426,6 +432,7 @@ export function playAchievementStudy(
       });
     if (s.growthIssue) throw Error(s.growthIssue);
   }
+  observer?.complete?.(s.growth!);
   return summarize(s.growth!, {
     mode: 'survival',
     difficulty,
