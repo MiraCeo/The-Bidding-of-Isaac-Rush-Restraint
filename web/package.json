@@ -18,6 +18,7 @@
     "simulate": "vitest run lib/game/simulation.report.test.ts --reporter=verbose",
     "report:ledger:corpus": "node scripts/run-ledger-corpus.mjs",
     "report:ledger:capacity": "node scripts/run-ledger-capacity.mjs",
+    "report:profile:performance": "node scripts/run-profile-performance.mjs",
     "lint": "oxlint",
     "format": "oxfmt",
     "verify:offline": "node scripts/verify-offline.mjs"
