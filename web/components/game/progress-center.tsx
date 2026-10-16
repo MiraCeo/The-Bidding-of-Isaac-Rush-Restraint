@@ -1,7 +1,7 @@
 import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Coins } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { GameHeader } from './game-header';
 import { UtilityPageHeading } from './utility-page-heading';
 import { GameNavigation } from './game-navigation';
@@ -197,46 +197,11 @@ export function ProgressCenter({
     data.cancel();
     setMode(next);
   }
-  const contextGame =
-    origin === 'survival'
-      ? survivalGame
-      : origin === 'classic' && classicActive
-        ? classic
-        : null;
-  const contextHuman = contextGame?.players.find((player) => player.isHuman);
   return (
     <main className="ranking-page progress-page">
       <GameHeader
         navigation={
           <GameNavigation page="progress" onPageChange={onNavigate} />
-        }
-        context={
-          contextGame ? (
-            <div className="round-status">
-              <span className="status-chip">
-                第 {contextGame.floorIndex + 1} 层 · 房间{' '}
-                {contextGame.roomIndex + 1}/5
-              </span>
-              <button
-                type="button"
-                className="status-chip build-entry"
-                aria-label="查看角色构筑"
-                onClick={() => onNavigate('build')}
-              >
-                {characterNames[contextGame.selectedCharacter]}{' '}
-                <span aria-hidden="true">▾</span>
-              </button>
-              <span className="status-chip status-chip-money">
-                <Coins aria-hidden="true" />
-                <strong>{contextHuman?.money ?? '—'}</strong>
-              </span>
-            </div>
-          ) : origin === 'menu' ? null : (
-            <div className="character-step" aria-label="当前步骤">
-              <span>{origin === 'survival' ? '生存模式' : '经典模式'}</span>
-              <strong>未开始对局</strong>
-            </div>
-          )
         }
       />
       <section

@@ -75,6 +75,21 @@ export function groupAchievementCards(
     return items.length ? [{ category, items }] : [];
   });
 }
+/** A card represents an earned medal, not the next unearned medal. Keep its
+ * goal separate, and inside the active filter range. Never infer acquisition
+ * from counters or move backwards to a missing legacy lower stage. */
+export function achievementCardGoal(
+  card: ReturnType<typeof selectAchievementCards>[number],
+  achieved: Partial<Record<AchievementId, string>>,
+) {
+  if (!achieved[card.definition.id]) return card.definition;
+  if (!card.series) return null;
+  const index = card.series.ids.indexOf(card.definition.id);
+  const next = card.series.ids
+    .slice(index + 1)
+    .find((id) => card.matchingIds.includes(id) && !achieved[id]);
+  return next ? achievementCatalog.find((a) => a.id === next)! : null;
+}
 /** Browser counts are cards, not child badges. A partial series counts once if
  * an earned child matches ALL active filters; a different earned tier cannot
  * satisfy a pending/silver-only card. This never changes collection records. */

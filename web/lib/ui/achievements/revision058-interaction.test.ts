@@ -62,7 +62,7 @@ it('shows the highest earned six/eighteen/sixty-six stage and reveals every chil
   await mount(p);
   expect(card('C06').textContent).toContain('已获 1 / 3');
   expect(card('C06').getAttribute('data-focused-id')).toBe('C06');
-  expect(card('C06').querySelector('progress')!.max).toBe(6);
+  expect(card('C06').querySelector('progress')!.max).toBe(18);
   await click(card('C06'));
   for (const [id, target] of [
     ['C06', 6],
@@ -98,7 +98,7 @@ it('keeps the role prerequisite on the three-copy bronze while the series contin
   await mount(p);
   expect(card('E05').textContent).toContain('已获 1 / 3');
   expect(card('E05').getAttribute('data-focused-id')).toBe('E05');
-  expect(card('E05').querySelector('progress')!.max).toBe(3);
+  expect(card('E05').querySelector('progress')!.max).toBe(10);
   expect(
     node.querySelector('[aria-label="角色解锁"]')?.textContent ??
       node.textContent,

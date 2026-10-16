@@ -110,7 +110,10 @@ it.each(['C07', 'F02'] as const)(
     const origin = card(id);
     origin.focus();
     expect(origin.textContent).toContain('???');
-    expect(origin.textContent).toContain('金徽章');
+    expect(origin.querySelector('.achievement-tier')).toBeNull();
+    expect(origin.querySelector('.achievement-badge-rank')!.textContent).toBe(
+      '金',
+    );
     expect(origin.outerHTML).not.toContain(a.name);
     expect(
       origin.querySelector('.achievement-badge svg')!.getAttribute('class'),
@@ -225,7 +228,9 @@ it('retains schema3 and prospective six-achievement evidence without creating ti
   const raw = JSON.stringify(p);
   await mount(p);
   await tier('silver');
-  expect(card('E07').textContent).toContain('银徽章');
+  expect(
+    card('E07').querySelector('.achievement-badge-rank')!.textContent,
+  ).toBe('银');
   expect(card('E07').textContent).toContain('已达成');
   expect(JSON.stringify(p)).toBe(raw);
   expect(raw).not.toContain('hidden');

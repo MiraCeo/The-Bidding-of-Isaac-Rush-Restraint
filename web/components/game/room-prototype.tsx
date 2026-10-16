@@ -252,6 +252,7 @@ export function RoomPrototype({
   return (
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
       <GameHeader
+        showContext={utilityPanel !== 'settings' && utilityPanel !== 'rules'}
         navigation={
           <GameNavigation
             page={utilityPanel}

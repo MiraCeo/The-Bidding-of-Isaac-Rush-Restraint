@@ -75,15 +75,26 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
   expectStage('A01', 'A01', 'bronze', true);
   expectStage('B05', 'B05', 'bronze', true);
   for (const id of ['A01', 'B05']) {
-    expect(card(id).querySelector('.achievement-tier')!.textContent).toBe(
-      '铜徽章',
+    expect(card(id).querySelector('.achievement-tier')).toBeNull();
+    expect(card(id).querySelector('.achievement-badge-rank')!.textContent).toBe(
+      '铜',
     );
+    expect(card(id).getAttribute('aria-label')).toContain('已获铜徽章');
     expect(card(id).querySelector('.achievement-card-state')!.textContent).toBe(
       '已获 1 / 3',
     );
     expect(card(id).dataset.partial).toBe('true');
   }
   expect(facets().textContent).toContain('2/57');
+  expect(card('A01').dataset.goalId).toBe('A08');
+  expect(card('A01').querySelector('progress')!.max).toBe(20);
+  expect(card('A01').querySelector('progress')!.value).toBe(1);
+  expect(card('A01').querySelector('.achievement-summary')!.textContent).toBe(
+    '下一目标：累计正常竞拍失败20次',
+  );
+  expect(card('B05').dataset.goalId).toBe('B18');
+  expect(card('B05').querySelector('progress')!.max).toBe(5);
+  expect(card('B05').querySelector('progress')!.value).toBe(1);
 });
 it.each(['silver', 'gold'] as const)(
   'never marks the filtered unearned %s tier acquired because of its bronze sibling',
@@ -131,10 +142,15 @@ it('advances the all-view representative from bronze to silver to gold only afte
   await mount(p);
   expectStage('A01', 'A08', 'silver', true);
   expect(card('A01').textContent).toContain('已获 2 / 3');
+  expect(card('A01').querySelector('progress')!.max).toBe(100);
+  expect(card('A01').querySelector('progress')!.value).toBe(20);
   for (let i = 20; i < 100; i++) p = appendCf(p, cfRoom(0, { code: 1 }));
   await mount(p);
   expectStage('A01', 'A09', 'gold', true);
   expect(card('A01').textContent).toContain('已获 3 / 3');
+  expect(card('A01').textContent).toContain('全部达成');
+  expect(card('A01').querySelector('progress')).toBeNull();
+  expect(card('A01').dataset.goalId).toBeUndefined();
   expect(card('A01').dataset.partial).toBe('false');
   await mount(bronze);
   expectStage('A01', 'A01', 'bronze', true);
@@ -159,6 +175,8 @@ it('keeps explicit child-ID and pending searches locked without borrowing lower-
   expect(
     card('A01').querySelector('.achievement-card-state')!.textContent!.trim(),
   ).toBe('已达成');
+  expect(card('A01').querySelector('progress')).toBeNull();
+  expect(card('A01').textContent).not.toContain('下一目标');
 });
 it('keeps full three-level details and real dates while filtered cards show only their own acquisition state', async () => {
   const p = bronzeProfile(),

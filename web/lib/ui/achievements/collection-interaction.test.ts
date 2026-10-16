@@ -92,7 +92,7 @@ it('shows saved global totals rather than filtered denominators; new entries are
     node.querySelector('.achievement-overview-caption')!.textContent,
   ).toContain('0.9%');
   expect(cards()).toHaveLength(57);
-  expect(cards()[0]!.querySelector('progress')!.max).toBe(1);
+  expect(cards()[0]!.querySelector('progress')!.max).toBe(20);
   expect(cards()[0]!.querySelector('time')).toBeNull();
   expect(node.textContent).toContain('初出茅庐');
   await select(0, 'achieved');

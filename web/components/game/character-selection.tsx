@@ -107,6 +107,7 @@ export function CharacterSelection({
   return (
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>
       <GameHeader
+        showContext={utilityPanel !== 'settings' && utilityPanel !== 'rules'}
         navigation={
           <GameNavigation
             page={utilityPanel}

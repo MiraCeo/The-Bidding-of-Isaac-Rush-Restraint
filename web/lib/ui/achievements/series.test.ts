@@ -5,8 +5,9 @@ import {
   groupAchievementCards,
   achievementSeries,
   summarizeAchievementCards,
+  achievementCardGoal,
 } from './series';
-import { achievementCatalog } from './catalog';
+import { achievementCatalog, type AchievementId } from './catalog';
 import type { AchievementFilters } from './presentation';
 const all: AchievementFilters = {
   query: '',
@@ -16,6 +17,47 @@ const all: AchievementFilters = {
   tier: 'all',
 };
 const at = '2026-10-15T00:00:00.000Z';
+it.each([
+  [[], 'B07', 'B07'],
+  [['B07'], 'B07', 'B02'],
+  [['B07', 'B02'], 'B02', 'B08'],
+  [['B07', 'B02', 'B08'], 'B08', null],
+  [['B02'], 'B02', 'B08'],
+  [['B08'], 'B08', null],
+] as const)(
+  'separates earned representative from forward-only goal for %j',
+  (ids, focus, goal) => {
+    const earned = Object.freeze(Object.fromEntries(ids.map((id) => [id, at])));
+    const card = selectAchievementCards(all, {}, earned).find(
+      (c) => c.id === 'B02',
+    )!;
+    const before = JSON.stringify(card);
+    expect(card.definition.id).toBe(focus);
+    expect(achievementCardGoal(card, earned)?.id ?? null).toBe(goal);
+    expect(JSON.stringify(card)).toBe(before);
+  },
+);
+it('keeps goals within the exact tier/status/child-ID range and never treats counters as proof', () => {
+  const earned = Object.freeze({ B07: at });
+  const goal = (filter: Partial<AchievementFilters>) => {
+    const card = selectAchievementCards(
+      { ...all, ...filter },
+      { B02: 100, B08: 100 },
+      earned,
+    ).find((c) => c.id === 'B02')!;
+    return achievementCardGoal(card, earned)?.id ?? null;
+  };
+  expect(goal({ tier: 'bronze' })).toBeNull();
+  expect(goal({ status: 'achieved' })).toBeNull();
+  expect(goal({ status: 'pending' })).toBe('B02');
+  expect(goal({ tier: 'gold' })).toBe('B08');
+  expect(goal({ query: achievementNumber('B08') })).toBe('B08');
+  for (const id of ['E06', 'C07'] as AchievementId[]) {
+    const own = { [id]: at };
+    const card = selectAchievementCards(all, {}, own).find((c) => c.id === id)!;
+    expect(achievementCardGoal(card, own)).toBeNull();
+  }
+});
 it('keeps 107 independent badges as 57 cards and preserves the original three series orders', () => {
   expect(achievementCatalog).toHaveLength(107);
   const cards = selectAchievementCards(all, {}, {});

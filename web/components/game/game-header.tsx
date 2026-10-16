@@ -7,9 +7,11 @@ import { GameBrand } from './game-brand';
 export function GameHeader({
   navigation,
   context,
+  showContext = true,
 }: {
   navigation: ReactNode;
   context?: ReactNode;
+  showContext?: boolean;
 }) {
   return (
     <>
@@ -22,7 +24,7 @@ export function GameHeader({
           </span>
         </div>
       </header>
-      {context && (
+      {showContext && context && (
         <section className="page-context-bar" aria-label="页面上下文">
           {context}
         </section>

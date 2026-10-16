@@ -32,6 +32,7 @@ export function SettledGameFrame({
       }
     >
       <GameHeader
+        showContext={utilityPanel !== 'settings' && utilityPanel !== 'rules'}
         navigation={
           <GameNavigation
             page={utilityPanel}

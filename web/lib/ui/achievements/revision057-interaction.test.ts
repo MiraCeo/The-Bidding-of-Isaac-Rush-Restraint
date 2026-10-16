@@ -178,7 +178,11 @@ it('keeps new vacancy medals hidden until a saved fact, then reveals both with d
   });
   await mount(p);
   expect(card('B12').textContent).toContain('两败俱伤');
-  expect(card('B12').textContent).toContain('银徽章');
+  expect(
+    card('B12').querySelector('.achievement-badge-rank')!.textContent,
+  ).toBe('银');
   expect(card('B13').textContent).toContain('全军覆没');
-  expect(card('B13').textContent).toContain('金徽章');
+  expect(
+    card('B13').querySelector('.achievement-badge-rank')!.textContent,
+  ).toBe('金');
 });

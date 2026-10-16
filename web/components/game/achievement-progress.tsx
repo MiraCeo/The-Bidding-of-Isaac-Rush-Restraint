@@ -4,6 +4,7 @@ import {
   seriesForAchievement,
   independentGroupForAchievement,
   summarizeAchievementCards,
+  achievementCardGoal,
 } from '@/lib/ui/achievements/series';
 import { useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
@@ -358,9 +359,14 @@ export function AchievementProgress({
                     {items.map((card) => {
                       const a = card.definition;
                       const at = achieved[a.id],
-                        value = progress[a.id] ?? 0,
                         listing = achievementListPresentation(a.id, !!at),
                         badgeTier = achievementCollectionMetadata[a.id].tier;
+                      const goal = achievementCardGoal(card, achieved),
+                        goalListing = goal
+                          ? achievementListPresentation(goal.id, false)
+                          : null,
+                        value = goal ? (progress[goal.id] ?? 0) : 0,
+                        showGoal = !!goal && !goalListing?.hidden;
                       return (
                         <button
                           type="button"
@@ -368,6 +374,7 @@ export function AchievementProgress({
                           className="achievement-card"
                           key={card.id}
                           data-focused-id={a.id}
+                          data-goal-id={showGoal ? goal.id : undefined}
                           data-achievement-number={achievementNumber(a.id)}
                           data-achieved={!!at}
                           data-partial={
@@ -377,7 +384,7 @@ export function AchievementProgress({
                           }
                           data-tier={badgeTier}
                           data-concealed={listing.hidden}
-                          aria-label={`查看${achievementNumber(a.id)} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
+                          aria-label={`查看${achievementNumber(a.id)} ${listing.hidden ? '隐藏成就' : listing.name}详情，${at ? '已获' : '未获'}${achievementTierLabels[badgeTier]}徽章`}
                           aria-haspopup="dialog"
                           aria-controls={detail ? dialogId : undefined}
                           onClick={(e) => openDetail(a.id, e)}
@@ -392,17 +399,13 @@ export function AchievementProgress({
                               <strong>
                                 {card.series ? card.name : listing.name}
                               </strong>
-                              <span
-                                className="achievement-tier"
-                                data-tier={badgeTier}
-                              >
-                                {achievementTierLabels[badgeTier]}徽章
-                              </span>
                               <span className="achievement-card-state">
                                 {card.series && card.matchingIds.length > 1 ? (
                                   <span>
                                     已获 {card.matchingCompleted} /{' '}
                                     {card.matchingIds.length}
+                                    {card.completed ===
+                                      card.series.ids.length && ' · 全部达成'}
                                   </span>
                                 ) : at ? (
                                   <>
@@ -431,7 +434,9 @@ export function AchievementProgress({
                               </span>
                             )}
                             <span className="achievement-summary">
-                              {listing.summary}
+                              {showGoal && card.series
+                                ? `${at ? '下一目标' : '当前目标'}：${goalListing!.summary}`
+                                : listing.summary}
                             </span>
                             {card.series && (
                               <span className="achievement-series-stages">
@@ -453,28 +458,27 @@ export function AchievementProgress({
                                 ))}
                               </span>
                             )}
-                            {!at && value >= a.target && (
+                            {showGoal && value >= goal.target && (
                               <span className="achievement-card-ready">
                                 待新正式结算确认
                               </span>
                             )}
-                            {!listing.hidden &&
-                              (a.target > 1 || !!card.series) && (
-                                <span className="achievement-card-progress">
-                                  <span className="sr-only">
-                                    {a.kind === 'same-match'
-                                      ? '单局最高进度'
-                                      : '已记录进度'}
-                                    ：
-                                  </span>
-                                  {Math.min(value, a.target)} / {a.target}
-                                  <progress
-                                    aria-label={`${a.name}进度`}
-                                    value={Math.min(value, a.target)}
-                                    max={a.target}
-                                  />
+                            {showGoal && (goal.target > 1 || !!card.series) && (
+                              <span className="achievement-card-progress">
+                                <span className="sr-only">
+                                  {goal.kind === 'same-match'
+                                    ? '单局最高进度'
+                                    : '已记录进度'}
+                                  ：
                                 </span>
-                              )}
+                                {Math.min(value, goal.target)} / {goal.target}
+                                <progress
+                                  aria-label={`${goal.name}${at ? '下一目标' : '当前目标'}进度`}
+                                  value={Math.min(value, goal.target)}
+                                  max={goal.target}
+                                />
+                              </span>
+                            )}
                           </span>
                         </button>
                       );

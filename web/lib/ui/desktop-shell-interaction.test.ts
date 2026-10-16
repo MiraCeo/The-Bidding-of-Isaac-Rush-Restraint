@@ -82,6 +82,31 @@ it('shares a compact header and heading actions across the five menu-origin page
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
 });
 it.each(['classic', 'survival'] as const)(
+  'hides the pre-game %s step on settings/rules/progress and restores character selection without starting a match',
+  async (mode) => {
+    await mount();
+    await click(mode === 'classic' ? '经典模式' : '生存模式');
+    const selection = node.querySelector('.character-stage')!.innerHTML;
+    expect(
+      node.querySelector('.page-context-bar .character-step'),
+    ).not.toBeNull();
+    for (const page of ['设置', '规则', '进度']) {
+      await click(page, node.querySelector('.main-nav')!);
+      shell(page);
+      expect(node.querySelector('.page-context-bar')).toBeNull();
+      await click('返回游戏', node.querySelector('.ranking-page-heading')!);
+      shell('游戏');
+      expect(
+        node.querySelector('.page-context-bar .character-step'),
+      ).not.toBeNull();
+      expect(node.querySelector('.character-stage')!.innerHTML).toBe(selection);
+    }
+    expect(localStorage.getItem(gameSaveKey)).toBeNull();
+    expect(localStorage.getItem(survivalSaveKey)).toBeNull();
+    expect(localStorage.getItem(playerProfileKey)).toBeNull();
+  },
+);
+it.each(['classic', 'survival'] as const)(
   'keeps the %s bid inputs and real context through ranking/settings/rules; progress is read-only',
   async (mode) => {
     if (mode === 'classic') {
@@ -111,6 +136,12 @@ it.each(['classic', 'survival'] as const)(
     for (const page of ['排行', '设置', '规则']) {
       await click(page, node.querySelector('.main-nav')!);
       shell(page);
+      if (page === '设置' || page === '规则')
+        expect(node.querySelector('.page-context-bar')).toBeNull();
+      else
+        expect(
+          node.querySelector('.page-context-bar .round-status'),
+        ).not.toBeNull();
       const heading = node.querySelector(
         '.ranking-stage > .ranking-page-heading',
       )!;
@@ -121,14 +152,15 @@ it.each(['classic', 'survival'] as const)(
       await click('返回游戏', heading);
       shell('游戏');
       expect(node.querySelector('#bid-A')).toBe(input);
+      expect(
+        node.querySelector('.page-context-bar .status-chip-money'),
+      ).not.toBeNull();
       expect(localStorage.getItem(key)).toBe(before);
     }
     const value = input.value;
     await click('进度', node.querySelector('.main-nav')!);
     shell('进度');
-    expect(
-      node.querySelector('.page-context-bar .round-status')!.textContent,
-    ).toContain('第 1 层');
+    expect(node.querySelector('.page-context-bar')).toBeNull();
     await click('成就');
     expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
     await click(
@@ -174,10 +206,21 @@ it.each(['classic', 'survival'] as const)(
     shell('游戏');
     const key = mode === 'classic' ? gameSaveKey : survivalSaveKey,
       before = localStorage.getItem(key);
-    await click('设置', node.querySelector('.main-nav')!);
-    shell('设置');
-    await click('返回游戏', node.querySelector('.ranking-page-heading')!);
-    shell('游戏');
+    for (const page of ['设置', '规则', '进度']) {
+      await click(page, node.querySelector('.main-nav')!);
+      shell(page);
+      expect(node.querySelector('.page-context-bar')).toBeNull();
+      expect(localStorage.getItem(key)).toBe(before);
+      await click('返回游戏', node.querySelector('.ranking-page-heading')!);
+      shell('游戏');
+      expect(
+        node.querySelector(
+          mode === 'classic'
+            ? '.page-context-bar .round-status'
+            : '.survival-status',
+        ),
+      ).not.toBeNull();
+    }
     expect(node.textContent).toContain('进入下一房间');
     expect(localStorage.getItem(key)).toBe(before);
   },
