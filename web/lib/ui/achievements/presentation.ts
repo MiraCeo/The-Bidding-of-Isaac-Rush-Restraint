@@ -1,3 +1,5 @@
+import { revision057Catalog, revision057NewSeries } from './revision057-catalog';
+import type { AchievementId as V056Id } from './v056-catalog';
 import {
   achievementCatalog,
   achievementCategories,
@@ -12,8 +14,8 @@ import {
 } from './collection-metadata';
 
 /** Presentation only: does not add facts, evaluate achievements or write profiles. */
-export const achievementPresentation: Readonly<
-  Record<AchievementId, { summary: string; note: string }>
+const legacyPresentation: Readonly<
+  Record<V056Id, { summary: string; note: string }>
 > = {
   A01: {
     summary: '正常竞拍失败1次',
@@ -256,6 +258,45 @@ export const achievementPresentation: Readonly<
     note: '同一启用后父分支至少一次满足F03最低档存活，再成为正式冠军；并列最低可计，不借旧层通过或跨局解锁拼接。',
   },
 };
+export const achievementPresentation = {
+  ...legacyPresentation,
+  ...Object.fromEntries(
+    revision057Catalog
+      .filter(
+        (a) =>
+          revision057NewSeries.some((s) => s.ids.includes(a.id)) ||
+          ['B12', 'B13', 'E16'].includes(a.id),
+      )
+      .map((a) => {
+        const s = revision057NewSeries.find((s) => s.ids.includes(a.id));
+        const summary =
+          s?.unit === 'streak'
+            ? `同局连续正常竞拍失败${a.target}次`
+            : s?.unit === 'match'
+              ? `${s.name}：累计${a.target}局`
+              : s?.unit === 'money'
+                ? `累计实际窃取${a.target}资金`
+                : s
+                  ? `${s.name}：累计${a.target}次`
+                  : a.id === 'B12'
+                    ? '同组一条获奖路径全部因扰乱轮空'
+                    : a.id === 'B13'
+                      ? '同组两条获奖路径全部因扰乱轮空'
+                      : '游魂额外获得神圣屏障';
+        return [
+          a.id,
+          {
+            summary,
+            note:
+              a.condition +
+              (s?.unit === 'group'
+                ? ' 五项按A、B分别计数；旧布尔缺少组数，不追溯补造，新累计从0.5.7新结算开始，旧一级时间保留。'
+                : ''),
+          },
+        ];
+      }),
+  ),
+} as Readonly<Record<AchievementId, { summary: string; note: string }>>;
 /** Soft concealment is a list policy only. Opening details intentionally reveals
  * real conditions; no reveal bit is ever saved by browsing or searching. */
 export function achievementListPresentation(

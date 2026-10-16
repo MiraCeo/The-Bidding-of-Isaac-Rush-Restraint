@@ -1,5 +1,6 @@
 /** Research-only descriptive aggregates. No ledger or achievement rule writes. */
-import { achievementCatalog, type AchievementId } from './catalog';
+import type { AchievementId } from './catalog';
+import { achievementCatalog } from './v056-catalog';
 import type { StudyMatch, StudyMetrics } from './difficulty-study.test-helper';
 
 export function studyGroups(rows: readonly StudyMatch[]) {

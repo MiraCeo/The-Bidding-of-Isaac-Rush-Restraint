@@ -12,17 +12,22 @@ export interface AchievementEntryFacts {
   roomIndex: number;
   /** Present only on prospectively observed 0.5.6 authority stages. */
   milestones?: true;
+  revisions?: true;
   stolenMoney: number;
   interestMoney: number;
 }
 export interface AchievementCompletionFacts {
   milestones?: true;
+  revisions?: true;
   mode: 'classic' | 'survival';
   characterId: import('../../game/item-types').CharacterId;
   champion: boolean;
+  finalRank?: number;
 }
 export interface AchievementRoomFacts {
   milestoneFlags?: number;
+  revisionCounts?: readonly [number, number, number, number, number];
+  revisionFlags?: number;
   saleSavings?: number;
   missedCooperation?: boolean;
   missedHighPrice?: boolean;
@@ -55,6 +60,7 @@ export interface AchievementRoomFacts {
 }
 export interface AchievementFloorFacts {
   milestones?: true;
+  revisions?: true;
   floorIndex: number;
   humanParticipated: boolean;
   humanSurvived: boolean;
@@ -63,6 +69,7 @@ export interface AchievementFloorFacts {
 }
 export interface AchievementFinalFacts {
   milestones?: true;
+  revisions?: true;
   humanSurvived: boolean;
   highestDifficulty: boolean;
   lastEliminationFloor: number;

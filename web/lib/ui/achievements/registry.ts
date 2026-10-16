@@ -1,3 +1,9 @@
+import { achievementCatalog as v056Catalog } from './v056-catalog';
+import {
+  createRevision057Scan,
+  cloneRevision057Scan,
+  scanRevision057Receipt,
+} from './revision057-evaluation';
 import {
   createMilestoneScan,
   cloneMilestoneScan,
@@ -18,6 +24,7 @@ import {
   achievementCatalogVersion,
   currentAchievementCatalogVersion,
   milestoneAchievementCatalogVersion,
+  revisionAchievementCatalogVersion,
   characterAchievementRequirements,
   type AchievementId,
 } from './catalog';
@@ -31,6 +38,7 @@ import {
   achievementEventOrder,
   sameAchievementEventFacts,
   isMilestoneEvent,
+  isRevisionEvent,
   encodeAchievementEvent,
   decodeAchievementEvent,
   eventRunAnalysis,
@@ -56,6 +64,7 @@ export interface AchievementRegistry {
   manualUnlockAllAt: string | null;
   receipts: AchievementReceipt[];
   milestones?: { from: number; at: string };
+  revisions?: { from: number; at: string };
 }
 function fail(): never {
   throw Error('成就成长模块损坏、版本不支持或容量超限，原档案保留。');
@@ -90,6 +99,9 @@ function hash(v: unknown): asserts v is string {
 function newScan() {
   return {
     milestones: createMilestoneScan(),
+    revisions: createRevision057Scan(),
+    legacyAchievements: {} as Partial<Record<'A02' | 'A04', string>>,
+    legacyLostAt: null as string | null,
     counters: emptyAchievementCounters(),
     snapshots: new Map<string, AchievementRunState>(),
     nodes: new Map<string, AchievementReceipt>(),
@@ -101,7 +113,12 @@ function newScan() {
   };
 }
 type ScanState = ReturnType<typeof newScan>;
-function scanReceipt(state: ScanState, r: AchievementReceipt, active = false) {
+function scanReceipt(
+  state: ScanState,
+  r: AchievementReceipt,
+  active = false,
+  revisionActive = false,
+) {
   const { snapshots, nodes, authorityUnits, progress, achievedAt } = state;
 
   exact(r, [
@@ -156,12 +173,21 @@ function scanReceipt(state: ScanState, r: AchievementReceipt, active = false) {
   );
   if (result.unresolvedEvidence.length) fail();
   state.counters = result.counters;
-  for (const a of achievementCatalog) {
-    progress[a.id] = Math.max(progress[a.id], result.progress[a.id]);
+  for (const a of v056Catalog) {
+    progress[a.id] = Math.max(progress[a.id] ?? 0, result.progress[a.id] ?? 0);
     if (result.achieved.includes(a.id) && achievedAt[a.id] === undefined)
       achievedAt[a.id] = r.at;
   }
   scanMilestoneReceipt(state.milestones, r, active);
+  scanRevision057Receipt(state.revisions, r, revisionActive);
+  if (!revisionActive) {
+    for (const id of ['A02', 'A04'] as const) {
+      const at = achievedAt[id] ?? state.milestones.achievedAt[id];
+      if (at !== undefined) state.legacyAchievements[id] = at;
+    }
+    if (achievedAt.E01 && achievedAt.A02)
+      state.legacyLostAt ??= [achievedAt.E01, achievedAt.A02].sort().at(-1)!;
+  }
   nodes.set(r.key, r);
   snapshots.set(r.key, result.runState);
 }
@@ -180,7 +206,27 @@ function scan(registry: AchievementRegistry) {
     )
       fail();
   }
+  if (registry.revisions) {
+    exact(registry.revisions, ['from', 'at']);
+    date(registry.revisions.at);
+    const { from, at } = registry.revisions;
+    if (
+      !Number.isInteger(from) ||
+      from < 0 ||
+      from >= registry.receipts.length ||
+      !registry.milestones ||
+      from < registry.milestones.from ||
+      registry.receipts[from]!.at !== at ||
+      !isRevisionEvent(registry.receipts[from]!)
+    )
+      fail();
+  }
   for (const [i, r] of registry.receipts.entries()) {
+    if (
+      isRevisionEvent(r) &&
+      (!registry.revisions || i < registry.revisions.from)
+    )
+      fail();
     if (
       isMilestoneEvent(r) &&
       (!registry.milestones || i < registry.milestones.from)
@@ -190,12 +236,29 @@ function scan(registry: AchievementRegistry) {
       state,
       r,
       !!registry.milestones && i >= registry.milestones.from,
+      !!registry.revisions && i >= registry.revisions.from,
     );
   }
   return state;
 }
 function projectScan(registry: AchievementRegistry, state: ScanState) {
-  const { counters, progress, achievedAt } = state;
+  const { counters } = state;
+  const allProgress = {
+    ...state.progress,
+    ...state.milestones.progress,
+    ...state.revisions.progress,
+  };
+  const achievedAt = {
+    ...state.revisions.achievedAt,
+    ...state.milestones.achievedAt,
+    ...state.achievedAt,
+  };
+  delete achievedAt.A02;
+  delete achievedAt.A04;
+  const progress = Object.fromEntries(
+    achievementCatalog.map((a) => [a.id, allProgress[a.id] ?? 0]),
+  ) as Record<Exclude<AchievementId, 'A02' | 'A04'>, number> &
+    Partial<Record<'A02' | 'A04', number>>;
   const characterUnlocks = Object.fromEntries(
     Object.entries(characterAchievementRequirements).flatMap(
       ([id, required]) => {
@@ -203,12 +266,18 @@ function projectScan(registry: AchievementRegistry, state: ScanState) {
           return [
             [id, { unlockedAt: registry.activatedAt, conditionId: 'default' }],
           ];
-        const earned = required.every((key) => achievedAt[key] !== undefined)
+        let earned = required.every((key) => achievedAt[key] !== undefined)
           ? required
               .map((key) => achievedAt[key]!)
               .sort()
               .at(-1)!
           : null;
+        if (
+          id === 'lost' &&
+          state.legacyLostAt !== null &&
+          (earned === null || state.legacyLostAt < earned)
+        )
+          earned = state.legacyLostAt;
         if (
           registry.manualUnlockAllAt !== null &&
           (earned === null || registry.manualUnlockAllAt < earned)
@@ -223,14 +292,26 @@ function projectScan(registry: AchievementRegistry, state: ScanState) {
             ],
           ];
         if (earned === null) return [];
-        return [[id, { unlockedAt: earned, conditionId: required.join('+') }]];
+        return [
+          [
+            id,
+            {
+              unlockedAt: earned,
+              conditionId:
+                id === 'lost' && state.legacyLostAt === earned
+                  ? 'legacy:E01+A02'
+                  : required.join('+'),
+            },
+          ],
+        ];
       },
     ),
   );
   return {
     counters,
-    progress: { ...progress, ...state.milestones.progress },
-    achievedAt: { ...achievedAt, ...state.milestones.achievedAt },
+    progress,
+    achievedAt,
+    legacyAchievements: state.legacyAchievements,
     characterUnlocks,
   };
 }
@@ -309,7 +390,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   const v = object(value);
   exact(
     value,
-    v.version === 2 || v.version === 3 || v.version === 4
+    v.version === 2 || v.version === 3 || v.version === 4 || v.version === 5
       ? [
           'version',
           'catalogVersion',
@@ -318,7 +399,8 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
           'count',
           'roots',
           'data',
-          ...(v.version === 4 ? ['milestones'] : []),
+          ...((v.version as number) >= 4 ? ['milestones'] : []),
+          ...(v.version === 5 ? ['revisions'] : []),
         ]
       : [
           'version',
@@ -329,16 +411,22 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
         ],
   );
   if (
-    ![1, 2, 3, 4].includes(v.version as number) ||
+    ![1, 2, 3, 4, 5].includes(v.version as number) ||
     v.catalogVersion !==
-      (v.version === 4
-        ? milestoneAchievementCatalogVersion
-        : v.version === 3
-          ? currentAchievementCatalogVersion
-          : achievementCatalogVersion)
+      (v.version === 5
+        ? revisionAchievementCatalogVersion
+        : v.version === 4
+          ? milestoneAchievementCatalogVersion
+          : v.version === 3
+            ? currentAchievementCatalogVersion
+            : achievementCatalogVersion)
   )
     fail();
-  if (v.version === 4) {
+  if (v.version === 5) {
+    exact(v.revisions, ['from', 'at']);
+    date(object(v.revisions).at);
+  }
+  if ((v.version as number) >= 4) {
     exact(v.milestones, ['from', 'at']);
     date(object(v.milestones).at);
   }
@@ -346,7 +434,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
   if (v.manualUnlockAllAt !== null) date(v.manualUnlockAllAt);
   if (new TextEncoder().encode(content).length > achievementRegistryByteLimit)
     fail();
-  if (v.version === 2 || v.version === 3 || v.version === 4)
+  if (v.version === 2 || v.version === 3 || v.version === 4 || v.version === 5)
     return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
   if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)
     fail();
@@ -504,6 +592,8 @@ export function createAchievementBatch(
     ? {
         ...previous.state,
         milestones: cloneMilestoneScan(previous.state.milestones),
+        revisions: cloneRevision057Scan(previous.state.revisions),
+        legacyAchievements: { ...previous.state.legacyAchievements },
         counters: { ...previous.state.counters },
         progress: { ...previous.state.progress },
         achievedAt: { ...previous.state.achievedAt },
@@ -557,7 +647,9 @@ export function createAchievementBatch(
         if (registry.receipts.length >= packedAchievementReceiptLimit) fail();
         if (isMilestoneEvent(r) && !registry.milestones)
           registry.milestones = { from: registry.receipts.length, at: r.at };
-        scanReceipt(state, r, !!registry.milestones);
+        if (isRevisionEvent(r) && !registry.revisions)
+          registry.revisions = { from: registry.receipts.length, at: r.at };
+        scanReceipt(state, r, !!registry.milestones, !!registry.revisions);
         registry.receipts.push(r);
         changed = true;
       } catch (error) {

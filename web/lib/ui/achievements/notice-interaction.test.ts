@@ -120,14 +120,14 @@ it('renders earned glyphs, metal labels and notes for a deduplicated batch witho
 });
 it.each([
   ['A01', '铜', 1],
-  ['A02', '银', 2],
-  ['A03', '金', 3],
+  ['A03', '银', 2],
+  ['C07', '金', 3],
 ] as const)(
   'identifies %s metal on the left badge before earning it and keeps hidden glyphs unknown',
   async (id, label, pips) => {
     await act(async () =>
       root.render(
-        createElement(AchievementBadge, { id, concealed: id === 'A03' }),
+        createElement(AchievementBadge, { id, concealed: id === 'C07' }),
       ),
     );
     expect(node.querySelector('.achievement-badge-rank')!.textContent).toBe(
@@ -139,7 +139,7 @@ it.each([
     expect(
       node.querySelector('.achievement-badge')!.getAttribute('data-achieved'),
     ).toBe('false');
-    if (id === 'A03')
+    if (id === 'C07')
       expect(node.querySelector('svg')!.getAttribute('class')).toContain(
         'circle-question-mark',
       );
@@ -264,9 +264,9 @@ it('retains a large saved batch without dropping entries or starting any dismiss
       }),
     ),
   );
-  expect(node.querySelectorAll('.achievement-notice-item')).toHaveLength(60);
+  expect(node.querySelectorAll('.achievement-notice-item')).toHaveLength(87);
   expect(node.querySelector('.achievement-notice')!.textContent).toContain(
-    '60 枚新徽章',
+    '87 枚新徽章',
   );
   expect(timer).not.toHaveBeenCalled();
   timer.mockRestore();

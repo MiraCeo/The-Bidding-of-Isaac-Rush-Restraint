@@ -85,27 +85,27 @@ it('shows saved global totals rather than filtered denominators; new entries are
   localStorage.setItem(playerProfileKey, before);
   await mount(p);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 60',
+    '1 / 87',
   );
   expect(
     node.querySelector('.achievement-overview-caption')!.textContent,
-  ).toContain('1.7%');
-  expect(cards()).toHaveLength(54);
-  expect(cards()[0]!.querySelector('progress')).toBeNull();
+  ).toContain('1.1%');
+  expect(cards()).toHaveLength(57);
+  expect(cards()[0]!.querySelector('progress')!.max).toBe(20);
   expect(cards()[0]!.querySelector('time')).toBeNull();
   expect(node.textContent).toContain('初出茅庐');
   await select(0, 'achieved');
   expect(cards().map((c) => c.id)).toEqual(['achievement-A01']);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '1 / 60',
+    '1 / 87',
   );
   expect(localStorage.getItem(playerProfileKey)).toBe(before);
   expect(JSON.stringify(p)).toBe(before);
 });
 it('combines category/name/ID/status and offers empty reset without changing layout', async () => {
   await mount(earned());
-  await search('a02');
-  expect(cards().map((c) => c.id)).toEqual(['achievement-A02']);
+  await search('a10');
+  expect(cards().map((c) => c.id)).toEqual(['achievement-A10']);
   await search('礼物');
   expect(cards().map((c) => c.id)).toEqual(['achievement-E05']);
   await click(node.querySelector('#achievement-category-F') as HTMLElement);
@@ -117,7 +117,7 @@ it('combines category/name/ID/status and offers empty reset without changing lay
       (b) => b.textContent === '清除筛选',
     )!,
   );
-  expect(cards()).toHaveLength(54);
+  expect(cards()).toHaveLength(57);
   expect(
     node.querySelector('.achievement-grid')!.getAttribute('data-columns'),
   ).toBe('2');
@@ -130,11 +130,11 @@ it('sorts actual saved progress without changing records', async () => {
     cards()
       .slice(0, 3)
       .map((c) => c.id),
-  ).toEqual(['achievement-A01', 'achievement-A02', 'achievement-A03']);
+  ).toEqual(['achievement-A03', 'achievement-A01', 'achievement-A05']);
   await select(0, 'pending');
-  expect(cards()).toHaveLength(53);
+  expect(cards()).toHaveLength(57);
   await select(1, 'recent');
-  expect(cards()[0]!.id).toBe('achievement-A02');
+  expect(cards()[0]!.id).toBe('achievement-A01');
   await select(0, 'all');
   expect(cards()[0]!.id).toBe('achievement-A01');
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
@@ -253,16 +253,16 @@ it('unlocks only the earned flavor text and hides it again on explicit rollback 
   await mount(p);
   await click(node.querySelector('#achievement-A01') as HTMLElement);
   expect(
-    popup().querySelector('.achievement-collection-note blockquote')!
+    popup().querySelector('li[data-achievement-id="A01"] blockquote')!
       .textContent,
   ).toBe(achievementCollectionNotes.A01);
   expect(popup().textContent).not.toContain('重复导入');
   await mount(createPlayerProfile());
   expect(
-    popup().querySelector('.achievement-collection-note blockquote'),
+    popup().querySelector('li[data-achievement-id="A01"] blockquote'),
   ).toBeNull();
   expect(
-    popup().querySelector('.achievement-collection-note')!.textContent,
+    popup().querySelector('li[data-achievement-id="A01"]')!.textContent,
   ).toContain('达成后解锁');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);
   expect(JSON.stringify(p)).toBe(raw);
@@ -309,11 +309,11 @@ it('creates six independent category grids with separators and respects filtered
   ]);
   expect(
     groups().map((g) => g.querySelectorAll('.achievement-card').length),
-  ).toEqual([5, 8, 9, 10, 13, 9]);
+  ).toEqual([5, 10, 9, 10, 14, 9]);
   expect(node.querySelectorAll('.achievement-section-rule')).toHaveLength(6);
   expect(
     groups()[0]!.querySelector('.achievement-section-count')!.textContent,
-  ).toContain('已达成 1 / 5');
+  ).toContain('已达成 1 / 13');
   await select(2, '2');
   expect(
     [...node.querySelectorAll('.achievement-grid')].every(
@@ -329,7 +329,7 @@ it('creates six independent category grids with separators and respects filtered
     '角色道具与探索',
     '生存淘汰',
   ]);
-  expect(cards()).toHaveLength(11);
+  expect(cards()).toHaveLength(23);
   await select(3, 'all');
   await search('B0');
   expect(groups()).toHaveLength(1);

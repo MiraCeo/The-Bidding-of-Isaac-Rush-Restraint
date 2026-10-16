@@ -1,3 +1,7 @@
+import {
+  extractRevision057RoomFacts,
+  extractRevision057CompletionFacts,
+} from './revision057-facts';
 import { extractMilestoneRoomFacts } from './milestone-room-facts';
 import { readRoomNearMissEvidence } from '../../game/room-near-miss-evidence';
 import type { GameSession } from '../game-session';
@@ -21,6 +25,7 @@ import {
   encodeAchievementEvent,
   sameAchievementEventFacts,
   isMilestoneEvent,
+  isRevisionEvent,
   decodeAchievementEvent,
   achievementEventOrder,
   type EncodedAchievementEvent,
@@ -47,6 +52,7 @@ export interface GrowthContext {
   expansionFrom?: number;
   /** 0.5.6 prospective run/causal boundary; absent on older contexts. */
   milestonesFrom?: number;
+  revisionsFrom?: number;
 }
 function fail(): never {
   throw Error('对局成长上下文不一致，原对局与档案保留。');
@@ -146,6 +152,7 @@ export function beginClassicGrowth(
   excludedThrough = -1,
   expansionFrom = excludedThrough,
   milestonesFrom = expansionFrom,
+  revisionsFrom = milestonesFrom,
 ): GameSession {
   if (session.game.phase === 'character_selection' || !session.replay) fail();
   const ctx: GrowthContext = {
@@ -155,6 +162,7 @@ export function beginClassicGrowth(
     excludedThrough,
     expansionFrom,
     milestonesFrom,
+    revisionsFrom,
     units: [],
     acknowledged: 0,
   };
@@ -165,6 +173,7 @@ export function beginSurvivalGrowth(
   excludedThrough = -1,
   expansionFrom = excludedThrough,
   milestonesFrom = expansionFrom,
+  revisionsFrom = milestonesFrom,
 ): SurvivalClientSession {
   const g = session.game;
   const id = survivalMatchId(
@@ -179,6 +188,7 @@ export function beginSurvivalGrowth(
     excludedThrough,
     expansionFrom,
     milestonesFrom,
+    revisionsFrom,
     units: [],
     acknowledged: 0,
   };
@@ -201,6 +211,25 @@ function withNearMissFacts(
     missedHighPrice: evidence.some((e) => e.nextHighPrice),
   };
 }
+function revisionRoomFacts(
+  record: import('../../game/client-session').ClientRoomSettlementRecord,
+) {
+  const f = extractRevision057RoomFacts(record);
+  if (!f) throw Error('新成就缺少真人房间结算。');
+  return {
+    revisionCounts: [
+      f.cooperativeAwardOpportunities,
+      f.missedCooperationActions,
+      f.missedHighPriceActions,
+      f.lastHighPriceAwardOpportunities,
+      f.alternativeAwardOpportunities,
+    ] as const,
+    revisionFlags:
+      Number(f.onePathEntirelyVacant) +
+      2 * Number(f.bothPathsEntirelyVacant) +
+      4 * Number(f.lostHolyMantleAward),
+  };
+}
 export function observeClassicGrowth(
   before: GameSession | undefined,
   next: GameSession,
@@ -219,6 +248,9 @@ export function observeClassicGrowth(
       : ctx;
   result = {
     ...result,
+    revisionsFrom:
+      ctx.revisionsFrom ??
+      (before ? classicGrowthOrder(before) : classicGrowthOrder(next)),
     milestonesFrom:
       ctx.milestonesFrom ??
       (before ? classicGrowthOrder(before) : classicGrowthOrder(next)),
@@ -235,6 +267,9 @@ export function observeClassicGrowth(
       {
         stage: 'entry',
         facts: {
+          ...(g.floorIndex * 11 + g.roomIndex * 2 > result.revisionsFrom!
+            ? { revisions: true as const }
+            : {}),
           ...extractAchievementEntryFacts(
             g.roomEntryEvents,
             g.floorIndex,
@@ -261,6 +296,9 @@ export function observeClassicGrowth(
         {
           stage: 'room',
           facts: {
+            ...(g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.revisionsFrom!
+              ? revisionRoomFacts(g.roomSettlement)
+              : {}),
             ...withNearMissFacts(
               g.roomSettlement,
               facts,
@@ -288,6 +326,9 @@ export function observeClassicGrowth(
         stage: 'complete',
         facts: {
           ...(34 > result.milestonesFrom! ? { milestones: true as const } : {}),
+          ...(34 > result.revisionsFrom!
+            ? { finalRank: extractRevision057CompletionFacts(g)!.finalRank }
+            : {}),
           mode: 'classic',
           characterId: g.selectedCharacter,
           champion: !g.finalRanking.some(
@@ -316,6 +357,9 @@ export function observeSurvivalGrowth(
       : ctx;
   result = {
     ...result,
+    revisionsFrom:
+      ctx.revisionsFrom ??
+      (before ? survivalGrowthOrder(before) : survivalGrowthOrder(next)),
     milestonesFrom:
       ctx.milestonesFrom ??
       (before ? survivalGrowthOrder(before) : survivalGrowthOrder(next)),
@@ -332,6 +376,9 @@ export function observeSurvivalGrowth(
       {
         stage: 'entry',
         facts: {
+          ...(next.floorIndex * 11 + next.roomIndex * 2 > result.revisionsFrom!
+            ? { revisions: true as const }
+            : {}),
           ...extractAchievementEntryFacts(
             next.roomEntryEvents,
             next.floorIndex,
@@ -356,6 +403,10 @@ export function observeSurvivalGrowth(
         {
           stage: 'room',
           facts: {
+            ...(next.floorIndex * 11 + next.roomIndex * 2 + 1 >
+            result.revisionsFrom!
+              ? revisionRoomFacts(next.roomSettlement)
+              : {}),
             ...withNearMissFacts(
               next.roomSettlement,
               facts,
@@ -377,6 +428,9 @@ export function observeSurvivalGrowth(
   ) {
     const record = next.floorRecords.at(-1)!,
       facts = {
+        ...(record.floorIndex * 11 + 10 > result.revisionsFrom!
+          ? { revisions: true as const }
+          : {}),
         ...extractAchievementFloorFacts(record),
         ...(record.floorIndex * 11 + 10 > result.milestonesFrom!
           ? { milestones: true as const }
@@ -399,6 +453,9 @@ export function observeSurvivalGrowth(
       ...(next.floorRecords.at(-1)!.floorIndex * 11 + 11 >
       result.milestonesFrom!
         ? { milestones: true as const }
+        : {}),
+      ...(last.floorIndex * 11 + 11 > result.revisionsFrom!
+        ? { revisions: true as const }
         : {}),
       humanSurvived: human.status === 'survived',
       highestDifficulty: next.aiDifficulty === 'highest',
@@ -428,6 +485,11 @@ export function observeSurvivalGrowth(
             ...(78 > result.milestonesFrom!
               ? { milestones: true as const }
               : {}),
+            ...(78 > result.revisionsFrom!
+              ? {
+                  finalRank: extractRevision057CompletionFacts(next)!.finalRank,
+                }
+              : {}),
             mode: 'survival',
             characterId: next.selectedCharacter,
             champion: next.championId === 'human',
@@ -453,6 +515,7 @@ export function validateGrowthContext(
           'ignoredThrough',
           'expansionFrom',
           'milestonesFrom',
+          'revisionsFrom',
         ].filter((key) => Object.hasOwn(value, key))
       : [];
   exact(value, [
@@ -508,6 +571,15 @@ export function validateGrowthContext(
       c.milestonesFrom < c.expansionFrom)
   )
     fail();
+  if (
+    c.revisionsFrom !== undefined &&
+    (!Number.isInteger(c.revisionsFrom) ||
+      c.revisionsFrom < c.excludedThrough ||
+      c.revisionsFrom > max ||
+      c.milestonesFrom === undefined ||
+      c.revisionsFrom < c.milestonesFrom)
+  )
+    fail();
   let previous = c.excludedThrough;
   for (const unit of c.units) {
     exact(unit, ['stage', 'position', 'values', 'authorityHash']);
@@ -535,6 +607,11 @@ export function validateGrowthContext(
       (c.milestonesFrom === undefined || order <= c.milestonesFrom)
     )
       fail();
+    if (
+      isRevisionEvent(unit) &&
+      (c.revisionsFrom === undefined || order <= c.revisionsFrom)
+    )
+      fail();
     if (order <= previous || order > max) fail();
     previous = order;
   }
@@ -550,6 +627,7 @@ export function restoreGrowthContext(
     const { profileEpoch: _epoch, ignoredThrough: _ignored, ...rest } = v;
     if (c.expansionFrom === undefined) delete rest.expansionFrom;
     if (c.milestonesFrom === undefined) delete rest.milestonesFrom;
+    if (c.revisionsFrom === undefined) delete rest.revisionsFrom;
     return { ...rest, acknowledged: 0 };
   };
   if (

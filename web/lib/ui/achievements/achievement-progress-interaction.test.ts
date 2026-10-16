@@ -91,13 +91,13 @@ function earned() {
     new Date('2026-10-15T00:00:00.000Z'),
   );
 }
-it('shows 60 badges as 54 catalog cards in six categories and six prerequisites versus 30 collection challenges without activating a profile', async () => {
+it('shows 87 badges as 57 cards in six categories with six prerequisites and 81 collection badges without activating a profile', async () => {
   await mount();
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
-  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(54);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(12);
-  expect(node.textContent).toContain('成就总览0 / 60');
+  expect(node.querySelectorAll('.achievement-badge')).toHaveLength(57);
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(22);
+  expect(node.textContent).toContain('成就总览0 / 87');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });
@@ -140,21 +140,21 @@ it.each(achievementCatalog)(
 it('shows saved progress, exact ISO completion time, scope and same-match peak labels', async () => {
   await mount(earned());
   const card = node.querySelector('#achievement-A01')!;
-  expect(card.textContent).toContain('已达成');
+  expect(card.textContent).toContain('已获 1 / 3');
   expect(card.querySelector('time')).toBeNull();
-  expect(card.querySelector('progress')).toBeNull();
+  expect(card.querySelector('progress')!.max).toBe(20);
   await act(async () => (card as HTMLButtonElement).click());
   expect(
     document.querySelector('[role="dialog"] time')!.getAttribute('datetime'),
   ).toBe('2026-10-15T00:00:00.000Z');
   await closeDialog();
-  expect(node.querySelector('#achievement-A02')!.textContent).toContain(
-    '1 / 10',
+  expect(node.querySelector('#achievement-A10')!.textContent).toContain(
+    '0 / 5',
   );
   expect(node.querySelector('#achievement-A03')!.textContent).toContain(
-    '隐藏成就',
+    '屡战屡败',
   );
-  expect(node.querySelector('#achievement-A03 progress')).toBeNull();
+  expect(node.querySelector('#achievement-A03 progress')).not.toBeNull();
   await act(async () =>
     (node.querySelector('#achievement-A03') as HTMLButtonElement).click(),
   );
@@ -214,7 +214,7 @@ it('shared progress achievement tab is read-only until explicit grant, then relo
   await act(async () => root.render(createElement(GameApp)));
   await click('进度');
   await click('成就');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
   expect(node.querySelector('.progress-mode-tabs')).toBeNull();
   await click('一键解锁全部角色');
@@ -238,7 +238,7 @@ it('explicit profile rollback updates displayed achievement completion and permi
   await click('进度');
   await click('成就');
   expect(node.querySelector('#achievement-A01')!.textContent).toContain(
-    '已达成',
+    '已获 1 / 3',
   );
   const p = createPlayerProfile();
   localStorage.setItem(playerProfileKey, JSON.stringify(p));

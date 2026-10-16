@@ -255,11 +255,13 @@ describe('prospective causes and single-parent run combinations', () => {
     );
     const oldParent = last(p);
     p = append(p, room(1, 0, 0, 2, 1), { root: 'r', parent: oldParent });
-    expect(projectAchievementRegistry(p)!.achievedAt.A04).toBeUndefined();
+    expect(
+      projectAchievementRegistry(p)!.legacyAchievements.A04,
+    ).toBeUndefined();
     p = append(p, room(2, 0, 0, 3), { root: 'r', parent: last(p) });
     const failure = last(p);
     const q = append(p, room(3, 0, 0, 5, 1), { root: 'r', parent: failure });
-    expect(projectAchievementRegistry(q)!.achievedAt.A04).toBe(
+    expect(projectAchievementRegistry(q)!.legacyAchievements.A04).toBe(
       now.toISOString(),
     );
     const win = append(
@@ -277,7 +279,9 @@ describe('prospective causes and single-parent run combinations', () => {
     );
     expect(projectAchievementRegistry(branch)!.achievedAt.A05).toBeUndefined();
     const mixed = append(createPlayerProfile(now), room(0, 0, 0, 5, 1));
-    expect(projectAchievementRegistry(mixed)!.achievedAt.A04).toBeUndefined();
+    expect(
+      projectAchievementRegistry(mixed)!.legacyAchievements.A04,
+    ).toBeUndefined();
   });
   it('isolates same-run interest, refund-role completion and survival difficulty/lowest survival', () => {
     let p = append(
@@ -366,8 +370,8 @@ describe('prospective causes and single-parent run combinations', () => {
 describe('live recovery transcripts and legacy boundaries', () => {
   it('round-trips new contexts, refuses re-signed cause changes and never awards imported prefixes', () => {
     const s = step(freshClassic());
-    expect(s.growth!.units[0]!.values).toHaveLength(3);
-    expect(s.growth!.units[1]!.values).toHaveLength(8);
+    expect(s.growth!.units[0]!.values).toHaveLength(4);
+    expect(s.growth!.units[1]!.values).toHaveLength(14);
     expect(parseGameSave(serializeGameCheckpoint(s)).session.growth).toEqual(
       s.growth,
     );
@@ -404,11 +408,12 @@ describe('live recovery transcripts and legacy boundaries', () => {
     );
     legacy = step(legacy);
     delete legacy.growth!.milestonesFrom;
+    delete legacy.growth!.revisionsFrom;
     const loaded = parseGameSave(serializeGameCheckpoint(legacy)).session;
     expect(loaded.growth!.milestonesFrom).toBeUndefined();
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.units[0]!.values).toHaveLength(2);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(8);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(14);
     expect(next.growth!.milestonesFrom).toBe(1);
   });
   it('round-trips an eliminated survival personal result and counts it once', () => {
@@ -432,11 +437,11 @@ describe('live recovery transcripts and legacy boundaries', () => {
       expect(achievementCatalog.some((a) => (a.id as string) === id)).toBe(
         false,
       );
-    expect(achievementCatalog).toHaveLength(60);
+    expect(achievementCatalog).toHaveLength(87);
   });
 });
 
-it('atomically rolls back catalog4 activation on quota failure and retries the pending prefix exactly once', async () => {
+it('atomically rolls back schema5 activation on quota failure and retries the pending prefix exactly once', async () => {
   const s = step(freshClassic()),
     values = new Map<string, string>();
   let blocked = true,
@@ -476,7 +481,7 @@ it('atomically rolls back catalog4 activation on quota failure and retries the p
         version: number;
       }
     ).version,
-  ).toBe(4);
+  ).toBe(5);
   const again = await saveClassicClient(storage, saved.session, {
     expectedSource: storage.getItem(gameSaveKey),
     coordinator,

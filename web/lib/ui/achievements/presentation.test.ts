@@ -31,12 +31,12 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('presentation-only catalog and deterministic filters', () => {
-  it('covers exactly the 60 active IDs with concise summaries, detailed notes and unique local glyphs', () => {
-    const ids = achievementCatalog.map((a) => a.id).sort();
+  it('covers 87 active and two retired IDs with concise summaries and stable family glyphs', () => {
+    const ids = [...achievementCatalog.map((a) => a.id), 'A02', 'A04'].sort();
     expect(Object.keys(achievementPresentation).sort()).toEqual(ids);
     expect(Object.keys(achievementCollectionNotes).sort()).toEqual(ids);
     expect(Object.keys(achievementGlyphs).sort()).toEqual(ids);
-    expect(new Set(Object.values(achievementGlyphs)).size).toBe(60);
+    expect(new Set(Object.values(achievementGlyphs)).size).toBe(63);
     for (const a of achievementCatalog) {
       expect(achievementCollectionNotes[a.id].length).toBeGreaterThan(3);
       expect(achievementCollectionNotes[a.id].length).toBeLessThanOrEqual(60);
@@ -58,7 +58,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         progress,
         achieved,
       ).map((a) => a.id),
-    ).toEqual(['A02', 'A03', 'A04', 'A05']);
+    ).toEqual(['A03', 'A05', 'A06', 'A07', 'A08', 'A09']);
     expect(
       selectAchievements({ ...all, query: '礼物' }, {}, {}).map((a) => a.id),
     ).toEqual(['E05']);
@@ -85,23 +85,23 @@ describe('presentation-only catalog and deterministic filters', () => {
       )
         .slice(0, 4)
         .map((a) => a.id),
-    ).toEqual(['F01', 'A01', 'E05', 'A02']);
+    ).toEqual(['F01', 'A01', 'E05', 'A03']);
     expect(
       selectAchievements(
         { ...all, sort: 'progress' },
-        { A02: 5, D03: 400, E05: 999 },
+        { A10: 3, D03: 400, E05: 999 },
         { A01: at },
       )
         .slice(0, 4)
         .map((a) => a.id),
-    ).toEqual(['A01', 'E05', 'A02', 'D03']);
-    expect(selectAchievements(all, {}, {})).toHaveLength(60);
+    ).toEqual(['A01', 'E05', 'A10', 'D03']);
+    expect(selectAchievements(all, {}, {})).toHaveLength(87);
   });
 });
 describe('metal config and soft-concealed list policy', () => {
-  it('covers all 60 IDs exactly once without adding thresholds or hiding role prerequisites', () => {
+  it('covers active and historical IDs with revised grades and visible role prerequisites', () => {
     expect(Object.keys(achievementCollectionMetadata).sort()).toEqual(
-      achievementCatalog.map((a) => a.id).sort(),
+      [...achievementCatalog.map((a) => a.id), 'A02', 'A04'].sort(),
     );
     expect(
       achievementTiers.map(
@@ -110,21 +110,22 @@ describe('metal config and soft-concealed list policy', () => {
             (a) => achievementCollectionMetadata[a.id].tier === t,
           ).length,
       ),
-    ).toEqual([25, 24, 11]);
+    ).toEqual([32, 32, 23]);
     expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
     expect(
       Object.entries(achievementCollectionMetadata)
         .filter(([, m]) => m.hidden)
-        .map(([id]) => id),
-    ).toEqual(['A03', 'C07', 'F02', 'C09', 'F12']);
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual(['A05', 'B03', 'B12', 'B13', 'C07', 'C09', 'F02', 'F12']);
     for (const ids of Object.values(characterAchievementRequirements))
       for (const id of ids)
         expect(achievementCollectionMetadata[id].hidden).toBe(false);
     expect(achievementCollectionMetadata.A01.tier).toBe('bronze');
     expect(achievementCollectionMetadata.A02.tier).toBe('silver');
-    expect(achievementCollectionMetadata.A03.tier).toBe('gold');
+    expect(achievementCollectionMetadata.A03.tier).toBe('silver');
   });
-  it.each(['A03', 'C07', 'F02'] as const)(
+  it.each(['A05', 'B03', 'B12', 'B13', 'C07', 'C09', 'F02', 'F12'] as const)(
     'does not match concealed %s by true name until earned; ID and generic search remain usable',
     (id) => {
       const a = achievementCatalog.find((a) => a.id === id)!;
@@ -155,11 +156,23 @@ describe('metal config and soft-concealed list policy', () => {
     expect(
       selectAchievements({ ...all, tier: 'gold' }, {}, {}).map((a) => a.id),
     ).toEqual([
-      'A03',
+      'A07',
+      'A09',
+      'A12',
+      'A15',
       'B08',
+      'B13',
+      'B15',
+      'B17',
+      'B19',
+      'B21',
+      'B23',
+      'B25',
       'C07',
       'C09',
       'D08',
+      'D14',
+      'D16',
       'E08',
       'E10',
       'F02',
@@ -172,20 +185,20 @@ describe('metal config and soft-concealed list policy', () => {
         (a) => a.id,
       ),
     ).toEqual(['E08', 'E10']);
-    const secret = Object.freeze({ A03: 4, C07: 1 }),
+    const secret = Object.freeze({ A05: 1, C07: 1 }),
       at = '2026-10-15T00:00:00.000Z';
     expect(
       selectAchievements({ ...all, sort: 'progress' }, secret, {}),
     ).toEqual(selectAchievements({ ...all, sort: 'progress' }, {}, {}));
     expect(
       selectAchievements({ ...all, tier: 'gold', status: 'achieved' }, secret, {
-        A03: at,
+        C07: at,
       }).map((a) => a.id),
-    ).toEqual(['A03']);
+    ).toEqual(['C07']);
     expect(
       selectAchievements({ ...all, tier: 'bronze', query: 'A02' }, {}, {}),
     ).toEqual([]);
-    expect(secret).toEqual({ A03: 4, C07: 1 });
+    expect(secret).toEqual({ A05: 1, C07: 1 });
   });
 });
 describe('optional display preference and static responsive contract', () => {
@@ -284,9 +297,9 @@ describe('category sections preserve sorted input within a real category boundar
       'E',
       'F',
     ]);
-    expect(groups.map((g) => g.items.length)).toEqual([5, 10, 9, 12, 13, 11]);
+    expect(groups.map((g) => g.items.length)).toEqual([13, 24, 9, 16, 14, 11]);
     expect(new Set(groups.flatMap((g) => g.items.map((a) => a.id))).size).toBe(
-      60,
+      87,
     );
     for (const g of groups)
       expect(g.items).toEqual(

@@ -315,7 +315,7 @@ describe('strict compact factual ledger, activation and branches', () => {
       );
     const view = projectAchievementRegistry(p)!;
     expect(view.counters.failedBids).toBe(10);
-    expect(view.achievedAt.A02).toBeDefined();
+    expect(view.legacyAchievements.A02).toBeDefined();
     expect(view.achievedAt.A03).toBeUndefined();
     expect(view.characterUnlocks).not.toHaveProperty('lost');
   });

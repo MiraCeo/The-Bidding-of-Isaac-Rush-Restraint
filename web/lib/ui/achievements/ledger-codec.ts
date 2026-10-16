@@ -1,4 +1,4 @@
-import { isMilestoneEvent } from './event-codec';
+import { isMilestoneEvent, isRevisionEvent } from './event-codec';
 import type { AchievementReceipt, AchievementRegistry } from './registry';
 import { canonicalJson } from '../../shared/json-facts';
 import { sha256Hex } from '../../shared/sha256';
@@ -6,11 +6,12 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2 | 3 | 4;
-  catalogVersion: 1 | 2 | 3;
+  version: 2 | 3 | 4 | 5;
+  catalogVersion: 1 | 2 | 3 | 4;
   activatedAt: string;
   manualUnlockAllAt: string | null;
   milestones?: { from: number; at: string };
+  revisions?: { from: number; at: string };
   count: number;
   roots: [0 | 1, string][];
   data: string[];
@@ -78,7 +79,9 @@ export function packAchievementRegistry(
   registry: AchievementRegistry,
   forceExpanded = false,
 ): PackedAchievementRegistry {
+  const v5 = !!registry.revisions;
   const v4 = !!registry.milestones;
+  if ((v5 && !v4) || (!v5 && registry.receipts.some(isRevisionEvent))) fail();
   if (!v4 && registry.receipts.some(isMilestoneEvent)) fail();
   const expanded =
     forceExpanded || registry.receipts.some(isExpandedAchievementEvent);
@@ -132,6 +135,13 @@ export function packAchievementRegistry(
         uint(v[7]!);
       }
     }
+    if (v5) {
+      uint(isRevisionEvent(r) ? 1 : 0);
+      if (isRevisionEvent(r)) {
+        if (r.stage === 'room') for (const n of v.slice(8)) uint(n!);
+        else if (r.stage === 'complete') uint(v[3]!);
+      }
+    }
     nodes.set(r.key, nodes.size + 1);
   }
   const encoded = base64(bytes),
@@ -139,9 +149,10 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: v4 ? 4 : expanded ? 3 : 2,
-    catalogVersion: v4 ? 3 : expanded ? 2 : 1,
+    version: v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
+    catalogVersion: v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
     ...(registry.milestones ? { milestones: { ...registry.milestones } } : {}),
+    ...(registry.revisions ? { revisions: { ...registry.revisions } } : {}),
     activatedAt: registry.activatedAt,
     manualUnlockAllAt: registry.manualUnlockAllAt,
     count: registry.receipts.length,
@@ -158,7 +169,8 @@ export function unpackAchievementRegistry(
     !(
       (value.version === 2 && value.catalogVersion === 1) ||
       (value.version === 3 && value.catalogVersion === 2) ||
-      (value.version === 4 && value.catalogVersion === 3)
+      (value.version === 4 && value.catalogVersion === 3) ||
+      (value.version === 5 && value.catalogVersion === 4)
     )
   )
     fail();
@@ -255,7 +267,7 @@ export function unpackAchievementRegistry(
         if (code) values.push(code - 1);
       }
     }
-    if (value.version === 4) {
+    if (value.version >= 4) {
       const present = uint();
       if (present > 1) fail();
       if (present) {
@@ -263,6 +275,23 @@ export function unpackAchievementRegistry(
           if (values.length !== 6) fail();
           values.push(uint(), uint());
         } else values.push(1);
+      }
+    }
+    if (value.version === 5) {
+      const present = uint();
+      if (present > 1) fail();
+      if (present) {
+        if (stage === 'room') {
+          if (values.length !== 8) fail();
+          values.push(uint(), uint(), uint(), uint(), uint(), uint());
+        } else if (stage === 'complete') {
+          if (values.length !== 3) fail();
+          values.push(uint());
+        } else {
+          const oldLength = stage === 'entry' ? 3 : stage === 'floor' ? 2 : 4;
+          if (values.length !== oldLength) fail();
+          values.push(1);
+        }
       }
     }
     const candidate = {
@@ -283,6 +312,7 @@ export function unpackAchievementRegistry(
     activatedAt: value.activatedAt,
     manualUnlockAllAt: value.manualUnlockAllAt,
     receipts,
-    ...(value.version === 4 ? { milestones: value.milestones } : {}),
+    ...(value.version >= 4 ? { milestones: value.milestones } : {}),
+    ...(value.version === 5 ? { revisions: value.revisions } : {}),
   };
 }

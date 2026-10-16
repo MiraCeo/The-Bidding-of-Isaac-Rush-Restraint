@@ -190,21 +190,21 @@ function floorRecord(
 }
 
 describe('0.5 product catalog and independent character permission', () => {
-  it('retains the original 30 and adds six collection IDs without changing role prerequisites', () => {
+  it('retains the frozen original 30 and publishes the revised 87 with updated Lost prerequisites', () => {
     const ids = achievementCatalog.map((a) => a.id);
-    expect(ids).toHaveLength(60);
+    expect(ids).toHaveLength(87);
     expect(legacyAchievementCatalog).toHaveLength(30);
-    expect(new Set(ids).size).toBe(60);
+    expect(new Set(ids).size).toBe(87);
     expect(
       achievementCategories.map(
         (c) => ids.filter((id) => id.startsWith(c.id)).length,
       ),
-    ).toEqual([5, 10, 9, 12, 13, 11]);
+    ).toEqual([13, 24, 9, 16, 14, 11]);
     const prerequisites = new Set(
       Object.values(characterAchievementRequirements).flat(),
     );
     expect([...prerequisites].sort()).toEqual([
-      'A02',
+      'A10',
       'E01',
       'E02',
       'E03',
@@ -250,7 +250,7 @@ describe('0.5 product catalog and independent character permission', () => {
       'jacob_esau',
     ]);
     expect([...earned]).toEqual(before);
-    earned.add('A02');
+    earned.add('A10');
     earned.add('E04');
     earned.add('E02');
     earned.add('E05');

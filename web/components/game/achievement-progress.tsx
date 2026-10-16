@@ -522,9 +522,11 @@ export function AchievementProgress({
                       ? '默认开放'
                       : permission?.conditionId === 'manual-all'
                         ? '手动授权'
-                        : unlocked
-                          ? '成就解锁'
-                          : '未解锁'}
+                        : permission?.conditionId === 'legacy:E01+A02'
+                          ? '旧版成就解锁（保留）'
+                          : unlocked
+                            ? '成就解锁'
+                            : '未解锁'}
                   </p>
                   <ul>
                     {characterAchievementRequirements[c.id].map((id) => (
@@ -567,6 +569,26 @@ export function AchievementProgress({
           </output>
         </section>
       </section>
+      {view && Object.keys(view.legacyAchievements).length > 0 && (
+        <section className="settings-group" aria-label="旧版成就纪念">
+          <h3>旧版成就纪念</h3>
+          <p>保留原达成时间，不计当前徽章总数，也不转换为新版失败对局数。</p>
+          {(['A02', 'A04'] as const).map((id) =>
+            view.legacyAchievements[id] ? (
+              <p key={id}>
+                {id} ·{' '}
+                {id === 'A02'
+                  ? '屡败屡战（旧版：累计竞拍失败10次）'
+                  : '重整旗鼓（旧版：同局失败后再次获奖）'}{' '}
+                ·{' '}
+                <time dateTime={view.legacyAchievements[id]}>
+                  {dateLabel(view.legacyAchievements[id]!)}
+                </time>
+              </p>
+            ) : null,
+          )}
+        </section>
+      )}
       <Dialog.Portal>
         <Dialog.Backdrop className="achievement-dialog-backdrop" />
         <Dialog.Popup

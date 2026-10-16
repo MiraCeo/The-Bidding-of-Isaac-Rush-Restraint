@@ -98,7 +98,7 @@ function earned(id: 'A03' | 'C07' | 'F02') {
   }
   return p;
 }
-it.each(['A03', 'C07', 'F02'] as const)(
+it.each(['C07', 'F02'] as const)(
   'conceals %s including ARIA and glyph but reveals true details without writes and restores focus',
   async (id) => {
     const p = createPlayerProfile(at),
@@ -134,7 +134,7 @@ it.each(['A03', 'C07', 'F02'] as const)(
     expect(JSON.stringify(p)).toBe(before);
   },
 );
-it.each(['A03', 'C07', 'F02'] as const)(
+it.each(['C07', 'F02'] as const)(
   'uses existing %s proof/time immediately, remains byte-identical, and conceals again on rollback',
   async (id) => {
     for (const compact of [false, true]) {
@@ -169,10 +169,10 @@ it('filters by metal with fixed global totals and resets all filters without wri
   await mount(p);
   const overview = node.querySelector('.achievement-overview')!.textContent;
   expect(node.querySelector('.achievement-tier-totals')!.textContent).toBe(
-    '铜 1 / 25银 0 / 24金 1 / 11',
+    '铜 1 / 32银 1 / 32金 0 / 23',
   );
   await tier('gold');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(11);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(23);
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(
     overview,
   );
@@ -183,24 +183,24 @@ it('filters by metal with fixed global totals and resets all filters without wri
       (b) => b.textContent === '清除筛选',
     )!,
   );
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(54);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelectorAll('select')[3]!.value).toBe('all');
   expect(localStorage.length).toBe(0);
   expect(JSON.stringify(p)).toBe(before);
 });
 it('does not leak hidden names via search or progress order after merely opening details', async () => {
   await mount();
-  await click(card('A03'));
+  await click(card('C07'));
   await close();
-  await search('屡战屡败');
+  await search('祸不单行');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
-  await search('a03');
+  await search('c07');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
-  expect(card('A03').textContent).toContain('???');
-  await mount(earned('A03'));
-  await search('屡战屡败');
+  expect(card('C07').textContent).toContain('???');
+  await mount(earned('C07'));
+  await search('祸不单行');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
-  expect(card('A03').textContent).toContain('屡战屡败');
+  expect(card('C07').textContent).toContain('祸不单行');
   expect(localStorage.length).toBe(0);
 });
 it('retains schema3 and prospective six-achievement evidence without creating tier/hidden persistence fields', async () => {

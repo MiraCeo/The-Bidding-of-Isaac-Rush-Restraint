@@ -14,14 +14,14 @@ const all: AchievementFilters = {
   tier: 'all',
 };
 const at = '2026-10-15T00:00:00.000Z';
-it('keeps 60 independent badges but creates only 54 cards with three explicit stage orders', () => {
-  expect(achievementCatalog).toHaveLength(60);
+it('keeps 87 independent badges as 57 cards and preserves the original three series orders', () => {
+  expect(achievementCatalog).toHaveLength(87);
   const cards = selectAchievementCards(all, {}, {});
-  expect(cards).toHaveLength(54);
+  expect(cards).toHaveLength(57);
   expect(groupAchievementCards(cards).map((g) => g.items.length)).toEqual([
-    5, 8, 9, 10, 13, 9,
+    5, 10, 9, 10, 14, 9,
   ]);
-  expect(achievementSeries.map((s) => s.ids)).toEqual([
+  expect(achievementSeries.slice(0, 3).map((s) => s.ids)).toEqual([
     ['B07', 'B02', 'B08'],
     ['D07', 'D03', 'D08'],
     ['F07', 'F08', 'F09'],

@@ -1,3 +1,4 @@
+import { achievementCatalog as v056Catalog } from './v056-catalog';
 import {
   achievementCatalog,
   achievementCharacters,
@@ -246,7 +247,7 @@ export function evaluateAchievementRun(
     progress.E05 = counters.hiddenCopies;
     progress.F04 = passedFirstFloors.size;
   }
-  const achieved = achievementCatalog
+  const achieved = v056Catalog
     .filter((a) => progress[a.id] >= a.target)
     .map((a) => a.id);
   return {

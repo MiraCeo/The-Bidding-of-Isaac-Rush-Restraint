@@ -1,5 +1,10 @@
+import type { AchievementId as V056Id } from '@/lib/ui/achievements/v056-catalog';
+import { revision057NewSeries } from '@/lib/ui/achievements/revision057-catalog';
 import {
   RotateCcw,
+  Unplug,
+  Ban,
+  ShieldPlus,
   FlagTriangleRight,
   CircleDollarSign,
   BadgeDollarSign,
@@ -70,8 +75,8 @@ import {
   achievementTiers,
 } from '@/lib/ui/achievements/collection-metadata';
 
-// One distinct code-native glyph per achievement; no remote art or copied game assets.
-export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
+// Stable code-native family glyphs; new tiers share the family and differ by metal.
+const legacyGlyphs: Readonly<Record<V056Id, LucideIcon>> = {
   A01: CircleDashed,
   A02: Repeat2,
   A03: Footprints,
@@ -133,6 +138,26 @@ export const achievementGlyphs: Readonly<Record<AchievementId, LucideIcon>> = {
   F10: Mountain,
   F12: MountainSnow,
 };
+export const achievementGlyphs = {
+  ...legacyGlyphs,
+  ...Object.fromEntries(
+    revision057NewSeries.flatMap((s) =>
+      s.ids.map((id) => [
+        id,
+        legacyGlyphs[
+          s.anchor === 'A10'
+            ? 'A02'
+            : s.anchor === 'A13'
+              ? 'A04'
+              : (s.anchor as V056Id)
+        ],
+      ]),
+    ),
+  ),
+  B12: Unplug,
+  B13: Ban,
+  E16: ShieldPlus,
+} as Readonly<Record<AchievementId, LucideIcon>>;
 export function AchievementBadge({
   id,
   achieved = false,

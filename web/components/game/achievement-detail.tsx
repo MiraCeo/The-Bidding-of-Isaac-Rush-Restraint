@@ -142,7 +142,11 @@ export function AchievementDetail({
               const level = achievementCatalog.find((d) => d.id === id)!,
                 at = allAchieved[id];
               return (
-                <li key={id} data-tier={achievementCollectionMetadata[id].tier}>
+                <li
+                  key={id}
+                  data-achievement-id={id}
+                  data-tier={achievementCollectionMetadata[id].tier}
+                >
                   <div>
                     <strong>
                       {

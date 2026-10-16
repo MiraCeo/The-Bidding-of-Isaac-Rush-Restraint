@@ -1,8 +1,8 @@
+import { revision057Catalog, revision057NewSeries } from './revision057-catalog';
+import type { AchievementId as V056Id } from './v056-catalog';
 import type { AchievementId } from './catalog';
 /** Flavor only. Earned state comes from verified records, never a second unlock flag. */
-export const achievementCollectionNotes: Readonly<
-  Record<AchievementId, string>
-> = {
+const legacyCollectionNotes: Readonly<Record<V056Id, string>> = {
   A01: '母亲已经来了，成功呢？',
   A02: '你与失败已经熟得不需要自我介绍。',
   A03: '“下一次一定。”你已经说了好几遍。',
@@ -64,3 +64,24 @@ export const achievementCollectionNotes: Readonly<
   F10: '最难的那条路，最后留下了你的名字。',
   F12: '曾经只差一步出局，最后却走到最前面。',
 };
+
+export const achievementCollectionNotes = {
+  ...legacyCollectionNotes,
+  ...Object.fromEntries(
+    revision057Catalog
+      .filter((a) => !(a.id in legacyCollectionNotes))
+      .map((a) => {
+        const s = revision057NewSeries.find((s) => s.ids.includes(a.id));
+        return [
+          a.id,
+          s
+            ? `${s.name}的这一页，写到了${a.target}${s.unit === 'money' ? '资金' : s.unit === 'match' ? '场对局' : '次'}。`
+            : a.id === 'B12'
+              ? '两条路，总有一条空着回来。'
+              : a.id === 'B13'
+                ? '两条路都走到了尽头，奖品却还留在桌上。'
+                : '这一次，屏障不再只有最初的那一道。',
+        ];
+      }),
+  ),
+} as Readonly<Record<AchievementId, string>>;

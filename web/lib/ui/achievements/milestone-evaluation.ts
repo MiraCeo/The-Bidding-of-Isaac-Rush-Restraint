@@ -2,7 +2,7 @@ import {
   achievementCatalog,
   milestoneAchievementIds,
   type AchievementId,
-} from './catalog';
+} from './v056-catalog';
 import { decodeAchievementEvent, isMilestoneEvent } from './event-codec';
 import type { AchievementReceipt } from './registry';
 interface Run {
