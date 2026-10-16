@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect } from 'vitest';
@@ -145,18 +146,18 @@ it('updates independent times after confirmed inheritance and relocks new grades
 it('finds every child ID through the one stable card and intersects tier/status without borrowing another stage', async () => {
   const p = activate(legacy());
   await mount(p);
-  await search('b08');
+  await search(achievementNumber('B08'));
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
   expect(card().getAttribute('data-focused-id')).toBe('B08');
   await click(card());
   expect(popup().textContent).toContain(
-    '累计通过最高价资格实际获得50次奖励机会',
+    '累计50次通过最高价资格实际取得本组道具',
   );
   await close();
-  await search('B07');
+  await search(achievementNumber('B07'));
   await select(3, 'silver');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
-  await search('B02');
+  await search(achievementNumber('B02'));
   await select(0, 'pending');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
   await select(0, 'achieved');
@@ -172,12 +173,12 @@ it('keeps the two new hidden challenges concealed while leaving all cumulative s
   }
   await search('两处空席');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
-  await search('C09');
+  await search(achievementNumber('C09'));
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
   await click(node.querySelector('.achievement-card')!);
   expect(popup().textContent).toContain('两处空席');
   await close();
-  await search('F09');
+  await search(achievementNumber('F09'));
   expect(node.textContent).toContain('生存历程');
   expect(node.textContent).not.toContain('???');
 });

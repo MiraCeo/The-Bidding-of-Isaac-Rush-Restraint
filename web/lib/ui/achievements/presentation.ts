@@ -1,12 +1,7 @@
-import {
-  revision057Catalog,
-  revision057NewSeries,
-} from './revision057-catalog';
-import {
-  revision058Catalog,
-  revision058NewSeries,
-} from './revision058-catalog';
 import type { AchievementId as V056Id } from './v056-catalog';
+import { revision058Series } from './revision058-catalog';
+import { achievementSeriesCopy } from './series-copy';
+import { achievementNumber, compareAchievementNumbers } from './numbering';
 import {
   achievementCatalog,
   achievementCategories,
@@ -174,7 +169,7 @@ const legacyPresentation: Readonly<
   },
   A05: {
     summary: '同局失败后取得经典最终第一',
-    note: '经典最终并列第一计入；失败与终局都须来自启用后的同一场、同一父分支，不检查跨局A01或E07解锁状态。',
+    note: '经典最终并列第一计入；失败与终局都须来自启用后的同一场、同一父分支，不用跨局的竞拍失败或经典第一名成就解锁状态代替。',
   },
   B07: {
     summary: '最高价资格实际获奖1次',
@@ -222,7 +217,7 @@ const legacyPresentation: Readonly<
   },
   D12: {
     summary: '同局新利息累计获得200资金',
-    note: '仅启用后同一父分支的利息相加；不是D03跨局总数，不借升级前已发生的进房资金事件。',
+    note: '仅启用后同一父分支的利息相加；不是跨局利息总数，不借升级前已发生的进房资金事件。',
   },
   E09: {
     summary: '累计完成5局正式经典模式',
@@ -230,7 +225,7 @@ const legacyPresentation: Readonly<
   },
   E10: {
     summary: '累计完成20局正式经典模式',
-    note: '与E09共用经典完成根集合，20是总局数；只继承0.5.3起已记账complete，不从首次完成布尔反推局数。',
+    note: '与五局经典完成成就共用经典完成根集合，20是总局数；只继承0.5.3起已记账的正式终局，不从首次完成布尔反推局数。',
   },
   E11: {
     summary: '以撒取得经典最终第一名',
@@ -238,7 +233,7 @@ const legacyPresentation: Readonly<
   },
   E12: {
     summary: '游魂同局获屏障退款并完成经典',
-    note: '仅新退款与新经典终局组成的同局分支；屏障必须退回正资金，不要求最终第一名，不借旧C02解锁状态。',
+    note: '仅新退款与新经典终局组成的同局分支；屏障必须退回正资金，不要求最终第一名，不借屏障退款成就的跨局解锁状态。',
   },
   E15: {
     summary: '雅阁双组不等报价且至少一次获奖',
@@ -258,81 +253,38 @@ const legacyPresentation: Readonly<
   },
   F10: {
     summary: '最高难度下取得正式生存冠军',
-    note: '最高难度与正式championId必须来自同一个新生存终局；不能把不同对局的F02和F06合并。',
+    note: '最高难度与正式冠军身份必须来自同一个新生存终局；不能把不同对局的最高难度存活和生存冠军成就合并。',
   },
   F12: {
     summary: '同局最低档存活后成为生存冠军',
-    note: '同一启用后父分支至少一次满足F03最低档存活，再成为正式冠军；并列最低可计，不借旧层通过或跨局解锁拼接。',
+    note: '同一启用后父分支至少一次以存活者最低层成绩通过淘汰，再成为正式冠军；并列最低可计，不借旧层通过或跨局解锁拼接。',
   },
 };
 export const achievementPresentation = {
   ...legacyPresentation,
   ...Object.fromEntries(
-    revision057Catalog
-      .filter(
-        (a) =>
-          revision057NewSeries.some((s) => s.ids.includes(a.id)) ||
-          ['B12', 'B13', 'E16'].includes(a.id),
-      )
-      .map((a) => {
-        const s = revision057NewSeries.find((s) => s.ids.includes(a.id));
-        const summary =
-          s?.unit === 'streak'
-            ? `同局连续正常竞拍失败${a.target}次`
-            : s?.unit === 'match'
-              ? `${s.name}：累计${a.target}局`
-              : s?.unit === 'money'
-                ? `累计实际窃取${a.target}资金`
-                : s
-                  ? `${s.name}：累计${a.target}次`
-                  : a.id === 'B12'
-                    ? '同组一条获奖路径全部因扰乱轮空'
-                    : a.id === 'B13'
-                      ? '同组两条获奖路径全部因扰乱轮空'
-                      : '游魂额外获得神圣屏障';
+    achievementCatalog.flatMap((a) => {
+      const series = revision058Series.find((s) => s.ids.includes(a.id));
+      if (series)
         return [
-          a.id,
-          {
-            summary,
-            note:
-              a.condition +
-              (s?.unit === 'group'
-                ? ' 五项按A、B分别计数；旧布尔缺少组数，不追溯补造，新累计从0.5.7新结算开始，旧一级时间保留。'
-                : ''),
-          },
+          [
+            a.id,
+            {
+              summary: achievementSeriesCopy[series.id]!.summary(a.target),
+              note: a.condition,
+            },
+          ],
         ];
-      }),
-  ),
-  ...Object.fromEntries(
-    revision058Catalog
-      .filter(
-        (a) =>
-          a.id === 'C08' ||
-          revision058NewSeries.some((s) => s.ids.includes(a.id)),
-      )
-      .map((a) => {
-        const s = revision058NewSeries.find((s) => s.ids.includes(a.id));
-        const unit =
-          s?.unit === 'money'
-            ? '资金'
-            : s?.unit === 'copy'
-              ? '件'
-              : s?.unit === 'room'
-                ? '房'
-                : '次';
-        return [
-          a.id,
-          {
-            summary:
-              a.id === 'C08'
-                ? '同局两房将扰乱转为实际道具'
-                : s?.unit === 'prefix'
-                  ? `同局连续通过前${a.target}层淘汰`
-                  : `${s!.name}：累计${a.target}${unit}`,
-            note: a.condition,
-          },
-        ];
-      }),
+      const summary = (
+        {
+          B12: '同组一条获奖路径全部因扰乱轮空',
+          B13: '同组两条获奖路径全部因扰乱轮空',
+          E16: '游魂额外获得神圣屏障',
+          C08: '同局两房将扰乱转为实际道具',
+        } as Partial<Record<AchievementId, string>>
+      )[a.id];
+      return summary ? [[a.id, { summary, note: a.condition }]] : [];
+    }),
   ),
 } as Readonly<Record<AchievementId, { summary: string; note: string }>>;
 /** Soft concealment is a list policy only. Opening details intentionally reveals
@@ -377,7 +329,7 @@ export function selectAchievements(
             ? !!achieved[a.id]
             : !achieved[a.id])) &&
         (!query ||
-          `${a.id} ${achievementListPresentation(a.id, !!achieved[a.id]).name}`
+          `${achievementNumber(a.id)} ${achievementListPresentation(a.id, !!achieved[a.id]).name}`
             .toLocaleLowerCase('zh-CN')
             .includes(query)),
     )
@@ -398,7 +350,7 @@ export function selectAchievements(
         const difference = ratio(b.id, b.target) - ratio(a.id, a.target);
         if (difference) return difference;
       }
-      return a.id.localeCompare(b.id);
+      return compareAchievementNumbers(a.id, b.id);
     });
 }
 

@@ -1,3 +1,4 @@
+import { achievementNumber } from './numbering';
 import { achievementCollectionNotes } from './collection-notes';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -58,7 +59,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         progress,
         achieved,
       ).map((a) => a.id),
-    ).toEqual(['A03', 'A05', 'A06', 'A07', 'A08', 'A09']);
+    ).toEqual(['A08', 'A09', 'A06', 'A03', 'A07', 'A05', 'A10', 'A11']);
     expect(
       selectAchievements({ ...all, query: '礼物' }, {}, {}).map((a) => a.id),
     ).toEqual(['E05', 'E17', 'E18']);
@@ -85,7 +86,7 @@ describe('presentation-only catalog and deterministic filters', () => {
       )
         .slice(0, 4)
         .map((a) => a.id),
-    ).toEqual(['F01', 'A01', 'E05', 'A03']);
+    ).toEqual(['F01', 'A01', 'E05', 'A08']);
     expect(
       selectAchievements(
         { ...all, sort: 'progress' },
@@ -159,9 +160,11 @@ describe('metal config and soft-concealed list policy', () => {
       });
       expect(selectAchievements({ ...all, query: a.name }, {}, {})).toEqual([]);
       expect(
-        selectAchievements({ ...all, query: id.toLowerCase() }, {}, {}).map(
-          (a) => a.id,
-        ),
+        selectAchievements(
+          { ...all, query: achievementNumber(id).toLowerCase() },
+          {},
+          {},
+        ).map((a) => a.id),
       ).toEqual([id]);
       expect(
         selectAchievements(
@@ -180,45 +183,45 @@ describe('metal config and soft-concealed list policy', () => {
     expect(
       selectAchievements({ ...all, tier: 'gold' }, {}, {}).map((a) => a.id),
     ).toEqual([
-      'A07',
       'A09',
+      'A07',
       'A12',
       'A15',
-      'B08',
-      'B13',
       'B15',
+      'B08',
       'B17',
       'B19',
       'B21',
       'B23',
       'B25',
-      'C07',
-      'C08',
-      'C09',
+      'B13',
       'C11',
       'C13',
       'C15',
+      'C07',
+      'C08',
+      'C09',
       'D08',
-      'D14',
-      'D16',
       'D18',
       'D20',
+      'D14',
       'D22',
-      'E10',
+      'D16',
       'E18',
+      'E10',
       'E20',
       'F02',
+      'F14',
+      'F16',
       'F09',
       'F10',
       'F12',
-      'F14',
-      'F16',
     ]);
     expect(
       selectAchievements({ ...all, tier: 'gold', category: 'E' }, {}, {}).map(
         (a) => a.id,
       ),
-    ).toEqual(['E10', 'E18', 'E20']);
+    ).toEqual(['E18', 'E10', 'E20']);
     const secret = Object.freeze({ A05: 1, C07: 1 }),
       at = '2026-10-15T00:00:00.000Z';
     expect(

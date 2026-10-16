@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect } from 'vitest';
@@ -141,7 +142,7 @@ it('advances the all-view representative from bronze to silver to gold only afte
 });
 it('keeps explicit child-ID and pending searches locked without borrowing lower-stage collection text or highlighting', async () => {
   await mount(bronzeProfile());
-  await search('A09');
+  await search(achievementNumber('A09'));
   expectStage('A01', 'A09', 'gold', false);
   expect(card('A01').textContent).toContain('未达成');
   expect(card('A01').textContent).not.toContain('已获');

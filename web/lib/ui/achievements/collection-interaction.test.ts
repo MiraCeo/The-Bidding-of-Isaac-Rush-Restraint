@@ -1,3 +1,4 @@
+import { achievementNumber } from './numbering';
 import { achievementCollectionNotes } from './collection-notes';
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
@@ -104,7 +105,7 @@ it('shows saved global totals rather than filtered denominators; new entries are
 });
 it('combines category/name/ID/status and offers empty reset without changing layout', async () => {
   await mount(earned());
-  await search('a10');
+  await search(achievementNumber('A10'));
   expect(cards().map((c) => c.id)).toEqual(['achievement-A10']);
   await search('礼物');
   expect(cards().map((c) => c.id)).toEqual(['achievement-E05']);
@@ -217,7 +218,7 @@ it('opens named modal with complete metadata and stable grid; close and Escape r
 it('role prerequisite links bypass active filters, then restore them without a grant', async () => {
   const p = manuallyUnlockAchievementCharacters(createPlayerProfile());
   await mount(p);
-  await search('F01');
+  await search(achievementNumber('F01'));
   expect(cards()).toHaveLength(1);
   const role = node.querySelector<HTMLButtonElement>(
     '.achievement-role li button',
@@ -269,7 +270,7 @@ it('unlocks only the earned flavor text and hides it again on explicit rollback 
 });
 it('moves common rules to one discoverable dialog and returns to the original achievement without losing filters', async () => {
   await mount(earned());
-  await search('A01');
+  await search(achievementNumber('A01'));
   const origin = node.querySelector<HTMLButtonElement>('#achievement-A01')!;
   origin.focus();
   await click(origin);
@@ -333,7 +334,7 @@ it('creates six independent category grids with separators and respects filtered
   await select(3, 'all');
   await search('B0');
   expect(groups()).toHaveLength(1);
-  expect(cards()).toHaveLength(7);
+  expect(cards()).toHaveLength(4);
   await search('不存在');
   expect(groups()).toHaveLength(0);
   expect(node.textContent).toContain('没有符合条件的成就');

@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect } from 'vitest';
@@ -123,7 +124,7 @@ it('keeps other category facets available when one category is selected and matc
 });
 it('updates all facets for names and child IDs, preserves hidden names, handles zero results and resets to 57', async () => {
   await mount(partialProfile());
-  await search('C15');
+  await search(achievementNumber('C15'));
   expect(count('all')).toEqual({ earned: 0, total: 1 });
   expect(count('C')).toEqual({ earned: 0, total: 1 });
   expect(count('A')).toEqual({ earned: 0, total: 0 });
@@ -133,7 +134,7 @@ it('updates all facets for names and child IDs, preserves hidden names, handles 
   await select(3, 'all');
   await search('祸不单行');
   expect(count('all')).toEqual({ earned: 0, total: 0 });
-  await search('C07');
+  await search(achievementNumber('C07'));
   expect(count('C')).toEqual({ earned: 0, total: 1 });
   expect(cards()[0]!.textContent).toContain('???');
   await search('不存在');

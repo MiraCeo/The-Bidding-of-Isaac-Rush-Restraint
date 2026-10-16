@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
@@ -110,13 +111,21 @@ it.each(achievementCatalog)(
       Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
         'value',
-      )!.set!.call(input, a.id);
+      )!.set!.call(input, achievementNumber(a.id));
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await act(async () =>
       (node.querySelector('.achievement-card') as HTMLButtonElement).click(),
     );
     const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.querySelector('.achievement-eyebrow')!.textContent).toContain(
+      achievementNumber(a.id) + ' ·',
+    );
+    expect(
+      node
+        .querySelector('.achievement-card')!
+        .getAttribute('data-achievement-number'),
+    ).toBe(achievementNumber(a.id));
     expect(dialog.textContent).toContain(a.condition);
     expect(dialog.textContent).toContain(
       a.scope === 'shared'
@@ -192,7 +201,7 @@ it('manual authorization opens all role cards but marks none of their prerequisi
     ).click(),
   );
   expect(document.querySelector('[role=dialog]')!.textContent).toContain(
-    '游魂前置：非将军之过 + 屡败屡战',
+    '游魂前置：E01 非将军之过 + A08 屡败屡战 I',
   );
   await closeDialog();
 });

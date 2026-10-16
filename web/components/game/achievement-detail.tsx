@@ -9,6 +9,7 @@ import {
   achievementCatalog,
 } from '@/lib/ui/achievements/catalog';
 import { achievementPresentation } from '@/lib/ui/achievements/presentation';
+import { achievementNumber } from '@/lib/ui/achievements/numbering';
 import { achievementCollectionNotes } from '@/lib/ui/achievements/collection-notes';
 import {
   achievementCollectionMetadata,
@@ -43,7 +44,7 @@ export function AchievementDetail({
         <AchievementBadge id={a.id} achieved={!!achievedAt} />
         <div>
           <span className="achievement-eyebrow">
-            {a.id} ·{' '}
+            {achievementNumber(a.id)} ·{' '}
             {achievementCategories.find((c) => c.id === a.category)!.name}
           </span>
           <Dialog.Title>{a.name}</Dialog.Title>
@@ -122,7 +123,10 @@ export function AchievementDetail({
           <p key={c.id}>
             {c.name}前置：
             {characterAchievementRequirements[c.id]
-              .map((id) => achievementCatalog.find((a) => a.id === id)!.name)
+              .map(
+                (id) =>
+                  `${achievementNumber(id)} ${achievementCatalog.find((a) => a.id === id)!.name}`,
+              )
               .join(' + ')}
             。
           </p>
@@ -145,6 +149,7 @@ export function AchievementDetail({
                 <li
                   key={id}
                   data-achievement-id={id}
+                  data-achievement-number={achievementNumber(id)}
                   data-tier={achievementCollectionMetadata[id].tier}
                 >
                   <div>
@@ -154,7 +159,7 @@ export function AchievementDetail({
                           achievementCollectionMetadata[id].tier
                         ]
                       }
-                      徽章 · {id}
+                      徽章 · {achievementNumber(id)}
                     </strong>
                     <span>{at ? '已达成' : '未达成'}</span>
                   </div>

@@ -104,5 +104,5 @@ it('keeps the role prerequisite on the three-copy bronze while the series contin
       node.textContent,
   ).toContain('伊甸');
   await click(card('E05'));
-  expect(dialog().textContent).toContain('伊甸只需第一级3件');
+  expect(dialog().textContent).toContain('伊甸的解锁前置仍只需第一级的3件');
 });

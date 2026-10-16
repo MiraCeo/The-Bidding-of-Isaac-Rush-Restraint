@@ -9,6 +9,7 @@ import {
   achievementTiers,
 } from './collection-metadata';
 import { revision058Series } from './revision058-catalog';
+import { compareAchievementNumbers } from './numbering';
 export const achievementSeries = revision058Series;
 export const seriesForAchievement = (id: AchievementId) =>
   achievementSeries.find((s) => s.ids.includes(id));
@@ -62,7 +63,8 @@ export function selectAchievementCards(
       const d = ratio(b) - ratio(a);
       if (d) return d;
     }
-    return a.id.localeCompare(b.id);
+    const first = (card: typeof a) => card.series?.ids[0] ?? card.id;
+    return compareAchievementNumbers(first(a)!, first(b)!);
   });
 }
 export function groupAchievementCards(

@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { achievementNumber } from './numbering';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -176,7 +177,7 @@ it('filters by metal with fixed global totals and resets all filters without wri
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(
     overview,
   );
-  await search('A01');
+  await search(achievementNumber('A01'));
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
   await click(
     [...node.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -194,7 +195,7 @@ it('does not leak hidden names via search or progress order after merely opening
   await close();
   await search('祸不单行');
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(0);
-  await search('c07');
+  await search(achievementNumber('C07'));
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(1);
   expect(card('C07').textContent).toContain('???');
   await mount(earned('C07'));

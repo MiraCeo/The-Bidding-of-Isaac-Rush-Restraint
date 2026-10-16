@@ -19,6 +19,7 @@ import {
   type AchievementCategory,
 } from '@/lib/ui/achievements/catalog';
 import { hasCurrentAchievementBaseline } from '@/lib/ui/achievements/baseline';
+import { achievementNumber } from '@/lib/ui/achievements/numbering';
 import { projectAchievementRegistry } from '@/lib/ui/achievements/registry';
 import {
   achievementListPresentation,
@@ -367,6 +368,7 @@ export function AchievementProgress({
                           className="achievement-card"
                           key={card.id}
                           data-focused-id={a.id}
+                          data-achievement-number={achievementNumber(a.id)}
                           data-achieved={!!at}
                           data-partial={
                             !!card.series &&
@@ -375,7 +377,7 @@ export function AchievementProgress({
                           }
                           data-tier={badgeTier}
                           data-concealed={listing.hidden}
-                          aria-label={`查看${a.id} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
+                          aria-label={`查看${achievementNumber(a.id)} ${listing.hidden ? '隐藏成就' : listing.name}详情`}
                           aria-haspopup="dialog"
                           aria-controls={detail ? dialogId : undefined}
                           onClick={(e) => openDetail(a.id, e)}
@@ -578,6 +580,7 @@ export function AchievementProgress({
                               aria-hidden="true"
                             />
                           )}
+                          {achievementNumber(id)}{' '}
                           {achievementCatalog.find((a) => a.id === id)!.name}
                           <span className="sr-only">
                             {' '}

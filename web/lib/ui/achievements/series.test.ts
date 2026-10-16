@@ -1,3 +1,4 @@
+import { achievementNumber } from './numbering';
 import { it, expect } from 'vitest';
 import {
   selectAchievementCards,
@@ -47,13 +48,18 @@ it('requires the same child badge to satisfy tier/status/query intersections', (
     ).find((c) => c.id === 'B02')!.definition.id,
   ).toBe('B02');
   expect(
-    selectAchievementCards({ ...all, query: 'b08' }, p, earned).map((c) => [
-      c.id,
-      c.definition.id,
-    ]),
+    selectAchievementCards(
+      { ...all, query: achievementNumber('B08').toLowerCase() },
+      p,
+      earned,
+    ).map((c) => [c.id, c.definition.id]),
   ).toEqual([['B02', 'B08']]);
   expect(
-    selectAchievementCards({ ...all, query: 'B08', tier: 'bronze' }, p, earned),
+    selectAchievementCards(
+      { ...all, query: achievementNumber('B08'), tier: 'bronze' },
+      p,
+      earned,
+    ),
   ).toHaveLength(0);
   expect(
     selectAchievementCards(all, p, earned).find((c) => c.id === 'B02')!
@@ -115,7 +121,11 @@ it('includes a partially collected card once but never borrows an earned bronze 
   const earned = Object.freeze({ B07: at });
   const count = (filter: Partial<AchievementFilters>) =>
     summarizeAchievementCards(
-      selectAchievementCards({ ...all, query: 'B02', ...filter }, {}, earned),
+      selectAchievementCards(
+        { ...all, query: achievementNumber('B02'), ...filter },
+        {},
+        earned,
+      ),
       earned,
     );
   // B02 is a child ID: its bronze sibling does not satisfy this query.
@@ -147,8 +157,11 @@ it('keeps hidden names concealed and applies query, tier and status before count
     );
   expect(count({ query: '不存在' })).toEqual({ earned: 0, total: 0 });
   expect(count({ query: '祸不单行' })).toEqual({ earned: 0, total: 0 });
-  expect(count({ query: 'C07' })).toEqual({ earned: 0, total: 1 });
-  expect(count({ query: 'B08', tier: 'bronze' })).toEqual({
+  expect(count({ query: achievementNumber('C07') })).toEqual({
+    earned: 0,
+    total: 1,
+  });
+  expect(count({ query: achievementNumber('B08'), tier: 'bronze' })).toEqual({
     earned: 0,
     total: 0,
   });
@@ -221,17 +234,17 @@ it('keeps matching earned count separate from global collection when a tier, chi
     matchingCompleted: 0,
     completed: 2,
   });
-  expect(select({ query: 'A09' })).toMatchObject({
+  expect(select({ query: achievementNumber('A09') })).toMatchObject({
     definition: { id: 'A09' },
     matchingCompleted: 0,
   });
-  expect(select({ query: 'A01' })).toMatchObject({
+  expect(select({ query: achievementNumber('A01') })).toMatchObject({
     definition: { id: 'A01' },
     matchingCompleted: 1,
   });
   expect(
     selectAchievementCards(
-      { ...all, query: 'A09', status: 'achieved' },
+      { ...all, query: achievementNumber('A09'), status: 'achieved' },
       {},
       earned,
     ),

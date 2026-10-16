@@ -5,7 +5,11 @@ import {
   characterAchievementRequirements,
 } from './catalog';
 import { revision057Catalog } from './revision057-catalog';
-import { revision058NewIds, revision058NewSeries } from './revision058-catalog';
+import {
+  revision058Catalog,
+  revision058NewIds,
+  revision058NewSeries,
+} from './revision058-catalog';
 import { achievementCollectionMetadata as metal } from './collection-metadata';
 import { achievementSeries, selectAchievementCards } from './series';
 import { achievementGlyphs } from '../../../components/game/achievement-badge';
@@ -100,7 +104,7 @@ describe('approved C-F catalog', () => {
       ),
     ).toHaveLength(57);
     expect(
-      achievementCatalog.filter(
+      revision058Catalog.filter(
         (a) => a.category === 'A' || a.category === 'B',
       ),
     ).toEqual(
