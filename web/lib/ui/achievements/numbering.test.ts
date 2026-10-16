@@ -32,10 +32,10 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('0.5.12 public numbers, stable persistence keys and trigger copy', () => {
-  it('assigns each of the 107 active medals one contiguous category number with no retired aliases', () => {
-    expect(achievementNumbering).toHaveLength(107);
-    expect(new Set(achievementNumbering.map((a) => a.id)).size).toBe(107);
-    expect(new Set(achievementNumbering.map((a) => a.number)).size).toBe(107);
+  it('assigns each of the 117 active medals one contiguous category number with no retired aliases', () => {
+    expect(achievementNumbering).toHaveLength(117);
+    expect(new Set(achievementNumbering.map((a) => a.id)).size).toBe(117);
+    expect(new Set(achievementNumbering.map((a) => a.number)).size).toBe(117);
     expect(achievementNumbering.map((a) => a.id).sort()).toEqual(
       achievementCatalog.map((a) => a.id).sort(),
     );
@@ -58,18 +58,27 @@ describe('0.5.12 public numbers, stable persistence keys and trigger copy', () =
     for (const value of ['', 'A1', 'Z01', 'A00', 'A99', 'A01+B01'])
       expect(achievementIdForNumber(value)).toBeUndefined();
   });
-  it('keeps all 25 bronze/silver/gold groups consecutive, and keeps independent classic cards independent', () => {
+  it('keeps all original 25 bronze/silver/gold groups consecutive, and keeps independent classic cards independent', () => {
     expect(Object.keys(achievementSeriesCopy).sort()).toEqual(
       achievementSeries.map((s) => s.id).sort(),
     );
     for (const series of achievementSeries) {
       const numbers = series.ids.map((id) => achievementNumber(id));
       const start = Number(numbers[0]!.slice(1));
-      expect(numbers.map((n) => Number(n.slice(1)))).toEqual([
-        start,
-        start + 1,
-        start + 2,
-      ]);
+      if (
+        ![
+          'S-TAIL-DESTROYED',
+          'S-TAIL-DUPLICATED',
+          'S-ETERNAL-CLEARS',
+          'S-OPTIONS-AWARDS',
+          'S-BOSS-AWARDS',
+        ].includes(series.id)
+      )
+        expect(numbers.map((n) => Number(n.slice(1)))).toEqual([
+          start,
+          start + 1,
+          start + 2,
+        ]);
       expect(
         series.ids.map((id) => achievementCollectionMetadata[id].tier),
       ).toEqual(['bronze', 'silver', 'gold']);
@@ -112,10 +121,30 @@ describe('0.5.12 public numbers, stable persistence keys and trigger copy', () =
   });
   it('describes a concrete trigger and target for every tier without changing targets, scopes or evaluator identities', () => {
     for (const a of achievementCatalog) {
-      const prior = revision058Catalog.find((old) => old.id === a.id)!;
-      expect({ ...a, name: prior.name, condition: prior.condition }).toEqual(
-        prior,
-      );
+      const prior = revision058Catalog.find((old) => old.id === a.id);
+      if (prior) {
+        const converted = ['C04', 'C05', 'E01', 'E02', 'E03'].includes(a.id);
+        expect({
+          ...a,
+          name: prior.name,
+          condition: prior.condition,
+          kind: prior.kind,
+        }).toEqual(prior);
+        expect(a.kind).toBe(converted ? 'cumulative' : prior.kind);
+      } else {
+        expect([
+          'C16',
+          'C17',
+          'C18',
+          'C19',
+          'E21',
+          'E22',
+          'E23',
+          'E24',
+          'E25',
+          'E26',
+        ]).toContain(a.id);
+      }
     }
     for (const series of achievementSeries) {
       series.ids.forEach((id, i) => {

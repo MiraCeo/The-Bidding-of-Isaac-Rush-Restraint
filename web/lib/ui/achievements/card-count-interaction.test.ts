@@ -74,7 +74,7 @@ it('shows default 2/57 cards instead of 3/107 badges in category navigation whil
   ]);
   expect(facet('all').textContent).toContain('2/57');
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '3 / 107',
+    '3 / 117',
   );
   expect(node.querySelector('.achievement-section-count')).toBeNull();
   expect(cards()).toHaveLength(57);
@@ -93,8 +93,8 @@ it('updates status and tier facets using the same matching child, including part
   expect(count('C')).toEqual({ earned: 1, total: 1 });
   expect(cards()[0]!.dataset.focusedId).toBe('C14');
   await select(0, 'pending');
-  expect(count('all')).toEqual({ earned: 0, total: 35 });
-  expect(count('C')).toEqual({ earned: 0, total: 3 });
+  expect(count('all')).toEqual({ earned: 0, total: 40 });
+  expect(count('C')).toEqual({ earned: 0, total: 5 });
   expect(cards().some((c) => c.id === 'achievement-C06')).toBe(false);
   await select(3, 'all');
   expect(count('all')).toEqual({ earned: 0, total: 57 });
@@ -106,13 +106,13 @@ it('keeps other category facets available when one category is selected and matc
   await mount(partialProfile());
   await select(3, 'silver');
   await click(facet('A'));
-  expect(count('all')).toEqual({ earned: 1, total: 36 });
-  expect(count('C')).toEqual({ earned: 1, total: 4 });
+  expect(count('all')).toEqual({ earned: 1, total: 41 });
+  expect(count('C')).toEqual({ earned: 1, total: 6 });
   expect(count('A')).toEqual({ earned: 0, total: 5 });
   expect(cards()).toHaveLength(5);
   expect(node.querySelector('.achievement-section-count')).toBeNull();
   await click(facet('C'));
-  expect(cards()).toHaveLength(4);
+  expect(cards()).toHaveLength(6);
   expect(count('A')).toEqual({ earned: 0, total: 5 });
   expect(node.querySelector('.achievement-section-count')).toBeNull();
 });
@@ -156,7 +156,7 @@ it('does not write progress or checkpoints, alter the global overview or change 
   await select(2, '3');
   expect(count('all')).toEqual({ earned: 2, total: 57 });
   await select(3, 'gold');
-  expect(count('all')).toEqual({ earned: 0, total: 33 });
+  expect(count('all')).toEqual({ earned: 0, total: 38 });
   await select(0, 'achieved');
   expect(count('all')).toEqual({ earned: 0, total: 0 });
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(

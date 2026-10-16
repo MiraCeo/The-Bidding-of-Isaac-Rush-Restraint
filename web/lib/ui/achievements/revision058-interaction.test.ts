@@ -36,17 +36,17 @@ const card = (id: string) =>
   node.querySelector<HTMLButtonElement>('#achievement-' + id)!;
 const click = (el: HTMLElement) => act(async () => el.click());
 const dialog = () => document.querySelector<HTMLElement>('[role=dialog]')!;
-it('shows 107 medals as 57 category-separated cards with current grades and never writes by browsing', async () => {
+it('shows 117 medals as 57 category-separated cards with current grades and never writes by browsing', async () => {
   const p = createPlayerProfile(now),
     raw = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, raw);
   await mount(p);
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '0 / 107',
+    '0 / 117',
   );
   expect(node.querySelector('.achievement-tier-totals')!.textContent).toBe(
-    '铜 0 / 38银 0 / 36金 0 / 33',
+    '铜 0 / 38银 0 / 41金 0 / 38',
   );
   expect(card('C06').querySelector('progress')!.max).toBe(6);
   expect(card('F04').getAttribute('data-focused-id')).toBe('F15');

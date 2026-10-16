@@ -62,6 +62,10 @@ export const achievementNumberOrder = {
     'C07',
     'C08',
     'C09',
+    'C16',
+    'C17',
+    'C18',
+    'C19',
   ],
   D: [
     'D01',
@@ -106,6 +110,12 @@ export const achievementNumberOrder = {
     'E19',
     'E20',
     'E16',
+    'E21',
+    'E22',
+    'E23',
+    'E24',
+    'E25',
+    'E26',
   ],
   F: [
     'F01',

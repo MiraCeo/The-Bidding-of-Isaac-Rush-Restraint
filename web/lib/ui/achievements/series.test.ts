@@ -58,8 +58,8 @@ it('keeps goals within the exact tier/status/child-ID range and never treats cou
     expect(achievementCardGoal(card, own)).toBeNull();
   }
 });
-it('keeps 107 independent badges as 57 cards and preserves the original three series orders', () => {
-  expect(achievementCatalog).toHaveLength(107);
+it('keeps 117 independent badges as 57 cards and preserves the original three series orders', () => {
+  expect(achievementCatalog).toHaveLength(117);
   const cards = selectAchievementCards(all, {}, {});
   expect(cards).toHaveLength(57);
   expect(groupAchievementCards(cards).map((g) => g.items.length)).toEqual([

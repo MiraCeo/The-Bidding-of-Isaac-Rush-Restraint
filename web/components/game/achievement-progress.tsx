@@ -65,7 +65,7 @@ export function AchievementProgress({
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState<AchievementCategory | 'all'>('all'),
     [status, setStatus] = useState<AchievementStatusFilter>('all'),
-    [sort, setSort] = useState<AchievementSort>('catalog'),
+    [sort, setSort] = useState<AchievementSort>('collection'),
     [tier, setTier] = useState<AchievementTier | 'all'>('all');
   const [columns, setColumns] = useState(() =>
       loadAchievementColumns(getPreferenceStorage()),
@@ -151,7 +151,7 @@ export function AchievementProgress({
     setQuery('');
     setCategory('all');
     setStatus('all');
-    setSort('catalog');
+    setSort('collection');
     setTier('all');
   };
   return (
@@ -238,6 +238,7 @@ export function AchievementProgress({
                 value={sort}
                 onChange={(e) => setSort(e.target.value as AchievementSort)}
               >
+                <option value="collection">类型与等级</option>
                 <option value="catalog">编号顺序</option>
                 <option value="recent">最近达成</option>
                 <option value="progress">进度优先</option>

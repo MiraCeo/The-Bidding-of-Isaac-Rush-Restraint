@@ -126,7 +126,7 @@ it('makes the read-only achievement preview explicitly pending rather than false
   );
   expect(node.textContent).toContain('清理尚待成功保存');
   expect(node.querySelector('.achievement-overview')!.textContent).toContain(
-    '0 / 107',
+    '0 / 117',
   );
   expect(node.textContent).not.toContain('旧版成就纪念');
   expect(JSON.stringify(p)).toBe(raw);

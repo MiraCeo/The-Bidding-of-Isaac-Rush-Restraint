@@ -440,11 +440,11 @@ describe('live recovery transcripts and legacy boundaries', () => {
       expect(achievementCatalog.some((a) => (a.id as string) === id)).toBe(
         false,
       );
-    expect(achievementCatalog).toHaveLength(107);
+    expect(achievementCatalog).toHaveLength(117);
   });
 });
 
-it('atomically rolls back schema6 activation on quota failure and retries the pending prefix exactly once', async () => {
+it('atomically rolls back schema7 activation on quota failure and retries the pending prefix exactly once', async () => {
   const s = step(freshClassic()),
     values = new Map<string, string>();
   let blocked = true,
@@ -484,7 +484,7 @@ it('atomically rolls back schema6 activation on quota failure and retries the pe
         version: number;
       }
     ).version,
-  ).toBe(6);
+  ).toBe(7);
   const again = await saveClassicClient(storage, saved.session, {
     expectedSource: storage.getItem(gameSaveKey),
     coordinator,

@@ -190,16 +190,16 @@ function floorRecord(
 }
 
 describe('0.5 product catalog and independent character permission', () => {
-  it('retains the frozen original 30 and publishes the revised 107 with updated Lost prerequisites', () => {
+  it('retains the frozen original 30 and publishes the revised 117 with updated Lost prerequisites', () => {
     const ids = achievementCatalog.map((a) => a.id);
-    expect(ids).toHaveLength(107);
+    expect(ids).toHaveLength(117);
     expect(legacyAchievementCatalog).toHaveLength(30);
-    expect(new Set(ids).size).toBe(107);
+    expect(new Set(ids).size).toBe(117);
     expect(
       achievementCategories.map(
         (c) => ids.filter((id) => id.startsWith(c.id)).length,
       ),
-    ).toEqual([13, 24, 15, 22, 18, 15]);
+    ).toEqual([13, 24, 19, 22, 24, 15]);
     const prerequisites = new Set(
       Object.values(characterAchievementRequirements).flat(),
     );

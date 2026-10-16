@@ -97,8 +97,7 @@ export function AchievementDetail({
                   data-tier={achievementCollectionMetadata[id].tier}
                   data-selected={id === a.id}
                   data-achieved={!!at}
-                  aria-label={level.name}
-                  aria-description={`${achievementTierLabels[achievementCollectionMetadata[id].tier]}徽章 · ${achievementNumber(id)}`}
+                  aria-label={`${achievementTierLabels[achievementCollectionMetadata[id].tier]}徽章 · ${achievementNumber(id)} ${level.name}`}
                 >
                   <div className="achievement-stage-heading">
                     <AchievementBadge id={id} achieved={!!at} />

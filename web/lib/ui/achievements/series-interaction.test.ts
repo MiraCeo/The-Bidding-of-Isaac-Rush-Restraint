@@ -94,7 +94,7 @@ function activate(p: PlayerProfile) {
     now,
   );
 }
-it('renders 57 cards for 107 badges and keeps a legacy silver without inventing a bronze or changing its timestamp', async () => {
+it('renders 57 cards for 117 badges and keeps a legacy silver without inventing a bronze or changing its timestamp', async () => {
   const p = legacy(),
     raw = JSON.stringify(p);
   localStorage.setItem(playerProfileKey, raw);

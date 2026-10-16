@@ -121,7 +121,7 @@ it('damaged or unknown achievement module blocks new selection without resetting
 it('storage unavailable allows only the default local character and never grants restricted roles', () => {
   expect(() => requireCharacterAccess(null, 'isaac')).not.toThrow();
   expect(() => requireCharacterAccess(null, 'lost')).toThrow();
-  expect(characterRequirementText('lost')).toBe('非将军之过 + 屡败屡战 I');
+  expect(characterRequirementText('lost')).toBe('非将军之过 I + 屡败屡战 I');
 });
 it('failed or unavailable coordinated grant leaves profile byte exact', async () => {
   const p = createPlayerProfile(now),

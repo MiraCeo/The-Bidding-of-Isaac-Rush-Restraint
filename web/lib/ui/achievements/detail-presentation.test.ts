@@ -21,7 +21,7 @@ it.each(achievementCatalog)(
   },
 );
 it('covers all 25 series without replacing unrelated rank, role or branch boundaries', () => {
-  expect(achievementSeries).toHaveLength(25);
+  expect(achievementSeries).toHaveLength(30);
   for (const series of achievementSeries) {
     const copies = series.ids.map((id) =>
       achievementDetailPresentation(

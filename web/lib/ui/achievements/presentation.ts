@@ -1,5 +1,5 @@
 import type { AchievementId as V056Id } from './v056-catalog';
-import { revision058Series } from './revision058-catalog';
+import { revision065Series } from './revision065-catalog';
 import { achievementSeriesCopy } from './series-copy';
 import { achievementNumber, compareAchievementNumbers } from './numbering';
 import {
@@ -264,7 +264,7 @@ export const achievementPresentation = {
   ...legacyPresentation,
   ...Object.fromEntries(
     achievementCatalog.flatMap((a) => {
-      const series = revision058Series.find((s) => s.ids.includes(a.id));
+      const series = revision065Series.find((s) => s.ids.includes(a.id));
       if (series)
         return [
           [
@@ -303,7 +303,7 @@ export function achievementListPresentation(
   };
 }
 export type AchievementStatusFilter = 'all' | 'achieved' | 'pending';
-export type AchievementSort = 'catalog' | 'recent' | 'progress';
+export type AchievementSort = 'collection' | 'catalog' | 'recent' | 'progress';
 export interface AchievementFilters {
   query: string;
   category: AchievementCategory | 'all';

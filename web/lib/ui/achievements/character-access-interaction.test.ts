@@ -72,8 +72,8 @@ it.each(['classic', 'survival'] as const)(
     expect(radio('isaac').disabled).toBe(false);
     for (const id of ['lost', 'azazel', 'eden', 'jacob_esau'])
       expect(radio(id).disabled).toBe(true);
-    expect(node.textContent).toContain('非将军之过 + 屡败屡战');
-    expect(node.textContent).toContain('厚积薄发 + 硫磺火？');
+    expect(node.textContent).toContain('非将军之过 I + 屡败屡战');
+    expect(node.textContent).toContain('厚积薄发 I + 硫磺火？');
     await click(radio('isaac'));
     await click(button('开始游戏'));
     expect(node.querySelector('.game-stage')).not.toBeNull();

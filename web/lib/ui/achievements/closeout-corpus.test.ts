@@ -65,7 +65,7 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       );
       expect(
         committed.profile.progression.modules[achievementRegistryModule],
-      ).toMatchObject({ version: 6, catalogVersion: 5 });
+      ).toMatchObject({ version: 7, catalogVersion: 6 });
       expect(
         applyGrowthContext(committed.profile, context, corpusTime).profile,
       ).toBe(committed.profile);
@@ -118,7 +118,7 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       );
       expect(
         Object.keys(projectAchievementRegistry(loaded)!.progress),
-      ).toHaveLength(107);
+      ).toHaveLength(117);
       const known = new Map();
       for (const r of f.registry!.receipts) {
         expect(r.key).toBe(achievementReceiptKey(r));

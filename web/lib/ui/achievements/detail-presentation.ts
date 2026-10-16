@@ -4,6 +4,11 @@ import { seriesForAchievement } from './series';
 
 /** Display copy only. Thresholds and per-level progress still come from catalog. */
 const seriesCopy: Readonly<Record<string, readonly [string, string]>> = {
+  'S-TAIL-DESTROYED': ['取得资格后，道具奖励被尾巴实际消除。', '房'],
+  'S-TAIL-DUPLICATED': ['尾巴实际复制道具奖励。', '房'],
+  'S-ETERNAL-CLEARS': ['永恒六面骰实际清零正的房间积分。', '房'],
+  'S-OPTIONS-AWARDS': ['从房间奖励实际获得更多选择或更多选择?。', '房'],
+  'S-BOSS-AWARDS': ['实际取得BOSS房道具奖励。', '房'],
   'S-FAILED-BIDS': ['累计正常竞拍失败。', '次'],
   'S-FAILED-STREAK': ['同一局内连续正常竞拍失败。', '次'],
   'S-LOSING-MATCHES': ['累计正式终局排名第6及以后的对局。', '局'],

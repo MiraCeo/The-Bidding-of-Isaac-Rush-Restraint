@@ -6,13 +6,14 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2 | 3 | 4 | 5 | 6;
-  catalogVersion: 1 | 2 | 3 | 4 | 5;
+  version: 2 | 3 | 4 | 5 | 6 | 7;
+  catalogVersion: 1 | 2 | 3 | 4 | 5 | 6;
   activatedAt: string;
   manualUnlockAllAt: string | null;
   milestones?: { from: number; at: string };
   revisions?: { from: number; at: string };
   cf?: { from: number; at: string };
+  stages?: { from: number; at: string };
   count: number;
   roots: [0 | 1, string][];
   data: string[];
@@ -80,7 +81,9 @@ export function packAchievementRegistry(
   registry: AchievementRegistry,
   forceExpanded = false,
 ): PackedAchievementRegistry {
+  const v7 = !!registry.stages;
   const v6 = !!registry.cf;
+  if (v7 && !v6) fail();
   const v5 = !!registry.revisions;
   if ((v6 && !v5) || (!v6 && registry.receipts.some(isCfEvent))) fail();
   const v4 = !!registry.milestones;
@@ -157,11 +160,12 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: v6 ? 6 : v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
-    catalogVersion: v6 ? 5 : v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
+    version: v7 ? 7 : v6 ? 6 : v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
+    catalogVersion: v7 ? 6 : v6 ? 5 : v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
     ...(registry.milestones ? { milestones: { ...registry.milestones } } : {}),
     ...(registry.revisions ? { revisions: { ...registry.revisions } } : {}),
     ...(registry.cf ? { cf: { ...registry.cf } } : {}),
+    ...(registry.stages ? { stages: { ...registry.stages } } : {}),
     activatedAt: registry.activatedAt,
     manualUnlockAllAt: registry.manualUnlockAllAt,
     count: registry.receipts.length,
@@ -180,7 +184,8 @@ export function unpackAchievementRegistry(
       (value.version === 3 && value.catalogVersion === 2) ||
       (value.version === 4 && value.catalogVersion === 3) ||
       (value.version === 5 && value.catalogVersion === 4) ||
-      (value.version === 6 && value.catalogVersion === 5)
+      (value.version === 6 && value.catalogVersion === 5) ||
+      (value.version === 7 && value.catalogVersion === 6)
     )
   )
     fail();
@@ -304,7 +309,7 @@ export function unpackAchievementRegistry(
         }
       }
     }
-    if (value.version === 6) {
+    if (value.version >= 6) {
       const present = uint();
       if (present > 1) fail();
       if (present) {
@@ -341,6 +346,7 @@ export function unpackAchievementRegistry(
     receipts,
     ...(value.version >= 4 ? { milestones: value.milestones } : {}),
     ...(value.version >= 5 ? { revisions: value.revisions } : {}),
-    ...(value.version === 6 ? { cf: value.cf } : {}),
+    ...(value.version >= 6 ? { cf: value.cf } : {}),
+    ...(value.version === 7 ? { stages: value.stages } : {}),
   };
 }

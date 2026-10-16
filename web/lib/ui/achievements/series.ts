@@ -2,15 +2,16 @@ import {
   achievementCatalog,
   achievementCategories,
   type AchievementId,
+  type AchievementDefinition,
 } from './catalog';
 import { selectAchievements, type AchievementFilters } from './presentation';
 import {
   achievementCollectionMetadata,
   achievementTiers,
 } from './collection-metadata';
-import { revision058Series } from './revision058-catalog';
+import { revision065Series } from './revision065-catalog';
 import { compareAchievementNumbers } from './numbering';
-export const achievementSeries = revision058Series;
+export const achievementSeries = revision065Series;
 export const seriesForAchievement = (id: AchievementId) =>
   achievementSeries.find((s) => s.ids.includes(id));
 export function selectAchievementCards(
@@ -53,15 +54,24 @@ export function selectAchievementCards(
       if (d) return d;
     }
     if (filters.sort === 'progress') {
-      const ratio = (c: typeof a) =>
-        achieved[c.definition.id]
-          ? 1
-          : achievementCollectionMetadata[c.definition.id].hidden
-            ? 0
-            : Math.min(progress[c.definition.id] ?? 0, c.definition.target) /
-              c.definition.target;
+      const ratio = (c: typeof a) => {
+        const goal = achievementCardGoal(c, achieved);
+        if (!goal) return 1;
+        if (achievementCollectionMetadata[goal.id].hidden) return 0;
+        return Math.min(progress[goal.id] ?? 0, goal.target) / goal.target;
+      };
       const d = ratio(b) - ratio(a);
       if (d) return d;
+    }
+    if (filters.sort === 'collection') {
+      const rank = (card: typeof a) =>
+        card.series
+          ? 0
+          : achievementTiers.indexOf(
+              achievementCollectionMetadata[card.definition.id].tier,
+            ) + 1;
+      const difference = rank(a) - rank(b);
+      if (difference) return difference;
     }
     const first = (card: typeof a) => card.series?.ids[0] ?? card.id;
     return compareAchievementNumbers(first(a)!, first(b)!);
@@ -79,9 +89,13 @@ export function groupAchievementCards(
  * goal separate, and inside the active filter range. Never infer acquisition
  * from counters or move backwards to a missing legacy lower stage. */
 export function achievementCardGoal(
-  card: ReturnType<typeof selectAchievementCards>[number],
+  card: {
+    definition: AchievementDefinition;
+    series?: { ids: readonly AchievementId[] };
+    matchingIds: readonly AchievementId[];
+  },
   achieved: Partial<Record<AchievementId, string>>,
-) {
+): AchievementDefinition | null {
   if (!achieved[card.definition.id]) return card.definition;
   if (!card.series) return null;
   const index = card.series.ids.indexOf(card.definition.id);

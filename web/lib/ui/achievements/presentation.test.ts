@@ -32,7 +32,7 @@ const all: AchievementFilters = {
   sort: 'catalog',
 };
 describe('presentation-only catalog and deterministic filters', () => {
-  it('covers 107 active and two retired IDs with concise summaries and stable family glyphs', () => {
+  it('covers 117 active and two retired IDs with concise summaries and stable family glyphs', () => {
     const ids = [...achievementCatalog.map((a) => a.id), 'A02', 'A04'].sort();
     expect(Object.keys(achievementPresentation).sort()).toEqual(ids);
     expect(Object.keys(achievementCollectionNotes).sort()).toEqual(ids);
@@ -96,7 +96,7 @@ describe('presentation-only catalog and deterministic filters', () => {
         .slice(0, 4)
         .map((a) => a.id),
     ).toEqual(['A01', 'E05', 'A10', 'D03']);
-    expect(selectAchievements(all, {}, {})).toHaveLength(107);
+    expect(selectAchievements(all, {}, {})).toHaveLength(117);
   });
 });
 describe('metal config and soft-concealed list policy', () => {
@@ -111,7 +111,7 @@ describe('metal config and soft-concealed list policy', () => {
             (a) => achievementCollectionMetadata[a.id].tier === t,
           ).length,
       ),
-    ).toEqual([38, 36, 33]);
+    ).toEqual([38, 41, 38]);
     expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
     expect(
       Object.entries(achievementCollectionMetadata)
@@ -201,6 +201,8 @@ describe('metal config and soft-concealed list policy', () => {
       'C07',
       'C08',
       'C09',
+      'C17',
+      'C19',
       'D08',
       'D18',
       'D20',
@@ -210,6 +212,9 @@ describe('metal config and soft-concealed list policy', () => {
       'E18',
       'E10',
       'E20',
+      'E22',
+      'E24',
+      'E26',
       'F02',
       'F14',
       'F16',
@@ -221,7 +226,7 @@ describe('metal config and soft-concealed list policy', () => {
       selectAchievements({ ...all, tier: 'gold', category: 'E' }, {}, {}).map(
         (a) => a.id,
       ),
-    ).toEqual(['E18', 'E10', 'E20']);
+    ).toEqual(['E18', 'E10', 'E20', 'E22', 'E24', 'E26']);
     const secret = Object.freeze({ A05: 1, C07: 1 }),
       at = '2026-10-15T00:00:00.000Z';
     expect(
@@ -337,9 +342,9 @@ describe('category sections preserve sorted input within a real category boundar
       'E',
       'F',
     ]);
-    expect(groups.map((g) => g.items.length)).toEqual([13, 24, 15, 22, 18, 15]);
+    expect(groups.map((g) => g.items.length)).toEqual([13, 24, 19, 22, 24, 15]);
     expect(new Set(groups.flatMap((g) => g.items.map((a) => a.id))).size).toBe(
-      107,
+      117,
     );
     for (const g of groups)
       expect(g.items).toEqual(

@@ -94,13 +94,13 @@ function earned() {
     new Date('2026-10-15T00:00:00.000Z'),
   );
 }
-it('shows 107 badges as 57 cards in six categories with six prerequisites and 101 collection badges without activating a profile', async () => {
+it('shows 117 badges as 57 cards in six categories with six prerequisites and 111 collection badges without activating a profile', async () => {
   await mount();
   expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);
   expect(node.querySelectorAll('[id^=achievement-category-]')).toHaveLength(6);
   expect(node.querySelectorAll('.achievement-badge')).toHaveLength(57);
-  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(29);
-  expect(node.textContent).toContain('成就总览0 / 107');
+  expect(node.querySelectorAll('.achievement-card progress')).toHaveLength(34);
+  expect(node.textContent).toContain('成就总览0 / 117');
   expect(node.textContent).toContain('尚无0.5');
   expect(localStorage.length).toBe(0);
 });
@@ -133,7 +133,7 @@ it.each(achievementCatalog)(
     for (const rule of copy.rules) expect(dialog.textContent).toContain(rule);
     if (seriesForAchievement(a.id)) {
       const row = dialog.querySelector(`[data-achievement-id=${a.id}]`)!;
-      expect(row.getAttribute('aria-label')).toBe(a.name);
+      expect(row.getAttribute('aria-label')).toContain(a.name);
       expect(row.querySelector('h3')!.textContent).toBe(
         seriesForAchievement(a.id)!.name,
       );
@@ -222,7 +222,7 @@ it('manual authorization opens all role cards but marks none of their prerequisi
     ).click(),
   );
   expect(document.querySelector('[role=dialog]')!.textContent).toContain(
-    '游魂前置：E01 非将军之过 + A08 屡败屡战 I',
+    '游魂前置：E01 非将军之过 I + A08 屡败屡战 I',
   );
   await closeDialog();
 });

@@ -82,13 +82,13 @@ function settle(
   return { record, next };
 }
 describe('approved C-F catalog', () => {
-  it('publishes 107 medals, 57 cards and 25 series without renumbering A-B or restoring deferred IDs', () => {
-    expect(achievementCatalog).toHaveLength(107);
-    expect(new Set(achievementCatalog.map((a) => a.id)).size).toBe(107);
+  it('publishes 117 medals, 57 cards and 30 series without renumbering A-B or restoring deferred IDs', () => {
+    expect(achievementCatalog).toHaveLength(117);
+    expect(new Set(achievementCatalog.map((a) => a.id)).size).toBe(117);
     expect(revision058NewIds).toHaveLength(20);
-    expect(achievementSeries).toHaveLength(25);
+    expect(achievementSeries).toHaveLength(30);
     expect(achievementCategories.map((c) => c.count)).toEqual([
-      13, 24, 15, 22, 18, 15,
+      13, 24, 19, 22, 24, 15,
     ]);
     expect(
       selectAchievementCards(
@@ -163,7 +163,7 @@ describe('approved C-F catalog', () => {
       ['bronze', 'silver', 'gold'].map(
         (t) => achievementCatalog.filter((a) => metal[a.id].tier === t).length,
       ),
-    ).toEqual([38, 36, 33]);
+    ).toEqual([38, 41, 38]);
     expect(achievementCatalog.filter((a) => metal[a.id].hidden)).toHaveLength(
       11,
     );

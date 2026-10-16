@@ -282,7 +282,7 @@ describe('schema6 exact wire and cause validation', () => {
       version: number;
       catalogVersion: number;
     };
-    expect(wire).toMatchObject({ version: 6, catalogVersion: 5 });
+    expect(wire).toMatchObject({ version: 7, catalogVersion: 6 });
     const normalized = readAchievementRegistry(p)!;
     expect(
       validateAchievementRegistry(packAchievementRegistry(normalized)),
