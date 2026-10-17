@@ -247,6 +247,9 @@ it('uses one bounded reading rail, an ordinary-PC sticky directory and a visible
 
 it('keeps the query across peer tabs with no inactive focus targets or profile writes', async () => {
   await mount();
+  expect(
+    node.querySelector('.ranking-page-heading .rule-directory-tools'),
+  ).toBeNull();
   const rules = node.querySelector<HTMLElement>(
     '.rules-tab-panel[aria-label=玩法规则]',
   )!;
@@ -256,6 +259,19 @@ it('keeps the query across peer tabs with no inactive focus targets or profile w
   ];
   expect(tabs.map((el) => el.textContent)).toEqual(['玩法规则', '道具图鉴']);
   await click(tabs[1]!);
+  expect(
+    node.querySelector('.ranking-page-heading .rule-directory-tools'),
+  ).not.toBeNull();
+  expect(
+    node.querySelector('.rule-item-directory .rule-directory-tools'),
+  ).toBeNull();
+  expect(node.querySelector('.rule-directory-heading')).toBeNull();
+  expect(node.textContent).not.toContain('这里是通用道具说明');
+  expect(
+    [...node.querySelectorAll('.ranking-page-heading button')].some((el) =>
+      /返回游戏|返回主菜单/.test(el.textContent ?? ''),
+    ),
+  ).toBe(false);
   expect(tabs[1]!.getAttribute('aria-current')).toBe('page');
   expect(rules.hidden).toBe(true);
   expect(rules.hasAttribute('inert')).toBe(true);
@@ -263,6 +279,9 @@ it('keeps the query across peer tabs with no inactive focus targets or profile w
   expect(items.hasAttribute('inert')).toBe(false);
   await search('屏障');
   await click(tabs[0]!);
+  expect(
+    node.querySelector('.ranking-page-heading .rule-directory-tools'),
+  ).toBeNull();
   expect(items.hidden).toBe(true);
   expect(items.hasAttribute('inert')).toBe(true);
   await click(tabs[1]!);
@@ -303,11 +322,14 @@ it('places an opted-in subtitle next to the title without moving the eyebrow or 
     '.utility-page-title-line { display:flex; flex-wrap:wrap; align-items:baseline;',
   );
   expect(css).toContain('.rules-tab-panel[hidden] { display:none; }');
+  expect(css).toContain(
+    '.utility-page-heading-actions>.rule-directory-tools { width:260px;',
+  );
   expect(css).toContain('.rule-chapter p { max-width:none;');
   for (const file of [
     'game-settings',
     'progress-center',
-    'room-utilities',
+    'game-rules',
     'survival-game-app',
   ])
     expect(readFileSync(`components/game/${file}.tsx`, 'utf8')).toContain(

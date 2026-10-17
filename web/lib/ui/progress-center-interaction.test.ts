@@ -296,7 +296,7 @@ it('routes the progress header to settings and rules without restarting the curr
   expect(container.querySelector('#room-utilities-title')!.textContent).toBe(
     '规则',
   );
-  await click('返回游戏');
+  await click('游戏');
   expect(
     container.querySelector<HTMLInputElement>(
       'input[aria-label="竞拍奖励 A 的数值"]',

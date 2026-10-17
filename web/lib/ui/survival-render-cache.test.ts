@@ -36,9 +36,9 @@ it('reuses factual replay snapshot across UI-only renders but invalidates it aft
         return b;
       };
     await act(async () => button('规则', nav).click());
-    await act(async () => button('返回游戏').click());
+    await act(async () => button('游戏', nav).click());
     await act(async () => button('设置', nav).click());
-    await act(async () => button('返回游戏').click());
+    await act(async () => button('游戏', nav).click());
     expect(spy.mock.calls.length).toBe(count);
     await act(async () => button('出价竞拍').click());
     expect(spy.mock.calls.length).toBe(count + 1);

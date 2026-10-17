@@ -364,6 +364,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     } else if (selected === 'rules')
       content = (
         <GameRules
+          mode="survival"
           catalog={survivalItemCatalog}
           gameplay={
             <>
@@ -404,59 +405,68 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         />
       );
     else content = <p>开始生存对局后可查看此页。</p>;
+    const utilityHeading = (
+      <UtilityPageHeading
+        inlineDescription={selected === 'rules'}
+        titleId="room-utilities-title"
+        title={
+          selected === 'ranking'
+            ? roomRanking === 'score'
+              ? '当前积分排行'
+              : roomRanking === 'contest'
+                ? '本房争夺榜'
+                : '生存排行'
+            : selected === 'rules'
+              ? '生存模式规则'
+              : selected === 'build'
+                ? '构筑与当前状态'
+                : selected === 'replay'
+                  ? '生存回放'
+                  : '生存教学'
+        }
+        eyebrow={
+          selected === 'ranking'
+            ? 'PLAYER RANKING'
+            : selected === 'rules'
+              ? 'GAME RULES'
+              : selected === 'build'
+                ? 'YOUR BUILD'
+                : selected === 'replay'
+                  ? 'MATCH REPLAY'
+                  : 'LEARN BY PLAYING'
+        }
+        description={
+          selected === 'ranking'
+            ? roomRanking === 'score'
+              ? '已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。'
+              : roomRanking === 'contest'
+                ? '按照市场等价出价排列，扰乱者同样参与名额争夺。'
+                : '已结算房间与层末成绩 · 查看不重复结算'
+            : selected === 'rules'
+              ? '现行生存机制与道具说明'
+              : undefined
+        }
+      >
+        <Button variant="secondary" onClick={close}>
+          <ArrowLeft aria-hidden="true" />
+          返回游戏
+        </Button>
+      </UtilityPageHeading>
+    );
     return (
       <section
         id="room-utilities"
         aria-labelledby="room-utilities-title"
         className="ranking-stage game-tools-stage survival-utility"
       >
-        <UtilityPageHeading
-          inlineDescription={selected === 'rules'}
-          titleId="room-utilities-title"
-          title={
-            selected === 'ranking'
-              ? roomRanking === 'score'
-                ? '当前积分排行'
-                : roomRanking === 'contest'
-                  ? '本房争夺榜'
-                  : '生存排行'
-              : selected === 'rules'
-                ? '生存模式规则'
-                : selected === 'build'
-                  ? '构筑与当前状态'
-                  : selected === 'replay'
-                    ? '生存回放'
-                    : '生存教学'
-          }
-          eyebrow={
-            selected === 'ranking'
-              ? 'PLAYER RANKING'
-              : selected === 'rules'
-                ? 'GAME RULES'
-                : selected === 'build'
-                  ? 'YOUR BUILD'
-                  : selected === 'replay'
-                    ? 'MATCH REPLAY'
-                    : 'LEARN BY PLAYING'
-          }
-          description={
-            selected === 'ranking'
-              ? roomRanking === 'score'
-                ? '已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。'
-                : roomRanking === 'contest'
-                  ? '按照市场等价出价排列，扰乱者同样参与名额争夺。'
-                  : '已结算房间与层末成绩 · 查看不重复结算'
-              : selected === 'rules'
-                ? '现行生存机制与道具说明'
-                : undefined
-          }
-        >
-          <Button variant="secondary" onClick={close}>
-            <ArrowLeft aria-hidden="true" />
-            返回游戏
-          </Button>
-        </UtilityPageHeading>
-        <div className="utility-page-content">{content}</div>
+        {selected === 'rules' ? (
+          content
+        ) : (
+          <>
+            {utilityHeading}
+            <div className="utility-page-content">{content}</div>
+          </>
+        )}
       </section>
     );
   }

@@ -550,9 +550,11 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('规则', node('nav')));
     expect(container.textContent).toContain('S = R');
-    expect(container.textContent).toContain('25件');
+    await click(button('道具图鉴', node('.rules-tabs')));
+    expect(container.querySelectorAll('.rule-item-card')).toHaveLength(25);
+    await click(button('玩法规则', node('.rules-tabs')));
     expect(container.textContent).toContain('不提供黑王子之冠');
-    await click(button('返回游戏'));
+    await click(button('游戏', node('nav[aria-label="主导航"]')));
     await click(node('[aria-label="查看构筑与当前状态"]'));
     expect(container.textContent).not.toContain('终局王冠倍率');
     expect(container.textContent).not.toContain('NaN');

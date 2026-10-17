@@ -1,7 +1,7 @@
 import { useCharacterAccess } from './use-character-access';
 import { characterRequirementText } from '@/lib/ui/achievements/character-access';
 import { GameHeader } from './game-header';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Check, Coins, PackageOpen } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -103,6 +103,17 @@ export function CharacterSelection({
     selected === undefined ? localSelectedCharacter : selected;
   const setSelectedCharacter = onSelect ?? setLocalSelectedCharacter;
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
+  useEffect(() => {
+    if (!renderUtilities || !utilityPanel) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        changeUtilityPanel(null);
+      }
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [renderUtilities, utilityPanel, changeUtilityPanel]);
 
   return (
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>

@@ -68,10 +68,15 @@ it('shares a compact header and heading actions across the five menu-origin page
       heading.querySelector('.utility-page-heading-copy h2'),
     ).not.toBeNull();
     expect(heading.querySelector('.utility-page-description')).not.toBeNull();
-    expect(
-      heading.querySelector('.utility-page-heading-actions')!.textContent,
-    ).toContain('返回主菜单');
-    await click('返回主菜单', heading);
+    if (page === '设置' || page === '规则') {
+      expect(heading.querySelector('.utility-page-heading-actions')).toBeNull();
+      await click('游戏', node.querySelector('.main-nav')!);
+    } else {
+      expect(
+        heading.querySelector('.utility-page-heading-actions')!.textContent,
+      ).toContain('返回主菜单');
+      await click('返回主菜单', heading);
+    }
     shell('游戏');
     expect(node.querySelector<HTMLElement>('.mode-menu-stage')!.hidden).toBe(
       false,
@@ -94,7 +99,14 @@ it.each(['classic', 'survival'] as const)(
       await click(page, node.querySelector('.main-nav')!);
       shell(page);
       expect(node.querySelector('.page-context-bar')).toBeNull();
-      await click('返回游戏', node.querySelector('.ranking-page-heading')!);
+      if (page === '设置' || page === '规则') {
+        await act(async () =>
+          window.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          ),
+        );
+      } else
+        await click('返回游戏', node.querySelector('.ranking-page-heading')!);
       shell('游戏');
       expect(
         node.querySelector('.page-context-bar .character-step'),
@@ -169,11 +181,18 @@ it.each(['classic', 'survival'] as const)(
           ).not.toContain('黑王子之冠');
         await click('玩法规则', node.querySelector('.rules-tabs')!);
       }
-      expect(
-        heading.querySelector('.utility-page-heading-actions')!.textContent,
-      ).toContain('返回游戏');
       expect(localStorage.getItem(key)).toBe(before);
-      await click('返回游戏', heading);
+      if (page === '设置' || page === '规则') {
+        expect(
+          heading.querySelector('.utility-page-heading-actions'),
+        ).toBeNull();
+        await click('游戏', node.querySelector('.main-nav')!);
+      } else {
+        expect(
+          heading.querySelector('.utility-page-heading-actions')!.textContent,
+        ).toContain('返回游戏');
+        await click('返回游戏', heading);
+      }
       shell('游戏');
       expect(node.querySelector('#bid-A')).toBe(input);
       expect(
@@ -240,7 +259,14 @@ it.each(['classic', 'survival'] as const)(
       shell(page);
       expect(node.querySelector('.page-context-bar')).toBeNull();
       expect(localStorage.getItem(key)).toBe(before);
-      await click('返回游戏', node.querySelector('.ranking-page-heading')!);
+      if (page === '设置' || page === '规则') {
+        await act(async () =>
+          window.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          ),
+        );
+      } else
+        await click('返回游戏', node.querySelector('.ranking-page-heading')!);
       shell('游戏');
       expect(
         node.querySelector(

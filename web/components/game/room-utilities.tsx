@@ -75,6 +75,20 @@ export function RoomUtilities({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [panel, onPanelChange, progress]);
 
+  const footer = (
+    <footer className="result-actions utility-page-actions">
+      <p>
+        {game
+          ? game.phase === 'room_action'
+            ? '当前报价保留，返回后可继续修改。Esc 可返回。'
+            : '返回当前结算阶段，不重新计算本房间。Esc 可返回。'
+          : returnLabel === '返回主菜单'
+            ? '返回主菜单，不改变当前对局。Esc 可返回。'
+            : '返回后继续选择角色，不会自动开始对局。Esc 可返回。'}
+      </p>
+    </footer>
+  );
+
   if (!panel) return null;
   if (panel === 'settings')
     return (
@@ -87,6 +101,17 @@ export function RoomUtilities({
         onOpenReplay={() => onPanelChange('replay')}
         onReturnGame={() => onPanelChange(null)}
       />
+    );
+  if (panel === 'rules')
+    return (
+      <section
+        id="room-utilities"
+        className="ranking-stage game-tools-stage"
+        aria-labelledby="room-utilities-title"
+      >
+        <GameRules onOpenTutorial={() => onPanelChange('tutorial')} />
+        {footer}
+      </section>
     );
   if (panel === 'ranking') {
     return (
@@ -107,7 +132,6 @@ export function RoomUtilities({
       aria-labelledby="room-utilities-title"
     >
       <UtilityPageHeading
-        inlineDescription={panel === 'rules'}
         titleId="room-utilities-title"
         title={panelNames[panel]}
         description={
@@ -151,21 +175,9 @@ export function RoomUtilities({
           <ReplayViewer />
         ) : panel === 'tutorial' ? (
           <GameTutorial scoreDecimals={preferences.scoreDecimals} />
-        ) : (
-          <GameRules onOpenTutorial={() => onPanelChange('tutorial')} />
-        )}
+        ) : null}
       </div>
-      <footer className="result-actions utility-page-actions">
-        <p>
-          {game
-            ? game.phase === 'room_action'
-              ? '当前报价保留，返回后可继续修改。Esc 可返回。'
-              : '返回当前结算阶段，不重新计算本房间。Esc 可返回。'
-            : returnLabel === '返回主菜单'
-              ? '返回主菜单，不改变当前对局。Esc 可返回。'
-              : '返回后继续选择角色，不会自动开始对局。Esc 可返回。'}
-        </p>
-      </footer>
+      {footer}
     </section>
   );
 }

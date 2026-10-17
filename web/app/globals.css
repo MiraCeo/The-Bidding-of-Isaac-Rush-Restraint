@@ -531,8 +531,6 @@
 .rule-actions dd { color:var(--rules-ink); font-size:.9rem; line-height:1.85; }
 .rule-item-directory { scroll-margin-top: 24px; margin-top: 32px; }
 .rule-catalog-body { border-top:1px solid var(--border); padding:16px; }
-.rule-directory-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
-.rule-directory-heading p { max-width:52ch; color:var(--rules-ink); font-size:.8rem; line-height:1.8; }
 .rule-search { display: grid; flex: 0 0 220px; gap: 6px; }
 .rule-search span { color: var(--rules-muted); font-size: .85rem; }
 .rule-search input, .setting-select select { min-width: 0; border: 1px solid var(--input); border-radius: 8px; background: #120f0d; padding: 9px 11px; color: var(--foreground); }
@@ -574,7 +572,7 @@
   .rule-catalog-body { padding: 16px; }
   .rule-comparison th, .rule-comparison td { padding: 10px; }
   .game-tools-stage .ranking-page-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .rule-directory-heading, .settings-footer { align-items: stretch; flex-direction: column; }
+  .settings-footer { align-items: stretch; flex-direction: column; }
   .rule-search { flex-basis: auto; }
   .rule-item-grid { grid-template-columns: 1fr; }
   .public-ranking-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
@@ -660,7 +658,7 @@
 .rule-search-feedback { display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:.68rem; color:var(--rules-muted); }
 .rule-search-feedback button { color:var(--primary); cursor:pointer; text-underline-offset:3px; text-decoration:underline; }
 .rule-search-feedback button:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
-@media (max-width:760px) { .rules-overview-heading,.rule-directory-heading { flex-wrap:wrap; }.rule-directory-tools { flex-basis:100%; } }
+@media (max-width:760px) { .rules-overview-heading { flex-wrap:wrap; }.rule-directory-tools { flex-basis:100%; } }
 .tutorial-content { display: grid; gap: 22px; }
 .tutorial-lessons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
 .tutorial-lessons button { display: grid; gap: 7px; border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #211c17; text-align: left; font-size: .88rem; }
@@ -1658,3 +1656,7 @@
 .rule-item-effects { grid-column:2; align-self:end; gap:5px; margin:0 12px 12px 0; }
 .rule-item-effects .item-badge { padding:2px 7px; font-size:.68rem; line-height:1.6; font-weight:600; }
 .rule-item-effects [data-emphasis="trait"] { border-color:rgb(var(--badge-rgb) / 12%); background:transparent; color:rgb(var(--badge-rgb) / 78%); font-weight:450; }
+
+.utility-page-heading-actions>.rule-directory-tools { width:260px; flex:0 0 260px; max-width:100%; }
+.rule-item-directory .rule-item-grid { margin-top:0; }
+.utility-page-heading-actions .rule-search-feedback button { min-height:0; font-size:inherit; }

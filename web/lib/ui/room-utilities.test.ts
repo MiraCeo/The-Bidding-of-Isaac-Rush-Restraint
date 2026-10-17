@@ -57,6 +57,21 @@ async function mount(node: ReactNode) {
   await act(async () => root.render(node));
 }
 
+async function returnToGame() {
+  const navigation = element('nav[aria-label="主导航"]');
+  const current = navigation.querySelector(
+    '[aria-current="page"]',
+  )?.textContent;
+  if (current === '设置' || current === '规则') {
+    expect(
+      [...container.querySelectorAll('.ranking-page-heading button')].some(
+        (el) => /返回游戏|返回主菜单/.test(el.textContent ?? ''),
+      ),
+    ).toBe(false);
+    await click(button('游戏', navigation));
+  } else await click(button('返回游戏'));
+}
+
 function element<T extends Element>(selector: string): T {
   const found = container.querySelector<T>(selector);
   if (!found) throw new Error(`Missing element ${selector}`);
@@ -200,7 +215,7 @@ describe('room utility interaction without a real browser', () => {
     );
     expect(element('.room-game-content').hasAttribute('hidden')).toBe(true);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element('input[aria-label="竞拍奖励 A 的数值"]')).toBe(original);
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
@@ -319,7 +334,7 @@ describe('room utility interaction without a real browser', () => {
     expect(button('导出存档').disabled).toBe(false);
     await click(button('设置', element('nav[aria-label="主导航"]')));
     await click(button('恢复默认设置'));
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
     ).toBe('12');
@@ -361,9 +376,9 @@ describe('room utility interaction without a real browser', () => {
       await click(button('规则', element('nav')));
       expect(container.querySelector('.page-context-bar')).toBeNull();
       expect(container.querySelector('[aria-label="查看角色构筑"]')).toBeNull();
-      await click(button('返回游戏'));
+      await returnToGame();
       await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(localStorage.getItem(gameSaveKey)).toBe(before);
       if (phase !== 'game_result')
         expect(parseGameSave(before).session.game.phase).toBe(phase);
@@ -435,7 +450,7 @@ describe('room utility interaction without a real browser', () => {
       ).toBe(true);
       await click(element<HTMLButtonElement>('.character-start-button'));
       expect(generate).not.toHaveBeenCalled();
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(
         element<HTMLInputElement>('input[name="character"][value="azazel"]'),
       ).toBe(selected);
@@ -529,7 +544,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.settings-footer output').textContent).toContain(
       '当前会话',
     );
-    await click(button('返回游戏'));
+    await returnToGame();
     await click(
       element<HTMLInputElement>('input[name="character"][value="isaac"]'),
     );
@@ -556,7 +571,7 @@ describe('room utility interaction without a real browser', () => {
       );
       expect(document.activeElement).toBe(element('#room-utilities-title'));
       expect(container.querySelectorAll('.topbar')).toHaveLength(1);
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(container.querySelector('#room-utilities')).toBeNull();
       expect(element<HTMLDivElement>('.room-game-content').hidden).toBe(false);
       expect(element<HTMLInputElement>('#bid-A')).toBe(originalInput);
@@ -581,7 +596,7 @@ describe('room utility interaction without a real browser', () => {
     );
     await click(button('排行', element('nav[aria-label="主导航"]')));
     await click(button('资金排行'));
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element<HTMLInputElement>('#bid-B').checked).toBe(true);
     expect(
       element<HTMLInputElement>(
@@ -605,7 +620,7 @@ describe('room utility interaction without a real browser', () => {
     window.scrollTo(0, 760);
     await click(button('设置', element('nav[aria-label="主导航"]')));
     expect(window.scrollY).toBe(0);
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(window.scrollY).toBe(340);
     expect(document.activeElement).toBe(
       button('游戏', element('nav[aria-label="主导航"]')),
@@ -730,7 +745,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.game-client').getAttribute('data-reduce-motion')).toBe(
       'true',
     );
-    await click(button('返回游戏'));
+    await returnToGame();
     await click(button('扰乱', element('.action-mode-switch')));
     await click(element<HTMLInputElement>('#disrupt-B'));
     await click(element<HTMLButtonElement>('.confirm-button'));
@@ -772,7 +787,7 @@ describe('room utility interaction without a real browser', () => {
       element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input')
         .checked,
     ).toBe(false);
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element('.round-status').textContent).toBe(statusBefore);
     expect(element('#ranking-drawer').getAttribute('aria-hidden')).toBe('true');
   });

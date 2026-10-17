@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AboutVersion } from './about-version';
 import { UtilityPageHeading } from './utility-page-heading';
@@ -22,8 +21,6 @@ export function GameSettings({
   saveStatus,
   onChange,
   beforeGame = false,
-  onReturnGame = () => {},
-  returnLabel = '返回游戏',
 }: GameSettingsProps) {
   return (
     <section
@@ -37,12 +34,7 @@ export function GameSettings({
         title="设置"
         titleId="room-utilities-title"
         description="显示偏好与版本信息，不改变游戏结算。"
-      >
-        <Button type="button" variant="secondary" onClick={onReturnGame}>
-          <ArrowLeft aria-hidden="true" />
-          {returnLabel}
-        </Button>
-      </UtilityPageHeading>
+      />
       <div className="utility-page-content game-settings-content">
         {
           <>
