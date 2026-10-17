@@ -1,6 +1,5 @@
-import { ItemIcon } from './item-icon';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ItemBadges } from './item-badges';
+import { CatalogItemCard } from './catalog-item-card';
 import { Button } from '@/components/ui/button';
 
 import { itemCatalog } from '@/lib/game/item-catalog';
@@ -340,14 +339,7 @@ export function GameRules({
           </div>
           <div className="rule-item-grid">
             {items.map((item) => (
-              <article key={item.id} className="rule-item-card">
-                <div className="rule-item-heading">
-                  <ItemIcon itemId={item.id} size="small" />
-                  <h4>{item.name}</h4>
-                </div>
-                <p>{itemPresentations[item.id].description}</p>
-                <ItemBadges item={item} />
-              </article>
+              <CatalogItemCard key={item.id} item={item} />
             ))}
             {items.length === 0 && (
               <output className="empty-result">

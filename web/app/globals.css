@@ -540,11 +540,10 @@
 .setting-select select { font-size: .78rem; }
 .rule-search input:focus-visible, .rules-contents a:focus-visible, .setting-select select:focus-visible, .nav-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .rule-item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
-.rule-item-card { border: 1px solid var(--border); border-radius: 12px; background: rgb(255 255 255 / 2%); padding: 14px 16px; }
-.rule-item-heading { display: flex; align-items: center; gap: 9px; }
-.rule-item-heading > span { font-size: 1.6rem; }
-.rule-item-card h4 { font-size:.9rem; font-weight:750; }
-.rule-item-card p { margin-top:8px; color:var(--rules-ink); font-size:.85rem; line-height:1.8; }
+.rule-item-card { display:grid; grid-template-columns:84px minmax(0,1fr); grid-template-rows:auto 1fr auto; column-gap:12px; min-width:0; border:1px solid var(--border); border-radius:10px; background:#1b171380; overflow:hidden; }
+.rule-item-heading { grid-column:2; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:8px; min-width:0; padding:12px 12px 0 0; }
+.rule-item-card h4 { min-width:0; font-size:.88rem; font-weight:750; line-height:1.6; overflow-wrap:anywhere; }
+.rule-item-card>p { grid-column:2; min-width:0; margin:9px 12px 12px 0; color:var(--rules-ink); font-size:.83rem; line-height:1.8; overflow-wrap:anywhere; }
 .rules-source-note { margin-top: 22px; color: var(--rules-muted); font-size: .85rem; line-height: 1.85; }
 
 @media (max-width: 900px) {
@@ -1639,9 +1638,23 @@
 .rules-tabs button:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
 .rules-tab-panel.rule-item-directory { margin-top:0; }
 .rule-item-directory>.rule-catalog-body { padding:0; border:0; }
-.rules-tab-panel.rule-item-directory .rule-item-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr)); }
+.rules-tab-panel.rule-item-directory .rule-item-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); }
 .utility-page-title-line { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px; min-width:0; }
 .utility-page-heading-copy[data-inline-description] .utility-page-title-line>h2 { flex:none; }
 .utility-page-heading-copy[data-inline-description] .utility-page-description { margin:0; font-size:.76rem; line-height:1.65; }
 
 .rules-custom-gameplay>p { margin-top:12px; color:var(--rules-ink); font-size:.9rem; line-height:1.85; }
+
+/* Catalog-only card hierarchy: full-height artwork, fixed attribute pair, effects below. */
+.rule-item-art { grid-column:1; grid-row:1 / 4; display:grid; place-items:center; align-self:stretch; min-height:132px; padding:12px 6px; border-right:1px solid #3d322580; background:linear-gradient(150deg,#34271a66,#18141088); }
+.rule-item-art .item-icon { --item-icon-size:64px; filter:drop-shadow(0 5px 7px #0005); }
+.rule-item-art .item-icon-fallback { font-size:2.4rem; }
+.rule-item-attributes { display:inline-grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-self:start; list-style:none; padding:0; margin:0; border:1px solid #55442d; border-radius:5px; overflow:hidden; background:#100e0b55; }
+.rule-item-attributes>li { --badge-rgb:190 188 184; display:grid; place-items:center; padding:3px 6px; color:rgb(var(--badge-rgb)); font-size:.65rem; font-weight:650; line-height:1.6; white-space:nowrap; }
+.rule-item-attributes>li+li { border-left:1px solid #55442d; }
+.rule-item-attributes>.item-badge-gold { --badge-rgb:216 185 123; background:#bd8b2920; }
+.rule-item-attributes>.item-badge-plum { --badge-rgb:201 158 185; background:#9c55741a; }
+.rule-item-attributes>.item-badge-violet { --badge-rgb:189 170 223; background:#8862a71a; }
+.rule-item-effects { grid-column:2; align-self:end; gap:5px; margin:0 12px 12px 0; }
+.rule-item-effects .item-badge { padding:2px 7px; font-size:.68rem; line-height:1.6; font-weight:600; }
+.rule-item-effects [data-emphasis="trait"] { border-color:rgb(var(--badge-rgb) / 12%); background:transparent; color:rgb(var(--badge-rgb) / 78%); font-weight:450; }

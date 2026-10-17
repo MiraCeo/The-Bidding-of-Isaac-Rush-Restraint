@@ -70,7 +70,7 @@ describe('in-game rule reference', () => {
 
   it('provides a complete, unique table of contents instead of a wall of unstructured cards', () => {
     const html = renderToStaticMarkup(createElement(GameRules));
-    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
     const targets = [...html.matchAll(/href="#([^"]+)"/g)].map(
       (match) => match[1],
     );
