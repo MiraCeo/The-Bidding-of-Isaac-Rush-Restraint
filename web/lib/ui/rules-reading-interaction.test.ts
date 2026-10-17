@@ -199,16 +199,14 @@ it('shows result counts for effect searches and empty results, then clears back 
   expect(node.querySelector('.empty-result')!.textContent).toContain(
     '没有匹配',
   );
-  await click(
-    node.querySelector<HTMLButtonElement>('.rule-search-feedback button')!,
-  );
+  await click(node.querySelector<HTMLButtonElement>('.rule-search-clear')!);
   const input = node.querySelector<HTMLInputElement>('input[type=search]')!;
   expect(input.value).toBe('');
   expect(document.activeElement).toBe(input);
   expect(node.querySelectorAll('.rule-item-card')).toHaveLength(
     itemCatalog.length,
   );
-  expect(node.querySelector('.rule-search-feedback button')).toBeNull();
+  expect(node.querySelector('.rule-search-clear')).toBeNull();
   unchanged();
 });
 
@@ -259,6 +257,19 @@ it('keeps the query across peer tabs with no inactive focus targets or profile w
   ];
   expect(tabs.map((el) => el.textContent)).toEqual(['玩法规则', '道具图鉴']);
   await click(tabs[1]!);
+  expect(
+    node.querySelector('.rules-page-heading .rule-search-feedback'),
+  ).toBeNull();
+  expect(
+    node.querySelector('.rules-page-heading .rule-search > .sr-only')!
+      .textContent,
+  ).toBe('查找道具');
+  expect(
+    node.querySelector(
+      '.rule-item-directory footer.rule-search-feedback output',
+    ),
+  ).not.toBeNull();
+  expect(node.querySelector('.rules-source-note')).toBeNull();
   expect(
     node.querySelector('.ranking-page-heading .rule-directory-tools'),
   ).not.toBeNull();
@@ -326,6 +337,10 @@ it('places an opted-in subtitle next to the title without moving the eyebrow or 
     '.utility-page-heading-actions>.rule-directory-tools { width:260px;',
   );
   expect(css).toContain('.rule-chapter p { max-width:none;');
+  expect(css).toContain('.rules-page-heading { min-height:54px; }');
+  expect(css).toContain(
+    '.rules-page-heading .rule-search input { display:block; height:36px;',
+  );
   for (const file of [
     'game-settings',
     'progress-center',

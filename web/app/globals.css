@@ -531,7 +531,7 @@
 .rule-actions dd { color:var(--rules-ink); font-size:.9rem; line-height:1.85; }
 .rule-item-directory { scroll-margin-top: 24px; margin-top: 32px; }
 .rule-catalog-body { border-top:1px solid var(--border); padding:16px; }
-.rule-search { display: grid; flex: 0 0 220px; gap: 6px; }
+.rule-search { display:block; position:relative; }
 .rule-search span { color: var(--rules-muted); font-size: .85rem; }
 .rule-search input, .setting-select select { min-width: 0; border: 1px solid var(--input); border-radius: 8px; background: #120f0d; padding: 9px 11px; color: var(--foreground); }
 .rule-search input { font-size:.85rem; width:100%; }
@@ -542,7 +542,6 @@
 .rule-item-heading { grid-column:2; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:8px; min-width:0; padding:12px 12px 0 0; }
 .rule-item-card h4 { min-width:0; font-size:.88rem; font-weight:750; line-height:1.6; overflow-wrap:anywhere; }
 .rule-item-card>p { grid-column:2; min-width:0; margin:9px 12px 12px 0; color:var(--rules-ink); font-size:.83rem; line-height:1.8; overflow-wrap:anywhere; }
-.rules-source-note { margin-top: 22px; color: var(--rules-muted); font-size: .85rem; line-height: 1.85; }
 
 @media (max-width: 900px) {
   .rules-document-layout { grid-template-columns: 1fr; gap: 28px; }
@@ -655,9 +654,7 @@
 .rules-contents a[aria-current="location"] { color:#f0ca84; border-color:#73552c; background:#3a2b19; }
 .rules-contents a[aria-current="location"]>span { color:#dcb266; }
 .rule-directory-tools { flex:0 0 235px; min-width:0; }
-.rule-search-feedback { display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:.68rem; color:var(--rules-muted); }
-.rule-search-feedback button { color:var(--primary); cursor:pointer; text-underline-offset:3px; text-decoration:underline; }
-.rule-search-feedback button:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.rule-search-feedback { display:flex; justify-content:flex-end; margin-top:16px; padding-top:10px; border-top:1px solid var(--border); font-size:.68rem; color:var(--rules-muted); }
 @media (max-width:760px) { .rules-overview-heading { flex-wrap:wrap; }.rule-directory-tools { flex-basis:100%; } }
 .tutorial-content { display: grid; gap: 22px; }
 .tutorial-lessons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
@@ -1659,4 +1656,14 @@
 
 .utility-page-heading-actions>.rule-directory-tools { width:260px; flex:0 0 260px; max-width:100%; }
 .rule-item-directory .rule-item-grid { margin-top:0; }
-.utility-page-heading-actions .rule-search-feedback button { min-height:0; font-size:inherit; }
+
+/* Both reference tabs share the same compact title geometry. */
+.rules-page-heading { min-height:54px; }
+.rule-directory-tools { position:relative; }
+.rules-page-heading .rule-search input { display:block; height:36px; min-height:0; padding:7px 32px; font-size:.8rem; }
+.rule-search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted-foreground); pointer-events:none; }
+.rules-page-heading .rule-search-clear { position:absolute; right:5px; top:5px; display:grid; place-items:center; width:26px; height:26px; min-height:0; padding:0; border:0; border-radius:5px; color:var(--muted-foreground); cursor:pointer; }
+.rules-page-heading .rule-search-clear:hover { color:var(--primary); background:#ffffff08; }
+.rule-search-clear:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+
+.rules-page-heading .rule-search input::-webkit-search-cancel-button { appearance:none; -webkit-appearance:none; }

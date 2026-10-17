@@ -1,4 +1,5 @@
 import { UtilityPageHeading } from './utility-page-heading';
+import { Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CatalogItemCard } from './catalog-item-card';
 import { Button } from '@/components/ui/button';
@@ -174,7 +175,8 @@ export function GameRules({
   const searchTools = (
     <div className="rule-directory-tools">
       <label className="rule-search">
-        <span>查找道具</span>
+        <span className="sr-only">查找道具</span>
+        <Search className="rule-search-icon" size={15} aria-hidden="true" />
         <input
           ref={searchRef}
           type="search"
@@ -183,27 +185,26 @@ export function GameRules({
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
-      <div className="rule-search-feedback">
-        <output aria-live="polite">
-          显示 {items.length} / {catalog.length} 件道具
-        </output>
-        {query && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('');
-              searchRef.current?.focus();
-            }}
-          >
-            清除道具搜索
-          </button>
-        )}
-      </div>
+      {query && (
+        <button
+          type="button"
+          className="rule-search-clear"
+          aria-label="清除道具搜索"
+          title="清除道具搜索"
+          onClick={() => {
+            setQuery('');
+            searchRef.current?.focus();
+          }}
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
   return (
     <>
       <UtilityPageHeading
+        className="rules-page-heading"
         inlineDescription
         eyebrow="GAME RULES"
         title={mode === 'survival' ? '生存模式规则' : '规则'}
@@ -335,9 +336,6 @@ export function GameRules({
                       index={index}
                     />
                   ))}
-                  <p className="rules-source-note">
-                    公共参数与道具说明复用现行配置。阅读与查询不提交行动，也不改变本局状态。
-                  </p>
                 </article>
               </div>
             </>
@@ -361,6 +359,11 @@ export function GameRules({
                 </output>
               )}
             </div>
+            <footer className="rule-search-feedback">
+              <output aria-live="polite">
+                显示 {items.length} / {catalog.length} 件道具
+              </output>
+            </footer>
           </div>
         </section>
       </div>

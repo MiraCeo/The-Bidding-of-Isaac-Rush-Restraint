@@ -168,7 +168,19 @@ it.each(['classic', 'survival'] as const)(
         ).not.toBeNull();
       }
       if (page === '规则') {
+        expect(
+          node.querySelector('#room-utilities > .utility-page-actions'),
+        ).toBeNull();
+        expect(node.querySelector('#room-utilities')!.textContent).not.toMatch(
+          /返回后继续选择角色|返回主菜单，不改变|当前报价保留，返回后|返回当前结算阶段/,
+        );
         await click('道具图鉴', node.querySelector('.rules-tabs')!);
+        expect(heading.querySelector('.rule-search-feedback')).toBeNull();
+        expect(
+          node.querySelector(
+            '.rule-item-directory footer.rule-search-feedback',
+          ),
+        ).not.toBeNull();
         expect(
           node.querySelector<HTMLElement>('.rule-item-directory')!.hidden,
         ).toBe(false);

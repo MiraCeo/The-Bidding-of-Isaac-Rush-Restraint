@@ -8,6 +8,7 @@ export function UtilityPageHeading({
   children,
   description,
   inlineDescription = false,
+  className,
 }: {
   eyebrow: string;
   title: string;
@@ -15,6 +16,7 @@ export function UtilityPageHeading({
   children?: ReactNode;
   description?: ReactNode;
   inlineDescription?: boolean;
+  className?: string;
 }) {
   const titleContent = (
     <>
@@ -25,7 +27,7 @@ export function UtilityPageHeading({
     </>
   );
   return (
-    <div className="ranking-page-heading">
+    <div className={`ranking-page-heading${className ? ` ${className}` : ''}`}>
       <div
         className="utility-page-heading-copy"
         data-inline-description={inlineDescription || undefined}

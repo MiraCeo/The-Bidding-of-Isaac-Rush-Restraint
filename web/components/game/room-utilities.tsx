@@ -110,7 +110,6 @@ export function RoomUtilities({
         aria-labelledby="room-utilities-title"
       >
         <GameRules onOpenTutorial={() => onPanelChange('tutorial')} />
-        {footer}
       </section>
     );
   if (panel === 'ranking') {
