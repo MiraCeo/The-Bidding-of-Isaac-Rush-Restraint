@@ -119,6 +119,14 @@ it('opens an unfiltered read-only overview, distinguishes cards and medals, and 
   ).toHaveLength(6);
   expect(categories.querySelectorAll('[data-earned="true"]')).toHaveLength(1);
   expect(popup().querySelector('.achievement-eyebrow')).toBeNull();
+  expect(
+    popup().querySelector('.achievement-overview-eyebrow')!.textContent,
+  ).toBe('ACHIEVEMENT OVERVIEW');
+  expect(
+    popup()
+      .querySelector('[aria-label="关闭成就总览"]')!
+      .classList.contains('achievement-overview-close'),
+  ).toBe(true);
   expect(popup().querySelector('.achievement-overview-description')).toBeNull();
   expect(
     popup().querySelector('.achievement-overview-footer')!.textContent,
@@ -206,7 +214,7 @@ it('uses the shared header feedback slot in both modes, aligns goal tracks and l
     '.achievement-overview-category-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));',
   );
   expect(css).toContain(
-    '.achievement-overview-footer { justify-content:flex-end; }',
+    '.achievement-overview-footer { justify-content:center; }',
   );
   expect(css).not.toContain('.achievement-goal-tier');
   expect(css).toContain(

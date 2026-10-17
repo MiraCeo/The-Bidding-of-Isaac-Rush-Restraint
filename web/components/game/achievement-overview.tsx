@@ -138,15 +138,18 @@ export function AchievementOverviewDetail({
     .slice(0, 3);
   return (
     <>
-      <div className="achievement-detail-heading">
+      <div className="achievement-detail-heading achievement-overview-dialog-heading">
         <div>
+          <p className="eyebrow achievement-overview-eyebrow">
+            ACHIEVEMENT OVERVIEW
+          </p>
           <Dialog.Title>成就总览</Dialog.Title>
         </div>
         <Dialog.Close
-          className="achievement-detail-close"
+          className="achievement-detail-close achievement-overview-close"
           aria-label="关闭成就总览"
         >
-          <X size={20} aria-hidden="true" />
+          <X size={18} aria-hidden="true" />
         </Dialog.Close>
       </div>
       <Dialog.Description className="sr-only">
