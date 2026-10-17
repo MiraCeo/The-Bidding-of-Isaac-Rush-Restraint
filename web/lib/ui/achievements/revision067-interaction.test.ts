@@ -110,6 +110,25 @@ it('opens an unfiltered read-only overview, distinguishes cards and medals, and 
   ).toBe('已获 1 枚 / 共 13 枚');
   expect(categories.textContent).not.toContain('卡');
   expect(
+    categories.querySelectorAll(
+      '.achievement-overview-category-grid > .achievement-overview-category',
+    ),
+  ).toHaveLength(6);
+  expect(
+    categories.querySelectorAll('.achievement-overview-category-icon svg'),
+  ).toHaveLength(6);
+  expect(categories.querySelectorAll('[data-earned="true"]')).toHaveLength(1);
+  expect(popup().querySelector('.achievement-eyebrow')).toBeNull();
+  expect(popup().querySelector('.achievement-overview-description')).toBeNull();
+  expect(
+    popup().querySelector('.achievement-overview-footer')!.textContent,
+  ).toBe('关闭');
+  expect(
+    popup().querySelector(
+      '.achievement-overview-footer .achievement-browser-note',
+    ),
+  ).toBeNull();
+  expect(
     popup().querySelectorAll('.achievement-overview-category'),
   ).toHaveLength(6);
   expect(
@@ -183,6 +202,12 @@ it('uses the shared header feedback slot in both modes, aligns goal tracks and l
   expect(css).toContain('.achievement-notice { position:relative;');
   expect(css).not.toContain('.achievement-notice { position:fixed;');
   expect(css).toContain('.achievement-card-progress { display:grid;');
+  expect(css).toContain(
+    '.achievement-overview-category-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));',
+  );
+  expect(css).toContain(
+    '.achievement-overview-footer { justify-content:flex-end; }',
+  );
   expect(css).not.toContain('.achievement-goal-tier');
   expect(css).toContain(
     '.achievement-series-detail li[data-selected="true"] { outline:none; }',

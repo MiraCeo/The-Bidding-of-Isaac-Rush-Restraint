@@ -1,9 +1,22 @@
 import { Dialog } from '@base-ui/react/dialog';
-import { Award, Trophy, Users, X } from 'lucide-react';
+import {
+  Award,
+  Coins,
+  Compass,
+  Footprints,
+  Handshake,
+  ShieldCheck,
+  Shuffle,
+  Trophy,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import type { MouseEvent } from 'react';
 import {
   achievementCatalog,
   achievementCategories,
+  type AchievementCategory,
   type AchievementId,
 } from '@/lib/ui/achievements/catalog';
 import {
@@ -21,6 +34,15 @@ type Props = {
   achieved: Partial<Record<AchievementId, string>>;
   unlockedRoles: number;
   roleCount: number;
+};
+
+const categoryGlyphs: Readonly<Record<AchievementCategory, LucideIcon>> = {
+  A: Footprints,
+  B: Handshake,
+  C: Shuffle,
+  D: Coins,
+  E: Compass,
+  F: ShieldCheck,
 };
 
 /** Existing saved facts only: no score, recommendation, unlock or storage writes. */
@@ -118,7 +140,6 @@ export function AchievementOverviewDetail({
     <>
       <div className="achievement-detail-heading">
         <div>
-          <span className="achievement-eyebrow">成长收藏</span>
           <Dialog.Title>成就总览</Dialog.Title>
         </div>
         <Dialog.Close
@@ -128,7 +149,7 @@ export function AchievementOverviewDetail({
           <X size={20} aria-hidden="true" />
         </Dialog.Close>
       </div>
-      <Dialog.Description className="achievement-overview-description">
+      <Dialog.Description className="sr-only">
         已保存的收藏记录，不随列表筛选改变。
       </Dialog.Description>
       <dl className="achievement-overview-metrics">
@@ -196,25 +217,42 @@ export function AchievementOverviewDetail({
         aria-label="分类徽章进度"
       >
         <h3>分类徽章进度</h3>
-        {achievementCategories.map((category) => {
-          const entries = achievementCatalog.filter(
-            (a) => a.category === category.id,
-          );
-          const earned = entries.filter((a) => achieved[a.id]).length;
-          return (
-            <div key={category.id} className="achievement-overview-category">
-              <span>{category.name}</span>
-              <span className="achievement-overview-category-count">
-                已获 <strong>{earned}</strong> 枚 / 共 {entries.length} 枚
-              </span>
-              <progress
-                aria-label={`${category.name}徽章完成率`}
-                value={earned}
-                max={entries.length}
-              />
-            </div>
-          );
-        })}
+        <div className="achievement-overview-category-grid">
+          {achievementCategories.map((category) => {
+            const entries = achievementCatalog.filter(
+              (a) => a.category === category.id,
+            );
+            const earned = entries.filter((a) => achieved[a.id]).length;
+            const Glyph = categoryGlyphs[category.id];
+            return (
+              <div
+                key={category.id}
+                className="achievement-overview-category"
+                data-earned={earned > 0}
+              >
+                <span
+                  className="achievement-overview-category-icon"
+                  aria-hidden="true"
+                >
+                  <Glyph size={18} strokeWidth={1.65} />
+                </span>
+                <div className="achievement-overview-category-copy">
+                  <span className="achievement-overview-category-name">
+                    {category.name}
+                  </span>
+                  <span className="achievement-overview-category-count">
+                    已获 <strong>{earned}</strong> 枚 / 共 {entries.length} 枚
+                  </span>
+                </div>
+                <progress
+                  aria-label={`${category.name}徽章完成率`}
+                  value={earned}
+                  max={entries.length}
+                />
+              </div>
+            );
+          })}
+        </div>
       </section>
       <section className="achievement-overview-recent" aria-label="最近达成">
         <h3>最近达成</h3>
@@ -234,10 +272,7 @@ export function AchievementOverviewDetail({
           <p>尚无已达成的成就。</p>
         )}
       </section>
-      <footer className="achievement-detail-footer">
-        <span className="achievement-browser-note">
-          任一级达成即点亮一项成就。
-        </span>
+      <footer className="achievement-detail-footer achievement-overview-footer">
         <Dialog.Close className="achievement-detail-done">关闭</Dialog.Close>
       </footer>
     </>
