@@ -475,7 +475,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
   const strip = game && (
-    <section className="survival-status" aria-label="生存进度">
+    <section
+      className={`survival-status${game.phase === 'room_action' ? ' survival-action-status' : ''}`}
+      aria-label="生存进度"
+    >
       <b>
         生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
       </b>

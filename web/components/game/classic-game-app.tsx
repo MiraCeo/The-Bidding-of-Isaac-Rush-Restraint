@@ -378,7 +378,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
       <RoomPrototype
         key={`${game.floorIndex}:${game.roomIndex}`}
         game={game}
-        extraStatus={
+        headingActions={
           props.onReturnMenu && (
             <button
               type="button"

@@ -49,6 +49,7 @@ type ActiveActionKind = Exclude<ActionKind, 'withdraw'>;
 interface RoomPrototypeProps {
   rules?: import('@/lib/game/types').RulesConfig;
   extraStatus?: ReactNode;
+  headingActions?: ReactNode;
   renderUtilities?: (
     panel: import('./room-utilities').RoomUtilityPanel | null,
     turn: PlayerTurn,
@@ -78,6 +79,7 @@ function actionLabel(action: PlayerAction): string {
 export function RoomPrototype({
   rules = defaultRules,
   extraStatus,
+  headingActions,
   renderUtilities,
   draft,
   onDraftChange,
@@ -249,6 +251,46 @@ export function RoomPrototype({
         ? '扰乱市场'
         : '静观其变';
 
+  const panelControls = (
+    <div className="room-panel-controls" aria-label="房间辅助面板">
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-left ${rankingOpen ? 'drawer-tab-expanded' : ''}`}
+        onClick={() => setRankingOpen((open) => !open)}
+        aria-controls="ranking-drawer"
+        aria-expanded={rankingOpen}
+      >
+        <Menu aria-hidden="true" />
+        <span>{rankingOpen ? '收起排行' : '排行'}</span>
+        {rankingOpen ? (
+          <ChevronLeft aria-hidden="true" />
+        ) : (
+          <ChevronRight aria-hidden="true" />
+        )}
+      </button>
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
+        onClick={() => setMarketOpen((open) => !open)}
+        aria-controls="market-drawer"
+        aria-expanded={marketOpen}
+      >
+        {marketOpen ? (
+          <ChevronRight aria-hidden="true" />
+        ) : (
+          <ChevronLeft aria-hidden="true" />
+        )}
+        <span>{marketOpen ? '收起市场' : '市场'}</span>
+        <Scale aria-hidden="true" />
+      </button>
+
+      <span className="room-panel-summary">
+        资金名次 {ranking.findIndex((player) => player.isHuman) + 1} /{' '}
+        {ranking.length}
+      </span>
+    </div>
+  );
+
   return (
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
       <GameHeader
@@ -281,6 +323,7 @@ export function RoomPrototype({
                 <strong>{human.money}</strong>
               </span>
             </div>
+            {utilityPanel === null && panelControls}
           </>
         }
       />
@@ -288,43 +331,15 @@ export function RoomPrototype({
 
       <div
         className="room-game-content"
+        data-ranking-open={rankingOpen}
+        data-market-open={marketOpen}
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        <button
-          type="button"
-          className={`drawer-tab drawer-tab-left ${rankingOpen ? 'drawer-tab-expanded' : ''}`}
-          onClick={() => setRankingOpen((open) => !open)}
-          aria-controls="ranking-drawer"
-          aria-expanded={rankingOpen}
-        >
-          <Menu aria-hidden="true" />
-          <span>{rankingOpen ? '收起排行' : '排行'}</span>
-          {rankingOpen ? (
-            <ChevronLeft aria-hidden="true" />
-          ) : (
-            <ChevronRight aria-hidden="true" />
-          )}
-        </button>
-        <button
-          type="button"
-          className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
-          onClick={() => setMarketOpen((open) => !open)}
-          aria-controls="market-drawer"
-          aria-expanded={marketOpen}
-        >
-          {marketOpen ? (
-            <ChevronRight aria-hidden="true" />
-          ) : (
-            <ChevronLeft aria-hidden="true" />
-          )}
-          <span>{marketOpen ? '收起市场' : '市场'}</span>
-          <Scale aria-hidden="true" />
-        </button>
-
         <aside
           id="ranking-drawer"
           className={`side-drawer ranking-drawer ${rankingOpen ? 'drawer-open' : ''}`}
+          hidden={!rankingOpen}
           aria-hidden={!rankingOpen}
           inert={!rankingOpen}
         >
@@ -361,6 +376,7 @@ export function RoomPrototype({
         <aside
           id="market-drawer"
           className={`side-drawer market-drawer ${marketOpen ? 'drawer-open' : ''}`}
+          hidden={!marketOpen}
           aria-hidden={!marketOpen}
           inert={!marketOpen}
         >
@@ -461,6 +477,7 @@ export function RoomPrototype({
               <h2>选择这一房间的目标</h2>
             </div>
             <div className="room-intro-controls">
+              {headingActions}
               <BuildStatus
                 game={game}
                 rules={rules}
@@ -536,6 +553,7 @@ export function RoomPrototype({
                 <section
                   key={reward.group}
                   className={`reward-column reward-column-${reward.group.toLowerCase()}`}
+                  data-selected={groupSelected}
                 >
                   <article
                     className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}
@@ -717,7 +735,7 @@ function ActionOption({
           <strong>
             {group} · {isDisruption ? '扰乱报价' : '竞拍报价'}
           </strong>
-          <small>
+          <small className="sr-only">
             {available < 1
               ? '资金不足，无法报价'
               : selected

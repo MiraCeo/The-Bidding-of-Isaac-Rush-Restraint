@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
+import { readFileSync } from 'node:fs';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RoomPrototype } from '@/components/game/room-prototype';
@@ -323,5 +324,84 @@ describe('room-wide compact mode and local previews', () => {
     await mode('扰乱');
     await click('.confirm-button');
     expect(submit).not.toHaveBeenCalled();
+  });
+});
+
+describe('action workspace panel layout', () => {
+  it('keeps auxiliary controls in the HUD and changes in-flow panel visibility without losing quote drafts', async () => {
+    const submit = await mount(gameWith());
+    await amount('竞拍', 'A', 37);
+    const content = element<HTMLElement>('.room-game-content');
+    const rank = element<HTMLElement>('#ranking-drawer');
+    const market = element<HTMLElement>('#market-drawer');
+    expect(element('.page-context-bar .room-panel-controls')).toBeTruthy();
+    expect(content.querySelector('.drawer-tab')).toBeNull();
+    expect(rank.hidden).toBe(true);
+    expect(market.hidden).toBe(true);
+    for (const combination of ['rank', 'both', 'market', 'neither']) {
+      if (combination === 'rank' || combination === 'market')
+        await click('.drawer-tab-left');
+      else await click('.drawer-tab-right');
+      expect(content.dataset.rankingOpen).toBe(
+        String(combination === 'rank' || combination === 'both'),
+      );
+      expect(content.dataset.marketOpen).toBe(
+        String(combination === 'market' || combination === 'both'),
+      );
+      expect(rank.hidden).toBe(
+        !(combination === 'rank' || combination === 'both'),
+      );
+      expect(market.hidden).toBe(
+        !(combination === 'market' || combination === 'both'),
+      );
+      expect(
+        element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]')
+          .value,
+      ).toBe('37');
+    }
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it('keeps reward, input and exact preview in the same selected target unit for two actions', async () => {
+    const submit = await mount(gameWith(['more_options']));
+    await amount('竞拍', 'A', 19);
+    await amount('竞拍', 'B', 21);
+    for (const group of ['a', 'b']) {
+      const unit = element<HTMLElement>('.reward-column-' + group);
+      expect(unit.dataset.selected).toBe('true');
+      expect(
+        unit.querySelectorAll('.item-card,.action-pair,.quote-preview'),
+      ).toHaveLength(3);
+      expect(numbers(group as 'a' | 'b')[0]).toBe(group === 'a' ? '19' : '21');
+    }
+    await click('.confirm-button');
+    expect(submit).toHaveBeenCalledExactlyOnceWith({
+      playerId: 'human',
+      actions: [
+        { type: 'bid', group: 'A', amount: 19 },
+        { type: 'bid', group: 'B', amount: 21 },
+      ],
+    });
+  });
+  it('scopes the compact layout to the action page and never fixes the confirmation over its inputs', () => {
+    const css = readFileSync('app/globals.css', 'utf8');
+    expect(css).toContain(
+      '.room-panel-controls .drawer-tab { position:static;',
+    );
+    expect(css).toContain('.room-game-content>.side-drawer { position:sticky;');
+    expect(css).toContain(
+      '.room-game-content>.side-drawer[hidden] { display:none; }',
+    );
+    expect(css).toContain(
+      '.room-game-content .action-footer-sticky { position:static;',
+    );
+    expect(css).toContain(
+      '.room-game-content .reward-grid { column-gap:12px; row-gap:0; }',
+    );
+    expect(css).toContain(
+      '.room-game-content .reward-column { grid-template-rows:subgrid; grid-row:span 3; }',
+    );
+    expect(css).toContain(
+      '.room-game-content[data-ranking-open]>.game-stage { grid-column:1; grid-row:1; }',
+    );
   });
 });
