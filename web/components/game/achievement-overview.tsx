@@ -1,5 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog';
-import { Trophy, Users, X } from 'lucide-react';
+import { Award, Trophy, Users, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import {
   achievementCatalog,
@@ -139,7 +139,7 @@ export function AchievementOverviewDetail({
           </dd>
         </div>
         <div>
-          <dt>已获卡片</dt>
+          <dt>已点亮成就</dt>
           <dd>
             {cardTotals.earned} <span>/ {cardTotals.total}</span>
           </dd>
@@ -152,37 +152,60 @@ export function AchievementOverviewDetail({
         </div>
       </dl>
       <div className="achievement-overview-metals" aria-label="各等级徽章统计">
-        {totals(achieved).map((t) => (
-          <span key={t.tier} data-tier={t.tier}>
-            {achievementTierLabels[t.tier]}徽章{' '}
-            <strong>
-              {t.earned} / {t.total}
-            </strong>
-          </span>
-        ))}
+        {totals(achieved)
+          .reverse()
+          .map((t) => (
+            <article
+              className="achievement-metal-card"
+              key={t.tier}
+              data-tier={t.tier}
+              aria-label={`${achievementTierLabels[t.tier]}徽章收藏统计`}
+            >
+              <span
+                className="achievement-badge"
+                data-tier={t.tier}
+                data-achieved={t.earned > 0}
+                aria-hidden="true"
+              >
+                <span className="achievement-badge-pips">
+                  {Array.from(
+                    { length: achievementTiers.indexOf(t.tier) + 1 },
+                    (_, index) => (
+                      <i key={index} />
+                    ),
+                  )}
+                </span>
+                <Award strokeWidth={1.65} />
+                <span className="achievement-badge-rank">
+                  {achievementTierLabels[t.tier]}
+                </span>
+              </span>
+              <div>
+                <strong>
+                  {t.earned} <span>/ {t.total}</span>
+                </strong>
+                <span className="achievement-metal-label">
+                  {achievementTierLabels[t.tier]}徽章
+                </span>
+              </div>
+            </article>
+          ))}
       </div>
       <section
         className="achievement-overview-categories"
-        aria-label="分类收藏进度"
+        aria-label="分类徽章进度"
       >
-        <h3>分类收藏</h3>
+        <h3>分类徽章进度</h3>
         {achievementCategories.map((category) => {
           const entries = achievementCatalog.filter(
             (a) => a.category === category.id,
           );
           const earned = entries.filter((a) => achieved[a.id]).length;
-          const count = summarizeAchievementCards(
-            cards.filter((c) => c.definition.category === category.id),
-            achieved,
-          );
           return (
             <div key={category.id} className="achievement-overview-category">
               <span>{category.name}</span>
-              <span>
-                {earned} / {entries.length} 枚{' '}
-                <small>
-                  · {count.earned} / {count.total} 卡
-                </small>
+              <span className="achievement-overview-category-count">
+                已获 <strong>{earned}</strong> 枚 / 共 {entries.length} 枚
               </span>
               <progress
                 aria-label={`${category.name}徽章完成率`}
@@ -213,7 +236,7 @@ export function AchievementOverviewDetail({
       </section>
       <footer className="achievement-detail-footer">
         <span className="achievement-browser-note">
-          系列任一级达成计为一张已获卡片。
+          任一级达成即点亮一项成就。
         </span>
         <Dialog.Close className="achievement-detail-done">关闭</Dialog.Close>
       </footer>

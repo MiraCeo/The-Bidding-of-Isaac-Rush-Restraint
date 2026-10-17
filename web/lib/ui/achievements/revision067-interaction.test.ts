@@ -84,6 +84,32 @@ it('opens an unfiltered read-only overview, distinguishes cards and medals, and 
   );
   expect(metrics).toEqual(['1 / 117', '1 / 57', '1 / 5']);
   expect(
+    [...popup().querySelectorAll('dt')].map((el) => el.textContent),
+  ).toEqual(['已获徽章', '已点亮成就', '已解锁角色']);
+  const metals = [
+    ...popup().querySelectorAll<HTMLElement>('.achievement-metal-card'),
+  ];
+  expect(metals.map((el) => el.dataset.tier)).toEqual([
+    'gold',
+    'silver',
+    'bronze',
+  ]);
+  expect(metals.map((el) => el.querySelector('strong')!.textContent)).toEqual([
+    '0 / 37',
+    '0 / 41',
+    '1 / 39',
+  ]);
+  expect(metals.every((el) => el.querySelector('.achievement-badge svg'))).toBe(
+    true,
+  );
+  const categories = popup().querySelector('.achievement-overview-categories')!;
+  expect(categories.querySelector('h3')!.textContent).toBe('分类徽章进度');
+  expect(
+    categories.querySelector('.achievement-overview-category-count')!
+      .textContent,
+  ).toBe('已获 1 枚 / 共 13 枚');
+  expect(categories.textContent).not.toContain('卡');
+  expect(
     popup().querySelectorAll('.achievement-overview-category'),
   ).toHaveLength(6);
   expect(
