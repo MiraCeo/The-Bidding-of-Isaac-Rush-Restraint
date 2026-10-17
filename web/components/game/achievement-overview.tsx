@@ -176,44 +176,42 @@ export function AchievementOverviewDetail({
         </div>
       </dl>
       <div className="achievement-overview-metals" aria-label="各等级徽章统计">
-        {totals(achieved)
-          .reverse()
-          .map((t) => (
-            <article
-              className="achievement-metal-card"
-              key={t.tier}
+        {totals(achieved).map((t) => (
+          <article
+            className="achievement-metal-card"
+            key={t.tier}
+            data-tier={t.tier}
+            aria-label={`${achievementTierLabels[t.tier]}徽章收藏统计`}
+          >
+            <span
+              className="achievement-badge"
               data-tier={t.tier}
-              aria-label={`${achievementTierLabels[t.tier]}徽章收藏统计`}
+              data-achieved={t.earned > 0}
+              aria-hidden="true"
             >
-              <span
-                className="achievement-badge"
-                data-tier={t.tier}
-                data-achieved={t.earned > 0}
-                aria-hidden="true"
-              >
-                <span className="achievement-badge-pips">
-                  {Array.from(
-                    { length: achievementTiers.indexOf(t.tier) + 1 },
-                    (_, index) => (
-                      <i key={index} />
-                    ),
-                  )}
-                </span>
-                <Award strokeWidth={1.65} />
-                <span className="achievement-badge-rank">
-                  {achievementTierLabels[t.tier]}
-                </span>
+              <span className="achievement-badge-pips">
+                {Array.from(
+                  { length: achievementTiers.indexOf(t.tier) + 1 },
+                  (_, index) => (
+                    <i key={index} />
+                  ),
+                )}
               </span>
-              <div>
-                <strong>
-                  {t.earned} <span>/ {t.total}</span>
-                </strong>
-                <span className="achievement-metal-label">
-                  {achievementTierLabels[t.tier]}徽章
-                </span>
-              </div>
-            </article>
-          ))}
+              <Award strokeWidth={1.65} />
+              <span className="achievement-badge-rank">
+                {achievementTierLabels[t.tier]}
+              </span>
+            </span>
+            <div>
+              <strong>
+                {t.earned} <span>/ {t.total}</span>
+              </strong>
+              <span className="achievement-metal-label">
+                {achievementTierLabels[t.tier]}徽章
+              </span>
+            </div>
+          </article>
+        ))}
       </div>
       <section
         className="achievement-overview-categories"

@@ -90,14 +90,14 @@ it('opens an unfiltered read-only overview, distinguishes cards and medals, and 
     ...popup().querySelectorAll<HTMLElement>('.achievement-metal-card'),
   ];
   expect(metals.map((el) => el.dataset.tier)).toEqual([
-    'gold',
-    'silver',
     'bronze',
+    'silver',
+    'gold',
   ]);
   expect(metals.map((el) => el.querySelector('strong')!.textContent)).toEqual([
-    '0 / 37',
-    '0 / 41',
     '1 / 39',
+    '0 / 41',
+    '0 / 37',
   ]);
   expect(metals.every((el) => el.querySelector('.achievement-badge svg'))).toBe(
     true,
