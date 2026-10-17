@@ -39,6 +39,24 @@ const click = async (label: string, scope: Element = node) =>
     if (!b) throw Error('Missing ' + label);
     b.click();
   });
+// React useId changes when the existing utility route remounts selection.
+// Verify every description target, then normalize only that generated prefix.
+function selectionMarkup() {
+  const stage = node.querySelector('.character-stage')!;
+  for (const input of stage.querySelectorAll<HTMLInputElement>(
+    '.character-radio',
+  )) {
+    const targets = input.getAttribute('aria-describedby')!.split(' ');
+    expect(targets).toHaveLength(3);
+    for (const id of targets) {
+      const target = document.getElementById(id);
+      expect(target).not.toBeNull();
+      expect(stage.contains(target)).toBe(true);
+      expect(target!.textContent!.length).toBeGreaterThan(0);
+    }
+  }
+  return stage.innerHTML.replace(/_r_[a-z0-9]+_/g, '_react-id_');
+}
 function shell(page: string) {
   expect(node.querySelectorAll('.topbar')).toHaveLength(1);
   const header = node.querySelector('.topbar')!;
@@ -91,10 +109,8 @@ it.each(['classic', 'survival'] as const)(
   async (mode) => {
     await mount();
     await click(mode === 'classic' ? '经典模式' : '生存模式');
-    const selection = node.querySelector('.character-stage')!.innerHTML;
-    expect(
-      node.querySelector('.page-context-bar .character-step'),
-    ).not.toBeNull();
+    const selection = selectionMarkup();
+    expect(node.querySelector('.page-context-bar .character-step')).toBeNull();
     for (const page of ['设置', '规则', '进度']) {
       await click(page, node.querySelector('.main-nav')!);
       shell(page);
@@ -110,8 +126,8 @@ it.each(['classic', 'survival'] as const)(
       shell('游戏');
       expect(
         node.querySelector('.page-context-bar .character-step'),
-      ).not.toBeNull();
-      expect(node.querySelector('.character-stage')!.innerHTML).toBe(selection);
+      ).toBeNull();
+      expect(selectionMarkup()).toBe(selection);
     }
     expect(localStorage.getItem(gameSaveKey)).toBeNull();
     expect(localStorage.getItem(survivalSaveKey)).toBeNull();
