@@ -21,6 +21,7 @@ export interface EncodedAchievementEvent {
   position: number;
   values: (number | null)[];
 }
+const difficultyCodes = ['easy', 'standard', 'hard', 'highest'] as const;
 const roomFlags = [
   'cooperativeAward',
   'optionsDestroyed',
@@ -138,6 +139,17 @@ export function encodeAchievementEvent(
             ]
           : []),
         ...(e.cfCounts !== undefined ? e.cfCounts.map((n) => int(n, 2)) : []),
+        ...(e.allInCapital !== undefined
+          ? (() => {
+              if (
+                e.cfCounts === undefined ||
+                !Array.isArray(e.allInCapital) ||
+                e.allInCapital.length !== 2
+              )
+                fail();
+              return [int(e.allInCapital[0]), int(e.allInCapital[1])];
+            })()
+          : []),
       ],
     };
   } else if (event.stage === 'floor') {
@@ -153,6 +165,12 @@ export function encodeAchievementEvent(
         ...(e.milestones === true ? [1] : []),
         ...(e.revisions === true ? [1] : []),
         ...(e.cf === true ? [1] : []),
+        ...(e.difficulty !== undefined
+          ? (() => {
+              if (e.cf !== true) fail();
+              return [int(difficultyCodes.indexOf(e.difficulty), 3)];
+            })()
+          : []),
       ],
     };
   } else if (event.stage === 'final') {
@@ -219,7 +237,7 @@ export function decodeAchievementEvent(
     };
   }
   if (encoded.stage === 'room') {
-    if (![5, 6, 8, 14, 17].includes(v.length)) fail();
+    if (![5, 6, 8, 14, 17, 19].includes(v.length)) fail();
     const code = int(v[0], 6),
       mask = int(v[1], 2 ** roomFlags.length - 1),
       score = v[4];
@@ -273,8 +291,8 @@ export function decodeAchievementEvent(
         fail();
       if (flags & 2 && !(flags & 1)) fail();
     }
-    if (v.length === 17) {
-      for (const n of v.slice(14)) int(n, 2);
+    if (v.length >= 17) {
+      for (const n of v.slice(14, 17)) int(n, 2);
       if (
         !!v[14] !== !!(mask & 8) ||
         !!v[15] !== !!(mask & 16) ||
@@ -285,6 +303,16 @@ export function decodeAchievementEvent(
         (v[14] && code !== 0) ||
         v[15]! > bidSuccesses.filter((x) => !x).length ||
         v[16]! > bidSuccesses.filter(Boolean).length
+      )
+        fail();
+    }
+    if (v.length === 19) {
+      const debit = int(v[17]),
+        base = int(v[18]);
+      if (
+        base <= 0 ||
+        (debit > 0 && !(mask & (2 ** 14))) ||
+        ((mask & (2 ** 14)) !== 0 && bidSuccesses.length !== 1)
       )
         fail();
     }
@@ -319,14 +347,17 @@ export function decodeAchievementEvent(
               revisionFlags: int(v[13], 7),
             }
           : {}),
-        ...(v.length === 17
+        ...(v.length >= 17
           ? {
-              cfCounts: v.slice(14).map((n) => int(n, 2)) as [
+              cfCounts: v.slice(14, 17).map((n) => int(n, 2)) as [
                 number,
                 number,
                 number,
               ],
             }
+          : {}),
+        ...(v.length === 19
+          ? { allInCapital: [int(v[17]), int(v[18])] as const }
           : {}),
         highestAwardOpportunities: int(v[2], 2),
         hiddenAwardCopies: int(v[3], 4),
@@ -336,8 +367,8 @@ export function decodeAchievementEvent(
   }
   if (encoded.stage === 'floor') {
     int(p, 6);
-    if (![1, 2, 3, 4].includes(v.length)) fail();
-    if (v.length === 4 && v[3] !== 1) fail();
+    if (![1, 2, 3, 4, 5].includes(v.length)) fail();
+    if (v.length >= 4 && v[3] !== 1) fail();
     if (v.length >= 3 && v[2] !== 1) fail();
     if (v.length >= 2 && v[1] !== 1) fail();
     const mask = int(v[0], 15),
@@ -358,7 +389,10 @@ export function decodeAchievementEvent(
         floorIndex: p,
         ...(v.length >= 2 ? { milestones: true as const } : {}),
         ...(v.length >= 3 ? { revisions: true as const } : {}),
-        ...(v.length === 4 ? { cf: true as const } : {}),
+        ...(v.length >= 4 ? { cf: true as const } : {}),
+        ...(v.length === 5
+          ? { difficulty: difficultyCodes[int(v[4], 3)]! }
+          : {}),
         humanParticipated,
         humanSurvived,
         humanEliminated,
@@ -464,15 +498,17 @@ export function sameAchievementEventFacts(
   let comparable = Math.min(a.values.length, b.values.length);
   if (a.stage === 'room')
     comparable =
-      comparable >= 17
-        ? 17
-        : comparable >= 14
-          ? 14
-          : comparable >= 8
-            ? 8
-            : comparable >= 6
-              ? 6
-              : base;
+      comparable >= 19
+        ? 19
+        : comparable >= 17
+          ? 17
+          : comparable >= 14
+            ? 14
+            : comparable >= 8
+              ? 8
+              : comparable >= 6
+                ? 6
+                : base;
   return (
     canonicalJson(a.values.slice(0, comparable)) ===
     canonicalJson(b.values.slice(0, comparable))
@@ -514,7 +550,7 @@ export function isCfEvent(
   e: Pick<EncodedAchievementEvent, 'stage' | 'values'>,
 ): boolean {
   return (
-    e.values.length ===
+    e.values.length >=
     (e.stage === 'room'
       ? 17
       : e.stage === 'entry' || e.stage === 'complete'
@@ -522,5 +558,15 @@ export function isCfEvent(
         : e.stage === 'floor'
           ? 4
           : 6)
+  );
+}
+
+/** Only new authoritative room/floor proofs carry the 0.6.6 evidence. */
+export function isBalanceEvent(
+  e: Pick<EncodedAchievementEvent, 'stage' | 'values'>,
+): boolean {
+  return (
+    (e.stage === 'room' && e.values.length === 19) ||
+    (e.stage === 'floor' && e.values.length === 5)
   );
 }

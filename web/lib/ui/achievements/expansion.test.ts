@@ -506,7 +506,7 @@ describe('prospective activation, exact continuation and atomic terminal saving'
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.expansionFrom).toBe(1);
     expect(next.growth!.units[1]!.values).toHaveLength(5);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(17);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(19);
     expect(canonicalJson(old)).toBe(before);
     expect(parseGameSave(serializeGameCheckpoint(next)).session.growth).toEqual(
       next.growth,

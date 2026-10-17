@@ -47,7 +47,7 @@ it('captures exact positive-score evidence and excludes AI-only rooms in officia
     result.causes['S-ETERNAL-CLEARS']!,
   );
 }, 30000);
-it('uses actual continuous schema7 profiles, not summed single-match awards or independent role accounts', () => {
+it('uses actual continuous schema8 profiles, not summed single-match awards or independent role accounts', () => {
   let profile = freshStudyProfile();
   expect(availableStudyRoles(profile)).toEqual(['isaac']);
   const rows: CurrentStudyRow[] = [];

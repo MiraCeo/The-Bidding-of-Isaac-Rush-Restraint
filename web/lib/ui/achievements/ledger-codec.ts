@@ -1,4 +1,9 @@
-import { isMilestoneEvent, isRevisionEvent, isCfEvent } from './event-codec';
+import {
+  isMilestoneEvent,
+  isRevisionEvent,
+  isCfEvent,
+  isBalanceEvent,
+} from './event-codec';
 import type { AchievementReceipt, AchievementRegistry } from './registry';
 import { canonicalJson } from '../../shared/json-facts';
 import { sha256Hex } from '../../shared/sha256';
@@ -6,8 +11,8 @@ import { sha256Hex } from '../../shared/sha256';
 export const packedAchievementReceiptLimit = 16384;
 export const packedAchievementChunkSize = 8192;
 export interface PackedAchievementRegistry {
-  version: 2 | 3 | 4 | 5 | 6 | 7;
-  catalogVersion: 1 | 2 | 3 | 4 | 5 | 6;
+  version: 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  catalogVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   activatedAt: string;
   manualUnlockAllAt: string | null;
   milestones?: { from: number; at: string };
@@ -81,7 +86,9 @@ export function packAchievementRegistry(
   registry: AchievementRegistry,
   forceExpanded = false,
 ): PackedAchievementRegistry {
+  const v8 = registry.receipts.some(isBalanceEvent);
   const v7 = !!registry.stages;
+  if (v8 && !v7) fail();
   const v6 = !!registry.cf;
   if (v7 && !v6) fail();
   const v5 = !!registry.revisions;
@@ -151,7 +158,16 @@ export function packAchievementRegistry(
     if (v6) {
       uint(isCfEvent(r) ? 1 : 0);
       if (isCfEvent(r) && r.stage === 'room')
-        for (const n of v.slice(14)) uint(n!);
+        for (const n of v.slice(14, 17)) uint(n!);
+    }
+    if (v8) {
+      uint(isBalanceEvent(r) ? 1 : 0);
+      if (isBalanceEvent(r)) {
+        if (r.stage === 'room') {
+          uint(v[17]!);
+          uint(v[18]!);
+        } else uint(v[4]!);
+      }
     }
     nodes.set(r.key, nodes.size + 1);
   }
@@ -160,8 +176,20 @@ export function packAchievementRegistry(
   for (let i = 0; i < encoded.length; i += packedAchievementChunkSize)
     data.push(encoded.slice(i, i + packedAchievementChunkSize));
   return {
-    version: v7 ? 7 : v6 ? 6 : v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
-    catalogVersion: v7 ? 6 : v6 ? 5 : v5 ? 4 : v4 ? 3 : expanded ? 2 : 1,
+    version: v8 ? 8 : v7 ? 7 : v6 ? 6 : v5 ? 5 : v4 ? 4 : expanded ? 3 : 2,
+    catalogVersion: v8
+      ? 7
+      : v7
+        ? 6
+        : v6
+          ? 5
+          : v5
+            ? 4
+            : v4
+              ? 3
+              : expanded
+                ? 2
+                : 1,
     ...(registry.milestones ? { milestones: { ...registry.milestones } } : {}),
     ...(registry.revisions ? { revisions: { ...registry.revisions } } : {}),
     ...(registry.cf ? { cf: { ...registry.cf } } : {}),
@@ -185,7 +213,8 @@ export function unpackAchievementRegistry(
       (value.version === 4 && value.catalogVersion === 3) ||
       (value.version === 5 && value.catalogVersion === 4) ||
       (value.version === 6 && value.catalogVersion === 5) ||
-      (value.version === 7 && value.catalogVersion === 6)
+      (value.version === 7 && value.catalogVersion === 6) ||
+      (value.version === 8 && value.catalogVersion === 7)
     )
   )
     fail();
@@ -326,6 +355,16 @@ export function unpackAchievementRegistry(
         else values.push(1);
       }
     }
+    if (value.version >= 8) {
+      const present = uint();
+      if (present > 1) fail();
+      if (present) {
+        if (stage === 'room' && values.length === 17)
+          values.push(uint(), uint());
+        else if (stage === 'floor' && values.length === 4) values.push(uint());
+        else fail();
+      }
+    }
     const candidate = {
       ...roots[rootIndex]!,
       stage,
@@ -337,7 +376,12 @@ export function unpackAchievementRegistry(
     };
     receipts.push({ ...candidate, key: achievementReceiptKey(candidate) });
   }
-  if (offset !== bytes.length || nextRoot !== roots.length) fail();
+  if (
+    offset !== bytes.length ||
+    nextRoot !== roots.length ||
+    (value.version === 8 && !receipts.some(isBalanceEvent))
+  )
+    fail();
   return {
     version: 1,
     catalogVersion: 1,
@@ -347,6 +391,6 @@ export function unpackAchievementRegistry(
     ...(value.version >= 4 ? { milestones: value.milestones } : {}),
     ...(value.version >= 5 ? { revisions: value.revisions } : {}),
     ...(value.version >= 6 ? { cf: value.cf } : {}),
-    ...(value.version === 7 ? { stages: value.stages } : {}),
+    ...(value.version >= 7 ? { stages: value.stages } : {}),
   };
 }

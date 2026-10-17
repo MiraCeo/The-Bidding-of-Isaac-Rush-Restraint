@@ -95,7 +95,7 @@ it('reproduces the reported two-bronze profile and renders only the highest earn
     '累计正常竞拍失败20次',
   );
   expect(card('B05').dataset.goalId).toBe('B18');
-  expect(card('B05').querySelector('progress')!.max).toBe(5);
+  expect(card('B05').querySelector('progress')!.max).toBe(10);
   expect(card('B05').querySelector('progress')!.value).toBe(1);
 });
 it.each(['silver', 'gold'] as const)(

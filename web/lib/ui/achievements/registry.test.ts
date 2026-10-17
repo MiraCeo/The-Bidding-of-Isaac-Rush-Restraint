@@ -362,7 +362,8 @@ describe('strict compact factual ledger, activation and branches', () => {
       interestMoney: 1000,
       hiddenCopies: 2,
     });
-    for (const id of ['D01', 'D03', 'D06', 'E03'])
+    expect(v.achievedAt.D06).toBeUndefined(); // Legacy full-bid bit has no floor/debit proof.
+    for (const id of ['D01', 'D03', 'E03'])
       expect(v.achievedAt).toHaveProperty(id);
   });
   it('keeps first unlock timestamps and manual authorization independent of achievements and receipts', () => {

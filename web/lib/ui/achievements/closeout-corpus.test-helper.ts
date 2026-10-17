@@ -74,8 +74,8 @@ function checkedTrace(trace: CurrentCorpusTrace) {
   ] as { version: number; catalogVersion: number };
   // Capture uses the current client; scale fixtures below deliberately remain
   // schema6 byte-for-byte baselines, without the new grant-activation header.
-  if (wire.version !== 7 || wire.catalogVersion !== 6)
-    throw Error('Current lifecycle did not activate schema7');
+  if (wire.version !== 8 || wire.catalogVersion !== 7)
+    throw Error('Current lifecycle did not activate schema8');
   return trace;
 }
 /** Optional scope is test-only: independently recapture one full scenario.
@@ -213,7 +213,15 @@ export function buildCurrentLedgerFixture(
     const candidate = {
       stage: unit.stage,
       position: unit.position,
-      values: [...unit.values],
+      // Preserve the frozen schema6 scale corpus; new proof is measured separately.
+      values: unit.values.slice(
+        0,
+        unit.stage === 'room'
+          ? 17
+          : unit.stage === 'floor'
+            ? 4
+            : unit.values.length,
+      ),
       root,
       parent,
       mode: trace.mode,

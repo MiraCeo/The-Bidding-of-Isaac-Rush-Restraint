@@ -51,9 +51,9 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       for (const u of context.units)
         expect(u.values.length).toBe(
           u.stage === 'room'
-            ? 17
+            ? 19
             : u.stage === 'floor'
-              ? 4
+              ? 5
               : u.stage === 'final'
                 ? 6
                 : 5,
@@ -65,7 +65,7 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
       );
       expect(
         committed.profile.progression.modules[achievementRegistryModule],
-      ).toMatchObject({ version: 7, catalogVersion: 6 });
+      ).toMatchObject({ version: 8, catalogVersion: 7 });
       expect(
         applyGrowthContext(committed.profile, context, corpusTime).profile,
       ).toBe(committed.profile);
@@ -138,7 +138,8 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
                 (u) =>
                   u.stage === r.stage &&
                   u.position === r.position &&
-                  canonicalJson(u.values) === canonicalJson(r.values),
+                  canonicalJson(u.values.slice(0, r.values.length)) ===
+                    canonicalJson(r.values),
               ),
           ),
         ).toBe(true);

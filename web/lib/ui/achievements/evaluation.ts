@@ -199,7 +199,12 @@ export function evaluateAchievementRun(
       mark('D02', r.saleSaved);
       mark('D04', r.poorCharmBoosted);
       mark('D05', r.luckyFootNecessaryAward);
-      mark('D06', r.allInBid);
+      mark(
+        'D06',
+        r.allInBid &&
+          r.allInCapital !== undefined &&
+          r.allInCapital[0] >= Math.ceil(r.allInCapital[1] / 2),
+      );
       mark('E02', r.optionsAwarded);
       mark('E03', r.bossAwarded);
       mark('E04', r.brimstoneAwarded);

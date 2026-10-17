@@ -163,7 +163,7 @@ describe('approved C-F catalog', () => {
       ['bronze', 'silver', 'gold'].map(
         (t) => achievementCatalog.filter((a) => metal[a.id].tier === t).length,
       ),
-    ).toEqual([38, 41, 38]);
+    ).toEqual([39, 41, 37]);
     expect(achievementCatalog.filter((a) => metal[a.id].hidden)).toHaveLength(
       11,
     );

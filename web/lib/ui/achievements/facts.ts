@@ -56,12 +56,15 @@ export interface AchievementRoomFacts {
   poorCharmBoosted: boolean;
   luckyFootNecessaryAward: boolean;
   allInBid: boolean;
+  /** Actual all-in debit (after discounts, before refunds), character floor base. */
+  allInCapital?: readonly [number, number];
   optionsAwarded: boolean;
   bossAwarded: boolean;
   brimstoneAwarded: boolean;
   hiddenAwardCopies: number;
 }
 export interface AchievementFloorFacts {
+  difficulty?: import('../../game/survival-difficulty').SurvivalDifficulty;
   cf?: true;
   milestones?: true;
   revisions?: true;

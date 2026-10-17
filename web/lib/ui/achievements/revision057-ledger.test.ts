@@ -177,8 +177,8 @@ describe('catalog4 verified totals and retirement', () => {
         authority: 'same',
       }),
     ).toThrow('冲突');
-    for (let i = 0; i < 2; i++) p = append(p, e);
-    expect(projectAchievementRegistry(p)!.progress.B18).toBe(6);
+    for (let i = 0; i < 4; i++) p = append(p, e);
+    expect(projectAchievementRegistry(p)!.progress.B18).toBe(10);
     expect(projectAchievementRegistry(p)!.achievedAt.B18).toBe(
       now.toISOString(),
     );
@@ -389,7 +389,7 @@ describe('real lifecycle and recovery of revision facts', () => {
       },
     });
     expect(s.growthIssue).toBeUndefined();
-    expect(s.growth!.units.at(-1)!.values).toHaveLength(17);
+    expect(s.growth!.units.at(-1)!.values).toHaveLength(19);
     const loaded = parseGameSave(serializeGameCheckpoint(s)).session;
     expect(loaded.growth).toEqual(s.growth);
   });
@@ -408,7 +408,7 @@ describe('real lifecycle and recovery of revision facts', () => {
     expect(old.growthIssue).toBeUndefined();
     expect(old.growth!.revisionsFrom).toBe(0);
     expect(old.growth!.units[0]!.values).toHaveLength(3);
-    expect(old.growth!.units[1]!.values).toHaveLength(17);
+    expect(old.growth!.units[1]!.values).toHaveLength(19);
   });
   it('records the actual classic terminal ranking and never counts an imported pending prefix twice', () => {
     let s = classic();

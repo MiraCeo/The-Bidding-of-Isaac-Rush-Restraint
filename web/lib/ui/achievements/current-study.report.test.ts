@@ -178,8 +178,8 @@ it.skipIf(!enabled)(
       writeStudyJson(root, directory, 'summary.json', {
         kind: 'current117-achievement-difficulty',
         version: packageInfo.version,
-        ledgerSchema: 7,
-        catalogVersion: 6,
+        ledgerSchema: 8,
+        catalogVersion: 7,
         purpose,
         matches: all.length,
         source,

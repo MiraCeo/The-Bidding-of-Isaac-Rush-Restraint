@@ -33,7 +33,7 @@ it('defaults to fixed collection ordering, retains explicit number ordering, and
   const sort = node.querySelectorAll('select')[1]!;
   expect(sort.value).toBe('collection');
   expect([...ids()].map((b) => b.id)).toEqual(
-    ['B01', 'B02', 'B04', 'B05', 'B06', 'B09', 'B11', 'B03', 'B12', 'B13'].map(
+    ['B01', 'B02', 'B04', 'B05', 'B06', 'B09', 'B11', 'B12', 'B03', 'B13'].map(
       (id) => 'achievement-' + id,
     ),
   );

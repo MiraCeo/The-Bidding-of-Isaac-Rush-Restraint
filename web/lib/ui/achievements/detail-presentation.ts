@@ -41,7 +41,10 @@ const seriesCopy: Readonly<Record<string, readonly [string, string]>> = {
     '房',
   ],
   'S-LOWEST-SURVIVOR': ['以本层存活者最低层结算成绩通过正式淘汰。', '次'],
-  'S-FIRST-FLOORS': ['同局从第一层起，连续通过前几层正式淘汰。', '层'],
+  'S-FIRST-FLOORS': [
+    '同局从第一层起连续通过淘汰；金阶须为困难或最高难度。',
+    '层',
+  ],
   'S-SURVIVAL': ['累计完成正式生存对局，被淘汰也计入。', '局'],
 };
 

@@ -1,3 +1,4 @@
+import { extractAllInCapital } from './revision066-facts';
 import { extractRevision058RoomCounts } from './revision058-facts';
 import {
   extractRevision057RoomFacts,
@@ -359,7 +360,10 @@ export function observeClassicGrowth(
           stage: 'room',
           facts: {
             ...(g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.cfFrom!
-              ? { cfCounts: extractRevision058RoomCounts(g.roomSettlement)! }
+              ? {
+                  cfCounts: extractRevision058RoomCounts(g.roomSettlement)!,
+                  allInCapital: extractAllInCapital(g.roomSettlement),
+                }
               : {}),
             ...(g.floorIndex * 11 + g.roomIndex * 2 + 1 > result.revisionsFrom!
               ? revisionRoomFacts(g.roomSettlement)
@@ -480,7 +484,10 @@ export function observeSurvivalGrowth(
           stage: 'room',
           facts: {
             ...(next.floorIndex * 11 + next.roomIndex * 2 + 1 > result.cfFrom!
-              ? { cfCounts: extractRevision058RoomCounts(next.roomSettlement)! }
+              ? {
+                  cfCounts: extractRevision058RoomCounts(next.roomSettlement)!,
+                  allInCapital: extractAllInCapital(next.roomSettlement),
+                }
               : {}),
             ...(next.floorIndex * 11 + next.roomIndex * 2 + 1 >
             result.revisionsFrom!
@@ -511,7 +518,10 @@ export function observeSurvivalGrowth(
           ? { revisions: true as const }
           : {}),
         ...(record.floorIndex * 11 + 10 > result.cfFrom!
-          ? { cf: true as const }
+          ? {
+              cf: true as const,
+              ...(next.aiDifficulty ? { difficulty: next.aiDifficulty } : {}),
+            }
           : {}),
         ...extractAchievementFloorFacts(record),
         ...(record.floorIndex * 11 + 10 > result.milestonesFrom!

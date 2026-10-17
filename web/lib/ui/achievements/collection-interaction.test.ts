@@ -324,7 +324,7 @@ it('creates six independent category grids with separators and respects filtered
     '角色道具与探索',
     '生存淘汰',
   ]);
-  expect(cards()).toHaveLength(38);
+  expect(cards()).toHaveLength(37);
   await select(3, 'all');
   await search('B0');
   expect(groups()).toHaveLength(1);

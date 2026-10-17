@@ -373,7 +373,7 @@ describe('live recovery transcripts and legacy boundaries', () => {
   it('round-trips new contexts, refuses re-signed cause changes and never awards imported prefixes', () => {
     const s = step(freshClassic());
     expect(s.growth!.units[0]!.values).toHaveLength(5);
-    expect(s.growth!.units[1]!.values).toHaveLength(17);
+    expect(s.growth!.units[1]!.values).toHaveLength(19);
     expect(parseGameSave(serializeGameCheckpoint(s)).session.growth).toEqual(
       s.growth,
     );
@@ -416,7 +416,7 @@ describe('live recovery transcripts and legacy boundaries', () => {
     expect(loaded.growth!.milestonesFrom).toBeUndefined();
     const next = step(reduceGameSession(loaded, { type: 'advance_room' }));
     expect(next.growth!.units[0]!.values).toHaveLength(2);
-    expect(next.growth!.units.at(-1)!.values).toHaveLength(17);
+    expect(next.growth!.units.at(-1)!.values).toHaveLength(19);
     expect(next.growth!.milestonesFrom).toBe(1);
   });
   it('round-trips an eliminated survival personal result and counts it once', () => {
@@ -444,7 +444,7 @@ describe('live recovery transcripts and legacy boundaries', () => {
   });
 });
 
-it('atomically rolls back schema7 activation on quota failure and retries the pending prefix exactly once', async () => {
+it('atomically rolls back schema8 activation on quota failure and retries the pending prefix exactly once', async () => {
   const s = step(freshClassic()),
     values = new Map<string, string>();
   let blocked = true,
@@ -484,7 +484,7 @@ it('atomically rolls back schema7 activation on quota failure and retries the pe
         version: number;
       }
     ).version,
-  ).toBe(7);
+  ).toBe(8);
   const again = await saveClassicClient(storage, saved.session, {
     expectedSource: storage.getItem(gameSaveKey),
     coordinator,

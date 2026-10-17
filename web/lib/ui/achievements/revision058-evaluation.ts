@@ -14,6 +14,7 @@ export const revision058EvaluatedIds: readonly AchievementId[] = [
 interface Run {
   redeemedRooms: number;
   prefix: number;
+  hardPrefix: number;
 }
 export function createRevision058Scan() {
   return {
@@ -29,6 +30,7 @@ export function createRevision058Scan() {
       lowest: 0,
     },
     prefixPeak: 0,
+    hardPrefixPeak: 0,
     redeemedPeak: 0,
     runs: new Map<string, Run>(),
     progress: Object.fromEntries(
@@ -66,6 +68,7 @@ export function scanRevision058Receipt(
     ...((r.parent ? s.runs.get(r.parent) : undefined) ?? {
       redeemedRooms: 0,
       prefix: 0,
+      hardPrefix: 0,
     }),
   };
   if (e.stage === 'room') {
@@ -97,6 +100,14 @@ export function scanRevision058Receipt(
     if (f.floorIndex === run.prefix && f.humanParticipated && f.humanSurvived)
       run.prefix++;
     s.prefixPeak = Math.max(s.prefixPeak, run.prefix);
+    if (
+      f.floorIndex === run.hardPrefix &&
+      f.humanParticipated &&
+      f.humanSurvived &&
+      (f.difficulty === 'hard' || f.difficulty === 'highest')
+    )
+      run.hardPrefix++;
+    s.hardPrefixPeak = Math.max(s.hardPrefixPeak, run.hardPrefix);
   }
   s.runs.set(r.key, run);
   const metrics: Record<string, number> = {
@@ -114,6 +125,7 @@ export function scanRevision058Receipt(
   for (const series of revision058NewSeries)
     for (const id of series.ids) s.progress[id] = metrics[series.id]!;
   s.progress.C08 = s.redeemedPeak;
+  s.progress.F16 = s.hardPrefixPeak;
   if (active)
     for (const id of revision058EvaluatedIds)
       if (

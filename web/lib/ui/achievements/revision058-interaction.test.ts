@@ -46,7 +46,7 @@ it('shows 117 medals as 57 category-separated cards with current grades and neve
     '0 / 117',
   );
   expect(node.querySelector('.achievement-tier-totals')!.textContent).toBe(
-    '铜 0 / 38银 0 / 41金 0 / 38',
+    '铜 0 / 39银 0 / 41金 0 / 37',
   );
   expect(card('C06').querySelector('progress')!.max).toBe(6);
   expect(card('F04').getAttribute('data-focused-id')).toBe('F15');

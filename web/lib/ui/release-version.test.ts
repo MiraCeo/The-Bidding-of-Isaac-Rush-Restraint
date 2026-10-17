@@ -20,7 +20,7 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.6.5');
+    expect(appVersion).toBe('0.6.6');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
@@ -47,7 +47,7 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.5.4')!.compatibility,
     ).toContain('纯展示');
-    expect(appReleaseNotes[0]!.version).toBe('0.6.5');
+    expect(appReleaseNotes[0]!.version).toBe('0.6.6');
     expect(appReleaseNotes.find((n) => n.version === '0.5.5')!.title).toContain(
       '达成回显',
     );
@@ -76,8 +76,11 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.6.4')!.compatibility,
     ).toContain('不增加成就');
-    expect(appReleaseNotes[0]!.compatibility).toContain('新增10枚银金');
-    expect(appReleaseNotes[0]!.compatibility).toContain('schema7');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.5')!.compatibility,
+    ).toContain('新增10枚银金');
+    expect(appReleaseNotes[0]!.compatibility).toContain('schema8');
+    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('50%');
     const numbering = appReleaseNotes.find((n) => n.version === '0.5.12')!;
     expect(numbering.title).toContain('编号');
     expect(numbering.highlights.join(' ')).toContain('具体行为');

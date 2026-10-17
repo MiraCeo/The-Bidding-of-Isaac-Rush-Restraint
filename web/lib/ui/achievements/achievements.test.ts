@@ -579,7 +579,14 @@ describe('pure analysis of confirmed rules, not a persistence grant API', () => 
   ] as const)('maps %s exclusively from its cause (%s)', (id, key) => {
     expect(evaluateAchievementRun(analysis()).achieved).not.toContain(id);
     expect(
-      evaluateAchievementRun(analysis([emptyRoom({ [key]: true })])).achieved,
+      evaluateAchievementRun(
+        analysis([
+          emptyRoom({
+            [key]: true,
+            ...(id === 'D06' ? { allInCapital: [50, 100] as const } : {}),
+          }),
+        ]),
+      ).achieved,
     ).toContain(id);
   });
   it('accumulates shared counters from an excluding-match baseline without mutating or double-evaluating it', () => {

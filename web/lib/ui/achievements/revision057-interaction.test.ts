@@ -165,7 +165,7 @@ it('shows the earned bronze and retains both group misses in the silver detail i
   await click(card('B05'));
   expect(
     dialog().querySelector('[data-achievement-id=B18]')!.textContent,
-  ).toContain('2 / 5');
+  ).toContain('2 / 10');
 });
 it('keeps new vacancy medals hidden until a saved fact, then reveals both with distinct metal grades', async () => {
   await mount(createPlayerProfile());
@@ -180,9 +180,9 @@ it('keeps new vacancy medals hidden until a saved fact, then reveals both with d
   expect(card('B12').textContent).toContain('两败俱伤');
   expect(
     card('B12').querySelector('.achievement-badge-rank')!.textContent,
-  ).toBe('银');
+  ).toBe('铜');
   expect(card('B13').textContent).toContain('全军覆没');
   expect(
     card('B13').querySelector('.achievement-badge-rank')!.textContent,
-  ).toBe('金');
+  ).toBe('银');
 });

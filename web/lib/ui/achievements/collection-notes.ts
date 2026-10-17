@@ -1,3 +1,4 @@
+import { revision066Catalog } from './revision066-catalog';
 import {
   revision057Catalog,
   revision057NewSeries,
@@ -82,7 +83,7 @@ export const achievementCollectionNotes = {
         return [
           a.id,
           s
-            ? `${s.name}的这一页，写到了${a.target}${s.unit === 'money' ? '资金' : s.unit === 'match' ? '场对局' : '次'}。`
+            ? `${s.name}的这一页，写到了${revision066Catalog.find((current) => current.id === a.id)!.target}${s.unit === 'money' ? '资金' : s.unit === 'match' ? '场对局' : '次'}。`
             : a.id === 'B12'
               ? '两条路，总有一条空着回来。'
               : a.id === 'B13'

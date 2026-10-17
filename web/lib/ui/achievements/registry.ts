@@ -470,7 +470,8 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
       v.version === 4 ||
       v.version === 5 ||
       v.version === 6 ||
-      v.version === 7
+      v.version === 7 ||
+      v.version === 8
       ? [
           'version',
           'catalogVersion',
@@ -482,7 +483,7 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
           ...((v.version as number) >= 4 ? ['milestones'] : []),
           ...((v.version as number) >= 5 ? ['revisions'] : []),
           ...((v.version as number) >= 6 ? ['cf'] : []),
-          ...(v.version === 7 ? ['stages'] : []),
+          ...((v.version as number) >= 7 ? ['stages'] : []),
         ]
       : [
           'version',
@@ -493,22 +494,24 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
         ],
   );
   if (
-    ![1, 2, 3, 4, 5, 6, 7].includes(v.version as number) ||
+    ![1, 2, 3, 4, 5, 6, 7, 8].includes(v.version as number) ||
     v.catalogVersion !==
-      (v.version === 7
-        ? stageAchievementCatalogVersion
-        : v.version === 6
-          ? cfAchievementCatalogVersion
-          : v.version === 5
-            ? revisionAchievementCatalogVersion
-            : v.version === 4
-              ? milestoneAchievementCatalogVersion
-              : v.version === 3
-                ? currentAchievementCatalogVersion
-                : achievementCatalogVersion)
+      (v.version === 8
+        ? 7
+        : v.version === 7
+          ? stageAchievementCatalogVersion
+          : v.version === 6
+            ? cfAchievementCatalogVersion
+            : v.version === 5
+              ? revisionAchievementCatalogVersion
+              : v.version === 4
+                ? milestoneAchievementCatalogVersion
+                : v.version === 3
+                  ? currentAchievementCatalogVersion
+                  : achievementCatalogVersion)
   )
     fail();
-  if (v.version === 7) {
+  if ((v.version as number) >= 7) {
     exact(v.stages, ['from', 'at']);
     date(object(v.stages).at);
   }
@@ -534,7 +537,8 @@ function validateHeader(value: unknown, content: string): AchievementRegistry {
     v.version === 4 ||
     v.version === 5 ||
     v.version === 6 ||
-    v.version === 7
+    v.version === 7 ||
+    v.version === 8
   )
     return unpackAchievementRegistry(v as unknown as PackedAchievementRegistry);
   if (!Array.isArray(v.receipts) || v.receipts.length > achievementReceiptLimit)

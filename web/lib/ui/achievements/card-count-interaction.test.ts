@@ -156,7 +156,7 @@ it('does not write progress or checkpoints, alter the global overview or change 
   await select(2, '3');
   expect(count('all')).toEqual({ earned: 2, total: 57 });
   await select(3, 'gold');
-  expect(count('all')).toEqual({ earned: 0, total: 38 });
+  expect(count('all')).toEqual({ earned: 0, total: 37 });
   await select(0, 'achieved');
   expect(count('all')).toEqual({ earned: 0, total: 0 });
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(

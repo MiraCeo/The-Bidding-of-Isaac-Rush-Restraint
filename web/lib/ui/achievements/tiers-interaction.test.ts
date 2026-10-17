@@ -176,10 +176,10 @@ it('filters by metal with fixed global totals and resets all filters without wri
   await mount(p);
   const overview = node.querySelector('.achievement-overview')!.textContent;
   expect(node.querySelector('.achievement-tier-totals')!.textContent).toBe(
-    '铜 1 / 38银 1 / 41金 0 / 38',
+    '铜 1 / 39银 1 / 41金 0 / 37',
   );
   await tier('gold');
-  expect(node.querySelectorAll('.achievement-card')).toHaveLength(38);
+  expect(node.querySelectorAll('.achievement-card')).toHaveLength(37);
   expect(node.querySelector('.achievement-overview')!.textContent).toBe(
     overview,
   );

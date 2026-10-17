@@ -51,8 +51,15 @@ export function loadCurrentStudy(root, directory, purpose) {
   const summary = json(resolve(directory, 'summary.json'));
   assert.deepEqual(summary.source, marker.source);
   assert.equal(summary.catalog.length, 117);
-  assert.equal(summary.ledgerSchema, 7);
-  assert.equal(summary.catalogVersion, 6);
+  assert(
+    [
+      [7, 6],
+      [8, 7],
+    ].some(
+      ([schema, catalog]) =>
+        summary.ledgerSchema === schema && summary.catalogVersion === catalog,
+    ),
+  );
   const rowFiles = readdirSync(directory)
     .filter((f) => /^rows-\d+\.json$/.test(f))
     .sort();
@@ -83,8 +90,8 @@ export function loadCurrentStudy(root, directory, purpose) {
   for (const [cell, p] of Object.entries(profiles)) {
     assert.equal(sha(JSON.stringify(p)), summary.finalProfiles[cell].sha256);
     const wire = p.progression.modules.achievementRegistryV1;
-    assert.equal(wire.version, 7);
-    assert.equal(wire.catalogVersion, 6);
+    assert.equal(wire.version, summary.ledgerSchema);
+    assert.equal(wire.catalogVersion, summary.catalogVersion);
   }
   return { directory, summary, rows };
 }

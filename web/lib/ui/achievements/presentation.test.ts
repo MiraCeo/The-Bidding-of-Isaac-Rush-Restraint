@@ -111,7 +111,7 @@ describe('metal config and soft-concealed list policy', () => {
             (a) => achievementCollectionMetadata[a.id].tier === t,
           ).length,
       ),
-    ).toEqual([38, 41, 38]);
+    ).toEqual([39, 41, 37]);
     expect(Object.values(achievementTierLabels)).toEqual(['铜', '银', '金']);
     expect(
       Object.entries(achievementCollectionMetadata)
@@ -194,7 +194,6 @@ describe('metal config and soft-concealed list policy', () => {
       'B21',
       'B23',
       'B25',
-      'B13',
       'C11',
       'C13',
       'C15',

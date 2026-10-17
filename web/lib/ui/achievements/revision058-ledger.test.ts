@@ -169,11 +169,15 @@ describe('C-F real counters and current thresholds', () => {
   it('counts lowest-survivor layers across matches, but first-floor prefixes only along a complete same-match chain', () => {
     let p = createPlayerProfile(now);
     for (let i = 0; i < 5; i++)
-      p = append(p, floor(i, 11), {
-        mode: 'survival',
-        root: 'five',
-        parent: i ? last(p) : null,
-      });
+      p = append(
+        p,
+        { ...floor(i, 11), values: [...floor(i, 11).values, 2] },
+        {
+          mode: 'survival',
+          root: 'five',
+          parent: i ? last(p) : null,
+        },
+      );
     expect(view(p)!.progress.F03).toBe(5);
     expect(view(p)!.progress.F04).toBe(5);
     for (const id of ['F13', 'F15', 'F04', 'F16'] as const)
@@ -366,7 +370,7 @@ describe('live C-F capture and verified save restore', () => {
         },
       });
       expect(s.growthIssue).toBeUndefined();
-      expect(s.growth!.units.at(-1)!.values).toHaveLength(17);
+      expect(s.growth!.units.at(-1)!.values).toHaveLength(19);
       if (i === 0)
         expect(
           parseGameSave(serializeGameCheckpoint(s)).session.growth,
@@ -405,7 +409,7 @@ describe('live C-F capture and verified save restore', () => {
     });
     expect(old.growthIssue).toBeUndefined();
     expect(old.growth!.cfFrom).toBe(0);
-    expect(old.growth!.units.map((u) => u.values.length)).toEqual([4, 17]);
+    expect(old.growth!.units.map((u) => u.values.length)).toEqual([4, 19]);
     expect(() =>
       validateGrowthContext({ ...old.growth, cfFrom: -2 }, 'classic'),
     ).toThrow();
@@ -425,9 +429,9 @@ describe('live C-F capture and verified save restore', () => {
     for (const u of s.growth!.units)
       expect(u.values).toHaveLength(
         u.stage === 'room'
-          ? 17
+          ? 19
           : u.stage === 'floor'
-            ? 4
+            ? 5
             : u.stage === 'final'
               ? 6
               : 5,
