@@ -3,6 +3,8 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { GameApp } from '@/components/game/game-app';
+import { GameSettings } from '@/components/game/game-settings';
+import { defaultGamePreferences } from '../game-preferences';
 import { ClassicGameApp } from '@/components/game/classic-game-app';
 import { playerProfileKey, createPlayerProfile } from '../player-profile';
 import {
@@ -83,6 +85,7 @@ it('manual unlock UI persists independent authorization and no achievements; ord
   locks();
   await act(async () => root.render(createElement(ClassicGameApp)));
   const before = JSON.parse(localStorage.getItem(playerProfileKey)!);
+  await click(button('设置'));
   await click(button('一键解锁全部角色'));
   const after = JSON.parse(localStorage.getItem(playerProfileKey)!);
   expect(projectAchievementRegistry(after)!.achievedAt).toEqual(
@@ -102,6 +105,7 @@ it('manual unlock UI persists independent authorization and no achievements; ord
 });
 it('no coordinator and quota failures do not fake a saved manual grant; explicit retry can succeed', async () => {
   await act(async () => root.render(createElement(ClassicGameApp)));
+  await click(button('设置'));
   await click(button('一键解锁全部角色'));
   expect(radio('lost').disabled).toBe(true);
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
@@ -168,6 +172,55 @@ it('unknown module is preserved byte-exact and blocks selection and manual grant
   localStorage.setItem(playerProfileKey, source);
   await act(async () => root.render(createElement(ClassicGameApp)));
   expect(radio('isaac').disabled).toBe(true);
+  await click(button('设置'));
   expect(button('一键解锁全部角色').disabled).toBe(true);
   expect(localStorage.getItem(playerProfileKey)).toBe(source);
 });
+
+it('opening settings with a coordinator available does not create a profile or alter checkpoints', async () => {
+  locks();
+  localStorage.setItem(gameSaveKey, 'checkpoint-sentinel');
+  await act(async () =>
+    root.render(
+      createElement(GameSettings, {
+        preferences: defaultGamePreferences,
+        saveStatus: 'unchanged',
+        onChange: vi.fn(),
+      }),
+    ),
+  );
+  expect(
+    node.querySelectorAll('.settings-character-access button'),
+  ).toHaveLength(1);
+  expect(localStorage.getItem(playerProfileKey)).toBeNull();
+  expect(localStorage.getItem(gameSaveKey)).toBe('checkpoint-sentinel');
+});
+
+it.each(['classic', 'survival'] as const)(
+  'settings unlock updates %s selection only after explicit saving and returning',
+  async (mode) => {
+    locks();
+    await act(async () => root.render(createElement(GameApp)));
+    await click(button(mode === 'classic' ? '经典模式' : '生存模式'));
+    await click(radio('isaac'));
+    const profile = JSON.parse(localStorage.getItem(playerProfileKey)!);
+    expect(node.querySelector('.character-stage')!.textContent).not.toContain(
+      '一键解锁全部角色',
+    );
+    await click(button('设置'));
+    await click(button('一键解锁全部角色'));
+    expect(
+      node.querySelector('.settings-character-access output')!.textContent,
+    ).toContain('全部角色已解锁');
+    const after = JSON.parse(localStorage.getItem(playerProfileKey)!);
+    expect(projectAchievementRegistry(after)!.achievedAt).toEqual(
+      projectAchievementRegistry(profile)!.achievedAt,
+    );
+    expect(readAchievementRegistry(after)!.receipts).toEqual([]);
+    expect(localStorage.getItem(gameSaveKey)).toBeNull();
+    await click(button('游戏'));
+    expect(radio('lost').disabled).toBe(false);
+    expect(radio('isaac').checked).toBe(true);
+    expect(node.querySelector('.game-stage')).toBeNull();
+  },
+);

@@ -425,28 +425,28 @@ describe('formal independent survival entry', () => {
   it('offers four tiers, defaults to standard and locks the selected tier after start', async () => {
     await mount();
     await click(button('生存模式'));
-    const select = node<HTMLSelectElement>('select[aria-label="生存AI难度"]');
-    expect(select.value).toBe('standard');
-    expect([...select.options].map((o) => o.text)).toEqual([
+    const radios = container.querySelectorAll<HTMLInputElement>(
+      '.survival-difficulty-options input',
+    );
+    expect([...radios].find((r) => r.checked)!.value).toBe('standard');
+    expect([...radios].map((r) => r.parentElement!.textContent)).toEqual([
       '简单',
       '标准',
       '困难',
       '最高',
     ]);
-    await act(async () => {
-      select.value = 'easy';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    await click(
+      node<HTMLInputElement>('.survival-difficulty-options input[value=easy]'),
+    );
     await click(button('返回主菜单'));
     await click(button('生存模式'));
     expect(
-      node<HTMLSelectElement>('select[aria-label="生存AI难度"]').value,
+      node<HTMLInputElement>('.survival-difficulty-options input:checked')
+        .value,
     ).toBe('easy');
     await click(node<HTMLInputElement>('input[value="isaac"]'));
     await click(button('开始游戏'));
-    expect(
-      container.querySelector('select[aria-label="生存AI难度"]'),
-    ).toBeNull();
+    expect(container.querySelector('.survival-difficulty-options')).toBeNull();
     expect(container.textContent).toContain('难度 简单');
     expect(
       parseSurvivalCheckpoint(localStorage.getItem(survivalSaveKey)!).game
@@ -465,9 +465,7 @@ describe('formal independent survival entry', () => {
   it('never offers survival difficulty in classic selection', async () => {
     await mount();
     await click(button('经典模式'));
-    expect(
-      container.querySelector('select[aria-label="生存AI难度"]'),
-    ).toBeNull();
+    expect(container.querySelector('.survival-difficulty-options')).toBeNull();
   });
   it('opens three entries without starting a world, and tutorial remains isolated', async () => {
     const spy = vi.spyOn(kernel, 'startSurvivalGame');

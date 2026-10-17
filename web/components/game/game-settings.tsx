@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { CharacterAccessSettings } from './character-access-settings';
 import { AboutVersion } from './about-version';
 import { UtilityPageHeading } from './utility-page-heading';
 import {
@@ -33,7 +34,7 @@ export function GameSettings({
         eyebrow="INTERFACE SETTINGS"
         title="设置"
         titleId="room-utilities-title"
-        description="显示偏好与版本信息，不改变游戏结算。"
+        description="显示偏好、角色权限与版本信息。"
       />
       <div className="utility-page-content game-settings-content">
         {
@@ -131,6 +132,7 @@ export function GameSettings({
             </fieldset>
           </>
         }
+        <CharacterAccessSettings />
         {
           <details className="settings-version-details">
             <summary>版本与更新</summary>

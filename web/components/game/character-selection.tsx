@@ -11,12 +11,9 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { survivalOfficialCutLines } from '@/lib/game/survival-rules';
-import {
-  survivalDifficulties,
-  survivalDifficultyProfiles,
-  type SurvivalDifficulty,
-} from '@/lib/game/survival-difficulty';
+import type { SurvivalDifficulty } from '@/lib/game/survival-difficulty';
+import { SurvivalDifficultyPicker } from './survival-difficulty-picker';
+import { CharacterArt } from './character-art';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
 import { useUtilityPages } from './use-utility-pages';
@@ -29,7 +26,6 @@ import {
 } from '@/lib/game';
 
 interface CharacterPresentation {
-  emoji: string;
   trait: string;
   startingItems: string;
 }
@@ -38,12 +34,10 @@ const characterPresentation: Readonly<
   Record<CharacterId, CharacterPresentation>
 > = {
   isaac: {
-    emoji: '🎲',
     trait: '每层初始资金提高 10%。',
     startingItems: getItemDefinition('d6').name,
   },
   lost: {
-    emoji: '👻',
     trait: '依靠屏障保护失手的竞拍。',
     startingItems: [
       getItemDefinition('holy_mantle').name,
@@ -51,17 +45,14 @@ const characterPresentation: Readonly<
     ].join('、'),
   },
   azazel: {
-    emoji: '🔥',
     trait: '从第一房间开始调整竞拍计分区间。',
     startingItems: getItemDefinition('brimstone').name,
   },
   eden: {
-    emoji: '✨',
     trait: '每层初始资金在 ±10% 范围独立浮动。',
     startingItems: '两件不相同的随机道具（不含福袋）',
   },
   jacob_esau: {
-    emoji: '♊',
     trait: '每层初始资金提高 20%，双行动不承受 0.75 倍积分修正。',
     startingItems: [
       getItemDefinition('more_options').name,
@@ -160,7 +151,6 @@ export function CharacterSelection({
               <span className="character-mode-label">
                 {mode === 'survival' ? '生存模式' : '经典模式'}
               </span>
-              <p>角色决定初始道具与每层资金特性。</p>
             </div>
           </div>
         </div>
@@ -175,30 +165,20 @@ export function CharacterSelection({
           </section>
         )}
 
-        {mode === 'survival' && (
-          <section className="survival-difficulty-picker">
-            <label>
-              生存AI难度{' '}
-              <select
-                aria-label="生存AI难度"
-                value={aiDifficulty}
-                onChange={(event) =>
-                  onDifficultyChange?.(event.target.value as SurvivalDifficulty)
-                }
-              >
-                {survivalDifficulties.map((value) => (
-                  <option key={value} value={value}>
-                    {survivalDifficultyProfiles[value].label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p>
-              {survivalDifficultyProfiles[aiDifficulty].description}{' '}
-              难度开局后锁定，不改变斩杀线、角色或道具。
-              {`每层基础资金1000，斩杀线${survivalOfficialCutLines.join('／')}；伊甸不抽取福袋和黑王子之冠。`}
-            </p>
+        {(access.operationMessage || access.message) && (
+          <section
+            className="character-session-message"
+            aria-label="角色档案提示"
+          >
+            <strong>角色档案</strong>
+            <output>{access.operationMessage || access.message}</output>
           </section>
+        )}
+        {mode === 'survival' && (
+          <SurvivalDifficultyPicker
+            value={aiDifficulty}
+            onChange={onDifficultyChange}
+          />
         )}
         <div className="character-grid" role="radiogroup" aria-label="可选角色">
           {characterCatalog.map((character) => {
@@ -238,9 +218,7 @@ export function CharacterSelection({
                   )}
                   {!unlocked ? '未解锁' : selected ? '已选择' : '可选'}
                 </span>
-                <span className="character-emoji" aria-hidden="true">
-                  {presentation.emoji}
-                </span>
+                <CharacterArt characterId={character.id} />
                 <span className="character-name">{character.name}</span>
                 <span
                   className="character-unlock-condition"
@@ -328,27 +306,6 @@ export function CharacterSelection({
             </Button>
           </div>
         </footer>
-        <section className="character-access" aria-label="角色权限">
-          <p>
-            默认开放以撒；其余角色按成就解锁。
-            <small>已有续玩、教学及AI角色不受影响。</small>
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={
-              access.busy ||
-              access.invalid ||
-              access.available.length === characterCatalog.length
-            }
-            onClick={() => void access.unlockAll()}
-          >
-            一键解锁全部角色
-          </Button>
-          {(access.operationMessage || access.message) && (
-            <output>{access.operationMessage || access.message}</output>
-          )}
-        </section>
       </section>
       {renderUtilities ? (
         renderUtilities(utilityPanel, () => changeUtilityPanel(null))

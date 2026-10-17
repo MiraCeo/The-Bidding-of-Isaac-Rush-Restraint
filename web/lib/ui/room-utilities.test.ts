@@ -413,8 +413,11 @@ describe('room utility interaction without a real browser', () => {
     await click(button('设置', nav));
     expect(element('#room-utilities-title').textContent).toBe('设置');
     expect(container.querySelectorAll('fieldset.settings-group')).toHaveLength(
-      1,
+      2,
     );
+    expect(
+      container.querySelector('.settings-character-access'),
+    ).not.toBeNull();
     expect(container.querySelector('.save-panel')).toBeNull();
     await click(button('排行', nav));
     expect(element('.empty-ranking-state').textContent).toContain('暂无排行');

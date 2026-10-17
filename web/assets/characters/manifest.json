@@ -1,0 +1,48 @@
+{
+  "providedAt": "2026-10-18",
+  "description": "User supplied transparent 64x64 character portraits, byte-for-byte copies. Last two frames form the paired role.",
+  "files": [
+    {
+      "file": "azazel.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "8ddc389ae4635e4546e3ece969496a8e6cb9de1bd1683f7747c2eb51582d558a",
+      "source": "codex-clipboard-1b90dae8-32ff-421b-af59-f5d598458730.png"
+    },
+    {
+      "file": "eden.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "3e53af4986c3a4d2f6cbffe37c4d5ee7a14899a50f927e5cc68fd5c1269ee788",
+      "source": "codex-clipboard-f91e1e83-6f44-4ed4-984f-b28affe878c2.png"
+    },
+    {
+      "file": "esau.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "8d70a9e9fd1592d68d502f9b3ad3e0ebd6f38edd0d125f55d4645d05d3651dbf",
+      "source": "codex-clipboard-3755f526-30a1-4ee2-9eaa-0bf1939c8ada.png"
+    },
+    {
+      "file": "isaac.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "e36564d1032a6c386a0470985173eb1b1ff086446c0893dc373c835d59144794",
+      "source": "codex-clipboard-8547c242-19c2-4ae6-a768-3eaef9826a5f.png"
+    },
+    {
+      "file": "jacob.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "ab782c1f5de92ed808949a24bf6943598481883fbf8b939f8680180dadaf3eb7",
+      "source": "codex-clipboard-e351cd04-6331-4613-8164-df6ad51ad4e0.png"
+    },
+    {
+      "file": "lost.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "8e6c77657652a4c879c5391296c6ff7475695d447d42c0dca894417da3dccc18",
+      "source": "codex-clipboard-ffd985a9-d9b3-4b99-a333-8b7df0b04678.png"
+    }
+  ]
+}
