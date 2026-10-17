@@ -39,15 +39,15 @@ export function AchievementNotice({
       <header className="achievement-notice-heading">
         <Trophy size={19} aria-hidden="true" />
         <div>
-          <strong>成就达成</strong>
-          <span>成就已保存 · {entries.length} 枚新徽章</span>
+          <strong>成就达成 · {entries.length} 枚新徽章</strong>
+          <span>已保存</span>
         </div>
         <button type="button" onClick={onDismiss}>
           知道了
         </button>
       </header>
       <ul className="achievement-notice-list">
-        {entries.map((a) => {
+        {entries.slice(0, 2).map((a) => {
           const tier = achievementCollectionMetadata[a.id].tier;
           return (
             <li className="achievement-notice-item" key={a.id} data-tier={tier}>
@@ -55,9 +55,6 @@ export function AchievementNotice({
               <div>
                 <span className="achievement-notice-title">
                   <strong>{a.name}</strong>
-                  <span className="achievement-tier" data-tier={tier}>
-                    {achievementTierLabels[tier]}徽章
-                  </span>
                 </span>
                 <p>{achievementCollectionNotes[a.id]}</p>
               </div>
@@ -65,6 +62,26 @@ export function AchievementNotice({
           );
         })}
       </ul>
+      {entries.length > 2 && (
+        <details className="achievement-notice-more">
+          <summary>查看其余 {entries.length - 2} 枚徽章</summary>
+          <ul className="achievement-notice-list">
+            {entries.slice(2).map((a) => (
+              <li
+                className="achievement-notice-item"
+                key={a.id}
+                data-tier={achievementCollectionMetadata[a.id].tier}
+              >
+                <AchievementBadge id={a.id} achieved />
+                <div>
+                  <strong>{a.name}</strong>
+                  <p>{achievementCollectionNotes[a.id]}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </aside>
   );
 }

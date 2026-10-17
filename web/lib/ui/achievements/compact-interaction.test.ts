@@ -47,9 +47,8 @@ it('uses three compact rows, no redundant stage dots and one rule section; notes
   expect(card().querySelector('.achievement-summary')!.textContent).toBe(
     '累计正常竞拍失败20次',
   );
-  expect(card().querySelector('.achievement-goal-tier')!.textContent).toBe(
-    '冲刺银章',
-  );
+  expect(card().querySelector('.achievement-goal-tier')).toBeNull();
+  expect(node.textContent).not.toContain('冲刺');
   expect(card().querySelector('.achievement-stage-dots')).toBeNull();
   expect(node.querySelector('.achievement-section-count')).toBeNull();
   await click(card());

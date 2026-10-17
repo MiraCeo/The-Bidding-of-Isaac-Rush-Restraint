@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import { appVersion } from '@/lib/ui/game-version';
 import { GameBrand } from './game-brand';
+import { AchievementFeedbackContext } from './achievement-feedback-context';
 
 /** One product/navigation/version row. Match context lives below, never in an
  * expanding third grid cell that competes with the page title or navigation. */
@@ -13,6 +14,7 @@ export function GameHeader({
   context?: ReactNode;
   showContext?: boolean;
 }) {
+  const achievementFeedback = useContext(AchievementFeedbackContext);
   return (
     <>
       <header className="topbar">
@@ -29,6 +31,7 @@ export function GameHeader({
           {context}
         </section>
       )}
+      {achievementFeedback}
     </>
   );
 }

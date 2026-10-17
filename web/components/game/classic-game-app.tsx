@@ -1,3 +1,4 @@
+import { AchievementFeedbackContext } from './achievement-feedback-context';
 import { AchievementNotice } from './achievement-notice';
 import { GameHeader } from './game-header';
 import {
@@ -509,11 +510,16 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
           className="game-client"
           data-reduce-motion={preferences.reduceMotion}
         >
-          {page}
-          <AchievementNotice
-            ids={liveSave.achievementNotice}
-            onDismiss={liveSave.dismissNotice}
-          />
+          <AchievementFeedbackContext.Provider
+            value={
+              <AchievementNotice
+                ids={liveSave.achievementNotice}
+                onDismiss={liveSave.dismissNotice}
+              />
+            }
+          >
+            {page}
+          </AchievementFeedbackContext.Provider>
           {liveSave.message && (
             <output className="survival-save-message">
               {liveSave.message}

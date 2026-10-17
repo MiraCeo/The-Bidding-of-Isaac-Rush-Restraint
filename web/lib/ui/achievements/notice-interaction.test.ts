@@ -243,9 +243,12 @@ it('does not revive dismissed feedback on remount and uses the same component fo
 });
 it('has bounded scrollable passive feedback and respects both existing and OS reduced-motion controls at source level', () => {
   const css = readFileSync('app/globals.css', 'utf8');
-  expect(css).toContain('.achievement-notice { position:fixed;');
-  expect(css).toContain('right:24px;');
-  expect(css).toContain('max-height:min(340px,calc(100dvh - 210px))');
+  expect(css).toContain('.achievement-notice { position:relative;');
+  expect(css).not.toContain('.achievement-notice { position:fixed;');
+  expect(css).toContain(
+    '.achievement-notice-more .achievement-notice-list { max-height:260px;',
+  );
+  expect(css).not.toContain('max-height:min(340px,calc(100dvh - 210px))');
   expect(css).toContain(
     '@media (prefers-reduced-motion:reduce) { .achievement-notice { animation:none; } }',
   );

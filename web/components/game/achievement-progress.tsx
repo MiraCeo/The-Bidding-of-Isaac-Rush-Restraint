@@ -8,7 +8,7 @@ import {
 } from '@/lib/ui/achievements/series';
 import { useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { Check, LockKeyhole, Search, Trophy, Users } from 'lucide-react';
+import { Check, LockKeyhole, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PlayerProfile } from '@/lib/ui/player-profile';
 import { characterCatalog } from '@/lib/game';
@@ -42,6 +42,10 @@ import {
 import { AchievementBadge } from './achievement-badge';
 import { AchievementSystemRules } from './achievement-system-rules';
 import { AchievementDetail } from './achievement-detail';
+import {
+  AchievementOverview,
+  AchievementOverviewDetail,
+} from './achievement-overview';
 import { useCharacterAccess } from './use-character-access';
 const roleSymbols = {
   isaac: '🎲',
@@ -72,6 +76,7 @@ export function AchievementProgress({
     ),
     [layoutMessage, setLayoutMessage] = useState('');
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
   const [selected, setSelected] = useState<AchievementId | null>(null);
   const origin = useRef<HTMLButtonElement | null>(null),
     search = useRef<HTMLInputElement | null>(null);
@@ -104,9 +109,7 @@ export function AchievementProgress({
     );
   const view = projection.view,
     achieved = view?.achievedAt ?? {},
-    progress: Partial<Record<AchievementId, number>> = view?.progress ?? {},
-    completed = Object.keys(achieved).length,
-    total = achievementCatalog.length;
+    progress: Partial<Record<AchievementId, number>> = view?.progress ?? {};
   const unlockedRoles = characterCatalog.filter(
     (c) => c.id === 'isaac' || view?.characterUnlocks[c.id],
   ).length;
@@ -137,6 +140,8 @@ export function AchievementProgress({
     event: MouseEvent<HTMLButtonElement>,
   ) => {
     origin.current = event.currentTarget;
+    setOverviewOpen(false);
+    setRulesOpen(false);
     setSelected(id);
   };
   const changeColumns = (value: AchievementColumns) => {
@@ -156,11 +161,12 @@ export function AchievementProgress({
   };
   return (
     <Dialog.Root
-      open={!!detail || rulesOpen}
+      open={!!detail || rulesOpen || overviewOpen}
       onOpenChange={(open) => {
         if (!open) {
           setSelected(null);
           setRulesOpen(false);
+          setOverviewOpen(false);
         }
       }}
     >
@@ -170,42 +176,17 @@ export function AchievementProgress({
             旧版本成就已停用，清理尚待成功保存；对局、回放及手动角色授权保留。
           </output>
         )}
-        <header className="achievement-overview">
-          <div className="achievement-overview-heading">
-            <div>
-              <span className="achievement-eyebrow">
-                <Trophy aria-hidden="true" size={14} /> 成长收藏
-              </span>
-              <h3>成就总览</h3>
-            </div>
-            <strong aria-label={`已达成${completed}项，共${total}项`}>
-              {completed}
-              <span> / {total}</span>
-            </strong>
-          </div>
-          <progress aria-label="成就完成率" value={completed} max={total} />
-          <div className="achievement-overview-caption">
-            <span>完成率 {((completed / total) * 100).toFixed(1)}%</span>
-            <span>
-              <Users aria-hidden="true" size={14} /> 已解锁角色 {unlockedRoles}{' '}
-              / {characterCatalog.length}
-            </span>
-          </div>
-          <div className="achievement-tier-totals" aria-label="各等级收藏进度">
-            {achievementTiers.map((t) => {
-              const badges = achievementCatalog.filter(
-                (a) => achievementCollectionMetadata[a.id].tier === t,
-              );
-              return (
-                <span key={t} data-tier={t}>
-                  {achievementTierLabels[t]}{' '}
-                  {badges.filter((a) => achieved[a.id]).length} /{' '}
-                  {badges.length}
-                </span>
-              );
-            })}
-          </div>
-        </header>
+        <AchievementOverview
+          achieved={achieved}
+          unlockedRoles={unlockedRoles}
+          roleCount={characterCatalog.length}
+          onOpen={(event) => {
+            origin.current = event.currentTarget;
+            setSelected(null);
+            setRulesOpen(false);
+            setOverviewOpen(true);
+          }}
+        />
         <div className="achievement-browser">
           <div className="achievement-toolbar">
             <label className="achievement-search">
@@ -444,18 +425,6 @@ export function AchievementProgress({
                             )}
                             {showGoal && (goal.target > 1 || !!card.series) && (
                               <span className="achievement-card-progress">
-                                {at && (
-                                  <span className="achievement-goal-tier">
-                                    冲刺
-                                    {
-                                      achievementTierLabels[
-                                        achievementCollectionMetadata[goal.id]
-                                          .tier
-                                      ]
-                                    }
-                                    章
-                                  </span>
-                                )}
                                 <span className="sr-only">
                                   {goal.kind === 'same-match'
                                     ? '单局最高进度'
@@ -498,6 +467,7 @@ export function AchievementProgress({
             onClick={(e) => {
               origin.current = e.currentTarget;
               setSelected(null);
+              setOverviewOpen(false);
               setRulesOpen(true);
             }}
           >
@@ -630,7 +600,13 @@ export function AchievementProgress({
             origin.current?.isConnected ? origin.current : search.current
           }
         >
-          {rulesOpen ? (
+          {overviewOpen ? (
+            <AchievementOverviewDetail
+              achieved={achieved}
+              unlockedRoles={unlockedRoles}
+              roleCount={characterCatalog.length}
+            />
+          ) : rulesOpen ? (
             <AchievementSystemRules />
           ) : (
             detail && (
