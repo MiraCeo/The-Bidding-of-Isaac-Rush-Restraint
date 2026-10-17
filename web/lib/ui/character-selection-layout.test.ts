@@ -176,8 +176,8 @@ it('keeps survival difficulty, pool exclusions and explicit start behavior', asy
   expect(node.textContent).not.toContain('每层基础资金1000');
   expect(node.textContent).toContain('不含福袋与黑王子之冠');
   expect(
-    node.querySelector('.survival-difficulty-help')!.hasAttribute('open'),
-  ).toBe(false);
+    node.querySelector<HTMLElement>('.survival-difficulty-help')!.hidden,
+  ).toBe(true);
   expect(
     node.querySelector('.survival-difficulty-help')!.textContent,
   ).toContain('困难或最高难度');
@@ -234,7 +234,70 @@ it('uses player-facing maximum difficulty copy without development history or ru
   await mount({ mode: 'survival', aiDifficulty: 'highest' });
   expect(
     node.querySelector('.survival-difficulty-description')!.textContent,
-  ).toBe('完整强度的生存AI，不额外削弱。');
+  ).toBe(
+    '使用完整强度的生存AI，不额外削弱其判断与报价能力，适合熟悉规则后挑战。',
+  );
   expect(node.textContent).not.toContain('0.3.1');
   expect(node.textContent).not.toContain('斩杀线200');
 });
+
+it('keeps the help trigger next to difficulty controls and expands content below the current description without changing selection', async () => {
+  const onDifficultyChange = vi.fn();
+  await mount({ mode: 'survival', aiDifficulty: 'hard', onDifficultyChange });
+  const trigger = node.querySelector<HTMLButtonElement>(
+    '.survival-difficulty-help-toggle',
+  )!;
+  const main = node.querySelector('.survival-difficulty-main')!;
+  const help = node.querySelector<HTMLElement>('.survival-difficulty-help')!;
+  const description = node.querySelector('.survival-difficulty-description')!;
+  expect(trigger.parentElement).toBe(main);
+  expect(trigger.getAttribute('aria-controls')).toBe(help.id);
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  expect(main.nextElementSibling).toBe(description);
+  expect(description.nextElementSibling).toBe(help);
+  expect(help.hidden).toBe(true);
+  trigger.focus();
+  await click(trigger);
+  expect(node.querySelector('.survival-difficulty-help-toggle')).toBe(trigger);
+  expect(trigger.parentElement).toBe(main);
+  expect(document.activeElement).toBe(trigger);
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  expect(help.hidden).toBe(false);
+  expect(description.nextElementSibling).toBe(help);
+  expect(help.textContent).toContain('前5层');
+  expect(onDifficultyChange).not.toHaveBeenCalled();
+  expect(
+    node.querySelector<HTMLInputElement>(
+      '.survival-difficulty-options input:checked',
+    )!.value,
+  ).toBe('hard');
+  await click(trigger);
+  expect(help.hidden).toBe(true);
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).not.toContain('.survival-difficulty-help[open]');
+  expect(css).not.toContain('.survival-difficulty-help { margin-left:auto;');
+  expect(css).toContain('filter:grayscale(.12); opacity:.92;');
+  expect(css).toContain('minmax(56px,auto) minmax(64px,1fr)');
+});
+it.each([
+  ['easy', '报价偏差和失误较多'],
+  ['standard', '也是默认难度'],
+  ['hard', '更仔细地分配资金'],
+  ['highest', '不额外削弱其判断与报价能力'],
+] as const)(
+  'provides expanded player-facing copy for %s without changing difficulty',
+  async (aiDifficulty, copy) => {
+    const onDifficultyChange = vi.fn();
+    await mount({ mode: 'survival', aiDifficulty, onDifficultyChange });
+    const description = node.querySelector<HTMLElement>(
+      '.survival-difficulty-description',
+    )!;
+    expect(description.textContent).toContain(copy);
+    expect(description.textContent!.length).toBeGreaterThan(30);
+    expect(description.textContent).not.toContain('0.3.1');
+    const options = node.querySelector('.survival-difficulty-options')!;
+    expect(options.getAttribute('aria-describedby')).toBe(description.id);
+    expect(onDifficultyChange).not.toHaveBeenCalled();
+  },
+);
