@@ -107,6 +107,7 @@ export function RoomUtilities({
       aria-labelledby="room-utilities-title"
     >
       <UtilityPageHeading
+        inlineDescription={panel === 'rules'}
         titleId="room-utilities-title"
         title={panelNames[panel]}
         description={

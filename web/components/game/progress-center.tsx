@@ -209,6 +209,7 @@ export function ProgressCenter({
         aria-labelledby="progress-title"
       >
         <UtilityPageHeading
+          inlineDescription
           eyebrow="PLAYER PROGRESS"
           title={data.task === 'settings' ? '进度' : dataTaskTitle(data)}
           titleId="progress-title"

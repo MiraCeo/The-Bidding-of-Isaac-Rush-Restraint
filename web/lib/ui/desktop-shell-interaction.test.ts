@@ -145,6 +145,30 @@ it.each(['classic', 'survival'] as const)(
       const heading = node.querySelector(
         '.ranking-stage > .ranking-page-heading',
       )!;
+      if (page === '设置' || page === '规则') {
+        expect(
+          heading.querySelector('.utility-page-title-line > h2'),
+        ).not.toBeNull();
+        expect(
+          heading.querySelector(
+            '.utility-page-title-line > .utility-page-description',
+          ),
+        ).not.toBeNull();
+      }
+      if (page === '规则') {
+        await click('道具图鉴', node.querySelector('.rules-tabs')!);
+        expect(
+          node.querySelector<HTMLElement>('.rule-item-directory')!.hidden,
+        ).toBe(false);
+        expect(node.querySelectorAll('.rule-item-card')).toHaveLength(
+          mode === 'survival' ? 25 : 26,
+        );
+        if (mode === 'survival')
+          expect(
+            node.querySelector('.rule-item-grid')!.textContent,
+          ).not.toContain('黑王子之冠');
+        await click('玩法规则', node.querySelector('.rules-tabs')!);
+      }
       expect(
         heading.querySelector('.utility-page-heading-actions')!.textContent,
       ).toContain('返回游戏');
@@ -160,6 +184,11 @@ it.each(['classic', 'survival'] as const)(
     const value = input.value;
     await click('进度', node.querySelector('.main-nav')!);
     shell('进度');
+    expect(
+      node.querySelector(
+        '.progress-stage .utility-page-title-line > .utility-page-description',
+      ),
+    ).not.toBeNull();
     expect(node.querySelector('.page-context-bar')).toBeNull();
     await click('成就');
     expect(node.querySelectorAll('.achievement-card')).toHaveLength(57);

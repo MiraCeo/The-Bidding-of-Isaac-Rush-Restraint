@@ -1,3 +1,4 @@
+import { GameRules } from './game-rules';
 import { AchievementFeedbackContext } from './achievement-feedback-context';
 import { AchievementNotice } from './achievement-notice';
 import { UtilityPageHeading } from './utility-page-heading';
@@ -362,52 +363,45 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     } else if (selected === 'rules')
       content = (
-        <>
-          <Button
-            variant="secondary"
-            onClick={() => setTeachingOpen((open) => !open)}
-          >
-            {teachingOpen ? '收起生存教学' : '打开生存教学'}
-          </Button>
-          {teachingOpen && (
-            <GameTutorial mode="survival" scoreDecimals={decimals} />
-          )}
-          <p>
-            20人开局，每层5房，第5房为BOSS。每层基础资金重置为1000，再应用角色与道具效果。正式斩杀线为
-            {survivalOfficialCutLines.join('／')}。
-          </p>
-          <p>
-            层末：S = R ＋ 0.1 × 剩余资金 ＋ 0.2 × 上层S。累计积分只加 R
-            与资金兑换；继承分不重复计入，也不再次乘道具倍率。
-          </p>
-          <p>
-            线下全部淘汰。若不足两人，再从达标者末位补足；末位同分按种子抽签。剩余人数≤6时结算；全部线下则团灭，无冠军。
-          </p>
-          <p>
-            总榜：存活者在前；淘汰者按淘汰层数降序，再按累计积分降序。同层同分抽签，保留事实记录。
-          </p>
-          <p>
-            玩家提前淘汰后冻结，AI自动完成剩余比赛。每层BOSS使用普通奖励池，保留心脏对BOSS分数的追溯机制，不使用经典第三层双心脏规则。
-          </p>
-          <p>
-            生存模式暂不提供黑王子之冠，伊甸开局也不抽取。积分存储保留4位，显示偏好不改变淘汰判定。
-          </p>
-          <p>
-            生存AI分简单、标准、困难、最高四档；默认标准。最高保留0.3.1原设置，其他档逐级减弱判断和报价精度，基本资金规划与合法性不变。开局后难度锁定，存档和回放保留本局难度。
-          </p>
-          <details>
-            <summary>生存道具池 · 25件</summary>
-            <div className="survival-items">
-              {survivalItemCatalog.map((item) => (
-                <article key={item.id}>
-                  <ItemIcon itemId={item.id} />
-                  <b>{item.name}</b>
-                  <p>{itemPresentations[item.id].description}</p>
-                </article>
-              ))}
-            </div>
-          </details>
-        </>
+        <GameRules
+          catalog={survivalItemCatalog}
+          gameplay={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => setTeachingOpen((open) => !open)}
+              >
+                {teachingOpen ? '收起生存教学' : '打开生存教学'}
+              </Button>
+              {teachingOpen && (
+                <GameTutorial mode="survival" scoreDecimals={decimals} />
+              )}
+              <p>
+                20人开局，每层5房，第5房为BOSS。每层基础资金重置为1000，再应用角色与道具效果。正式斩杀线为
+                {survivalOfficialCutLines.join('／')}。
+              </p>
+              <p>
+                层末：S = R ＋ 0.1 × 剩余资金 ＋ 0.2 × 上层S。累计积分只加 R
+                与资金兑换；继承分不重复计入，也不再次乘道具倍率。
+              </p>
+              <p>
+                线下全部淘汰。若不足两人，再从达标者末位补足；末位同分按种子抽签。剩余人数≤6时结算；全部线下则团灭，无冠军。
+              </p>
+              <p>
+                总榜：存活者在前；淘汰者按淘汰层数降序，再按累计积分降序。同层同分抽签，保留事实记录。
+              </p>
+              <p>
+                玩家提前淘汰后冻结，AI自动完成剩余比赛。每层BOSS使用普通奖励池，保留心脏对BOSS分数的追溯机制，不使用经典第三层双心脏规则。
+              </p>
+              <p>
+                生存模式暂不提供黑王子之冠，伊甸开局也不抽取。积分存储保留4位，显示偏好不改变淘汰判定。
+              </p>
+              <p>
+                生存AI分简单、标准、困难、最高四档；默认标准。最高保留0.3.1原设置，其他档逐级减弱判断和报价精度，基本资金规划与合法性不变。开局后难度锁定，存档和回放保留本局难度。
+              </p>
+            </>
+          }
+        />
       );
     else content = <p>开始生存对局后可查看此页。</p>;
     return (
@@ -417,6 +411,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         className="ranking-stage game-tools-stage survival-utility"
       >
         <UtilityPageHeading
+          inlineDescription={selected === 'rules'}
           titleId="room-utilities-title"
           title={
             selected === 'ranking'

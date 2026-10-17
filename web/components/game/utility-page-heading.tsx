@@ -7,22 +7,34 @@ export function UtilityPageHeading({
   titleId,
   children,
   description,
+  inlineDescription = false,
 }: {
   eyebrow: string;
   title: string;
   titleId: string;
   children?: ReactNode;
   description?: ReactNode;
+  inlineDescription?: boolean;
 }) {
+  const titleContent = (
+    <>
+      <h2 id={titleId} tabIndex={-1}>
+        {title}
+      </h2>
+      {description && <p className="utility-page-description">{description}</p>}
+    </>
+  );
   return (
     <div className="ranking-page-heading">
-      <div className="utility-page-heading-copy">
+      <div
+        className="utility-page-heading-copy"
+        data-inline-description={inlineDescription || undefined}
+      >
         <p className="eyebrow">{eyebrow}</p>
-        <h2 id={titleId} tabIndex={-1}>
-          {title}
-        </h2>
-        {description && (
-          <p className="utility-page-description">{description}</p>
+        {inlineDescription ? (
+          <div className="utility-page-title-line">{titleContent}</div>
+        ) : (
+          titleContent
         )}
       </div>
       {children && (

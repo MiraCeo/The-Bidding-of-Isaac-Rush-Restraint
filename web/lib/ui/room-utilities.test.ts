@@ -660,10 +660,8 @@ describe('room utility interaction without a real browser', () => {
     );
     expect(container.querySelectorAll('.ranking-table th')).toHaveLength(5);
     await click(button('规则', element('nav[aria-label="主导航"]')));
-    await click(
-      element<HTMLAnchorElement>('.rules-contents a[href="#rule-items"]'),
-    );
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(true);
+    await click(button('道具图鉴', element('nav[aria-label="规则分类"]')));
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(false);
     await setInput('input[type="search"]', '福袋');
     expect(container.querySelectorAll('.rule-item-card')).toHaveLength(1);
     expect(element('.rule-item-card').textContent).toContain('扰乱获得不返款');
@@ -671,16 +669,14 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.rule-item-grid output').textContent).toContain('没有匹配');
   });
 
-  it('opens the optional item catalog from the rule directory without starting a game', async () => {
+  it('opens the item catalog peer tab without starting a game', async () => {
     const generate = vi.spyOn(roomGeneration, 'generateFloor');
     await mount(createElement(GameApp));
     await click(button('规则', element('nav[aria-label="主导航"]')));
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(false);
-    expect(container.querySelectorAll('.rules-contents a')).toHaveLength(10);
-    await click(
-      element<HTMLAnchorElement>('.rules-contents a[href="#rule-items"]'),
-    );
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(true);
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(true);
+    expect(container.querySelectorAll('.rules-contents a')).toHaveLength(9);
+    await click(button('道具图鉴', element('nav[aria-label="规则分类"]')));
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(false);
     await setInput('input[type="search"]', '屏障');
     expect(container.querySelectorAll('.rule-item-card')).toHaveLength(2);
     await setInput('input[type="search"]', '积分加算');

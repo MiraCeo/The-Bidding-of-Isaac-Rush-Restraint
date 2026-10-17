@@ -32,6 +32,7 @@ export function GameSettings({
       aria-labelledby="room-utilities-title"
     >
       <UtilityPageHeading
+        inlineDescription
         eyebrow="INTERFACE SETTINGS"
         title="设置"
         titleId="room-utilities-title"
