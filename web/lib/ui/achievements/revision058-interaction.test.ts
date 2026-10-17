@@ -106,3 +106,20 @@ it('keeps the role prerequisite on the three-copy bronze while the series contin
   await click(card('E05'));
   expect(dialog().textContent).toContain('伊甸的解锁前置仍只需第一级的3件');
 });
+
+it('keeps shared rules on the current catalog and explains tightened capital and gold difficulty without writing', async () => {
+  const p = createPlayerProfile(now),
+    raw = JSON.stringify(p);
+  localStorage.setItem(playerProfileKey, raw);
+  await mount(p);
+  await click(
+    [...node.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent === '成就统计规则',
+    )!,
+  );
+  expect(dialog().textContent).toContain('现有117枚');
+  expect(dialog().textContent).toContain('30组单卡三级合为57张卡片');
+  expect(dialog().textContent).toContain('50%');
+  expect(dialog().textContent).toContain('金阶仅限困难或最高');
+  expect(localStorage.getItem(playerProfileKey)).toBe(raw);
+});

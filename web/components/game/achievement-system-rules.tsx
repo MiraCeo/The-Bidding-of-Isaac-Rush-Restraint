@@ -1,5 +1,10 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
+import { achievementCatalog } from '@/lib/ui/achievements/catalog';
+import { achievementSeries } from '@/lib/ui/achievements/series';
+const cardCount =
+  achievementCatalog.length -
+  achievementSeries.reduce((n, s) => n + s.ids.length - 1, 0);
 /** Shared player-facing rules, not repeated in each collectible's personal note. */
 export function AchievementSystemRules() {
   return (
@@ -33,7 +38,9 @@ export function AchievementSystemRules() {
         </p>
         <h4>徽章等级与隐藏成就</h4>
         <p>
-          现有107枚铜、银或金徽章，25组单卡三级合为57张卡片；各等级独立计完成数和时间；部分完成显示1/3或2/3。筛选按同一枚子徽章匹配，不能用铜的完成状态匹配“银＋已达成”。未标记旧成果的纪念、进度、时间和派生角色权限均随旧账本清理，手动授权保留；仅本批一次性整理旧基线，不关闭正常继承功能。
+          现有{achievementCatalog.length}枚铜、银或金徽章，
+          {achievementSeries.length}组单卡三级合为{cardCount}
+          张卡片；各等级独立计完成数和时间；部分完成显示1/3或2/3。筛选按同一枚子徽章匹配，不能用铜的完成状态匹配“银＋已达成”。未标记旧成果的纪念、进度、时间和派生角色权限均随旧账本清理，手动授权保留；仅0.5.11一次性整理旧基线，不关闭正常继承功能。
         </p>
         <p>
           顶部总览按徽章统计，分类按钮及分组标题按当前搜索、状态与等级筛选后的卡片统计。系列只计一张，有匹配子级已获即计为已获卡片；切换分类不清空其他分类的可选数量，排序和排列不改变计数。
@@ -57,7 +64,10 @@ export function AchievementSystemRules() {
           C～F新增阶梯沿用真实事实累计；鸠占鹊巢与意外之喜按组计，塞翁失马按取得正金额退款的失败行动计，双组可各计一次；翻倍、低资金强化与左右开弓按房间计。神秘礼物按实际件数计入复制；吊车尾按层结算计。旧布尔缺少行动或组数时不补造次数。
         </p>
         <p>
-          时来运转需累计6／18／66个真实翻倍房间；反客为主需同局同父分支两个不同房间各自转化扰乱且实际交付，同房双组不能代替两房。过关斩将从第一层起连续通过前1／3／5层，提前终局不虚算未发生层数。新等级由新正式事实成功保存后确认，浏览、导入及重复恢复本身不发奖。
+          时来运转需累计6／18／66个真实翻倍房间；反客为主需同局同父分支两个不同房间各自转化扰乱且实际交付，同房双组不能代替两房。过关斩将从第一层起连续通过前1／3／5层，金阶仅限困难或最高AI难度；提前终局不虚算未发生层数。新等级由新正式事实成功保存后确认，浏览、导入及重复恢复本身不发奖。
+        </p>
+        <p>
+          孤注一掷须正常竞拍名义全押正资金，折扣后实际扣款至少为本层角色初始资金50%；后续退款不取消扣款事实。背水一战仍按全押并实际获奖累计，不附加此本金条件。缺少新本金或难度证据不倒推。
         </p>
         <h4>角色与收藏</h4>
         <p>
