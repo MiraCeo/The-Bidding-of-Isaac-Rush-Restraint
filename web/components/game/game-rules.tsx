@@ -1,5 +1,5 @@
 import { ItemIcon } from './item-icon';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ItemBadges } from './item-badges';
 import { Button } from '@/components/ui/button';
 
@@ -41,6 +41,7 @@ function RuleChapter({
     <section
       id={`rule-${section.id}`}
       className="rule-chapter"
+      data-rule-target
       aria-labelledby={`rule-${section.id}-title`}
     >
       <header className="rule-chapter-heading">
@@ -103,7 +104,49 @@ export function GameRules({
   onOpenTutorial,
 }: { onOpenTutorial?: () => void } = {}) {
   const [query, setQuery] = useState('');
+  const [activeChapter, setActiveChapter] = useState('rules-quick-start');
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const manualRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLDetailsElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const targets = [
+      ...(manualRef.current?.querySelectorAll<HTMLElement>(
+        '[data-rule-target]',
+      ) ?? []),
+    ];
+    let observer: IntersectionObserver | undefined;
+    const watch = () => {
+      observer?.disconnect();
+      observer = new IntersectionObserver(
+        () => {
+          // Follow the reading edge, not only the changed entries (which can be stale after a jump).
+          const atEnd =
+            document.documentElement.scrollHeight > window.innerHeight &&
+            window.scrollY + window.innerHeight >=
+              document.documentElement.scrollHeight - 2;
+          const current = atEnd
+            ? targets.at(-1)
+            : (targets
+                .filter((target) => target.getBoundingClientRect().top <= 25)
+                .at(-1) ?? targets[0]);
+          if (current) setActiveChapter(current.id);
+        },
+        {
+          rootMargin: `-24px 0px -${Math.max(0, window.innerHeight - 25)}px 0px`,
+          threshold: 0,
+        },
+      );
+      targets.forEach((target) => observer!.observe(target));
+    };
+    watch();
+    window.addEventListener('resize', watch);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', watch);
+    };
+  }, []);
   const normalizedQuery = query.trim().toLowerCase();
   const items = itemCatalog.filter((item) =>
     `${item.name} ${itemVisualAlias(item.id)} ${itemPresentations[item.id].description} ${getItemBadges(
@@ -116,18 +159,20 @@ export function GameRules({
   );
 
   return (
-    <div className="game-rules-content rules-manual">
+    <div className="game-rules-content rules-manual" ref={manualRef}>
       <section
         id="rules-quick-start"
         className="rules-overview"
+        data-rule-target
         aria-labelledby="rules-quick-start-title"
       >
-        <div className="rules-overview-copy">
-          <p className="rules-kicker">先知道怎样玩，再查具体规则</p>
-          <h3 id="rules-quick-start-title">快速上手</h3>
-          <p>
-            目标是在整局结束时取得更高的最终积分。先选角色，再逐房报价、获取道具并完成构筑。
-          </p>
+        <div className="rules-overview-heading">
+          <div className="rules-overview-copy">
+            <h3 id="rules-quick-start-title">快速上手</h3>
+            <p className="rules-overview-description">
+              目标是在整局结束时取得更高的最终积分。先选角色，再逐房报价、获取道具并完成构筑。
+            </p>
+          </div>
           {onOpenTutorial && (
             <Button type="button" onClick={onOpenTutorial}>
               进入交互式教程
@@ -162,23 +207,43 @@ export function GameRules({
         <aside className="rules-contents">
           <nav aria-label="规则目录">
             <h3>阅读目录</h3>
-            <a href="#rules-quick-start">快速上手</a>
+            <a
+              href="#rules-quick-start"
+              aria-current={
+                activeChapter === 'rules-quick-start' ? 'location' : undefined
+              }
+              onClick={() => setActiveChapter('rules-quick-start')}
+            >
+              快速上手
+            </a>
             {sections.map((section, index) => (
-              <a key={section.id} href={`#rule-${section.id}`}>
+              <a
+                key={section.id}
+                href={`#rule-${section.id}`}
+                aria-current={
+                  activeChapter === `rule-${section.id}`
+                    ? 'location'
+                    : undefined
+                }
+                onClick={() => setActiveChapter(`rule-${section.id}`)}
+              >
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 {section.title}
               </a>
             ))}
             <a
               href="#rule-items"
+              aria-current={
+                activeChapter === 'rule-items' ? 'location' : undefined
+              }
               onClick={() => {
+                setActiveChapter('rule-items');
                 if (catalogRef.current) catalogRef.current.open = true;
               }}
             >
               <span>09</span>道具图鉴 <small>{itemCatalog.length}</small>
             </a>
           </nav>
-          <p>先读行动和金额，再看市场、奖励与特殊效果。</p>
         </aside>
         <article className="rules-reading-column" aria-label="完整游戏规则">
           {sections.map((section, index) => (
@@ -187,13 +252,21 @@ export function GameRules({
           <section
             id="rule-items"
             className="rule-item-directory"
+            data-rule-target
             aria-label="道具图鉴"
           >
-            <details ref={catalogRef} className="rule-catalog">
+            <details
+              ref={catalogRef}
+              className="rule-catalog"
+              onToggle={(event) => setCatalogOpen(event.currentTarget.open)}
+            >
               <summary aria-label="道具图鉴，展开或收起查询">
                 <span>
                   <strong>道具图鉴</strong>
-                  <small>{itemCatalog.length} 件道具 · 点击展开查询</small>
+                  <small>
+                    {itemCatalog.length} 件道具 ·{' '}
+                    {catalogOpen ? '可按名称与效果搜索' : '点击展开查询'}
+                  </small>
                 </span>
                 <span className="rule-catalog-chevron" aria-hidden="true" />
               </summary>
@@ -202,15 +275,34 @@ export function GameRules({
                   <p>
                     这里是通用道具说明，不揭示本房隐藏奖励。非叠加道具的重复份数仍计入库存。
                   </p>
-                  <label className="rule-search">
-                    <span>查找道具</span>
-                    <input
-                      type="search"
-                      placeholder="名称或效果关键词"
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                    />
-                  </label>
+                  <div className="rule-directory-tools">
+                    <label className="rule-search">
+                      <span>查找道具</span>
+                      <input
+                        ref={searchRef}
+                        type="search"
+                        placeholder="名称或效果关键词"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                      />
+                    </label>
+                    <div className="rule-search-feedback">
+                      <output aria-live="polite">
+                        显示 {items.length} / {itemCatalog.length} 件道具
+                      </output>
+                      {query && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuery('');
+                            searchRef.current?.focus();
+                          }}
+                        >
+                          清除道具搜索
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="rule-item-grid">
                   {items.map((item) => (
