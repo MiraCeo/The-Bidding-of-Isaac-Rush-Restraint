@@ -23,9 +23,11 @@ import {
   corpusSourceProvenance,
 } from '../../../scripts/ledger-corpus-output.mjs';
 
+const reportSchema = process.env.LEDGER_REPORT_SCHEMA === '8' ? 8 : 6;
+
 const enabled = process.env.LEDGER_CORPUS_REPORT === '1';
 it.runIf(enabled)(
-  'exports current lifecycle templates and independently verified schema6 scale fixtures without overwriting old reports',
+  `exports current lifecycle templates and independently verified schema${reportSchema} scale fixtures without overwriting old reports`,
   () => {
     const webRoot = fileURLToPath(new URL('../../../', import.meta.url));
     const directory = process.env.LEDGER_CORPUS_RUN_DIR;
@@ -53,6 +55,7 @@ it.runIf(enabled)(
     for (const shape of currentCorpusShapes)
       for (const count of [0, 64, 256]) {
         const f = buildCurrentLedgerFixture(traces, count, shape, {
+          schema: reportSchema,
           historyRows: 200,
           paddingChars: 32768,
           completionReceipts: 128,
@@ -60,11 +63,16 @@ it.runIf(enabled)(
         const loaded = readPlayerProfile(JSON.parse(canonicalJson(f.profile)));
         expect(readAchievementRegistry(loaded)).toEqual(f.registry);
         if (count)
-          expect(f.wire).toMatchObject({ version: 6, catalogVersion: 5 });
+          expect(f.wire).toMatchObject({
+            version: reportSchema,
+            catalogVersion: reportSchema === 8 ? 7 : 5,
+          });
         else expect(f.wire).toBeNull();
         rows.push({
           ...f.provenance,
-          status: count ? 'schema6-validated' : 'current-empty-ledger',
+          status: count
+            ? `schema${reportSchema}-validated`
+            : 'current-empty-ledger',
           wireVersion: f.wire?.version ?? null,
           catalogVersion: f.wire?.catalogVersion ?? null,
           moduleBytes: f.wire ? Buffer.byteLength(canonicalJson(f.wire)) : 0,
@@ -75,13 +83,13 @@ it.runIf(enabled)(
         if (count === 64) fixtures.push({ ...f.provenance, profile: loaded });
       }
     writeCorpusJson(webRoot, directory, 'corpus.json', {
-      kind: 'synthetic-schema6-ledger-corpus-not-player-backup',
+      kind: `synthetic-schema${reportSchema}-ledger-corpus-not-player-backup`,
       version: 1,
       templates,
       fixtures,
     });
     writeCorpusJson(webRoot, directory, 'manifest.json', {
-      kind: 'schema6-corpus-readiness',
+      kind: `schema${reportSchema}-corpus-readiness`,
       version: 1,
       generatedAt: new Date().toISOString(),
       applicationVersion: JSON.parse(
@@ -100,8 +108,8 @@ it.runIf(enabled)(
           achievementCatalog.length -
           achievementSeries.reduce((n, s) => n + s.ids.length - 1, 0),
         series: achievementSeries.length,
-        schema: 6,
-        catalogVersion: 5,
+        schema: reportSchema,
+        catalogVersion: reportSchema === 8 ? 7 : 5,
         baseline: 1,
       },
       scope:

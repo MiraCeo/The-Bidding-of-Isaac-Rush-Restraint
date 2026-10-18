@@ -241,3 +241,52 @@ describe('current schema6 closeout corpus, not frozen schema1/2 fixtures', () =>
     );
   });
 });
+
+it.each(currentCorpusShapes)(
+  'captures schema8 %s scale fixtures with full balance proof without changing schema6 defaults',
+  (shape) => {
+    const before = canonicalJson(traces);
+    const legacy = buildCurrentLedgerFixture(traces, 64, shape);
+    const f = buildCurrentLedgerFixture(traces, 256, shape, {
+      schema: 8,
+      historyRows: 200,
+      paddingChars: 32768,
+      completionReceipts: 128,
+    });
+    expect(legacy.wire).toMatchObject({ version: 6, catalogVersion: 5 });
+    expect(f.wire).toMatchObject({ version: 8, catalogVersion: 7, count: 256 });
+    expect(f.registry!.stages).toEqual({
+      from: 0,
+      at: f.registry!.receipts[0]!.at,
+    });
+    const loaded = readPlayerProfile(JSON.parse(canonicalJson(f.profile)));
+    expect(readAchievementRegistry(loaded)).toEqual(f.registry);
+    expect(
+      validateAchievementRegistry(packAchievementRegistry(f.registry!)),
+    ).toEqual(f.registry);
+    for (const r of f.registry!.receipts) {
+      expect(
+        traces.some(
+          (t) =>
+            t.mode === r.mode &&
+            t.context.units.some(
+              (u) =>
+                u.stage === r.stage &&
+                u.position === r.position &&
+                canonicalJson(u.values) === canonicalJson(r.values),
+            ),
+        ),
+      ).toBe(true);
+      expect(encodeAchievementEvent(decodeAchievementEvent(r)).values).toEqual(
+        r.values,
+      );
+    }
+    expect(canonicalJson(traces)).toBe(before);
+    expect(buildCurrentLedgerFixture(traces, 64, shape).wire).toEqual(
+      legacy.wire,
+    );
+    expect(projectAchievementRegistry(loaded)).toEqual(
+      projectAchievementRegistry(f.profile),
+    );
+  },
+);

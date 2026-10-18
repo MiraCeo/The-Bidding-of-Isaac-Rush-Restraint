@@ -8,6 +8,13 @@ import {
   currentCorpusBytes,
   currentCorpusShapes,
 } from './closeout-corpus.test-helper';
+import { serializeGameBackup, parseGameSave } from '../game-save';
+import {
+  serializeSurvivalBackup,
+  parseSurvivalBackup,
+} from '../survival-backup';
+import { currentPendingProbe } from './closeout-capacity.test-helper';
+import { startSurvivalClient } from '../survival-client';
 import { capacityClock } from './closeout-capacity.test-helper';
 import {
   serializePlayerProfileBackup,
@@ -23,6 +30,8 @@ import {
   writeCorpusJson,
   corpusSourceProvenance,
 } from '../../../scripts/ledger-corpus-output.mjs';
+
+const reportSchema = process.env.LEDGER_REPORT_SCHEMA === '8' ? 8 : 6;
 
 function samples<T>(work: () => T) {
   const samplesMs: number[] = [];
@@ -43,8 +52,13 @@ it.runIf(process.env.PROFILE_PERFORMANCE_REPORT === '1')(
     const root = fileURLToPath(new URL('../../../', import.meta.url)),
       directory = process.env.PROFILE_PERFORMANCE_RUN_DIR,
       phase = process.env.PROFILE_PERFORMANCE_PHASE;
-    if (!directory || !['baseline', 'optimized'].includes(phase ?? ''))
-      throw Error('Use report:profile:performance -- baseline|optimized');
+    if (
+      !directory ||
+      !['baseline', 'optimized', 'repeat'].includes(phase ?? '')
+    )
+      throw Error(
+        'Use report:profile:performance -- baseline|optimized|repeat [--schema8]',
+      );
     assertCorpusRun(root, directory, 'capacity');
     const source = corpusSourceProvenance(root),
       startedAt = new Date().toISOString(),
@@ -58,6 +72,7 @@ it.runIf(process.env.PROFILE_PERFORMANCE_REPORT === '1')(
         for (const count of [2048, 8192]) {
           const profile = readPlayerProfile(
             buildCurrentLedgerFixture(traces, count, shape, {
+              schema: reportSchema,
               historyRows: 200,
               paddingChars: 32768,
               completionReceipts: 128,
@@ -96,7 +111,47 @@ it.runIf(process.env.PROFILE_PERFORMANCE_REPORT === '1')(
           expect(projectAchievementRegistry(parsed.result.profile)).toEqual(
             projection,
           );
+          // Pair a real new checkpoint with the scale profile. These checkpoints
+          // carry no growth acknowledgement, so this measures full backup validation
+          // rather than fabricating authority linking a synthetic ledger to gameplay.
+          let paired = null;
+          if (reportSchema === 8) {
+            const classic = { ...currentPendingProbe(), growth: undefined };
+            const survival = startSurvivalClient('isaac', 3, 'highest');
+            const classicExport = samples(() =>
+              serializeGameBackup(classic, profile, capacityClock),
+            );
+            const classicImport = samples(() =>
+              parseGameSave(classicExport.result),
+            );
+            const survivalExport = samples(() =>
+              serializeSurvivalBackup(
+                survival.game,
+                survival.draft,
+                profile,
+                capacityClock,
+              ),
+            );
+            const survivalImport = samples(() =>
+              parseSurvivalBackup(survivalExport.result),
+            );
+            expect(classicImport.result.profile).toEqual(profile);
+            expect(survivalImport.result.profile).toEqual(profile);
+            paired = {
+              classic: {
+                serialize: classicExport.timing,
+                parse: classicImport.timing,
+                sha256: sha256Hex(classicExport.result),
+              },
+              survival: {
+                serialize: survivalExport.timing,
+                parse: survivalImport.timing,
+                sha256: sha256Hex(survivalExport.result),
+              },
+            };
+          }
           const row = {
+            paired,
             shape,
             count,
             profileBytes: currentCorpusBytes(profile),
@@ -130,8 +185,7 @@ it.runIf(process.env.PROFILE_PERFORMANCE_REPORT === '1')(
           platform: process.platform,
           arch: process.arch,
         },
-        scope:
-          'Same fixed official-metric schema6 synthetic fixtures, full JSON/ledger checks, Node/in-memory only; not browser FPS or physical storage.',
+        scope: `Same fixed official-metric schema${reportSchema} synthetic fixtures, full JSON/ledger checks, Node/in-memory only; not browser FPS or physical storage.`,
         method:
           'Three samples per operation; median. Date fixed, real performance clock; each restore uses fresh memory storage. Input/backup/projection SHA256 for exact comparison. Assertions excluded from operation timings.',
         rows,

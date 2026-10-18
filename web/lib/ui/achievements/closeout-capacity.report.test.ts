@@ -34,6 +34,8 @@ import {
   corpusSourceProvenance,
 } from '../../../scripts/ledger-corpus-output.mjs';
 
+const reportSchema = process.env.LEDGER_REPORT_SCHEMA === '8' ? 8 : 6;
+
 function timing(work: () => unknown, n = 3) {
   const samplesMs = [];
   for (let i = 0; i < n; i++) {
@@ -50,7 +52,7 @@ function timing(work: () => unknown, n = 3) {
   };
 }
 it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
-  'measures current schema6 capacities and validation cost with unchanged production budgets',
+  `measures schema${reportSchema} capacities and validation cost with unchanged production budgets`,
   async () => {
     const root = fileURLToPath(new URL('../../../', import.meta.url)),
       directory = process.env.LEDGER_CAPACITY_RUN_DIR;
@@ -70,6 +72,7 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
       for (const shape of currentCorpusShapes)
         for (const count of [0, 64, 256, 2048, 4096, 8192, 12288, 16384]) {
           const f = buildCurrentLedgerFixture(traces, count, shape, {
+            schema: reportSchema,
             historyRows: 200,
             paddingChars: 32768,
             completionReceipts: 128,
@@ -156,7 +159,7 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
             const t = performance.now(),
               text = serializePlayerProfileBackup(
                 valid,
-                'schema6-capacity-measurement',
+                `schema${reportSchema}-capacity-measurement`,
                 capacityClock,
               );
             const restored = parsePlayerProfileBackup(text).profile;
@@ -193,11 +196,9 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
           rows.push(row);
           writeCorpusJson(root, directory, `case-${shape}-${count}.json`, row);
         }
-      const base = buildCurrentLedgerFixture(
-        traces,
-        64,
-        'mixed-branches',
-      ).profile;
+      const base = buildCurrentLedgerFixture(traces, 64, 'mixed-branches', {
+        schema: reportSchema,
+      }).profile;
       const near = padCurrentProfileTo(base, 1024 * 1024);
       expect(readPlayerProfile(near)).toEqual(near);
       expect(() =>
@@ -211,7 +212,12 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
         traces,
         2048,
         'mixed-branches',
-        { historyRows: 200, paddingChars: 32768, completionReceipts: 8192 },
+        {
+          schema: reportSchema,
+          historyRows: 200,
+          paddingChars: 32768,
+          completionReceipts: 8192,
+        },
       );
       const combinationBytes = currentCorpusBytes(combination.profile),
         combinationFits = combinationBytes <= 1024 * 1024;
@@ -221,7 +227,7 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
         );
       else expect(() => readPlayerProfile(combination.profile)).toThrow();
       writeCorpusJson(root, directory, 'capacity.json', {
-        kind: 'schema6-capacity-baseline',
+        kind: `schema${reportSchema}-capacity-baseline`,
         version: 1,
         startedAt,
         source,

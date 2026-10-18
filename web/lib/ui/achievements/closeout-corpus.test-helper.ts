@@ -1,4 +1,4 @@
-/** Current schema6 measurement fixtures ONLY. No client imports, storage access
+/** Frozen schema6 (default) and explicitly requested schema8 measurement fixtures ONLY. No client imports, storage access
  * or rule overrides. Scale identities/topology are synthetic, not played games
  * or importable authority proofs. The old schema1/2 corpus stays frozen. */
 import { createGameSession, reduceGameSession } from '../game-session';
@@ -171,6 +171,8 @@ export function captureCurrentCorpus(onlyTrace?: string): CurrentCorpusTrace[] {
 }
 
 export interface CurrentCorpusOptions {
+  /** Default 6 preserves historical fixtures byte for byte. 8 retains all proof. */
+  schema?: 6 | 8;
   historyRows?: number;
   paddingChars?: number;
   /** Synthetic observed keys exercise shared byte budgets, not completed games.
@@ -187,6 +189,8 @@ export function buildCurrentLedgerFixture(
   shape: CurrentCorpusShape,
   options: CurrentCorpusOptions = {},
 ) {
+  const schema = options.schema ?? 6;
+  if (schema !== 6 && schema !== 8) throw Error('Unknown corpus schema');
   bound(count, packedAchievementReceiptLimit);
   if (!currentCorpusShapes.includes(shape)) throw Error('Unknown corpus shape');
   const historyRows = options.historyRows ?? 0,
@@ -216,17 +220,19 @@ export function buildCurrentLedgerFixture(
       // Preserve the frozen schema6 scale corpus; new proof is measured separately.
       values: unit.values.slice(
         0,
-        unit.stage === 'room'
-          ? 17
-          : unit.stage === 'floor'
-            ? 4
-            : unit.values.length,
+        schema === 8
+          ? unit.values.length
+          : unit.stage === 'room'
+            ? 17
+            : unit.stage === 'floor'
+              ? 4
+              : unit.values.length,
       ),
       root,
       parent,
       mode: trace.mode,
       authorityHash: sha256Hex(
-        `schema6-scale:${root}:${branch}:${unit.authorityHash}`,
+        `schema${schema}-scale:${root}:${branch}:${unit.authorityHash}`,
       ),
     };
     const receipt = {
@@ -251,7 +257,7 @@ export function buildCurrentLedgerFixture(
             ? survivals[index % survivals.length]!
             : classic;
     const units = trace.context.units;
-    const root = sha256Hex(`schema6-scale:${shape}:${index}`);
+    const root = sha256Hex(`schema${schema}-scale:${shape}:${index}`);
     const first = units[0];
     if (first?.stage !== 'entry' || first.values.length !== 5)
       throw Error('Missing current entry');
@@ -284,7 +290,7 @@ export function buildCurrentLedgerFixture(
     ] as unknown as CompletionRegistry;
     for (let i = 1; i < completionReceipts; i++)
       completion.receipts[
-        `${i % 2 ? 'survival' : 'classic'}/${sha256Hex('schema6-observed-' + i)}`
+        `${i % 2 ? 'survival' : 'classic'}/${sha256Hex(`schema${schema}-observed-${i}`)}`
       ] = false;
   }
   profile.history = Array.from({ length: historyRows }, (_, i) =>
@@ -310,6 +316,7 @@ export function buildCurrentLedgerFixture(
         milestones: { from: 0, at: receipts[0]!.at },
         revisions: { from: 0, at: receipts[0]!.at },
         cf: { from: 0, at: receipts[0]!.at },
+        ...(schema === 8 ? { stages: { from: 0, at: receipts[0]!.at } } : {}),
         receipts,
       }
     : null;
@@ -324,6 +331,7 @@ export function buildCurrentLedgerFixture(
     provenance: {
       shape,
       count,
+      schema,
       roots,
       forks,
       completeTemplateEvents: completeTemplates,
