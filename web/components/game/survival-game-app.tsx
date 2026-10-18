@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
+import { SurvivalFloorResult } from './survival-floor-result';
 import {
   SettlementStatus,
   SettlementStatusLabel,
@@ -34,7 +35,6 @@ import { GameTutorial } from './game-tutorial';
 import type { RoomUtilityPanel } from './room-utilities';
 import { ItemArtProvider, ItemIcon } from './item-icon';
 import {
-  SurvivalFloorFacts,
   SurvivalTotalBoard,
   SurvivalReplayViewer,
 } from './survival-replay-viewer';
@@ -492,7 +492,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
   const compactSettlement =
-    game?.phase === 'room_result' && game.humanEliminatedAt === null;
+    (game?.phase === 'room_result' || game?.phase === 'floor_result') &&
+    game.humanEliminatedAt === null;
   const strip =
     game &&
     (game.phase === 'room_action' && session?.draft ? (
@@ -679,22 +680,22 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     else if (game!.phase === 'floor_result')
       body = (
-        <>
-          <p className="eyebrow">FLOOR SETTLEMENT</p>
-          <h2>层末生存结算</h2>
-          <SurvivalFloorFacts
-            log={log!}
-            index={game!.floorRecords.length - 1}
-            decimals={decimals}
-          />
-          <footer className="survival-result-actions">
-            <Button onClick={() => dispatch({ type: 'advance_floor' })}>
-              {game!.floorRecords.at(-1)!.plan.shouldFinish
-                ? '查看生存总榜'
-                : '进入下一层'}
-            </Button>
-          </footer>
-        </>
+        <SurvivalFloorResult
+          log={log!}
+          index={game!.floorRecords.length - 1}
+          decimals={decimals}
+          onAdvance={() => dispatch({ type: 'advance_floor' })}
+          onBuild={() => setPanel('build')}
+          onReplay={() => setPanel('replay')}
+          onReturnMenu={props.onReturnMenu}
+          onRestart={() => setRestart(true)}
+          saveMessage={
+            <>
+              {message || saveStatus}
+              {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+            </>
+          }
+        />
       );
     else
       body = (
@@ -755,7 +756,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               >
                 <dl className="settlement-status-facts">
                   <div>
-                    <dt>参与人数</dt>
+                    <dt>{completedLayer ? '存活人数' : '参与人数'}</dt>
                     <dd>{game!.activePlayerIds.length} 人</dd>
                   </div>
                   <div>
@@ -779,27 +780,39 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                   <div>
                     <dt>本层房间分</dt>
                     <dd>
-                      {(game!.currentFloorRoomScores.human ?? [])
-                        .reduce((sum, n) => sum + n, 0)
-                        .toFixed(decimals)}
+                      {(completedLayer
+                        ? (lastHumanScore?.roomScore ?? 0)
+                        : (game!.currentFloorRoomScores.human ?? []).reduce(
+                            (sum, n) => sum + n,
+                            0,
+                          )
+                      ).toFixed(decimals)}
                     </dd>
                   </div>
                   <div>
-                    <dt>上层继承</dt>
+                    <dt>{completedLayer ? '结算继承' : '上层继承'}</dt>
                     <dd>
-                      {(
-                        (game!.previousSurvivalScores.human ?? 0) *
-                        game!.rules.scoreInheritanceRatio
+                      {(completedLayer
+                        ? (lastHumanScore?.inheritedScore ?? 0)
+                        : (game!.previousSurvivalScores.human ?? 0) *
+                          game!.rules.scoreInheritanceRatio
                       ).toFixed(decimals)}
                     </dd>
                   </div>
                   <div>
                     <dt>
-                      余额可兑<small>层末为准</small>
+                      {completedLayer ? (
+                        '余额兑换'
+                      ) : (
+                        <>
+                          余额可兑<small>层末为准</small>
+                        </>
+                      )}
                     </dt>
                     <dd>
-                      {(
-                        (human?.money ?? 0) * game!.rules.moneyExchangeRatio
+                      {(completedLayer
+                        ? (lastHumanScore?.exchangedScore ?? 0)
+                        : (human?.money ?? 0) * game!.rules.moneyExchangeRatio
                       ).toFixed(decimals)}
                     </dd>
                   </div>
@@ -840,6 +853,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         </div>
         <section
           className="ranking-stage survival-stage"
+          data-ranking-layout={
+            game!.phase === 'floor_result' &&
+            game!.humanEliminatedAt === null &&
+            panel === null
+              ? 'floor'
+              : undefined
+          }
           hidden={panel !== null}
           inert={panel !== null}
         >
