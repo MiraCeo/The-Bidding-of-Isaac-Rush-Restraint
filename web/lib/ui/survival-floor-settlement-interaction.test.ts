@@ -3,6 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { SurvivalFloorResult } from '@/components/game/survival-floor-result';
+import { orderedFloorPlayers } from '@/components/game/survival-floor-players';
 import { SurvivalFloorFacts } from '@/components/game/survival-replay-viewer';
 import { GameApp } from '@/components/game/game-app';
 import {
@@ -107,6 +108,9 @@ it('prioritizes the recorded human result and preserves every ledger row, score 
     h = f.scores.human!;
   await render(createElement(SurvivalFloorResult, p));
   expect(node.querySelectorAll('h2')).toHaveLength(1);
+  expect(node.querySelector('.floor-own-position')!.textContent).toContain(
+    `第 ${orderedFloorPlayers(f).indexOf('human') + 1} 位`,
+  );
   expect(node.querySelector('.floor-outcomes')!.textContent).toContain(
     '本层存活',
   );
@@ -117,7 +121,7 @@ it('prioritizes the recorded human result and preserves every ledger row, score 
     h.newScore.toFixed(2),
   );
   expect(node.querySelector('.floor-ledger .survival-floor-stats')).toBeNull();
-  const rows = [...node.querySelectorAll('tbody tr')];
+  const rows = [...node.querySelectorAll<HTMLElement>('.floor-player-card')];
   expect(rows).toHaveLength(f.activePlayerIds.length);
   const sorted = f.activePlayerIds
     .slice()
@@ -125,20 +129,40 @@ it('prioritizes the recorded human result and preserves every ledger row, score 
   for (const [i, id] of sorted.entries()) {
     const score = f.scores[id]!,
       removed = f.plan.eliminations.find((e) => e.playerId === id);
-    expect([...rows[i]!.children].map((e) => e.textContent)).toEqual([
+    const card = rows[i]!;
+    expect(card.dataset.playerId).toBe(id);
+    expect(card.dataset.floorPosition).toBe(String(i + 1));
+    expect(card.querySelector('[data-floor-field="name"]')!.textContent).toBe(
       log.playerNames[id],
-      score.roomScore.toFixed(2),
-      score.exchangedScore.toFixed(2),
-      score.inheritedScore.toFixed(2),
-      score.newScore.toFixed(2),
-      score.survivalScore.toFixed(2),
-      (score.survivalScore - f.cutLine).toFixed(2),
+    );
+    for (const key of [
+      'roomScore',
+      'exchangedScore',
+      'inheritedScore',
+      'newScore',
+      'survivalScore',
+    ] as const) {
+      expect(
+        card.querySelector(`[data-floor-field="${key}"]`)!.textContent,
+      ).toBe(score[key].toFixed(2));
+    }
+    expect(
+      card
+        .querySelector('[data-floor-field="margin"]')!
+        .getAttribute('data-floor-value'),
+    ).toBe((score.survivalScore - f.cutLine).toFixed(2));
+    expect(
+      card.querySelector('[data-floor-field="verdict"]')!.textContent,
+    ).toBe(
       removed
         ? removed.reason === 'below_cut_line'
           ? '线下淘汰'
           : '末位补淘汰'
         : '存活',
-    ]);
+    );
+    expect(
+      card.querySelector('.floor-card-verdict')!.classList.contains('is-out'),
+    ).toBe(Boolean(removed));
   }
   const self = node.querySelector<HTMLElement>('[data-ranking-self="true"]')!,
     scroll = vi.fn();
@@ -223,4 +247,40 @@ it('shows recorded inherited/exchanged floor values in the compact header and pr
       .floorIndex,
   ).toBe(s.game.floorIndex + 1);
   expect(node.querySelector('#bid-A')).not.toBeNull();
+});
+
+it('keeps stable same-score positions and marks the first three score accents without mutating the record', async () => {
+  const log = structuredClone(createSurvivalReplay(fixture().game)),
+    floor = log.floors[0]!;
+  floor.activePlayerIds.forEach((id) => {
+    floor.scores[id]!.survivalScore = 500;
+  });
+  const before = structuredClone(log);
+  expect(orderedFloorPlayers(floor)).toEqual(floor.activePlayerIds);
+  await render(
+    createElement(SurvivalFloorResult, { ...props(log), decimals: 4 }),
+  );
+  const cards = [...node.querySelectorAll<HTMLElement>('.floor-player-card')];
+  expect(cards.map((card) => card.dataset.playerId)).toEqual(
+    floor.activePlayerIds,
+  );
+  expect(cards.map((card) => card.dataset.floorPosition)).toEqual(
+    cards.map((_, i) => String(i + 1)),
+  );
+  expect(cards.slice(0, 3).map((card) => card.dataset.topPlace)).toEqual([
+    '1',
+    '2',
+    '3',
+  ]);
+  expect(
+    cards.slice(3).every((card) => card.dataset.topPlace === undefined),
+  ).toBe(true);
+  expect(
+    cards.every(
+      (card) =>
+        card.querySelector('[data-floor-field="survivalScore"]')!
+          .textContent === '500.0000',
+    ),
+  ).toBe(true);
+  expect(log).toEqual(before);
 });

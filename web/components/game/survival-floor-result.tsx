@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { SurvivalReplayLog } from '@/lib/ui/survival-record';
 import { SurvivalFloorFacts } from './survival-replay-viewer';
 import { LocateSelfButton } from './ranking-self-summary';
+import { orderedFloorPlayers } from './survival-floor-players';
 
 /** Present the recorded floor result. Never recalculate the elimination plan. */
 export function SurvivalFloorResult({
@@ -30,6 +31,7 @@ export function SurvivalFloorResult({
   const floor = log.floors[index];
   if (!floor) return <p>暂无层末结算。</p>;
   const score = floor.scores.human;
+  const ownPosition = orderedFloorPlayers(floor).indexOf('human') + 1;
   const removed = floor.plan.eliminations.find(
     (entry) => entry.playerId === 'human',
   );
@@ -60,7 +62,12 @@ export function SurvivalFloorResult({
       </header>
       <section className="floor-outcomes" aria-label="你的层末结果">
         <article>
-          <span>你的判定</span>
+          <span>
+            你的判定
+            {ownPosition > 0 && (
+              <b className="floor-own-position">本层第 {ownPosition} 位</b>
+            )}
+          </span>
           <strong
             className={`floor-verdict ${survived ? 'is-alive' : 'is-out'}`}
           >
@@ -144,6 +151,9 @@ export function SurvivalFloorResult({
           {score && <LocateSelfButton />}
         </div>
       </div>
+      <p className="floor-order-note">
+        按本层生存分降序 · 同分保持原顺位 · 判定以实际淘汰记录为准
+      </p>
       <div className="floor-ledger" aria-label="本层全体结果">
         <SurvivalFloorFacts
           log={log}
