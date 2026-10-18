@@ -1,3 +1,5 @@
+import { useContext } from 'react';
+import { SettlementNavigationContext } from './settlement-navigation';
 import { GameHeader } from './game-header';
 import { Coins, Crown, RotateCcw } from 'lucide-react';
 
@@ -30,6 +32,8 @@ export function GameResult({
   scoreDecimals = 2,
   embedded = false,
 }: GameResultProps) {
+  const navigation = useContext(SettlementNavigationContext);
+  const human = game.players.find((p) => p.id === game.humanPlayerId);
   const Container = embedded ? 'div' : 'main';
   const playerById = new Map(game.players.map((player) => [player.id, player]));
   const playerName = (playerId: string) =>
@@ -67,19 +71,52 @@ export function GameResult({
         />
       )}
 
-      <section className="final-stage">
-        <div className="final-hero">
-          <p className="eyebrow">FINAL RANKING</p>
-          <h2>本局最终排行</h2>
-          <p>
-            你以{' '}
-            <strong>
+      <section
+        className="final-stage classic-final"
+        data-ranking-layout="classic-final"
+        data-ranking-polish="classic-final"
+      >
+        <header className="settlement-heading">
+          <div>
+            <p className="eyebrow">FINAL RANKING</p>
+            <h2>
+              经典结算 <small>三层 · 十五房间已完成</small>
+            </h2>
+          </div>
+          <nav aria-label="终局辅助操作">{navigation?.auxiliaryActions}</nav>
+        </header>
+        <section
+          className="classic-final-outcomes"
+          aria-label="你的经典最终结果"
+        >
+          <article>
+            <span>你的最终名次</span>
+            <strong className="complete-main-value">#{humanRank}</strong>
+            <small>按本局已记录的最终顺序</small>
+          </article>
+          <article>
+            <span>最终积分</span>
+            <strong className="complete-main-value" data-classic-final-score>
               {(humanEntry?.finalScore ?? 0).toFixed(scoreDecimals)}
-            </strong>{' '}
-            分位列第 <strong>{humanRank}</strong> 名。
-          </p>
-        </div>
-
+            </strong>
+            <small>已包含整局倍率，不再重复乘算</small>
+          </article>
+          <article>
+            <span>你的最终构筑</span>
+            <strong className="classic-final-build">
+              {human?.items.length ?? 0} 件道具 · {human?.money ?? 0} 资金
+            </strong>
+            <small>
+              {human?.characterId ? characterNames[human.characterId] : '—'}
+            </small>
+          </article>
+          <div className="final-actions">
+            <Button type="button" size="lg" onClick={onRestart}>
+              <RotateCcw aria-hidden="true" />
+              重新开始
+            </Button>
+          </div>
+        </section>
         <div className="podium-grid">
           {game.finalRanking.slice(0, 3).map((entry, index) => {
             const player = playerById.get(entry.playerId);
@@ -89,9 +126,7 @@ export function GameResult({
                 className={`podium-card podium-${index + 1}`}
               >
                 <span className="podium-rank">#{index + 1}</span>
-                <span className="podium-avatar" aria-hidden="true">
-                  {playerName(entry.playerId).slice(0, 1)}
-                </span>
+
                 <h3>{playerName(entry.playerId)}</h3>
                 <p>
                   {player?.characterId
@@ -113,8 +148,7 @@ export function GameResult({
         >
           <div className="result-panel-heading">
             <div>
-              <p className="eyebrow">ALL PLAYERS</p>
-              <h2>完整排行</h2>
+              <h3>完整排行</h3>
             </div>
             <div className="final-ranking-tools">
               <span>最终积分已含整局倍率；按已记录的最终名次展示</span>
@@ -153,6 +187,7 @@ export function GameResult({
                     <tr
                       key={entry.playerId}
                       data-player-id={entry.playerId}
+                      data-rank={index + 1}
                       className={
                         entry.playerId === game.humanPlayerId
                           ? 'result-self-row'
@@ -163,7 +198,9 @@ export function GameResult({
                         entry.playerId === game.humanPlayerId ? -1 : undefined
                       }
                     >
-                      <td>{index + 1}</td>
+                      <td>
+                        <span className="ranking-position">{index + 1}</span>
+                      </td>
                       <th scope="row" className="ranking-player-cell">
                         <strong>{playerName(entry.playerId)}</strong>
                         {entry.playerId === game.humanPlayerId && (
@@ -218,11 +255,8 @@ export function GameResult({
           </RankingScrollArea>
         </section>
 
-        <footer className="final-actions">
-          <Button type="button" size="lg" onClick={onRestart}>
-            <RotateCcw aria-hidden="true" />
-            重新开始
-          </Button>
+        <footer className="settlement-lifecycle classic-final-lifecycle">
+          {navigation?.lifecycleActions}
         </footer>
       </section>
     </Container>

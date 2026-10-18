@@ -106,6 +106,8 @@ it.each([
     expect(log.final!.eliminated.human!.reason).toBe(reason);
     await render(createElement(SurvivalComplete, { ...p, log, decimals: 4 }));
     expect(node.querySelectorAll('h2')).toHaveLength(1);
+    expect(node.querySelector('.survival-complete-reason')!.textContent).not.toContain('原判定');
+    expect([...node.querySelectorAll('thead th small')].map(e=>e.textContent)).toEqual(model.rows[0]!.floors.map(()=>'新增积分'));
     expect(
       node.querySelector('.survival-complete-outcomes')!.textContent,
     ).toContain(label);

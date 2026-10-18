@@ -654,7 +654,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           profileMessage={profileMessage}
           saveMessage={
             <>
-              {message || saveStatus}
+              {message || (profileMessage ? null : saveStatus)}
               {props.restoreMessage && <span> · {props.restoreMessage}</span>}
             </>
           }

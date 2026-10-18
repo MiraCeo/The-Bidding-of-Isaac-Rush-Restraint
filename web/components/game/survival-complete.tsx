@@ -119,8 +119,14 @@ export function SurvivalComplete({
           <>
             第 {ownFloor.floorIndex + 1} 层：生存分{' '}
             <b>{ownScore.survivalScore.toFixed(decimals)}</b> ／ 斩杀线{' '}
-            <b>{ownFloor.cutLine}</b>，原判定为{' '}
-            <b className="complete-out">{reason}</b>。
+            <b>{ownFloor.cutLine}</b>。
+            <b className="complete-out">
+              {removal?.reason === 'lowest_score'
+                ? '已达斩杀线，但因当层末位补淘汰出局。'
+                : removal?.reason === 'below_cut_line'
+                  ? '因生存分低于斩杀线出局。'
+                  : reason}
+            </b>
             {removal?.reason === 'lowest_score' && (
               <>
                 当层 {ownFloor.activePlayerIds.length} 人参与、

@@ -27,11 +27,14 @@ export function SettledGameFrame({
   const human = game.players.find((p) => p.isHuman)!;
   const isRoomResult = game.phase === 'room_result';
   const compactRanking =
-    game.phase === 'room_ranking' || utilityPanel === 'ranking';
+    game.phase === 'room_ranking' ||
+    game.phase === 'game_result' ||
+    utilityPanel === 'ranking';
   return (
     <main
       data-ranking-host={
-        game.phase === 'room_ranking' && utilityPanel === null
+        (game.phase === 'room_ranking' || game.phase === 'game_result') &&
+        utilityPanel === null
           ? true
           : undefined
       }

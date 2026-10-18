@@ -105,7 +105,9 @@ describe('score display preferences do not change scoring', () => {
     const humanScore = game.finalRanking.find(
       (entry) => entry.playerId === 'human',
     )!.finalScore;
-    expect(text).toContain(`你以 ${humanScore.toFixed(4)} 分`);
+    expect(markup).toContain(
+      `data-classic-final-score="true">${humanScore.toFixed(4)}`,
+    );
     expect(text).toContain(game.finalRanking[0]!.finalScore.toFixed(4));
     expect(game).toEqual(before);
   });

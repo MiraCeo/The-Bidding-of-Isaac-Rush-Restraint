@@ -127,7 +127,11 @@ export function SurvivalScoreBoard({
                 >
                   第 {i + 1} 层
                   <small>
-                    {model.liveFloorIndex === i ? '进行中' : '已结算'}
+                    {model.final && embedded
+                      ? '新增积分'
+                      : model.liveFloorIndex === i
+                        ? '进行中'
+                        : '已结算'}
                   </small>
                 </th>
               ))}
