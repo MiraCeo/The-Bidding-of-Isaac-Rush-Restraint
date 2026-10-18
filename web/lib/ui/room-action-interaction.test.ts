@@ -105,9 +105,7 @@ describe('room-wide compact mode and local previews', () => {
     expect(
       container.querySelectorAll('input[type="number"], input[type="range"]'),
     ).toHaveLength(0);
-    expect(
-      element<HTMLButtonElement>('[aria-label="选择目标 A"]').disabled,
-    ).toBe(true);
+    expect(element<HTMLInputElement>('#bid-A').disabled).toBe(true);
     expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(true);
     expect(numbers('a')).toEqual(['—', '—', '—', '—']);
     expect(element('.action-summary').textContent).toContain('无可用报价');
@@ -189,7 +187,7 @@ describe('room-wide compact mode and local previews', () => {
     expect(element('.reward-column-a .quote-preview').textContent).toContain(
       '21.25 – 30',
     );
-    await click('[aria-label="选择目标 B"]');
+    await click('.reward-column-b .reward-target input');
     expect(numbers('a')).toEqual(['—', '—', '—', '—']);
     expect(numbers('b')).toEqual(['20', '20', '50', '25']);
   });
@@ -319,7 +317,9 @@ describe('room-wide compact mode and local previews', () => {
     expect(
       element<HTMLButtonElement>('.action-mode-switch button').disabled,
     ).toBe(true);
-    expect(element<HTMLButtonElement>('.reward-target').disabled).toBe(true);
+    expect(element<HTMLInputElement>('.reward-target input').disabled).toBe(
+      true,
+    );
     expect(element<HTMLFieldSetElement>('.action-pair').disabled).toBe(true);
     await mode('扰乱');
     await click('.confirm-button');
@@ -404,4 +404,38 @@ describe('action workspace panel layout', () => {
       '.room-game-content[data-ranking-open]>.game-stage { grid-column:1; grid-row:1; }',
     );
   });
+});
+
+describe('single target entry per reward card', () => {
+  it.each([false, true])(
+    'moves the native selection to the card header, double=%s, and keeps amount-focus selection',
+    async (double) => {
+      const submit = await mount(gameWith(double ? ['more_options'] : []));
+      expect(container.querySelectorAll('.reward-target input')).toHaveLength(
+        2,
+      );
+      expect(
+        container.querySelectorAll(
+          '.action-pair input[type=radio], .action-pair input[type=checkbox], button.reward-target',
+        ),
+      ).toHaveLength(0);
+      const a = element<HTMLInputElement>('#bid-A'),
+        b = element<HTMLInputElement>('#bid-B');
+      expect(a.type).toBe(double ? 'checkbox' : 'radio');
+      expect(a.closest('article.item-card')).not.toBeNull();
+      expect(b.closest('article.item-card')).not.toBeNull();
+      expect(a.getAttribute('aria-describedby')).toBe('action-mode-hint');
+      await click('#bid-B');
+      expect(b.checked).toBe(true);
+      expect(a.checked).toBe(double);
+      await act(async () =>
+        element<HTMLInputElement>(
+          'input[aria-label="竞拍奖励 A 的数值"]',
+        ).focus(),
+      );
+      expect(a.checked).toBe(true);
+      expect(b.checked).toBe(double);
+      expect(submit).not.toHaveBeenCalled();
+    },
+  );
 });

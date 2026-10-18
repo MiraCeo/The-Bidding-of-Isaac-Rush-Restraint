@@ -18,6 +18,7 @@ import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
 import { RoomRanking } from './room-ranking';
+import { SurvivalActionStatus } from './survival-action-status';
 import { SurvivalScoreBoard } from './survival-score-board';
 import { currentSurvivalBoard } from '@/lib/ui/survival-board';
 import type { ClientRankingView } from '@/lib/game/client-session';
@@ -474,61 +475,82 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const lastHumanScore = game?.floorRecords.at(-1)?.scores.human;
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
-  const strip = game && (
-    <section
-      className={`survival-status${game.phase === 'room_action' ? ' survival-action-status' : ''}`}
-      aria-label="生存进度"
-    >
-      <b>
-        生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
-      </b>
-      <span>难度 {survivalDifficultyLabel(game.aiDifficulty)}</span>
-      <span>
-        AI策略{' '}
-        {game.aiDifficulty === 'highest'
-          ? '原最高基线'
-          : game.aiPolicy === 'role-aware-1'
-            ? '角色适配'
-            : '历史原版'}
-      </span>
-      <span>斩杀线 {game.cutLines[game.floorIndex]}</span>
-      <span>资金 {human?.money}</span>
-      <span>
-        {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}{' '}
-        {(game.humanEliminatedAt !== null
-          ? game.eliminated.human!.score.roomScore
-          : (game.currentFloorRoomScores.human ?? []).reduce(
-              (sum, value) => sum + value,
-              0,
-            )
-        ).toFixed(decimals)}
-      </span>
-      <span>
-        {completedLayer ? '结算继承' : '上层继承'}{' '}
-        {(game.humanEliminatedAt !== null
-          ? game.eliminated.human!.score.inheritedScore
-          : completedLayer
-            ? (lastHumanScore?.inheritedScore ?? 0)
-            : (game.previousSurvivalScores.human ?? 0) * 0.2
-        ).toFixed(decimals)}
-      </span>
-      <span>
-        {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}{' '}
-        {((human?.money ?? 0) * 0.1).toFixed(decimals)}
-        {game.humanEliminatedAt === null && !completedLayer
-          ? '（层末为准）'
-          : ''}
-      </span>
-      <Button variant="secondary" onClick={props.onReturnMenu}>
-        返回主菜单
-      </Button>
-      {game.phase === 'room_action' && session?.draft && (
-        <Button variant="secondary" onClick={() => setRestart(true)}>
-          重新选角
+  const strip =
+    game &&
+    (game.phase === 'room_action' && session?.draft ? (
+      <SurvivalActionStatus
+        activePlayers={game.activePlayerIds.length}
+        cutLine={game.cutLines[game.floorIndex]!}
+        roomScore={(game.currentFloorRoomScores.human ?? []).reduce(
+          (sum, value) => sum + value,
+          0,
+        )}
+        inheritedScore={(game.previousSurvivalScores.human ?? 0) * 0.2}
+        balanceValue={(human?.money ?? 0) * 0.1}
+        decimals={decimals}
+        difficulty={survivalDifficultyLabel(game.aiDifficulty)}
+        policy={
+          game.aiDifficulty === 'highest'
+            ? '原最高基线'
+            : game.aiPolicy === 'role-aware-1'
+              ? '角色适配'
+              : '历史原版'
+        }
+        onReturnMenu={props.onReturnMenu}
+        onRestart={() => setRestart(true)}
+      />
+    ) : (
+      <section className="survival-status" aria-label="生存进度">
+        <b>
+          生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
+        </b>
+        <span>难度 {survivalDifficultyLabel(game.aiDifficulty)}</span>
+        <span>
+          AI策略{' '}
+          {game.aiDifficulty === 'highest'
+            ? '原最高基线'
+            : game.aiPolicy === 'role-aware-1'
+              ? '角色适配'
+              : '历史原版'}
+        </span>
+        <span>斩杀线 {game.cutLines[game.floorIndex]}</span>
+        <span>资金 {human?.money}</span>
+        <span>
+          {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}{' '}
+          {(game.humanEliminatedAt !== null
+            ? game.eliminated.human!.score.roomScore
+            : (game.currentFloorRoomScores.human ?? []).reduce(
+                (sum, value) => sum + value,
+                0,
+              )
+          ).toFixed(decimals)}
+        </span>
+        <span>
+          {completedLayer ? '结算继承' : '上层继承'}{' '}
+          {(game.humanEliminatedAt !== null
+            ? game.eliminated.human!.score.inheritedScore
+            : completedLayer
+              ? (lastHumanScore?.inheritedScore ?? 0)
+              : (game.previousSurvivalScores.human ?? 0) * 0.2
+          ).toFixed(decimals)}
+        </span>
+        <span>
+          {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}{' '}
+          {((human?.money ?? 0) * 0.1).toFixed(decimals)}
+          {game.humanEliminatedAt === null && !completedLayer
+            ? '（层末为准）'
+            : ''}
+        </span>
+        <Button variant="secondary" onClick={props.onReturnMenu}>
+          返回主菜单
         </Button>
-      )}
-    </section>
-  );
+        {game.phase === 'room_action' && session?.draft && (
+          <Button variant="secondary" onClick={() => setRestart(true)}>
+            重新选角
+          </Button>
+        )}
+      </section>
+    ));
   let page: ReactNode;
   if (!session)
     page = (

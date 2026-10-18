@@ -498,9 +498,9 @@ describe('formal independent survival entry', () => {
     expect(doc.game.cutLines).toEqual([...survivalEntryCutLines]);
     expect(node('.survival-status').textContent).toContain('斩杀线 200');
     expect(doc.game.rules.floorStartingMoney).toBe(1000);
-    expect(node('.survival-status').textContent).toContain(
-      `资金 ${doc.game.players[0]!.money}`,
-    );
+    expect(
+      node('.page-context-bar .status-chip-money strong').textContent,
+    ).toBe(String(doc.game.players[0]!.money));
   });
   it('preserves the same draft across settings, main menu, classic and refresh', async () => {
     const session = seeded();

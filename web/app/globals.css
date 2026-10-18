@@ -1782,3 +1782,27 @@
 @supports (grid-template-rows:subgrid) { .room-game-content .reward-column { grid-template-rows:subgrid; grid-row:span 3; } }
 
 .room-game-content .room-intro-controls .survival-menu-return { margin:0; padding:6px 10px; border:1px solid var(--border); border-radius:7px; background:var(--secondary); font-size:.7rem; }
+
+/* 0.6.11 follow-up: a single target selector and grouped survival facts. */
+.room-game-content .reward-target { width:100%; gap:7px; padding:0; border:0; background:transparent; border-radius:3px; cursor:pointer; }
+.room-game-content .reward-target input { width:15px; height:15px; margin:0; flex:none; accent-color:var(--primary); }
+.room-game-content .reward-target strong { color:#d7c7ac; font-size:.73rem; font-weight:750; }
+.room-game-content .reward-target span { margin-left:auto; color:var(--muted-foreground); font-size:.62rem; }
+.room-game-content .reward-target:has(input:checked) strong { color:#f0c87d; }
+.room-game-content .reward-target:has(input:disabled) { cursor:not-allowed; }
+.room-game-content .reward-target:has(input:focus-visible) { outline:2px solid var(--ring); outline-offset:4px; }
+.room-game-content .action-quote-label { display:block; font-size:.7rem; color:#bcae98; font-weight:650; }
+.game-page>.survival-action-status { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:10px 22px; padding:6px 12px; }
+.survival-action-goal { display:grid; gap:3px; min-width:100px; font-size:.65rem; color:var(--muted-foreground); }
+.survival-action-goal strong { color:#edc275; font-size:.86rem; font-weight:750; white-space:nowrap; }
+.survival-score-parts { display:flex; flex-wrap:wrap; gap:8px 24px; margin:0; min-width:0; font-variant-numeric:tabular-nums; }
+.survival-score-parts>div { min-width:84px; }
+.survival-score-parts dt { color:var(--muted-foreground); font-size:.62rem; line-height:1.5; }
+.survival-score-parts dd { margin:3px 0 0; color:#e7d9c2; font-size:.86rem; line-height:1.5; font-weight:700; }
+.survival-balance-hint { margin-left:5px; font-size:.58rem; font-weight:400; color:var(--muted-foreground); white-space:nowrap; }
+.survival-action-tools { display:flex; align-items:flex-start; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.survival-action-tools>button { margin-left:0; min-height:30px; padding:4px 9px; font-size:.68rem; }
+.survival-policy-details { min-width:78px; font-size:.65rem; color:var(--muted-foreground); }
+.survival-policy-details summary { min-height:30px; padding:6px 3px; cursor:pointer; }
+.survival-policy-details p { margin:0; padding:3px 0; max-width:140px; font-size:.62rem; line-height:1.6; }
+@media(max-width:1100px) { .game-page>.survival-action-status { grid-template-columns:auto minmax(0,1fr); }.survival-action-tools { grid-column:1/-1; justify-content:flex-start; } }

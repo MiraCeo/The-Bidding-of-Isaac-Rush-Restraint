@@ -558,17 +558,35 @@ export function RoomPrototype({
                   <article
                     className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}
                   >
-                    <button
-                      type="button"
+                    <label
                       className="reward-target"
-                      aria-label={`选择目标 ${reward.group}`}
-                      aria-pressed={groupSelected}
-                      disabled={locked || !hasQuoteFunds}
-                      onClick={() => selectAction(activeKind, reward.group)}
+                      htmlFor={activeKind + '-' + reward.group}
                     >
-                      目标 {reward.group}{' '}
-                      <span>{groupSelected ? '已选' : '选择'}</span>
-                    </button>
+                      <input
+                        id={activeKind + '-' + reward.group}
+                        type={canDouble(activeKind) ? 'checkbox' : 'radio'}
+                        name={canDouble(activeKind) ? undefined : 'room-action'}
+                        checked={groupSelected}
+                        disabled={locked || available < 1}
+                        onChange={() => selectAction(activeKind, reward.group)}
+                        aria-label={
+                          (activeKind === 'disrupt' ? '扰乱' : '竞拍') +
+                          '奖励 ' +
+                          reward.group
+                        }
+                        aria-describedby="action-mode-hint"
+                      />
+                      <strong>目标 {reward.group}</strong>
+                      <span>
+                        {groupSelected
+                          ? '已选'
+                          : available < 1
+                            ? '资金不足'
+                            : canDouble(activeKind)
+                              ? '可追加'
+                              : '未选择'}
+                      </span>
+                    </label>
                     {reward.hidden ? (
                       <ItemIcon hidden size="room" className="room-item-icon" />
                     ) : (
@@ -605,7 +623,6 @@ export function RoomPrototype({
                       maximum={maximum}
                       available={available}
                       selected={groupSelected}
-                      multiple={canDouble(activeKind)}
                       onSelect={() => selectAction(activeKind, reward.group)}
                       onAmountChange={(amount) =>
                         setAmount(reward.group, activeKind, amount)
@@ -694,7 +711,6 @@ interface ActionOptionProps {
   maximum: number;
   available: number;
   selected: boolean;
-  multiple: boolean;
   onSelect: () => void;
   onAmountChange: (amount: number) => void;
 }
@@ -706,11 +722,9 @@ function ActionOption({
   maximum,
   available,
   selected,
-  multiple,
   onSelect,
   onAmountChange,
 }: ActionOptionProps) {
-  const id = `${kind}-${group}`;
   const isDisruption = kind === 'disrupt';
   const changeAmount = (nextAmount: number) =>
     onAmountChange(Math.min(maximum, Math.max(1, nextAmount)));
@@ -718,34 +732,9 @@ function ActionOption({
     <div
       className={`action-option ${isDisruption ? 'action-option-disrupt' : ''} ${selected ? 'action-option-selected' : ''}`}
     >
-      <label
-        className="action-option-label"
-        htmlFor={id}
-        aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group}`}
-      >
-        <input
-          id={id}
-          type={multiple ? 'checkbox' : 'radio'}
-          name={multiple ? undefined : 'room-action'}
-          checked={selected}
-          disabled={available < 1}
-          onChange={onSelect}
-        />
-        <span>
-          <strong>
-            {group} · {isDisruption ? '扰乱报价' : '竞拍报价'}
-          </strong>
-          <small className="sr-only">
-            {available < 1
-              ? '资金不足，无法报价'
-              : selected
-                ? '已选择此目标'
-                : multiple
-                  ? '可追加此目标'
-                  : '选择此目标'}
-          </small>
-        </span>
-      </label>
+      <strong className="action-quote-label">
+        {isDisruption ? '扰乱报价' : '竞拍报价'}
+      </strong>
       {available < 1 ? (
         <output className="action-quote-unavailable">
           <strong>无可用报价</strong>
