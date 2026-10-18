@@ -458,3 +458,67 @@ it('keeps scrolling/sticky identity styles scoped to rankings instead of shrinki
     '@media(max-width:1200px) { .contest-grid { grid-template-columns:minmax(0,1fr); } }',
   );
 });
+
+it('fits only an active public board to remaining viewport height without removing heading, notes or rows', async () => {
+  const game = startClientGame('isaac', 42),
+    before = structuredClone(game);
+  await render(
+    createElement(RoomRanking, { variant: 'public', game, onReturn: () => {} }),
+  );
+  expect(node.querySelector('[data-public-ranking="active"]')).not.toBeNull();
+  expect(node.querySelector('#room-utilities-title')!.textContent).toBe(
+    '当前公开排行',
+  );
+  expect(node.querySelector('.ranking-context')!.textContent).toContain(
+    '行动前公开数据',
+  );
+  expect(node.querySelector('.ranking-basis')!.textContent).toContain(
+    '相同数值并列',
+  );
+  expect(node.querySelector('footer')!.textContent).toContain('Esc 可返回');
+  expect(rows('.ranking-table tbody tr')).toHaveLength(20);
+  expect(game).toEqual(before);
+  await render(
+    createElement(RoomRanking, { variant: 'public', onReturn: () => {} }),
+  );
+  expect(node.querySelector('[data-public-ranking]')).toBeNull();
+  expect(node.textContent).toContain('暂无排行');
+  await render(
+    createElement(RoomRanking, {
+      game: room(),
+      embedded: true,
+      onSwitch: () => {},
+      onAdvance: () => {},
+    }),
+  );
+  expect(node.querySelector('[data-public-ranking]')).toBeNull();
+});
+
+it('gives numeric headers enough selector specificity and paints focused sticky cells in their own layer', () => {
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).toContain(
+    '.ranking-data-scroll .result-table .ranking-number, .ranking-data-scroll .result-table .ranking-metric-primary { text-align:right;',
+  );
+  expect(css).toContain(
+    '.ranking-data-scroll tr[data-ranking-self="true"]:focus>*',
+  );
+  expect(css).toContain(
+    '.ranking-data-scroll tr[data-ranking-self="true"]:focus>:first-child',
+  );
+  expect(css).toContain(
+    '.ranking-data-scroll tr[data-ranking-self="true"]:focus>:last-child',
+  );
+  expect(css).toContain(
+    '.survival-board-table tr[data-ranking-self="true"]:focus>:first-child',
+  );
+  expect(css).toContain(
+    'box-shadow:inset 2px 0 var(--primary), inset 0 2px var(--primary), inset 0 -2px var(--primary)',
+  );
+  expect(css).toContain('@media (min-width:900px) and (min-height:700px)');
+  expect(css).toContain(
+    '[data-public-ranking="active"] .ranking-data-scroll { flex:1; min-height:140px; max-height:none; }',
+  );
+  expect(css).toContain(
+    'main:has(>[data-public-ranking="active"]) { display:flex; flex-direction:column; height:100dvh; min-height:100dvh; }',
+  );
+});

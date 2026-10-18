@@ -52,6 +52,7 @@ export function RoomRanking(props: RoomRankingProps) {
         id="room-utilities"
         className="ranking-stage game-tools-stage"
         aria-labelledby="room-utilities-title"
+        data-public-ranking={game ? 'active' : undefined}
       >
         <UtilityPageHeading
           eyebrow="PLAYER RANKING"
