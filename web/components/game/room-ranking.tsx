@@ -52,6 +52,7 @@ export function RoomRanking(props: RoomRankingProps) {
         id="room-utilities"
         className="ranking-stage game-tools-stage"
         aria-labelledby="room-utilities-title"
+        data-ranking-polish="public"
         data-public-ranking={game ? 'active' : undefined}
       >
         <UtilityPageHeading
@@ -142,7 +143,11 @@ export function RoomRanking(props: RoomRankingProps) {
         />
       )}
 
-      <section className="ranking-stage" data-ranking-scope>
+      <section
+        className="ranking-stage"
+        data-ranking-scope
+        data-ranking-polish="room"
+      >
         {!props.hideHeading && (
           <UtilityPageHeading
             eyebrow="ROOM RANKING"
@@ -370,7 +375,9 @@ function ContestPanel({
               >
                 市场等价 <span aria-hidden="true">↓</span>
               </th>
-              <th scope="col">名义出价</th>
+              <th scope="col" className="ranking-number">
+                名义出价
+              </th>
               <th scope="col">行动</th>
               <th scope="col">结果</th>
             </tr>
@@ -398,6 +405,7 @@ function ContestPanel({
                   key={`${entry.playerId}-${entry.actionIndex}`}
                   className={className}
                   data-player-id={entry.playerId}
+                  data-rank={index + 1}
                   data-action-index={entry.actionIndex}
                   data-ranking-self={entry.playerId === game.humanPlayerId}
                   tabIndex={

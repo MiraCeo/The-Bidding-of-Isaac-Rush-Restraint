@@ -29,7 +29,7 @@ export function PublicRanking({ game, scoreDecimals }: PublicRankingProps) {
   const ranking = getPublicPlayerRanking(game, view);
   const human = ranking.find((entry) => entry.isHuman);
   return (
-    <div data-ranking-scope>
+    <div data-ranking-scope data-ranking-polish="public-table">
       <div className="public-ranking-heading">
         <div className="ranking-view-tabs" aria-label="公开排行类型">
           <button

@@ -61,9 +61,13 @@ export function PlayerRankingTable({
               </th>
               {settlement && (
                 <>
-                  <th scope="col">本房积分</th>
+                  <th scope="col" className="ranking-number">
+                    本房积分
+                  </th>
                   <th scope="col">本房行动</th>
-                  <th scope="col">获得道具</th>
+                  <th scope="col" className="ranking-number">
+                    获得道具
+                  </th>
                 </>
               )}
             </tr>
@@ -87,11 +91,14 @@ export function PlayerRankingTable({
                 <tr
                   key={entry.playerId}
                   data-player-id={entry.playerId}
+                  data-rank={entry.rank}
                   className={entry.isHuman ? 'result-self-row' : ''}
                   data-ranking-self={entry.isHuman}
                   tabIndex={entry.isHuman ? -1 : undefined}
                 >
-                  <td>{entry.rank}</td>
+                  <td>
+                    <span className="ranking-position">{entry.rank}</span>
+                  </td>
                   <th scope="row" className="ranking-player-cell">
                     <strong>{entry.name}</strong>
                     {entry.isHuman && (
@@ -126,7 +133,9 @@ export function PlayerRankingTable({
                       <td className="ranking-action-cell">
                         {turn?.actions.map(actionLabel).join(' / ') ?? '—'}
                       </td>
-                      <td className="ranking-number">
+                      <td
+                        className={`ranking-number${copies > 0 ? ' ranking-award-count' : ''}`}
+                      >
                         {copies > 0 ? `+${copies}` : '—'}
                       </td>
                     </>

@@ -470,6 +470,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         id="room-utilities"
         aria-labelledby="room-utilities-title"
         className="ranking-stage game-tools-stage survival-utility"
+        data-ranking-polish={selected === 'ranking' ? 'utility' : undefined}
       >
         {selected === 'rules' ? (
           content

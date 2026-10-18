@@ -590,3 +590,68 @@ it('uses public-only fixed columns and a single frame with readable two-line pla
   );
   expect(css).toContain('white-space:normal; overflow-wrap:anywhere;');
 });
+
+it('styles ordinal badges from the authoritative ranks, including shared places, without changing the rows', async () => {
+  const game = startClientGame('isaac', 42);
+  game.players.forEach((player, index) => {
+    player.score = index < 2 ? 100 : index === 2 ? 50 : 0;
+  });
+  const before = structuredClone(game);
+  await render(createElement(PublicRanking, { game, scoreDecimals: 4 }));
+  const expected = getPublicPlayerRanking(game, 'score');
+  expect(
+    rows('.ranking-table tbody tr').map((row) => Number(row.dataset.rank)),
+  ).toEqual(expected.map((row) => row.rank));
+  expect(rows('.ranking-position').map((el) => el.textContent)).toEqual(
+    expected.map((row) => String(row.rank)),
+  );
+  expect(
+    rows('.ranking-table tbody tr')
+      .slice(0, 3)
+      .map((row) => row.dataset.rank),
+  ).toEqual(['1', '1', '3']);
+  expect(game).toEqual(before);
+});
+
+it('scopes the new table skin to rankings and preserves every contest tag and survival status', async () => {
+  const game = { ...room(), roomRankingView: 'contest' as const };
+  const before = structuredClone(game);
+  await render(
+    createElement(RoomRanking, {
+      game,
+      embedded: true,
+      onSwitch: () => {},
+      onAdvance: () => {},
+    }),
+  );
+  expect(node.querySelector('[data-ranking-polish="room"]')).not.toBeNull();
+  expect(rows('.contest-panel')).toHaveLength(2);
+  for (const panel of rows('.contest-panel')) {
+    const ranked = [
+      ...panel.querySelectorAll<HTMLElement>('tbody tr[data-rank]'),
+    ];
+    expect(ranked.map((row) => Number(row.dataset.rank))).toEqual(
+      ranked.map((_, index) => index + 1),
+    );
+  }
+  expect(game).toEqual(before);
+  const model = currentSurvivalBoard(
+    startSurvivalGame({
+      seed: 42,
+      characterId: 'isaac',
+      cutLines: Array(7).fill(0),
+    }),
+  );
+  const facts = structuredClone(model);
+  await render(createElement(SurvivalScoreBoard, { model }));
+  expect(node.querySelector('[data-ranking-polish="survival"]')).not.toBeNull();
+  expect(
+    rows('.survival-board-table tbody tr').map((row) =>
+      Number(row.dataset.rank),
+    ),
+  ).toEqual(model.rows.map((row) => row.rank));
+  expect(rows('.survival-board-status').map((el) => el.textContent)).toEqual(
+    model.rows.map((row) => row.statusLabel),
+  );
+  expect(model).toEqual(facts);
+});

@@ -13,6 +13,7 @@ export function SurvivalScoreBoard({
     <section
       className="survival-score-board"
       aria-label={model.final ? '生存总榜' : '实时生存榜'}
+      data-ranking-polish="survival"
       data-ranking-scope
     >
       <div className="survival-board-heading">
@@ -99,6 +100,7 @@ export function SurvivalScoreBoard({
               <tr
                 key={row.playerId}
                 data-player-id={row.playerId}
+                data-rank={row.rank}
                 data-human={row.playerId === 'human'}
                 data-eliminated={!row.active}
                 data-ranking-self={row.playerId === 'human'}

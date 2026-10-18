@@ -2138,3 +2138,85 @@
 .settlement-detail .settlement-person.is-self { color:var(--primary); font-weight:800; }
 .settings-group-description { margin:0 0 12px; color:var(--muted-foreground); font-size:.76rem; line-height:1.7; }
 @media(max-width:1050px) { .settlement-primary-actions { justify-content:flex-end; } }
+
+/* Ranking visual refinement: scoped to boards, never changes their ordering. */
+[data-ranking-polish] { --rank-table-bg:#1b1712; --rank-head-bg:#252017; }
+[data-ranking-polish] .ranking-view-tabs { width:fit-content; gap:8px; padding:0; border:0; border-bottom:1px solid var(--border); border-radius:0; background:none; }
+[data-ranking-polish] .ranking-view-tabs button { min-width:104px; min-height:42px; padding:9px 15px; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; color:var(--muted-foreground); }
+[data-ranking-polish] .ranking-view-tabs .ranking-view-tab-active { border-bottom-color:var(--primary); color:var(--primary); background:linear-gradient(0deg,#edaf3d0d,transparent); }
+[data-ranking-polish] .ranking-view-tabs button:not(:disabled):not(.ranking-view-tab-active):hover { color:var(--foreground); background:#ffffff04; }
+[data-ranking-polish] .ranking-view-tabs button:focus-visible { outline:2px solid var(--primary); outline-offset:-3px; }
+[data-ranking-polish] .ranking-self-summary { width:fit-content; gap:7px 12px; padding:9px 12px; border:1px solid #a47b383d; border-radius:8px; background:linear-gradient(110deg,#edaf3d0b,#15120e40); }
+[data-ranking-polish] .ranking-self-summary p strong { font-size:1.05rem; }
+[data-ranking-polish] .ranking-locate-self { background:transparent; border-color:#b38c414d; color:var(--primary); padding:5px 8px; }
+[data-ranking-polish] .ranking-locate-self:hover { background:#edaf3d16; }
+[data-ranking-polish] .ranking-self-badge { background:#edaf3d0d; border-color:#b88d3e4d; }
+[data-ranking-polish="room"] .round-ranking-panel { padding:0; border:0; border-radius:0; background:none; margin-top:16px; }
+[data-ranking-polish="room"] .ranking-context-row { margin-top:12px; }
+[data-ranking-polish] .ranking-data-scroll { background:var(--rank-table-bg); border-color:#8a74543d; border-radius:10px; scrollbar-width:thin; scrollbar-color:#6a5437 transparent; }
+[data-ranking-polish] .ranking-data-scroll .result-table thead th { background:var(--rank-head-bg); color:var(--muted-foreground); height:43px; font-weight:650; }
+[data-ranking-polish] .ranking-data-scroll .result-table thead .ranking-metric-primary { color:#dbc28c; }
+[data-ranking-polish] .ranking-data-scroll .result-table tbody tr>* { height:54px; padding-block:8px; border-bottom-color:#ffffff0b; }
+[data-ranking-polish] .ranking-data-scroll .result-table tr>:first-child,
+[data-ranking-polish] .ranking-data-scroll .result-table tr>:nth-child(2) { background:var(--rank-table-bg); }
+[data-ranking-polish] .ranking-data-scroll .result-table thead tr>:nth-child(-n+2) { background:var(--rank-head-bg); }
+[data-ranking-polish] .ranking-data-scroll .result-table td.ranking-metric-primary { color:#f0e5d0; background:#edaf3d03; font-size:.92rem; }
+[data-ranking-polish] .ranking-data-scroll .result-table .ranking-number { color:#c4b8a3; }
+[data-ranking-polish] .ranking-data-scroll .result-table .ranking-award-count { color:#dec18a; font-weight:700; }
+[data-ranking-polish] .ranking-player-cell small { margin-top:2px; color:#998c77; }
+[data-ranking-polish] .ranking-data-scroll .result-table tr.result-self-row>* { background:#332817; color:var(--primary); }
+[data-ranking-polish] .ranking-data-scroll .result-table tbody tr:hover>:not(.ranking-metric-primary) { background:#292218; }
+[data-ranking-polish] .ranking-data-scroll .result-table tr.result-self-row:hover>* { background:#3b2d19; }
+.ranking-position { display:inline-flex; align-items:center; justify-content:center; min-width:26px; min-height:26px; padding:2px 4px; border-radius:6px; color:#b6a991; font-size:.75rem; font-weight:700; font-variant-numeric:tabular-nums; }
+[data-ranking-polish] tr[data-rank="1"] .ranking-position,
+[data-ranking-polish] tr[data-rank="1"] .survival-board-position { background:#c79a3e1c; color:#e7bd62; border:1px solid #bc944237; }
+[data-ranking-polish] tr[data-rank="2"] .ranking-position,
+[data-ranking-polish] tr[data-rank="2"] .survival-board-position { background:#a0b2c215; color:#bdcbd7; border:1px solid #a0b2c22e; }
+[data-ranking-polish] tr[data-rank="3"] .ranking-position,
+[data-ranking-polish] tr[data-rank="3"] .survival-board-position { background:#bf876015; color:#d0a280; border:1px solid #bf87602e; }
+[data-ranking-polish] .contest-panel { padding:16px; background:#1b171270; border-color:#8a74543d; }
+[data-ranking-polish] .contest-panel-heading { align-items:center; gap:12px; }
+[data-ranking-polish] .contest-item-title .item-icon { --item-icon-size:36px; width:36px; height:36px; }
+[data-ranking-polish] .contest-panel-heading>strong { background:none; color:var(--muted-foreground); font-size:.72rem; padding:0; }
+[data-ranking-polish] .contest-panel .ranking-self-summary { padding:7px 10px; }
+[data-ranking-polish] .contest-ranking-table th, [data-ranking-polish] .contest-ranking-table td { padding:10px; border-bottom-color:#ffffff0b; }
+[data-ranking-polish] .contest-ranking-table thead th { height:41px; background:var(--rank-head-bg); }
+[data-ranking-polish] .contest-ranking-table .ranking-number { text-align:right; }
+[data-ranking-polish] .contest-ranking-table .contest-row-awarded { background:#edaf3d06; }
+[data-ranking-polish] .contest-ranking-table .contest-row-awarded>:first-child { background:#211c14; }
+[data-ranking-polish] .contest-ranking-table .contest-row-disrupted { background:#b899d609; }
+[data-ranking-polish] .contest-ranking-table .contest-row-disrupted>:first-child { background:#211b24; }
+[data-ranking-polish] .contest-ranking-table .contest-badge { border:1px solid #9b8c7030; background:#ffffff04; color:#9e927f; font-weight:500; padding:3px 6px; }
+[data-ranking-polish] .contest-ranking-table .contest-badge-awarded { color:#e3bc6c; background:#edaf3d0b; border-color:#b88d3e4d; }
+[data-ranking-polish] .contest-ranking-table .contest-badge-disrupted { color:#c4a6d9; background:#b899d60b; border-color:#b899d640; }
+[data-ranking-polish] .contest-ranking-table .contest-action-disrupt { color:#c4a6d9; }
+[data-ranking-polish] .contest-ranking-table tr[data-ranking-self="true"]>* { background:#332817; }
+[data-ranking-polish] .contest-ranking-table tr[data-ranking-self="true"] .contest-player-cell strong { color:var(--primary); }
+[data-ranking-polish="utility"] .survival-score-board { border:0; background:none; border-radius:0; margin-top:18px; }
+[data-ranking-polish="utility"] .survival-board-heading { padding:0 0 10px; }
+[data-ranking-polish="utility"] .survival-board-heading .eyebrow { display:none; }
+[data-ranking-polish="utility"] .survival-board-heading h2 { margin:0; font-size:.92rem; }
+[data-ranking-polish="utility"] .survival-board-tools { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:0 0 10px; }
+[data-ranking-polish="utility"] .survival-board-note { padding:0 0 12px; border:0; }
+[data-ranking-polish="survival"] .survival-board-scroll { border:1px solid #8a74543d; border-radius:10px; background:var(--rank-table-bg); scrollbar-width:thin; scrollbar-color:#6a5437 transparent; }
+[data-ranking-polish="survival"] .survival-board-table thead th { background:var(--rank-head-bg); }
+[data-ranking-polish="survival"] .survival-board-table td, [data-ranking-polish="survival"] .survival-board-table th { height:54px; padding:9px 14px; border-bottom-color:#ffffff0b; }
+[data-ranking-polish="survival"] .survival-board-table tbody th { background:var(--rank-table-bg); }
+[data-ranking-polish="survival"] .survival-board-table tbody .survival-board-total strong { color:#f0e5d0; }
+[data-ranking-polish="survival"] .survival-board-position { background:none; color:#b6a991; border:1px solid transparent; font-size:.74rem; }
+[data-ranking-polish="survival"] .survival-board-table [data-ranking-self="true"]>* { background:#332817; }
+[data-ranking-polish="survival"] .survival-board-table [data-ranking-self="true"] strong { color:var(--primary); }
+[data-ranking-polish="survival"] .survival-board-status { font-size:.66rem; border:1px solid transparent; padding:3px 6px; }
+[data-ranking-polish="survival"] .survival-board-status.is-alive { background:#89ab6c09; color:#a4bd84; border-color:#89ab6c29; }
+@media(max-width:1050px) { [data-ranking-polish] .ranking-self-summary { padding:7px 9px; } }
+
+[data-ranking-polish] .contest-grid { align-items:start; }
+[data-ranking-polish] .contest-panel>.ranking-self-summary,
+[data-ranking-polish] .contest-panel>.ranking-basis { min-height:44px; margin-top:12px; display:flex; align-items:center; }
+@media(min-width:900px) and (min-height:700px) {
+  [data-ranking-polish="utility"] .survival-board-scroll { max-height:clamp(200px,calc(100dvh - 540px),540px); }
+}
+
+[data-ranking-polish] .contest-ranking-table tbody .ranking-metric-primary { color:#f0e5d0; }
+[data-ranking-polish] .contest-ranking-table tbody tr[data-ranking-self="true"] .ranking-metric-primary,
+[data-ranking-polish="survival"] .survival-board-table tbody [data-ranking-self="true"] .survival-board-total strong { color:var(--primary); }
