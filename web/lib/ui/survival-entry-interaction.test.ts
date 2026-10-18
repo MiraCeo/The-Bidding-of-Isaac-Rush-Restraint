@@ -822,7 +822,7 @@ describe('formal independent survival entry', () => {
           record.turns.every((turn) => turn.playerId !== 'human'),
         ),
     ).toBe(true);
-    expect(container.textContent).toContain('你的名次');
+    expect(container.textContent).toContain('你的最终名次');
     expect(
       container.querySelectorAll('.survival-board-table tbody tr'),
     ).toHaveLength(20);

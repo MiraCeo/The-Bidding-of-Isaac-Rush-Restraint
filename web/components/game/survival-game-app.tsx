@@ -20,6 +20,7 @@ import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
 import { SurvivalFloorResult } from './survival-floor-result';
+import { SurvivalComplete } from './survival-complete';
 import {
   SettlementStatus,
   SettlementStatusLabel,
@@ -34,10 +35,7 @@ import { GameSettings, type PreferenceSaveStatus } from './game-settings';
 import { GameTutorial } from './game-tutorial';
 import type { RoomUtilityPanel } from './room-utilities';
 import { ItemArtProvider, ItemIcon } from './item-icon';
-import {
-  SurvivalTotalBoard,
-  SurvivalReplayViewer,
-} from './survival-replay-viewer';
+import { SurvivalReplayViewer } from './survival-replay-viewer';
 import { useUtilityPages } from './use-utility-pages';
 import { useLivePersistence, currentGrowthEpoch } from './use-live-persistence';
 import { mergeSavedGrowth } from '@/lib/ui/achievements/client-persistence';
@@ -234,8 +232,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [panel, setPanel]);
   const decimals = preferences.scoreDecimals;
-  const name = (id: string) =>
-    id === 'human' ? '你' : (game?.aiProfiles[id]?.name ?? id);
   function utilities(
     selected: RoomUtilityPanel | null,
     _turn?: PlayerTurn,
@@ -488,12 +484,18 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     );
   }
   const human = game?.players.find((p) => p.id === 'human');
-  const lastHumanScore = game?.floorRecords.at(-1)?.scores.human;
+  const lastHumanScore =
+    game?.phase === 'competition_complete'
+      ? (game.eliminated.human?.score ?? game.floorRecords.at(-1)?.scores.human)
+      : game?.floorRecords.at(-1)?.scores.human;
+  const personalResultFloor =
+    game?.eliminated.human?.floorIndex ?? game?.floorIndex;
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
   const compactSettlement =
-    (game?.phase === 'room_result' || game?.phase === 'floor_result') &&
-    game.humanEliminatedAt === null;
+    game?.phase === 'competition_complete' ||
+    ((game?.phase === 'room_result' || game?.phase === 'floor_result') &&
+      game.humanEliminatedAt === null);
   const strip =
     game &&
     (game.phase === 'room_action' && session?.draft ? (
@@ -642,30 +644,21 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     let body: ReactNode;
     if (game!.phase === 'competition_complete')
       body = (
-        <>
-          <p className="eyebrow">SURVIVAL COMPLETE</p>
-          <h2>
-            {game!.championId
-              ? `${name(game!.championId)}获得生存榜首`
-              : '团灭 · 无冠军'}
-          </h2>
-          <p>
-            你的名次：第{' '}
-            {
-              game!.finalRanking.find((entry) => entry.playerId === 'human')!
-                .rank
-            }{' '}
-            名 ·{' '}
-            {game!.humanEliminatedAt === null
-              ? '存活'
-              : `第 ${game!.humanEliminatedAt + 1} 层淘汰`}
-          </p>
-          <SurvivalTotalBoard log={log!} decimals={decimals} />
-          <p>{profileMessage}</p>
-          <footer className="survival-result-actions">
-            <Button onClick={props.onNew}>再来一局生存</Button>
-          </footer>
-        </>
+        <SurvivalComplete
+          log={log!}
+          decimals={decimals}
+          onNew={props.onNew}
+          onBuild={() => setPanel('build')}
+          onReplay={() => setPanel('replay')}
+          onReturnMenu={props.onReturnMenu}
+          profileMessage={profileMessage}
+          saveMessage={
+            <>
+              {message || saveStatus}
+              {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+            </>
+          }
+        />
       );
     else if (game!.humanEliminatedAt !== null)
       body = (
@@ -774,11 +767,23 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                     </dd>
                   </div>
                   <div>
-                    <dt>斩杀线</dt>
-                    <dd>{game!.cutLines[game!.floorIndex]}</dd>
+                    <dt>
+                      {game!.phase === 'competition_complete'
+                        ? '个人结果层／斩杀线'
+                        : '斩杀线'}
+                    </dt>
+                    <dd>
+                      {game!.phase === 'competition_complete'
+                        ? `第 ${(personalResultFloor ?? 0) + 1} 层 · ${game!.cutLines[personalResultFloor ?? 0]}`
+                        : game!.cutLines[game!.floorIndex]}
+                    </dd>
                   </div>
                   <div>
-                    <dt>本层房间分</dt>
+                    <dt>
+                      {game!.phase === 'competition_complete'
+                        ? '个人结算房间分'
+                        : '本层房间分'}
+                    </dt>
                     <dd>
                       {(completedLayer
                         ? (lastHumanScore?.roomScore ?? 0)
@@ -854,11 +859,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         <section
           className="ranking-stage survival-stage"
           data-ranking-layout={
-            game!.phase === 'floor_result' &&
-            game!.humanEliminatedAt === null &&
-            panel === null
-              ? 'floor'
-              : undefined
+            game!.phase === 'competition_complete' && panel === null
+              ? 'complete'
+              : game!.phase === 'floor_result' &&
+                  game!.humanEliminatedAt === null &&
+                  panel === null
+                ? 'floor'
+                : undefined
           }
           hidden={panel !== null}
           inert={panel !== null}

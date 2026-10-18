@@ -1,14 +1,20 @@
 import type { SurvivalBoardModel } from '@/lib/ui/survival-board';
-import { RankingSelfSummary, RankingScrollArea } from './ranking-self-summary';
+import {
+  LocateSelfButton,
+  RankingSelfSummary,
+  RankingScrollArea,
+} from './ranking-self-summary';
 
 export function SurvivalScoreBoard({
   model,
   decimals = 2,
   embedded = false,
+  selfSummaryOutside = false,
 }: {
   model: SurvivalBoardModel;
   decimals?: 2 | 4;
   embedded?: boolean;
+  selfSummaryOutside?: boolean;
 }) {
   const human = model.rows.find((row) => row.playerId === 'human');
   return (
@@ -33,19 +39,22 @@ export function SurvivalScoreBoard({
         </div>
       )}
       <div className="survival-board-tools">
-        <RankingSelfSummary
-          label={model.final ? '你的最终名次' : '你的当前顺位'}
-          rank={human?.rank}
-        >
-          {human &&
-            `${human.statusLabel} · 累计 ${human.total.toFixed(decimals)} 分`}
-        </RankingSelfSummary>
+        {!selfSummaryOutside && (
+          <RankingSelfSummary
+            label={model.final ? '你的最终名次' : '你的当前顺位'}
+            rank={human?.rank}
+          >
+            {human &&
+              `${human.statusLabel} · 累计 ${human.total.toFixed(decimals)} 分`}
+          </RankingSelfSummary>
+        )}
         {embedded && (
           <span className="survival-board-summary">
             {model.rows.filter((row) => row.active).length} 人存活 ·{' '}
             {model.rows.length} 人参赛
           </span>
         )}
+        {selfSummaryOutside && human && <LocateSelfButton />}
         <details className="ranking-reading-help">
           <summary>积分口径</summary>
           <dl>
@@ -66,7 +75,7 @@ export function SurvivalScoreBoard({
       </div>
       <p className="survival-board-note">
         {model.final
-          ? '按已记录的最终名次展示，保留同分裁定。'
+          ? '按已记录的最终名次展示，保留同分裁定。存活者优先；淘汰越晚名次越靠前，同层再比较累计分数。'
           : '存活优先，再按淘汰层数、累计分数排序；当前顺位不是最终名次。'}
         各层主值为本层新增，不含继承。
       </p>
