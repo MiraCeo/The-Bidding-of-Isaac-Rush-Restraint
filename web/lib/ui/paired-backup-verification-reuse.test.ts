@@ -23,7 +23,7 @@ function fixture(paired = false) {
   const p = buildCurrentLedgerFixture(traces, 64, 'mixed-branches', {
     schema: 8,
   }).profile;
-  let s = beginClassicGrowth(
+  const s = beginClassicGrowth(
     reduceGameSession(createGameSession(99), {
       type: 'start_game',
       characterId: 'isaac',
