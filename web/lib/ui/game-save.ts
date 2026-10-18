@@ -1,4 +1,4 @@
-import { prepareAchievementBaseline } from './achievements/registry';
+import { prepareAchievementBaseline, withAchievementVerificationScope } from './achievements/registry';
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
@@ -293,7 +293,9 @@ export function serializeGameBackup(
   profile: PlayerProfile,
   now = new Date(),
 ): string {
-  return encodeCurrent(session, now, profile);
+  // All raw/profile/pair checks remain in encodeCurrent. The private scan cache
+  // lasts only through this pure synchronous export, never download/storage work.
+  return withAchievementVerificationScope(() => encodeCurrent(session, now, profile));
 }
 
 /** Validate on a detached state; never mutate or dispatch into the live game. */
