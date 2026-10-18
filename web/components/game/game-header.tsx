@@ -21,18 +21,21 @@ export function GameHeader({
     <>
       <header className={`topbar${status ? ' topbar-with-session' : ''}`}>
         <div className="topbar-inner">
-          <GameBrand />
+          <GameBrand
+            version={
+              status ? (
+                <span
+                  className="app-version"
+                  aria-label={`应用版本 ${appVersion}`}
+                >
+                  v{appVersion}
+                </span>
+              ) : undefined
+            }
+          />
           {navigation}
           {status ? (
-            <div className="topbar-session">
-              {status}
-              <span
-                className="app-version"
-                aria-label={`应用版本 ${appVersion}`}
-              >
-                v{appVersion}
-              </span>
-            </div>
+            <div className="topbar-session">{status}</div>
           ) : (
             <span className="app-version" aria-label={`应用版本 ${appVersion}`}>
               v{appVersion}

@@ -67,7 +67,7 @@ describe('score display preferences do not change scoring', () => {
       }),
     ).replace(/<[^>]+>/g, '');
     expect(result).toContain(`本房积分+${score.toFixed(4)}`);
-    expect(result).toContain(`最终房间积分${score.toFixed(4)}`);
+    expect(result).toContain(`→本房积分 ${score.toFixed(4)}`);
     expect(ranking).toContain(total.toFixed(4));
     expect(game).toEqual(before);
     const table = renderToStaticMarkup(

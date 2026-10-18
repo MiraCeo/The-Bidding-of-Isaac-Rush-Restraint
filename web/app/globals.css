@@ -2024,10 +2024,9 @@
 [data-public-ranking="active"] .ranking-table .ranking-number,
 [data-public-ranking="active"] .ranking-table .ranking-metric-primary { white-space:normal; overflow-wrap:anywhere; }
 /* Room settlement: outcomes first, explanations on demand. */
-.topbar-with-session .topbar-session { display:flex; align-items:flex-end; flex-direction:column; min-width:0; gap:3px; justify-self:end; }
-.topbar-with-session .topbar-session .app-version { font-size:.57rem; color:var(--muted-foreground); }
-.settlement-status { position:relative; max-width:100%; font-size:.72rem; color:var(--foreground); }
-.settlement-status>summary { display:flex; align-items:center; gap:9px; cursor:pointer; border:1px solid var(--border); border-radius:7px; padding:6px 9px; list-style:none; white-space:normal; overflow-wrap:anywhere; }
+.topbar-with-session .topbar-session { display:flex; align-items:center; flex-direction:row; min-width:0; gap:3px; justify-self:end; }
+.settlement-status { position:relative; max-width:100%; font-size:.8rem; color:var(--foreground); }
+.settlement-status>summary { display:flex; align-items:center; gap:10px; cursor:pointer; border:1px solid var(--border); border-radius:7px; padding:8px 11px; min-height:36px; list-style:none; white-space:normal; overflow-wrap:anywhere; }
 .settlement-status>summary::-webkit-details-marker { display:none; }
 .settlement-status>summary:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
 .settlement-status-body { position:absolute; z-index:80; top:calc(100% + 8px); right:0; width:min(380px,calc(100vw - 32px)); max-height:70dvh; overflow:auto; padding:16px; border:1px solid #76603e; border-radius:10px; background:#211b14; box-shadow:0 16px 40px #0009; color:var(--foreground); }
@@ -2091,3 +2090,45 @@
 .survival-stage .settlement-room .result-stage { padding-block:0; }
 .settlement-save-state { margin-left:auto; align-self:center; font-size:.7rem; line-height:1.7; color:var(--muted-foreground); }
 .survival-stage:has(>.settlement-room) { padding-bottom:12px; }
+/* Settlement refinement: explicit status groups, concise outcome explanations. */
+.brand-kicker { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.topbar-with-session .brand-kicker .app-version { color:var(--muted-foreground); font-size:.6rem; font-weight:400; letter-spacing:0; }
+.settlement-mode { color:var(--primary); font-weight:700; }
+.settlement-position { color:var(--muted-foreground); }
+.settlement-funds { display:inline-flex; align-items:center; gap:5px; padding-left:10px; border-left:1px solid var(--border); font-variant-numeric:tabular-nums; }
+.settlement-funds svg { width:14px; height:14px; color:var(--primary); }
+.settlement-status-body dt small { display:block; color:var(--muted-foreground); font-size:.65rem; font-weight:400; }
+.settlement-detail .settled-rewards { align-items:start; }
+.settlement-detail .settled-rewards>article { padding:13px 14px; }
+.settlement-detail .settled-rewards>.settled-reward-earned { box-shadow:none; background:#edaf3d07; }
+.settled-reward-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.settled-reward-heading .settled-reward-title { order:1; margin:0; padding:0; min-width:0; }
+.settled-reward-heading .earned-badge { order:2; position:static; flex:none; border-radius:5px; padding:4px 7px; font-size:.64rem; }
+.settled-reward-heading .item-icon { --item-icon-size:36px; width:36px; height:36px; flex:none; }
+.settlement-detail .result-line { grid-template-columns:76px minmax(0,1fr); align-items:baseline; margin-top:9px; gap:10px; font-size:.76rem; }
+.settlement-detail .result-line>strong { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:6px 12px; text-align:left; font-weight:500; }
+.settlement-person { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:5px; min-width:0; overflow-wrap:anywhere; }
+.settlement-person em { font-style:normal; font-size:.64rem; color:#c5a5d5; border:1px solid #9578a44d; padding:1px 4px; border-radius:4px; white-space:nowrap; }
+.settlement-detail .resolved-action-list>article { border:0; border-bottom:1px solid var(--border); border-radius:0; background:none; padding:4px 0 12px; gap:10px; }
+.settlement-detail .resolved-action-list>article>div>span { display:none; }
+.settlement-detail .resolved-action-list dl { gap:10px 18px; }
+.settlement-detail .resolved-action-list dt { font-size:.7rem; }
+.settlement-detail .resolved-action-list dd { font-size:.8rem; }
+.settlement-calculation-line { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 12px; padding-top:14px; font-size:.8rem; color:var(--muted-foreground); }
+.settlement-calculation-line strong { margin-left:5px; color:var(--primary); font-family:var(--font-mono); font-weight:800; }
+.settlement-scoring-note { margin:0; font-size:.74rem; line-height:1.7; color:#b9cdda; overflow-wrap:anywhere; }
+.settlement-effect-notes { display:grid; gap:5px; margin:10px 0 0; padding:0; list-style:none; font-size:.73rem; line-height:1.75; color:var(--muted-foreground); overflow-wrap:anywhere; }
+.settlement-effect-notes:empty { display:none; }
+.settlement-fund-notes { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.settlement-fund-notes h4 { font-size:.75rem; font-weight:650; }
+.settlement-market-compact .replay-market-grid { align-items:start; }
+.settlement-market-compact .market-own-actions { margin-top:9px; }
+.settlement-market-compact .market-own-actions>div { padding:8px 10px; }
+.settlement-market-compact .market-own-actions dl { margin-block:6px; }
+.settlement-market-compact .market-own-actions dd { font-size:.8rem; margin-top:3px; }
+.settlement-market-compact .market-chart-legend { gap:7px 14px; }
+.market-reading-help { margin-top:10px; color:var(--muted-foreground); font-size:.72rem; }
+.market-reading-help>summary { cursor:pointer; width:fit-content; padding:3px 0; }
+.market-reading-help>p { margin-top:6px; line-height:1.75; }
+@media(min-width:900px) and (max-width:1050px) { .topbar-with-session .topbar-inner { gap:10px; }.topbar-with-session .nav-item { min-width:48px; padding-inline:7px; }.topbar-with-session .brand-block h1 { font-size:1.04rem; }.settlement-status>summary { gap:7px; padding-inline:8px; font-size:.75rem; } }
+@media(max-width:700px) { .settlement-status>summary { flex-wrap:wrap; }.settlement-detail .result-line { grid-template-columns:70px minmax(0,1fr); }.settlement-detail .resolved-action-list dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }

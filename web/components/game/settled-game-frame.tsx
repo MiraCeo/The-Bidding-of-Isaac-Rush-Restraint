@@ -10,6 +10,7 @@ import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
 import {
   SettlementStatus,
+  SettlementStatusLabel,
   SettlementNavigationContext,
 } from './settlement-navigation';
 
@@ -48,7 +49,14 @@ export function SettledGameFrame({
           utilityPanel !== 'settings' &&
           utilityPanel !== 'rules' ? (
             <SettlementStatus
-              brief={`经典 · ${game.floorIndex + 1}层 ${game.roomIndex + 1}/5房 · 资金${human.money}`}
+              brief={
+                <SettlementStatusLabel
+                  mode="经典"
+                  floor={game.floorIndex + 1}
+                  room={game.roomIndex + 1}
+                  money={human.money}
+                />
+              }
             >
               <dl>
                 <div>

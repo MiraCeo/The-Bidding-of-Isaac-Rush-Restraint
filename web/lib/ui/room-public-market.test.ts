@@ -61,6 +61,17 @@ it('expands only already-settled shared market data and preserves both score sem
     await new Promise((resolve) => setTimeout(resolve, 20));
   });
   expect(details.open).toBe(true);
+  const reading = details.querySelector<HTMLDetailsElement>(
+    '.market-reading-help',
+  )!;
+  expect(reading.open).toBe(false);
+  expect(reading.textContent).toContain('高价看实心位置');
+  const charts = [
+    ...details.querySelectorAll('svg[data-market-chart=combined]'),
+  ];
+  expect(charts[0]!.getAttribute('viewBox')).toBe(
+    charts[1]!.getAttribute('viewBox'),
+  );
   expect(details.querySelectorAll('[data-market-chart=combined]')).toHaveLength(
     2,
   );

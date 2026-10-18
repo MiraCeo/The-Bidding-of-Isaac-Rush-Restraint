@@ -66,10 +66,11 @@ it('translates award item IDs only in presentation, retaining full names and sav
   });
   if (game.phase !== 'room_result') throw Error('Expected settlement');
   game.roomSettlement!.events.push({
-    type: 'award',
+    type: 'destroy',
     playerId: 'human',
+    group: 'B',
     itemId: 'interest',
-    message: '获得道具 interest。',
+    message: '道具 interest被摧毁。',
   });
   for (const profile of Object.values(game.aiProfiles))
     profile.name = '长名称_ABCDEFGHIJKLMNOPQRSTUVWXYZ_不省略事实';
@@ -84,10 +85,10 @@ it('translates award item IDs only in presentation, retaining full names and sav
       }),
     ),
   );
-  expect(node.querySelector('.event-list')!.textContent).toContain(
-    '获得道具 利息。',
+  expect(node.querySelector('.reward-settlement')!.textContent).toContain(
+    '道具 利息被摧毁。',
   );
-  expect(node.querySelector('.event-list')!.textContent).not.toContain(
+  expect(node.querySelector('.reward-settlement')!.textContent).not.toContain(
     'interest',
   );
   expect(node.querySelector('.reward-settlement')!.textContent).toContain(

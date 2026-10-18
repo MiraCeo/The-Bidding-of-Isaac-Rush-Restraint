@@ -271,7 +271,7 @@ describe('formal independent survival entry', () => {
     const incoming = withdraw(startSurvivalClient('lost', 42, 'easy'));
     await upload(serializeSurvivalCheckpoint(incoming.game));
     await click(button('载入生存对局'));
-    expect(container.textContent).toContain('难度 简单');
+    expect(container.querySelector('.settlement-status-facts')?.textContent).toContain('难度简单');
     expect(container.querySelector('.survival-replay')).toBeNull();
     expect(button('积分排行')).toBeTruthy();
     expect(

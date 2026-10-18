@@ -164,7 +164,7 @@ it('does not apply awarded-heart retroactivity twice or hide score clearing', as
     '+' + score.finalScore.toFixed(2),
   );
   expect(node.querySelector('.player-settlement')!.textContent).toContain(
-    '已乘本房倍率的积分',
+    '追溯追加',
   );
   expect(g).toEqual(before);
   const cleared = fixture({
@@ -204,7 +204,7 @@ it('handles zero-cost withdrawal and positive other income without a misleading 
     '返还 188 + 收入 300 − 扣款 250 = 净收入 238',
   );
 });
-it('retains both actions, awards and all events under disclosure and only advances on explicit click', async () => {
+it('retains both actions and raw events while relocating special causes, and only advances on explicit click', async () => {
   const g = fixture({ double: true }),
     before = structuredClone(g),
     advance = vi.fn(),
@@ -222,9 +222,18 @@ it('retains both actions, awards and all events under disclosure and only advanc
     await click(d.querySelector('summary')!);
     expect(d.open).toBe(true);
   }
-  expect(node.querySelectorAll('.event-list>span')).toHaveLength(
-    g.roomSettlement!.events.filter((e) => e.playerId === 'human').length,
+  expect(node.querySelector('.event-panel')).toBeNull();
+  expect(node.querySelector('.event-list')).toBeNull();
+  expect(node.querySelector('.settlement-fund-notes')!.textContent).toContain(
+    '福袋返还',
   );
+  const destroy = g.roomSettlement!.events.find(
+    (e) => e.playerId === 'human' && e.type === 'destroy',
+  );
+  if (destroy)
+    expect(node.querySelector('.reward-settlement')!.textContent).toContain(
+      destroy.message,
+    );
   expect(advance).not.toHaveBeenCalled();
   expect(ranking).not.toHaveBeenCalled();
   expect(g).toEqual(before);
@@ -291,6 +300,23 @@ it.each(['classic', 'survival'] as const)(
     const key = mode === 'classic' ? gameSaveKey : survivalSaveKey,
       before = localStorage.getItem(key);
     expect(node.querySelector('.topbar .settlement-status')).not.toBeNull();
+    expect(node.querySelector('.settlement-mode')!.textContent).toBe(
+      mode === 'classic' ? '经典' : '生存',
+    );
+    expect(node.querySelector('.settlement-position')!.textContent).toContain(
+      '第1层',
+    );
+    expect(node.querySelectorAll('.topbar .app-version')).toHaveLength(1);
+    expect(node.querySelector('.brand-kicker .app-version')).not.toBeNull();
+    expect(node.querySelector('.topbar-session .app-version')).toBeNull();
+    if (mode === 'survival') {
+      expect(
+        node.querySelector('.settlement-status-body .survival-status'),
+      ).toBeNull();
+      expect(
+        node.querySelector('.settlement-status-body dl')!.textContent,
+      ).toContain('斩杀线');
+    }
     expect(
       node.querySelector('.settlement-heading nav')!.textContent,
     ).toContain('本局回放');
@@ -320,3 +346,75 @@ it.each(['classic', 'survival'] as const)(
     expect(node.textContent).toContain('选择角色');
   },
 );
+
+it('keeps the computation concise without zero retroactivity and retains all raw events unchanged', async () => {
+  const g = fixture(),
+    before = structuredClone(g);
+  await show(result(g));
+  expect(
+    node.querySelector('.settlement-disclosures')!.textContent,
+  ).not.toContain('结算事件');
+  expect(node.querySelector('.score-total-row')).toBeNull();
+  const line = node.querySelector('.settlement-calculation-line')!;
+  expect(line.textContent).not.toContain('追溯追加');
+  expect(line.textContent).not.toContain('倍率后');
+  expect(line.textContent!.match(/本房积分/g)).toHaveLength(1);
+  expect(node.querySelector('.player-settlement')!.textContent).toContain(
+    '计入本房倍率',
+  );
+  expect(node.querySelector('.settlement-fund-notes')!.textContent).toContain(
+    '福袋返还 188',
+  );
+  expect(g).toEqual(before);
+});
+it('explains a changed scoring value only with recorded action-specific adjustment evidence', async () => {
+  const g = fixture({ owned: ['brimstone'], amount: 100 });
+  const breakdown = g.roomSettlement!.scoreBreakdowns.human!,
+    action = g.roomSettlement!.resolvedActions.find(
+      (a) => a.playerId === 'human',
+    )!;
+  expect(breakdown.triggers.some((t) => t.kind === 'scoring_adjustment')).toBe(
+    true,
+  );
+  const before = structuredClone(g);
+  await show(result(g));
+  expect(node.querySelector('.settlement-scoring-note')!.textContent).toContain(
+    `硫磺火计分修正：合作判定 ${action.scoringEquivalent} → 计分取值 ${breakdown.actions[0]!.scoringValue}`,
+  );
+  expect(node.querySelector('.settlement-scoring-note')!.textContent).toContain(
+    `市场等价 ${action.marketEquivalent} 不变`,
+  );
+  expect(g).toEqual(before);
+  const noProof = structuredClone(g);
+  noProof.roomSettlement!.scoreBreakdowns.human!.triggers = [];
+  await show(result(noProof));
+  expect(
+    node.querySelector('.settlement-scoring-note')?.textContent ?? '',
+  ).toBe('');
+});
+it('keeps refund and destruction explanations with their outcomes, without presenting ordinary award messages again', async () => {
+  const g = fixture();
+  g.roomSettlement!.events.push({
+    type: 'destroy',
+    playerId: 'human',
+    group: 'B',
+    effectItemId: 'more_options',
+    message: '测试：B组道具被摧毁',
+  });
+  const before = structuredClone(g);
+  await show(result(g));
+  expect(node.querySelector('.reward-settlement')!.textContent).toContain(
+    '测试：B组道具被摧毁',
+  );
+  expect(node.querySelector('.player-settlement')!.textContent).not.toContain(
+    '测试：B组道具被摧毁',
+  );
+  expect(node.querySelector('.player-settlement')!.textContent).toContain(
+    '福袋返还',
+  );
+  expect(
+    node.querySelector('.settlement-disclosures')!.textContent,
+  ).not.toContain('获得道具 grab_bag');
+  expect(node.querySelectorAll('.settlement-person')).not.toHaveLength(0);
+  expect(g).toEqual(before);
+});

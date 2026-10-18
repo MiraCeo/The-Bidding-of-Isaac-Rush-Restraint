@@ -19,7 +19,10 @@ import { Button } from '@/components/ui/button';
 import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
-import { SettlementStatus } from './settlement-navigation';
+import {
+  SettlementStatus,
+  SettlementStatusLabel,
+} from './settlement-navigation';
 import { RoomRanking } from './room-ranking';
 import { SurvivalActionStatus } from './survival-action-status';
 import { SurvivalScoreBoard } from './survival-score-board';
@@ -735,9 +738,66 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           status={
             compactSettlement && panel !== 'settings' && panel !== 'rules' ? (
               <SettlementStatus
-                brief={`生存 · ${game!.floorIndex + 1}层 ${game!.roomIndex + 1}/5房 · 资金${human?.money ?? 0}`}
+                brief={
+                  <SettlementStatusLabel
+                    mode="生存"
+                    floor={game!.floorIndex + 1}
+                    room={game!.roomIndex + 1}
+                    money={human?.money ?? 0}
+                  />
+                }
               >
-                {strip}
+                <dl className="settlement-status-facts">
+                  <div>
+                    <dt>参与人数</dt>
+                    <dd>{game!.activePlayerIds.length} 人</dd>
+                  </div>
+                  <div>
+                    <dt>难度</dt>
+                    <dd>{survivalDifficultyLabel(game!.aiDifficulty)}</dd>
+                  </div>
+                  <div>
+                    <dt>AI策略</dt>
+                    <dd>
+                      {game!.aiDifficulty === 'highest'
+                        ? '原最高基线'
+                        : game!.aiPolicy === 'role-aware-1'
+                          ? '角色适配'
+                          : '历史原版'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>斩杀线</dt>
+                    <dd>{game!.cutLines[game!.floorIndex]}</dd>
+                  </div>
+                  <div>
+                    <dt>本层房间分</dt>
+                    <dd>
+                      {(game!.currentFloorRoomScores.human ?? [])
+                        .reduce((sum, n) => sum + n, 0)
+                        .toFixed(decimals)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>上层继承</dt>
+                    <dd>
+                      {(
+                        (game!.previousSurvivalScores.human ?? 0) *
+                        game!.rules.scoreInheritanceRatio
+                      ).toFixed(decimals)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      余额可兑<small>层末为准</small>
+                    </dt>
+                    <dd>
+                      {(
+                        (human?.money ?? 0) * game!.rules.moneyExchangeRatio
+                      ).toFixed(decimals)}
+                    </dd>
+                  </div>
+                </dl>
               </SettlementStatus>
             ) : undefined
           }

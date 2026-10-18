@@ -42,16 +42,20 @@ export function ReplayMarket({
   playerId,
   name,
   radius,
+  compact = false,
 }: {
   record: Pick<ReplayRoomRecord, 'settlement'>;
   playerId: string;
   name: (id: string) => string;
   radius: number;
+  compact?: boolean;
 }) {
   const model = replayMarketModel(record, radius);
   if (!model)
     return (
-      <section className="replay-section replay-market">
+      <section
+        className={`replay-section replay-market${compact ? ' settlement-market-compact' : ''}`}
+      >
         <h3>行动在市场中的位置</h3>
         <p className="replay-muted">
           全场观望，本房没有市场基准线，也没有有效报价。
@@ -67,11 +71,17 @@ export function ReplayMarket({
     height = bottom + 44;
   const x = (v: number) => 54 + (v / model.combinedMaximum) * 480;
   return (
-    <section className="replay-section replay-market">
+    <section
+      className={`replay-section replay-market${compact ? ' settlement-market-compact' : ''}`}
+    >
       <div className="replay-section-heading">
         <div>
           <h3>行动在市场中的位置</h3>
-          <p>每个目标一张图：高价边界与合作区同屏，亮色是{name(playerId)}</p>
+          <p>
+            {compact
+              ? `亮色是${name(playerId)}，A／B使用同一坐标尺度。`
+              : `每个目标一张图：高价边界与合作区同屏，亮色是${name(playerId)}`}
+          </p>
         </div>
         <span className="replay-market-target-badge">
           全场基准线 T = {fmt(model.target)}
@@ -85,7 +95,7 @@ export function ReplayMarket({
           const own = group.points.filter((p) => p.playerId === playerId),
             layout = layouts[groupIndex]!;
           return (
-            <article key={group.group}>
+            <article key={group.group} data-own-actions={own.length}>
               <header>
                 <span className="replay-group-letter">{group.group}</span>
                 <ItemIcon itemId={reward.itemId} size="small" />
@@ -322,9 +332,18 @@ export function ReplayMarket({
         <span>蓝带：合作区</span>
         <span>金虚线：高价边界</span>
       </div>
-      <p>
-        两种等价相同只画一枚标记，不同时用短线连接；高价看实心位置，合作区看空心位置。道具调整后的计分取值只列数值，不混入资格判定。
-      </p>
+      {compact ? (
+        <details className="market-reading-help">
+          <summary>读图说明</summary>{' '}
+          <p>
+            两种等价相同只画一枚标记，不同时用短线连接；高价看实心位置，合作区看空心位置。道具调整后的计分取值只列数值，不混入资格判定。
+          </p>
+        </details>
+      ) : (
+        <p>
+          两种等价相同只画一枚标记，不同时用短线连接；高价看实心位置，合作区看空心位置。道具调整后的计分取值只列数值，不混入资格判定。
+        </p>
+      )}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { ItemIcon } from './item-icon';
 import { ReplayMarket } from './replay-market';
 import { useState, useContext, type ReactNode } from 'react';
 import { SettlementNavigationContext } from './settlement-navigation';
+import type { SettlementEvent } from '@/lib/game/item-types';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
 
@@ -281,46 +282,70 @@ export function RoomResult({
                       key={reward.group}
                       className={humanAward ? 'settled-reward-earned' : ''}
                     >
-                      {humanAward && (
-                        <span className="earned-badge">
-                          你已获得
-                          {humanAward.copies > 1
-                            ? ` ×${humanAward.copies}`
-                            : ''}
-                        </span>
-                      )}
-                      <div className="settled-reward-title">
-                        <ItemIcon itemId={reward.itemId} size="large" />
-                        <div>
-                          <small>道具 {reward.group}</small>
-                          <h3>{definition.name}</h3>
+                      <div className="settled-reward-heading">
+                        {humanAward && (
+                          <span className="earned-badge">
+                            你已获得
+                            {humanAward.copies > 1
+                              ? ` ×${humanAward.copies}`
+                              : ''}
+                          </span>
+                        )}
+                        <div className="settled-reward-title">
+                          <ItemIcon itemId={reward.itemId} size="large" />
+                          <div>
+                            <small>道具 {reward.group}</small>
+                            <h3>{definition.name}</h3>
+                          </div>
                         </div>
                       </div>
                       <ResultLine
                         label="最高价名额"
-                        values={high.map(
-                          (entry) =>
-                            `${playerName(entry.playerId)}${entry.actionType === 'disrupt' ? '（扰乱占据）' : ''}`,
-                        )}
+                        values={high.map((entry) => ({
+                          name: playerName(entry.playerId),
+                          badge:
+                            entry.actionType === 'disrupt'
+                              ? '扰乱占位'
+                              : undefined,
+                        }))}
                       />
                       <ResultLine
                         label="合作区名额"
-                        values={cooperation.map(
-                          (entry) =>
-                            `${playerName(entry.playerId)}${entry.actionType === 'disrupt' ? '（扰乱占据）' : ''}`,
-                        )}
+                        values={cooperation.map((entry) => ({
+                          name: playerName(entry.playerId),
+                          badge:
+                            entry.actionType === 'disrupt'
+                              ? '扰乱占位'
+                              : undefined,
+                        }))}
                       />
                       <ResultLine
                         label="最终发放"
-                        values={awards.map(
-                          (entry) =>
-                            `${playerName(entry.playerId)}${entry.copies > 1 ? ` ×${entry.copies}` : ''}`,
+                        values={awards.map((entry) => ({
+                          name: playerName(entry.playerId),
+                          badge:
+                            entry.copies > 1 ? `×${entry.copies}` : undefined,
+                        }))}
+                      />
+                      <EventNotes
+                        events={humanEvents.filter(
+                          (event) =>
+                            event.group === reward.group &&
+                            (event.type === 'destroy' ||
+                              event.type === 'duplicate'),
                         )}
                       />
                     </article>
                   );
                 })}
               </div>
+              <EventNotes
+                events={humanEvents.filter(
+                  (event) =>
+                    event.group === undefined &&
+                    (event.type === 'destroy' || event.type === 'duplicate'),
+                )}
+              />
             </div>
           </details>
 
@@ -334,6 +359,27 @@ export function RoomResult({
                   const score = humanBreakdown?.actions.find(
                     (entry) => entry.actionIndex === resolved.actionIndex,
                   );
+                  const adjustmentNames =
+                    score?.scoringValue != null &&
+                    score.scoringValue !== resolved.scoringEquivalent
+                      ? [
+                          ...new Set(
+                            (humanBreakdown?.triggers ?? [])
+                              .filter(
+                                (trigger) =>
+                                  trigger.kind === 'scoring_adjustment' &&
+                                  ((resolved.action.type === 'bid' &&
+                                    trigger.itemId === 'brimstone') ||
+                                    (resolved.action.type === 'disrupt' &&
+                                      trigger.itemId === 'short_brimstone')),
+                              )
+                              .map(
+                                (trigger) =>
+                                  getItemDefinition(trigger.itemId).name,
+                              ),
+                          ),
+                        ]
+                      : [];
                   return (
                     <article key={resolved.actionIndex}>
                       <div>
@@ -350,7 +396,7 @@ export function RoomResult({
                           <dd>{resolved.marketEquivalent ?? '—'}</dd>
                         </div>
                         <div>
-                          <dt>计分等价</dt>
+                          <dt>计分取值</dt>
                           <dd>
                             {score?.scoringValue ??
                               resolved.scoringEquivalent ??
@@ -370,57 +416,103 @@ export function RoomResult({
                           </dd>
                         </div>
                       </dl>
+                      {adjustmentNames.length > 0 && (
+                        <p className="settlement-scoring-note">
+                          {adjustmentNames
+                            .map(
+                              (name) =>
+                                `${name}计分修正：合作判定 ${resolved.scoringEquivalent} → 计分取值 ${score!.scoringValue}，市场等价 ${resolved.marketEquivalent} 不变。`,
+                            )
+                            .join(' ')}
+                        </p>
+                      )}
                     </article>
                   );
                 })}
               </div>
-              <div className="score-total-row">
-                <span>已乘本房倍率的积分</span>
-                <strong>
-                  {humanScore.initialScore.toFixed(scoreDecimals)}
-                </strong>
-                <span>追溯追加积分</span>
-                <strong>
-                  +{humanScore.retroactiveScore.toFixed(scoreDecimals)}
-                </strong>
+              <div
+                className="settlement-calculation-line"
+                aria-label="本房积分计算"
+                title="数值按显示精度四舍五入，以原结算记录为准"
+              >
+                <span>
+                  计分小计 <strong>{subtotal.toFixed(scoreDecimals)}</strong>
+                </span>
+                <span>
+                  × 本房倍率{' '}
+                  <strong>
+                    {(humanBreakdown?.multiplier ?? 1).toFixed(3)}
+                  </strong>
+                </span>
+                <span>→</span>
+                {humanScore.retroactiveScore !== 0 && (
+                  <>
+                    <span>
+                      倍率后{' '}
+                      <strong>
+                        {humanScore.initialScore.toFixed(scoreDecimals)}
+                      </strong>
+                    </span>
+                    <span>
+                      ＋ 追溯追加{' '}
+                      <strong>
+                        {humanScore.retroactiveScore.toFixed(scoreDecimals)}
+                      </strong>
+                    </span>
+                    <span>→</span>
+                  </>
+                )}
+                <span>
+                  本房积分{' '}
+                  <strong>
+                    {humanScore.finalScore.toFixed(scoreDecimals)}
+                  </strong>
+                </span>
               </div>
-              <div className="score-total-row">
-                <span>本房倍率（已计入）</span>
-                <strong>×{(humanBreakdown?.multiplier ?? 1).toFixed(3)}</strong>
-                <span>最终房间积分</span>
-                <strong>{humanScore.finalScore.toFixed(scoreDecimals)}</strong>
-              </div>
+              <ul className="settlement-effect-notes">
+                {[
+                  ...new Set(
+                    (humanBreakdown?.triggers ?? [])
+                      .filter(
+                        (trigger) => trigger.kind !== 'scoring_adjustment',
+                      )
+                      .map(
+                        (trigger) =>
+                          `${getItemDefinition(trigger.itemId).name}：${({ additive_score: `单次加算 ${trigger.amount ?? 0} 分`, multiplier_applied: '计入本房倍率', boss_multiplier_applied: '本房倍率增益', double_score: '积分翻倍', clear_score: '积分清零' } as Record<string, string>)[trigger.kind] ?? '触发计分效果'}`,
+                      ),
+                  ),
+                ].map((text) => (
+                  <li key={text}>{text}</li>
+                ))}
+              </ul>
+              <EventNotes
+                events={humanEvents.filter(
+                  (event) =>
+                    event.type === 'trigger' ||
+                    (event.type === 'score' &&
+                      event.itemId !== undefined &&
+                      event.amount !== 0),
+                )}
+              />
+              {(refunded !== 0 ||
+                otherMoney !== 0 ||
+                humanEvents.some((event) => event.type === 'money')) && (
+                <div className="settlement-fund-notes">
+                  <h4>资金效果</h4>
+                  <EventNotes
+                    events={humanEvents.filter(
+                      (event) =>
+                        event.type === 'refund' || event.type === 'money',
+                    )}
+                  />
+                </div>
+              )}
               {humanBreakdown?.cleared && (
                 <p className="score-cleared">本房间积分因道具效果被清零。</p>
               )}
             </div>
           </details>
 
-          <details className="result-panel event-panel settlement-detail">
-            <summary>
-              结算事件 <span>{humanEvents.length} 项</span>
-            </summary>
-            <div className="settlement-detail-body">
-              <div className="event-list">
-                {humanEvents.length === 0 ? (
-                  <p className="empty-result">本房间没有与你相关的额外事件。</p>
-                ) : (
-                  humanEvents.map((event, index) => (
-                    <span key={`${event.type}-${index}`}>
-                      {displayItemText(
-                        event.itemId
-                          ? event.message.replaceAll(
-                              event.itemId,
-                              getItemDefinition(event.itemId).name,
-                            )
-                          : event.message,
-                      )}
-                    </span>
-                  ))
-                )}
-              </div>
-            </div>
-          </details>
           <details
             className="result-market-details settlement-detail"
             onToggle={(event) => setMarketOpen(event.currentTarget.open)}
@@ -428,6 +520,7 @@ export function RoomResult({
             <summary>本房共同市场 · 查看已公开行动</summary>
             {marketOpen && (
               <ReplayMarket
+                compact
                 record={{ settlement }}
                 playerId={game.humanPlayerId}
                 name={playerName}
@@ -444,11 +537,51 @@ export function RoomResult({
   );
 }
 
-function ResultLine({ label, values }: { label: string; values: string[] }) {
+function ResultLine({
+  label,
+  values,
+}: {
+  label: string;
+  values: { name: string; badge?: string }[];
+}) {
   return (
     <div className="result-line">
       <span>{label}</span>
-      <strong>{values.length > 0 ? values.join('、') : '无'}</strong>
+      <strong
+        aria-label={values
+          .map(
+            (value) => `${value.name}${value.badge ? ` ${value.badge}` : ''}`,
+          )
+          .join('、')}
+      >
+        {values.length
+          ? values.map((value, index) => (
+              <span className="settlement-person" key={index}>
+                {value.name}
+                {value.badge && <em>{value.badge}</em>}
+              </span>
+            ))
+          : '无'}
+      </strong>
     </div>
+  );
+}
+function EventNotes({ events }: { events: readonly SettlementEvent[] }) {
+  if (!events.length) return null;
+  return (
+    <ul className="settlement-effect-notes">
+      {events.map((event, index) => (
+        <li key={`${event.type}-${index}`}>
+          {displayItemText(
+            event.itemId
+              ? event.message.replaceAll(
+                  event.itemId,
+                  getItemDefinition(event.itemId).name,
+                )
+              : event.message,
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
