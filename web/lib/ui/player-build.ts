@@ -37,7 +37,10 @@ export function inventoryEntries(player: RuntimePlayerState) {
     effectiveCopies: getItemDefinition(id).effectStacks ? count : 1,
   }));
 }
-export function getBuildSummary(game: ActiveClientGameState, rules: RulesConfig = defaultRules) {
+export function getBuildSummary(
+  game: ActiveClientGameState,
+  rules: RulesConfig = defaultRules,
+) {
   const human = game.players.find((p) => p.id === game.humanPlayerId)!;
   const room = game.rooms[game.floorIndex]![game.roomIndex]!;
   const count = (id: ItemId) => countItem(human, id);
@@ -103,18 +106,22 @@ export function getBuildSummary(game: ActiveClientGameState, rules: RulesConfig 
     ],
   };
 }
-export function getQuotePreviews(player: RuntimePlayerState, turn: PlayerTurn) {
+export function getQuotePreviews(
+  player: RuntimePlayerState,
+  turn: PlayerTurn,
+  rules: RulesConfig = defaultRules,
+) {
   return turn.actions.map((action) => ({
     action,
     nominal: action.type === 'withdraw' ? null : action.amount,
-    ...getRuntimeActionAmounts(player, action, defaultRules),
+    ...getRuntimeActionAmounts(player, action, rules),
     scoringRange:
       action.type === 'bid' && hasItem(player, 'brimstone')
         ? [action.amount * 0.8, action.amount * 1.25]
         : action.type === 'disrupt' && hasItem(player, 'short_brimstone')
           ? [
-              action.amount * defaultRules.disruptionScoringMultiplier * 0.85,
-              action.amount * defaultRules.disruptionScoringMultiplier * 1.2,
+              action.amount * rules.disruptionScoringMultiplier * 0.85,
+              action.amount * rules.disruptionScoringMultiplier * 1.2,
             ]
           : null,
   }));

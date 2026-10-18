@@ -12,6 +12,8 @@ import {
 import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
+import { selectMarketHistory } from '@/lib/ui/market-history';
+import { defaultRules } from '@/lib/game/config';
 import { useMatchScroll } from './use-match-scroll';
 import { ItemArtProvider } from './item-icon';
 import {
@@ -120,6 +122,17 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     initial.session?.game.phase === 'game_result',
   );
   const game = session.game;
+  const marketHistory = useMemo(
+    () =>
+      game.phase === 'character_selection'
+        ? []
+        : selectMarketHistory(
+            session.replay?.rooms.map((record) => record.settlement) ?? [],
+            game,
+            defaultRules,
+          ),
+    [game, session.replay],
+  );
   useMatchScroll(
     game.phase === 'character_selection'
       ? `${game.seed}:character_selection`
@@ -385,6 +398,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
       <RoomPrototype
         key={`${game.floorIndex}:${game.roomIndex}`}
         game={game}
+        marketHistory={marketHistory}
         headingActions={
           props.onReturnMenu && (
             <button

@@ -1881,3 +1881,29 @@
   .result-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(max-width:700px) { .settled-rewards { grid-template-columns:minmax(0,1fr); }.resolved-action-list dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+/* 0.7: published history is primary; own draft stays a compact, separate summary. */
+.market-history { min-width:0; }
+.market-history>header { display:flex; align-items:baseline; justify-content:space-between; gap:6px; margin-top:12px; }
+.market-history h3,.market-own-summary>h3 { font-size:.73rem; font-weight:750; color:#dfc69d; }
+.market-history>header>span { color:var(--muted-foreground); font-size:.6rem; white-space:nowrap; }
+.market-history-table-wrap { max-width:100%; overflow-x:auto; margin-top:8px; }
+.market-history table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:.66rem; font-variant-numeric:tabular-nums; }
+.market-history th,.market-history td { padding:8px 3px; border-bottom:1px solid var(--border); overflow-wrap:anywhere; text-align:right; vertical-align:top; }
+.market-history thead th { font-size:.6rem; font-weight:500; color:var(--muted-foreground); }
+.market-history th:first-child { width:34px; text-align:left; }
+.market-history th small { display:block; margin-top:2px; color:var(--muted-foreground); font-size:.54rem; font-weight:400; }
+.market-history tr[data-latest="true"] { background:#edaf3d08; color:#e6d3b1; }
+.market-history-note,.market-history-empty { margin-top:8px; color:var(--muted-foreground); font-size:.62rem; line-height:1.7; overflow-wrap:anywhere; }
+.market-history-empty { padding:12px 0; }
+.market-history-replay { margin-top:7px; color:#cab087; font-size:.63rem; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.market-history-replay:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.market-own-summary { margin-top:16px; border-top:1px solid var(--border); padding-top:12px; }
+.market-own-summary>.drawer-description { margin-top:5px; font-size:.62rem; line-height:1.7; }
+.market-own-summary .market-impact-action { padding:9px 0; }
+.market-own-summary .market-impact-action>p { margin-top:5px; font-size:.62rem; }
+.market-reference-comparison { display:grid; gap:5px; margin-top:8px; padding:8px; border-radius:6px; background:#edaf3d06; font-size:.62rem; color:var(--muted-foreground); }
+.market-reference-comparison>div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); align-items:start; gap:6px; }
+.market-reference-comparison dd { margin:0; text-align:right; color:#d5c3a4; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.market-reference-comparison small { display:block; font-size:.58rem; color:var(--muted-foreground); }
+.market-impact-help .market-impact-limit { margin-block:7px; padding:8px; }
+.market-impact-help .market-impact-limit strong { font-size:.86rem; }

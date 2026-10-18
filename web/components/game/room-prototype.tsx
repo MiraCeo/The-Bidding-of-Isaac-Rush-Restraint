@@ -1,4 +1,5 @@
 import { MarketImpactPreview } from './market-impact-preview';
+import type { HistoricalMarket } from '@/lib/ui/market-history';
 import {
   getQuoteCapacity,
   formatMarketAmount,
@@ -52,6 +53,7 @@ type ActionKind = 'bid' | 'disrupt' | 'withdraw';
 type ActiveActionKind = Exclude<ActionKind, 'withdraw'>;
 
 interface RoomPrototypeProps {
+  marketHistory?: readonly HistoricalMarket[];
   rules?: import('@/lib/game/types').RulesConfig;
   extraStatus?: ReactNode;
   headingActions?: ReactNode;
@@ -78,6 +80,7 @@ const roomKindNames = {
 } as const;
 
 export function RoomPrototype({
+  marketHistory,
   rules = defaultRules,
   extraStatus,
   headingActions,
@@ -386,11 +389,13 @@ export function RoomPrototype({
         >
           <div className="drawer-heading">
             <div>
-              <p className="eyebrow">YOUR MARKET IMPACT</p>
-              <h2>我的市场影响</h2>
+              <p className="eyebrow">MARKET REFERENCE</p>
+              <h2>市场参考</h2>
             </div>
           </div>
           <MarketImpactPreview
+            history={marketHistory}
+            onViewReplay={() => changeUtilityPanel('replay')}
             player={human}
             turn={previewTurn}
             kind={activeKind}

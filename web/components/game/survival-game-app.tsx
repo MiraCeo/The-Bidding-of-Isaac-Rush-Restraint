@@ -1,4 +1,5 @@
 import { useMatchScroll } from './use-match-scroll';
+import { selectMarketHistory } from '@/lib/ui/market-history';
 import { GameRules } from './game-rules';
 import { AchievementFeedbackContext } from './achievement-feedback-context';
 import { AchievementNotice } from './achievement-notice';
@@ -94,6 +95,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     useState<CharacterId | null>(null);
   const { session, preferences, setSession, onSaveStatusChange } = props;
   const game = session?.game;
+  const marketHistory = useMemo(
+    () =>
+      game
+        ? selectMarketHistory(game.roomRecords, game, survivalRoomRules(game))
+        : [],
+    [game],
+  );
   useMatchScroll(
     game
       ? `${game.seed}:${game.phase}:${game.floorIndex}:${game.roomIndex}`
@@ -606,6 +614,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       <RoomPrototype
         key={`${game!.seed}:${game!.floorIndex}:${game!.roomIndex}`}
         game={survivalRoomView(game!)}
+        marketHistory={marketHistory}
         rules={survivalRoomRules(game!)}
         draft={session.draft}
         onDraftChange={(update) =>

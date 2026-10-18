@@ -484,7 +484,7 @@ describe('public capability and own market preview', () => {
     );
     expect(element('#market-drawer').innerHTML).toBe(before);
     expect(element('#market-drawer').textContent).not.toContain('98765');
-    expect(element('#market-drawer').textContent).toContain('我的市场影响');
+    expect(element('#market-drawer').textContent).toContain('市场参考');
     expect(container.querySelector('.vertical-market')).toBeNull();
     expect(submit).not.toHaveBeenCalled();
   });
