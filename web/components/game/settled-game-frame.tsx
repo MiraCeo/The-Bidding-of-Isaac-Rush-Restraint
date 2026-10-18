@@ -68,7 +68,18 @@ export function SettledGameFrame({
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        {utilityPanel === null && <MatchRestartControl />}
+        <nav className="settled-toolbar" aria-label="结算页面操作">
+          {tools.onReturnMenu && (
+            <button
+              type="button"
+              className="survival-menu-return"
+              onClick={tools.onReturnMenu}
+            >
+              返回主菜单
+            </button>
+          )}
+          {utilityPanel === null && <MatchRestartControl />}
+        </nav>
         {children}
       </div>
       <RoomUtilities

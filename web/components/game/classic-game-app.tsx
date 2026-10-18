@@ -12,6 +12,7 @@ import {
 import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
+import { useMatchScroll } from './use-match-scroll';
 import { ItemArtProvider } from './item-icon';
 import {
   createGameSession,
@@ -119,6 +120,12 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     initial.session?.game.phase === 'game_result',
   );
   const game = session.game;
+  useMatchScroll(
+    game.phase === 'character_selection'
+      ? `${game.seed}:character_selection`
+      : `${game.seed}:${game.phase}:${game.floorIndex}:${game.roomIndex}`,
+    !props.inactive && !props.menu,
+  );
   const liveSave = useLivePersistence({
     mode: 'classic',
     session,
@@ -409,20 +416,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
     game.phase !== 'character_selection' &&
     game.phase !== 'room_action'
   )
-    page = (
-      <SettledGameFrame game={game}>
-        {props.onReturnMenu && (
-          <button
-            type="button"
-            className="survival-menu-return"
-            onClick={props.onReturnMenu}
-          >
-            返回主菜单
-          </button>
-        )}
-        {page}
-      </SettledGameFrame>
-    );
+    page = <SettledGameFrame game={game}>{page}</SettledGameFrame>;
   if (props.externalReplay && !props.menu)
     page = (
       <main className="ranking-page">

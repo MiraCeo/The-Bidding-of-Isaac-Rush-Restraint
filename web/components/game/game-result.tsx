@@ -115,17 +115,20 @@ export function GameResult({
             <span>结算分包含黑王子之冠等整局倍率</span>
           </div>
           <div className="result-table-wrap">
-            <table className="result-table final-table">
+            <table
+              className="result-table final-table"
+              aria-label="整局最终排行"
+            >
               <thead>
                 <tr>
-                  <th>排名</th>
-                  <th>玩家</th>
-                  <th>角色</th>
-                  <th>主义</th>
-                  <th>人格</th>
-                  <th>道具数量</th>
-                  <th>剩余资金</th>
-                  <th>最终积分</th>
+                  <th scope="col">排名</th>
+                  <th scope="col">玩家</th>
+                  <th scope="col">角色</th>
+                  <th scope="col">主义</th>
+                  <th scope="col">人格</th>
+                  <th scope="col">道具数量</th>
+                  <th scope="col">剩余资金</th>
+                  <th scope="col">最终积分</th>
                 </tr>
               </thead>
               <tbody>

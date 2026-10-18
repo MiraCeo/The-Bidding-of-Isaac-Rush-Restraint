@@ -1166,7 +1166,9 @@
 .data-message { color: #dfcaa5; font-size: .8rem; line-height: 1.75; }
 .room-intro-controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
 .match-restart-control > button { font-size: .74rem; background: transparent; color: #bfb19e; }
-.settled-page-content > .match-restart-control { display: flex; justify-content: flex-end; padding: 12px 24px 0; }
+.settled-toolbar { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px 12px; width:var(--desktop-shell-width); margin:12px auto 0; }
+.settled-toolbar .survival-menu-return { padding:6px 12px; font-size:.74rem; }
+.settled-toolbar .match-restart-control:has(.match-restart-confirm) { flex:1 1 100%; }
 .match-restart-confirm { max-width: 540px; border: 1px solid #6c5030; border-radius: 8px; padding: 12px; background: #282016; }
 .match-restart-confirm p { font-size: .8rem; color: #d9c4a3; line-height: 1.7; margin-bottom: 10px; }
 .settled-page-content > div { min-height: auto; background: none; }
@@ -1835,3 +1837,47 @@
 .result-market-details>.replay-market { margin:0; padding:14px; border:0; background:transparent; }
 .result-market-details .replay-market>h3 { font-size:.9rem; margin:0 0 12px; }
 .result-market-details .replay-market>p { font-size:.73rem; line-height:1.7; }
+
+/* 0.6 closeout: settled screens share the shell once; keep long facts readable. */
+.settled-page-content>.result-page, .settled-page-content>.ranking-page, .settled-page-content>.final-page,
+.survival-stage>.result-page { min-height:0; background:none; }
+.survival-stage .result-stage { width:100%; margin:0; padding:0; }
+.survival-stage .result-page .result-panel-heading h2 { margin:4px 0 0; font-size:1.1rem; }
+.survival-stage .result-page p { margin:0; line-height:1.7; }
+.result-summary-grid article { min-height:100px; padding:14px 18px; }
+.result-main-grid-reversed { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+.result-main-grid>.result-panel { min-width:0; }
+.settled-rewards { grid-template-columns:minmax(0,1fr); }
+.settled-reward-title { min-width:0; padding-right:72px; }
+.settled-reward-title>div { min-width:0; }
+.settled-reward-title h3, .result-line strong, .resolved-action-list strong, .event-list span { overflow-wrap:anywhere; }
+.result-line { grid-template-columns:76px minmax(0,1fr); }
+.resolved-action-list>article { grid-template-columns:minmax(0,1fr); gap:12px; }
+.resolved-action-list dl { gap:8px 12px; }
+.resolved-action-list dd { overflow-wrap:anywhere; }
+.score-total-row { grid-template-columns:minmax(0,1fr) auto; }
+.event-list span { max-width:100%; border-radius:8px; line-height:1.7; }
+.result-actions { flex-wrap:wrap; }
+.result-action-buttons { flex-wrap:wrap; justify-content:flex-end; }
+.reward-acquired-banner { flex-wrap:wrap; }
+.reward-acquired-banner>div { min-width:0; }
+.reward-acquired-banner strong { overflow-wrap:anywhere; }
+.final-hero h2 { font-size:1.8rem; }
+.podium-card { min-width:0; min-height:190px; padding:20px; }
+.podium-card h3 { max-width:100%; overflow-wrap:anywhere; }
+.podium-1 { min-height:220px; }
+.result-table-wrap { max-width:100%; }
+.survival-settled-status { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:12px 22px; padding:12px 16px; margin-block:14px 0; }
+.survival-settled-money { padding:6px 0; font-size:.72rem; font-variant-numeric:tabular-nums; }
+.survival-settled-status+.survival-tools { justify-content:flex-end; margin-block:10px 0; }
+.survival-result-actions { display:flex; justify-content:flex-end; margin-top:20px; }
+.survival-result-actions button { min-width:180px; }
+@media(min-width:1500px) { .result-main-grid-reversed { grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); }.settled-rewards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:1100px) {
+  .result-main-grid-reversed { grid-template-columns:minmax(0,1fr); }
+  .settled-rewards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .survival-settled-status { grid-template-columns:auto minmax(0,1fr); }
+  .survival-settled-status .survival-action-tools { grid-column:1/-1; }
+  .result-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:700px) { .settled-rewards { grid-template-columns:minmax(0,1fr); }.resolved-action-list dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }

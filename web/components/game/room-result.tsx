@@ -350,7 +350,14 @@ export function RoomResult({
             ) : (
               humanEvents.map((event, index) => (
                 <span key={`${event.type}-${index}`}>
-                  {displayItemText(event.message)}
+                  {displayItemText(
+                    event.itemId
+                      ? event.message.replaceAll(
+                          event.itemId,
+                          getItemDefinition(event.itemId).name,
+                        )
+                      : event.message,
+                  )}
                 </span>
               ))
             )}

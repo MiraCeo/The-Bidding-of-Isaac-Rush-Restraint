@@ -1,3 +1,4 @@
+import { useMatchScroll } from './use-match-scroll';
 import { GameRules } from './game-rules';
 import { AchievementFeedbackContext } from './achievement-feedback-context';
 import { AchievementNotice } from './achievement-notice';
@@ -93,6 +94,12 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     useState<CharacterId | null>(null);
   const { session, preferences, setSession, onSaveStatusChange } = props;
   const game = session?.game;
+  useMatchScroll(
+    game
+      ? `${game.seed}:${game.phase}:${game.floorIndex}:${game.roomIndex}`
+      : undefined,
+    !props.inactive,
+  );
   const observedIncomplete = useRef(
     game !== undefined && game.phase !== 'competition_complete',
   );
@@ -500,55 +507,78 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         onRestart={() => setRestart(true)}
       />
     ) : (
-      <section className="survival-status" aria-label="生存进度">
-        <b>
-          生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
-        </b>
-        <span>难度 {survivalDifficultyLabel(game.aiDifficulty)}</span>
-        <span>
-          AI策略{' '}
-          {game.aiDifficulty === 'highest'
-            ? '原最高基线'
-            : game.aiPolicy === 'role-aware-1'
-              ? '角色适配'
-              : '历史原版'}
-        </span>
-        <span>斩杀线 {game.cutLines[game.floorIndex]}</span>
-        <span>资金 {human?.money}</span>
-        <span>
-          {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}{' '}
-          {(game.humanEliminatedAt !== null
-            ? game.eliminated.human!.score.roomScore
-            : (game.currentFloorRoomScores.human ?? []).reduce(
-                (sum, value) => sum + value,
-                0,
-              )
-          ).toFixed(decimals)}
-        </span>
-        <span>
-          {completedLayer ? '结算继承' : '上层继承'}{' '}
-          {(game.humanEliminatedAt !== null
-            ? game.eliminated.human!.score.inheritedScore
-            : completedLayer
-              ? (lastHumanScore?.inheritedScore ?? 0)
-              : (game.previousSurvivalScores.human ?? 0) * 0.2
-          ).toFixed(decimals)}
-        </span>
-        <span>
-          {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}{' '}
-          {((human?.money ?? 0) * 0.1).toFixed(decimals)}
-          {game.humanEliminatedAt === null && !completedLayer
-            ? '（层末为准）'
-            : ''}
-        </span>
-        <Button variant="secondary" onClick={props.onReturnMenu}>
-          返回主菜单
-        </Button>
-        {game.phase === 'room_action' && session?.draft && (
-          <Button variant="secondary" onClick={() => setRestart(true)}>
-            重新选角
+      <section
+        className="survival-status survival-settled-status"
+        aria-label="生存进度"
+      >
+        <div className="survival-action-goal">
+          <span>
+            生存 · 第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5 ·{' '}
+            {game.activePlayerIds.length} 人
+          </span>
+          <strong>斩杀线 {game.cutLines[game.floorIndex]}</strong>
+        </div>
+        <dl className="survival-score-parts" aria-label="生存结算积分构成">
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}
+            </dt>
+            <dd>
+              {(game.humanEliminatedAt !== null
+                ? game.eliminated.human!.score.roomScore
+                : (game.currentFloorRoomScores.human ?? []).reduce(
+                    (sum, value) => sum + value,
+                    0,
+                  )
+              ).toFixed(decimals)}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null
+                ? '淘汰层继承'
+                : completedLayer
+                  ? '结算继承'
+                  : '上层继承'}
+            </dt>
+            <dd>
+              {(game.humanEliminatedAt !== null
+                ? game.eliminated.human!.score.inheritedScore
+                : completedLayer
+                  ? (lastHumanScore?.inheritedScore ?? 0)
+                  : (game.previousSurvivalScores.human ?? 0) * 0.2
+              ).toFixed(decimals)}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}
+            </dt>
+            <dd>
+              {((human?.money ?? 0) * 0.1).toFixed(decimals)}
+              {game.humanEliminatedAt === null && !completedLayer && (
+                <small className="survival-balance-hint">（层末为准）</small>
+              )}
+            </dd>
+          </div>
+        </dl>
+        <div className="survival-action-tools">
+          <span className="survival-settled-money">资金 {human?.money}</span>
+          <details className="survival-policy-details">
+            <summary>难度 {survivalDifficultyLabel(game.aiDifficulty)}</summary>
+            <p>
+              AI策略{' '}
+              {game.aiDifficulty === 'highest'
+                ? '原最高基线'
+                : game.aiPolicy === 'role-aware-1'
+                  ? '角色适配'
+                  : '历史原版'}
+            </p>
+          </details>
+          <Button variant="secondary" onClick={props.onReturnMenu}>
+            返回主菜单
           </Button>
-        )}
+        </div>
       </section>
     ));
   let page: ReactNode;
@@ -617,7 +647,9 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           </p>
           <SurvivalTotalBoard log={log!} decimals={decimals} />
           <p>{profileMessage}</p>
-          <Button onClick={props.onNew}>再来一局生存</Button>
+          <footer className="survival-result-actions">
+            <Button onClick={props.onNew}>再来一局生存</Button>
+          </footer>
         </>
       );
     else if (game!.humanEliminatedAt !== null)
@@ -641,11 +673,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             index={game!.floorRecords.length - 1}
             decimals={decimals}
           />
-          <Button onClick={() => dispatch({ type: 'advance_floor' })}>
-            {game!.floorRecords.at(-1)!.plan.shouldFinish
-              ? '查看生存总榜'
-              : '进入下一层'}
-          </Button>
+          <footer className="survival-result-actions">
+            <Button onClick={() => dispatch({ type: 'advance_floor' })}>
+              {game!.floorRecords.at(-1)!.plan.shouldFinish
+                ? '查看生存总榜'
+                : '进入下一层'}
+            </Button>
+          </footer>
         </>
       );
     else
