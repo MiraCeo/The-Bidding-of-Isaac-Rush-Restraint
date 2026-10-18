@@ -26,8 +26,15 @@ export function SettledGameFrame({
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
   const human = game.players.find((p) => p.isHuman)!;
   const isRoomResult = game.phase === 'room_result';
+  const compactRanking =
+    game.phase === 'room_ranking' || utilityPanel === 'ranking';
   return (
     <main
+      data-ranking-host={
+        game.phase === 'room_ranking' && utilityPanel === null
+          ? true
+          : undefined
+      }
       className={
         utilityPanel
           ? 'ranking-page'
@@ -41,11 +48,12 @@ export function SettledGameFrame({
       <GameHeader
         showContext={
           !isRoomResult &&
+          !compactRanking &&
           utilityPanel !== 'settings' &&
           utilityPanel !== 'rules'
         }
         status={
-          isRoomResult &&
+          (isRoomResult || compactRanking) &&
           utilityPanel !== 'settings' &&
           utilityPanel !== 'rules' ? (
             <SettlementStatus
@@ -61,7 +69,20 @@ export function SettledGameFrame({
               <dl>
                 <div>
                   <dt>角色</dt>
-                  <dd>{characterNames[game.selectedCharacter]}</dd>
+                  <dd>
+                    {compactRanking ? (
+                      <button
+                        type="button"
+                        className="ranking-build-link"
+                        aria-label="查看角色构筑"
+                        onClick={() => changeUtilityPanel('build')}
+                      >
+                        {characterNames[game.selectedCharacter]} →
+                      </button>
+                    ) : (
+                      characterNames[game.selectedCharacter]
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt>难度</dt>
@@ -115,7 +136,7 @@ export function SettledGameFrame({
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        {!isRoomResult && (
+        {!isRoomResult && !compactRanking && (
           <nav className="settled-toolbar" aria-label="结算页面操作">
             {tools.onReturnMenu && (
               <button

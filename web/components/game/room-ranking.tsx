@@ -1,3 +1,5 @@
+import { useContext } from 'react';
+import { SettlementNavigationContext } from './settlement-navigation';
 import { UtilityPageHeading } from './utility-page-heading';
 import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
@@ -43,6 +45,7 @@ type RoomRankingProps = {
 );
 
 export function RoomRanking(props: RoomRankingProps) {
+  const navigation = useContext(SettlementNavigationContext);
   const Container = props.embedded ? 'div' : 'main';
   const { scoreDecimals = 2 } = props;
   if (props.variant === 'public') {
@@ -53,6 +56,7 @@ export function RoomRanking(props: RoomRankingProps) {
         className="ranking-stage game-tools-stage"
         aria-labelledby="room-utilities-title"
         data-ranking-polish="public"
+        data-ranking-layout={game ? 'public' : undefined}
         data-public-ranking={game ? 'active' : undefined}
       >
         <UtilityPageHeading
@@ -147,14 +151,17 @@ export function RoomRanking(props: RoomRankingProps) {
         className="ranking-stage"
         data-ranking-scope
         data-ranking-polish="room"
+        data-ranking-layout={
+          props.hideHeading ? undefined : game.roomRankingView
+        }
       >
         {!props.hideHeading && (
           <UtilityPageHeading
             eyebrow="ROOM RANKING"
             titleId="room-ranking-title"
-            title={
-              game.roomRankingView === 'score' ? '当前积分排行' : '本房争夺榜'
-            }
+            title="排行"
+            inlineDescription
+            description={`${props.scoreScope === 'survival' ? '生存' : '经典'} · 第${settlement.room.floorIndex + 1}层 · 房间${settlement.room.roomIndex + 1}/5 · 已结算`}
           />
         )}
 
@@ -194,10 +201,6 @@ export function RoomRanking(props: RoomRankingProps) {
         )}
 
         <div className="ranking-context-row">
-          <p className="ranking-context">
-            {props.scoreScope === 'survival' ? '生存' : '经典'} · 第{' '}
-            {game.floorIndex + 1} 层 / 房间 {game.roomIndex + 1} · 已结算
-          </p>
           {game.roomRankingView === 'score' && (
             <RankingSelfSummary
               label="你的积分顺位"
@@ -240,6 +243,11 @@ export function RoomRanking(props: RoomRankingProps) {
 
         {!props.hideFooter && (
           <footer className="result-actions ranking-actions">
+            {navigation?.lifecycleActions && (
+              <div className="ranking-lifecycle">
+                {navigation.lifecycleActions}
+              </div>
+            )}
             <div>
               <span>
                 {isFinalRoom ? '三层挑战已经结束' : '榜单可随时切换查看'}

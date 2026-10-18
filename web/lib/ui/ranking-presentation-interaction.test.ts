@@ -655,3 +655,70 @@ it('scopes the new table skin to rankings and preserves every contest tag and su
   );
   expect(model).toEqual(facts);
 });
+
+it('renders an embedded survival board with one outer title, explicit columns and all original facts', async () => {
+  let game = startSurvivalGame({
+    seed: 42,
+    characterId: 'isaac',
+    cutLines: Array(7).fill(0),
+  });
+  while (game.floorIndex < 2 && game.phase !== 'competition_complete')
+    game = next(game);
+  const model = currentSurvivalBoard(game),
+    before = structuredClone(model);
+  expect(model.floorCount).toBe(3);
+  await render(createElement(SurvivalScoreBoard, { model, embedded: true }));
+  expect(node.querySelectorAll('h2')).toHaveLength(0);
+  expect(
+    node
+      .querySelector('[data-embedded-board]')
+      ?.getAttribute('data-floor-count'),
+  ).toBe('3');
+  expect(rows('colgroup col')).toHaveLength(6);
+  expect(rows('tbody tr')).toHaveLength(20);
+  expect(rows('.survival-board-status').map((e) => e.textContent)).toEqual(
+    model.rows.map((r) => r.statusLabel),
+  );
+  expect(rows('[data-floor]')).toHaveLength(60);
+  expect(node.querySelector('.ranking-reading-help')!.textContent).toContain(
+    '不重复计入继承分',
+  );
+  expect(model).toEqual(before);
+});
+
+it('labels a previous settlement by its recorded room rather than the active room', async () => {
+  const game = { ...room(), roomIndex: 2, phase: 'room_action' as const },
+    before = structuredClone(game);
+  await render(
+    createElement(RoomRanking, {
+      game,
+      embedded: true,
+      onSwitch: () => {},
+      onAdvance: () => {},
+    }),
+  );
+  expect(node.querySelector('h2')!.textContent).toBe('排行');
+  expect(
+    node.querySelector('.utility-page-description')!.textContent,
+  ).toContain('房间1/5');
+  expect(
+    node.querySelector('.utility-page-description')!.textContent,
+  ).not.toContain('房间3/5');
+  expect(node.querySelector('.ranking-context')).toBeNull();
+  expect(game).toEqual(before);
+});
+
+it('allocates remaining height without hard-coding the old survival table budget and isolates embedded rules', () => {
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).not.toContain('calc(100dvh - 540px)');
+  expect(css).toContain(
+    '[data-ranking-layout="survival"] .survival-board-scroll { flex:1; min-height:160px; max-height:none; }',
+  );
+  expect(css).toContain(
+    '[data-embedded-board] .survival-board-table td small { position:relative; }',
+  );
+  expect(css).toContain('@media(max-width:899px), (max-height:699px)');
+  expect(css).toContain(
+    '[data-embedded-board][data-floor-count="1"] .board-col-player { width:26%; }',
+  );
+});

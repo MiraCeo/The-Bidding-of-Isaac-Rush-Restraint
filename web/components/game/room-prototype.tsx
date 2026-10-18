@@ -1,3 +1,7 @@
+import {
+  SettlementStatus,
+  SettlementStatusLabel,
+} from './settlement-navigation';
 import { MarketImpactPreview } from './market-impact-preview';
 import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { HistoricalMarket } from '@/lib/ui/market-history';
@@ -281,7 +285,49 @@ export function RoomPrototype({
   return (
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
       <GameHeader
-        showContext={utilityPanel !== 'settings' && utilityPanel !== 'rules'}
+        showContext={
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules' &&
+          utilityPanel !== 'ranking'
+        }
+        status={
+          utilityPanel === 'ranking' ? (
+            <SettlementStatus
+              brief={
+                <SettlementStatusLabel
+                  mode={extraStatus ? '生存' : '经典'}
+                  floor={game.floorIndex + 1}
+                  room={game.roomIndex + 1}
+                  money={human.money}
+                />
+              }
+            >
+              <dl>
+                <div>
+                  <dt>角色</dt>
+                  <dd>
+                    <button
+                      type="button"
+                      className="ranking-build-link"
+                      aria-label="查看角色构筑"
+                      onClick={() => changeUtilityPanel('build')}
+                    >
+                      {characterNames[game.selectedCharacter]} →
+                    </button>
+                  </dd>
+                </div>
+                {!extraStatus && (
+                  <div>
+                    <dt>难度</dt>
+                    <dd>
+                      {classicDifficultyLabel(game.classicAi?.difficulty)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </SettlementStatus>
+          ) : undefined
+        }
         navigation={
           <GameNavigation
             page={utilityPanel}

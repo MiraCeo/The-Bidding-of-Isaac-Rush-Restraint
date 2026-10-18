@@ -256,12 +256,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           onReturnGame={close}
         />
       );
-    const roomRanking =
-      selected === 'ranking' &&
-      game?.roomSettlement &&
-      rankingView !== 'survival'
-        ? rankingView
-        : null;
     let content: ReactNode;
     if (selected === 'tutorial')
       content = <GameTutorial mode="survival" scoreDecimals={decimals} />;
@@ -350,6 +344,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           </div>
           {view === 'survival' ? (
             <SurvivalScoreBoard
+              embedded
               model={currentSurvivalBoard(game)}
               decimals={decimals}
             />
@@ -427,15 +422,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     else content = <p>开始生存对局后可查看此页。</p>;
     const utilityHeading = (
       <UtilityPageHeading
-        inlineDescription={selected === 'rules'}
+        inlineDescription={selected === 'rules' || selected === 'ranking'}
         titleId="room-utilities-title"
         title={
           selected === 'ranking'
-            ? roomRanking === 'score'
-              ? '当前积分排行'
-              : roomRanking === 'contest'
-                ? '本房争夺榜'
-                : '生存排行'
+            ? '排行'
             : selected === 'rules'
               ? '生存模式规则'
               : selected === 'build'
@@ -456,7 +447,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                   : 'LEARN BY PLAYING'
         }
         description={
-          selected === 'rules' ? '现行生存机制与道具说明' : undefined
+          selected === 'rules'
+            ? '现行生存机制与道具说明'
+            : selected === 'ranking' && game
+              ? rankingView !== 'survival' && game.roomSettlement
+                ? `生存 · 第${game.roomSettlement.room.floorIndex + 1}层 · 房间${game.roomSettlement.room.roomIndex + 1}/5 · 已结算`
+                : '生存模式'
+              : undefined
         }
       >
         <Button variant="secondary" onClick={close}>
@@ -471,6 +468,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         aria-labelledby="room-utilities-title"
         className="ranking-stage game-tools-stage survival-utility"
         data-ranking-polish={selected === 'ranking' ? 'utility' : undefined}
+        data-ranking-layout={
+          selected === 'ranking'
+            ? game?.roomSettlement
+              ? rankingView
+              : 'survival'
+            : undefined
+        }
       >
         {selected === 'rules' ? (
           content

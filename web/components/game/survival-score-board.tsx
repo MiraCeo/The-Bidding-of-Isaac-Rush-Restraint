@@ -4,9 +4,11 @@ import { RankingSelfSummary, RankingScrollArea } from './ranking-self-summary';
 export function SurvivalScoreBoard({
   model,
   decimals = 2,
+  embedded = false,
 }: {
   model: SurvivalBoardModel;
   decimals?: 2 | 4;
+  embedded?: boolean;
 }) {
   const human = model.rows.find((row) => row.playerId === 'human');
   return (
@@ -14,18 +16,22 @@ export function SurvivalScoreBoard({
       className="survival-score-board"
       aria-label={model.final ? '生存总榜' : '实时生存榜'}
       data-ranking-polish="survival"
+      data-embedded-board={embedded || undefined}
+      data-floor-count={model.floorCount}
       data-ranking-scope
     >
-      <div className="survival-board-heading">
-        <div>
-          <p className="eyebrow">SURVIVAL LEADERBOARD</p>
-          <h2>{model.final ? '生存总榜' : '实时生存榜'}</h2>
+      {!embedded && (
+        <div className="survival-board-heading">
+          <div>
+            <p className="eyebrow">SURVIVAL LEADERBOARD</p>
+            <h2>{model.final ? '生存总榜' : '实时生存榜'}</h2>
+          </div>
+          <span className="survival-board-summary">
+            {model.rows.filter((row) => row.active).length} 人存活 ·{' '}
+            {model.rows.length} 人参赛
+          </span>
         </div>
-        <span className="survival-board-summary">
-          {model.rows.filter((row) => row.active).length} 人存活 ·{' '}
-          {model.rows.length} 人参赛
-        </span>
-      </div>
+      )}
       <div className="survival-board-tools">
         <RankingSelfSummary
           label={model.final ? '你的最终名次' : '你的当前顺位'}
@@ -34,6 +40,12 @@ export function SurvivalScoreBoard({
           {human &&
             `${human.statusLabel} · 累计 ${human.total.toFixed(decimals)} 分`}
         </RankingSelfSummary>
+        {embedded && (
+          <span className="survival-board-summary">
+            {model.rows.filter((row) => row.active).length} 人存活 ·{' '}
+            {model.rows.length} 人参赛
+          </span>
+        )}
         <details className="ranking-reading-help">
           <summary>积分口径</summary>
           <dl>
@@ -62,7 +74,14 @@ export function SurvivalScoreBoard({
         className="survival-board-scroll"
         label="生存榜分层积分表"
       >
-        <table className="survival-board-table">
+        <table
+          className="survival-board-table"
+          style={
+            embedded
+              ? { minWidth: Math.max(620, 490 + model.floorCount * 150) }
+              : undefined
+          }
+        >
           <caption className="sr-only">
             {model.final ? '生存总榜' : '实时生存榜'} ·
             {model.final
@@ -70,6 +89,16 @@ export function SurvivalScoreBoard({
               : '存活优先，淘汰层数优先，再按累计分数排序'}
             {!model.final ? '（当前顺位，非最终名次）' : ''}
           </caption>
+          {embedded && (
+            <colgroup>
+              <col className="board-col-player" />
+              <col className="board-col-status" />
+              <col className="board-col-total" />
+              {Array.from({ length: model.floorCount }, (_, i) => (
+                <col key={i} className="board-col-floor" />
+              ))}
+            </colgroup>
+          )}
           <thead>
             <tr>
               <th scope="col">玩家</th>
@@ -146,12 +175,32 @@ export function SurvivalScoreBoard({
                     <strong title={cell ? `本层新增 ${cell.score}` : undefined}>
                       {cell ? cell.score.toFixed(decimals) : '—'}
                     </strong>
-                    <small>
-                      {cell
-                        ? cell.kind === 'live'
-                          ? `房间分 · ${cell.rooms}/5 房`
-                          : `生存分 S ${cell.survivalScore!.toFixed(decimals)}`
-                        : '未参与'}
+                    <small
+                      title={
+                        cell?.kind === 'live'
+                          ? `已结算 ${cell.rooms}/5 房`
+                          : undefined
+                      }
+                    >
+                      {cell ? (
+                        cell.kind === 'live' ? (
+                          embedded ? (
+                            <>
+                              房间分
+                              <span className="sr-only">
+                                {' '}
+                                · {cell.rooms}/5 房
+                              </span>
+                            </>
+                          ) : (
+                            `房间分 · ${cell.rooms}/5 房`
+                          )
+                        ) : (
+                          `生存分 S ${cell.survivalScore!.toFixed(decimals)}`
+                        )
+                      ) : (
+                        '未参与'
+                      )}
                     </small>
                   </td>
                 ))}

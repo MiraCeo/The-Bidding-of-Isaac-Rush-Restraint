@@ -271,7 +271,9 @@ describe('formal independent survival entry', () => {
     const incoming = withdraw(startSurvivalClient('lost', 42, 'easy'));
     await upload(serializeSurvivalCheckpoint(incoming.game));
     await click(button('载入生存对局'));
-    expect(container.querySelector('.settlement-status-facts')?.textContent).toContain('难度简单');
+    expect(
+      container.querySelector('.settlement-status-facts')?.textContent,
+    ).toContain('难度简单');
     expect(container.querySelector('.survival-replay')).toBeNull();
     expect(button('积分排行')).toBeTruthy();
     expect(
@@ -366,7 +368,7 @@ describe('formal independent survival entry', () => {
     expect(node('[role="tab"][aria-selected="true"]').textContent).toBe(
       '积分排行',
     );
-    expect(node('.survival-utility h2').textContent).toBe('当前积分排行');
+    expect(node('.survival-utility h2').textContent).toBe('排行');
     expect(node('.survival-utility .ranking-table').textContent).toContain(
       '本房积分',
     );
@@ -378,7 +380,7 @@ describe('formal independent survival entry', () => {
     expect(node('[role="tab"][aria-selected="true"]').textContent).toBe(
       '争夺榜',
     );
-    expect(node('.survival-utility h2').textContent).toBe('本房争夺榜');
+    expect(node('.survival-utility h2').textContent).toBe('排行');
     expect(
       container.querySelectorAll('.survival-utility .contest-panel'),
     ).toHaveLength(2);

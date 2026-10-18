@@ -2213,10 +2213,77 @@
 [data-ranking-polish] .contest-grid { align-items:start; }
 [data-ranking-polish] .contest-panel>.ranking-self-summary,
 [data-ranking-polish] .contest-panel>.ranking-basis { min-height:44px; margin-top:12px; display:flex; align-items:center; }
-@media(min-width:900px) and (min-height:700px) {
-  [data-ranking-polish="utility"] .survival-board-scroll { max-height:clamp(200px,calc(100dvh - 540px),540px); }
-}
 
 [data-ranking-polish] .contest-ranking-table tbody .ranking-metric-primary { color:#f0e5d0; }
 [data-ranking-polish] .contest-ranking-table tbody tr[data-ranking-self="true"] .ranking-metric-primary,
 [data-ranking-polish="survival"] .survival-board-table tbody [data-ranking-self="true"] .survival-board-total strong { color:var(--primary); }
+
+/* 0.7.4 ranking layout: allocate real remaining space, not a guessed height. */
+[data-ranking-layout] { padding-top:20px; padding-bottom:20px; }
+[data-ranking-layout]>.ranking-page-heading { margin-bottom:14px; }
+[data-ranking-layout] .utility-page-content { margin-top:0; }
+[data-ranking-layout] .ranking-view-tabs { margin:0 0 12px; }
+[data-ranking-layout] .ranking-context-row { margin-top:0; justify-content:flex-end; }
+[data-ranking-layout] .ranking-context-row:empty { display:none; }
+[data-ranking-layout] .ranking-basis { margin:8px 0 10px; }
+[data-ranking-layout] .round-ranking-panel { margin-top:0; }
+[data-ranking-layout] .ranking-actions { flex-shrink:0; gap:12px; margin-top:14px; }
+.ranking-lifecycle { display:flex; align-items:center; gap:10px; margin-right:auto; flex-wrap:wrap; }
+[data-ranking-layout] .ranking-actions>.ranking-lifecycle { text-align:left; }
+[data-ranking-layout] .ranking-lifecycle button { font-size:.75rem; min-height:34px; }
+[data-ranking-layout] .contest-grid { margin-top:0; }
+[data-ranking-layout="score"] .ranking-context-row { margin-bottom:0; }
+[data-ranking-layout] .survival-score-board[data-embedded-board] { margin-top:0; }
+[data-embedded-board] .survival-board-tools { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; margin:0 0 8px; }
+[data-embedded-board] .survival-board-summary { margin-left:auto; padding:0; border:0; background:none; color:var(--muted-foreground); font-size:.74rem; white-space:nowrap; }
+[data-embedded-board] .survival-board-tools>.ranking-reading-help { position:relative; }
+[data-embedded-board] .ranking-reading-help[open] dl { position:absolute; right:0; top:100%; width:min(420px,75vw); z-index:8; background:#211b14; box-shadow:0 12px 32px #0006; }
+[data-embedded-board] .survival-board-note { padding:0 0 8px; margin:0; }
+[data-embedded-board] .survival-board-table { table-layout:fixed; }
+[data-embedded-board] .board-col-player { width:220px; }
+[data-embedded-board] .board-col-status { width:100px; }
+[data-embedded-board] .board-col-total { width:170px; }
+[data-embedded-board][data-floor-count="1"] .board-col-player { width:26%; }
+[data-embedded-board][data-floor-count="1"] .board-col-status { width:12%; }
+[data-embedded-board][data-floor-count="1"] .board-col-total { width:31%; }
+[data-embedded-board][data-floor-count="2"] .board-col-player { width:24%; }
+[data-embedded-board][data-floor-count="2"] .board-col-status { width:12%; }
+[data-embedded-board][data-floor-count="2"] .board-col-total { width:24%; }
+[data-embedded-board] .survival-board-table th, [data-embedded-board] .survival-board-table td { white-space:normal; overflow-wrap:anywhere; }
+[data-embedded-board] .survival-board-table th:first-child { min-width:0; }
+[data-embedded-board] .survival-board-table .survival-board-status { border:0; padding:0; background:none; font-size:.72rem; }
+[data-embedded-board] .survival-board-table .survival-board-status.is-alive { color:#a4b594; }
+[data-embedded-board] .survival-board-table .survival-board-status.is-out { color:#b29d90; }
+[data-embedded-board] .survival-board-table .survival-board-player { gap:9px; }
+[data-embedded-board] .survival-board-table td small { font-size:.65rem; margin-top:3px; }
+@media(min-width:900px) and (min-height:700px) {
+  main:has(>[data-ranking-layout]), main[data-ranking-host="true"] { display:flex; flex-direction:column; height:100dvh; min-height:100dvh; }
+  main:has(>[data-ranking-layout])>.topbar, main[data-ranking-host="true"]>.topbar { flex-shrink:0; }
+  [data-ranking-layout] { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout]>.ranking-page-heading, [data-ranking-layout]>.ranking-view-tabs,
+  [data-ranking-layout] .ranking-context-row, [data-ranking-layout] .ranking-basis { flex-shrink:0; }
+  main[data-ranking-host="true"]>.settled-page-content, main[data-ranking-host="true"]>.settled-page-content>.ranking-page { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout]>.utility-page-content, [data-ranking-layout]>.utility-page-content>.ranking-page { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout="score"] .ranking-stage { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout="score"] .round-ranking-panel { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout="score"] .ranking-data-scroll { flex:1; min-height:160px; max-height:none; }
+  [data-ranking-layout="survival"] .survival-score-board[data-embedded-board] { display:flex; flex-direction:column; flex:1; min-height:0; }
+  [data-ranking-layout="survival"] .survival-board-tools, [data-ranking-layout="survival"] .survival-board-note { flex-shrink:0; }
+  [data-ranking-layout="survival"] .survival-board-scroll { flex:1; min-height:160px; max-height:none; }
+}
+@media(max-width:899px), (max-height:699px) {
+  [data-ranking-layout] .survival-board-scroll { max-height:65dvh; }
+}
+
+[data-embedded-board] { overflow:visible; }
+[data-embedded-board] .survival-board-table td small { position:relative; }
+[data-ranking-layout] .ranking-actions>.ranking-lifecycle { flex-direction:row; align-items:center; }
+[data-ranking-layout] .ranking-lifecycle button { min-width:0; width:auto; padding:7px 12px; background:var(--secondary); color:var(--foreground); font-weight:650; }
+[data-ranking-layout] .ranking-lifecycle .match-restart-control>button { background:none; color:var(--muted-foreground); }
+.ranking-build-link { color:var(--primary); background:none; padding:2px 0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+@media(min-width:900px) and (min-height:700px) {
+  [data-ranking-layout="contest"] .contest-grid { flex-shrink:0; }
+  .game-client:has(>main>[data-ranking-layout]) { display:flex; flex-direction:column; height:100dvh; }
+  .game-client:has(>main>[data-ranking-layout])>main { flex:1; min-height:0; height:auto; }
+  .game-client:has(>main>[data-ranking-layout])>.survival-save-message { flex-shrink:0; margin:0; padding:6px 32px; }
+}

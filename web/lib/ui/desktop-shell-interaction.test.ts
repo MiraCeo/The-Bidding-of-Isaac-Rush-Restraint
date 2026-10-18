@@ -167,9 +167,7 @@ it.each(['classic', 'survival'] as const)(
       if (page === '设置' || page === '规则')
         expect(node.querySelector('.page-context-bar')).toBeNull();
       else
-        expect(
-          node.querySelector('.page-context-bar .round-status'),
-        ).not.toBeNull();
+        expect(node.querySelector('.topbar .settlement-status')).not.toBeNull();
       const heading = node.querySelector(
         '.ranking-stage > .ranking-page-heading',
       )!;
