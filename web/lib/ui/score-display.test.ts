@@ -37,7 +37,8 @@ describe('score display preferences do not change scoring', () => {
     );
     expect(markup).toContain('class="ranking-stage game-tools-stage"');
     expect(markup).toContain('class="result-table ranking-table"');
-    expect(markup.match(/<th scope="col">/g)).toHaveLength(5);
+    expect(markup.match(/<th scope="col"(?:\s|>)/g)).toHaveLength(4);
+    expect(markup).toContain('class="ranking-player-cell"');
     expect(markup).not.toMatch(
       /本轮行动|本房积分|获得道具|进入下一房间|<dialog/,
     );
@@ -77,7 +78,7 @@ describe('score display preferences do not change scoring', () => {
       }),
     );
     expect(table).toContain('class="result-table ranking-table"');
-    expect(table.match(/<th scope="col">/g)).toHaveLength(8);
+    expect(table.match(/<th scope="col"(?:\s|>)/g)).toHaveLength(7);
   });
 
   it('uses the selected precision in the final hero, podium and table', () => {

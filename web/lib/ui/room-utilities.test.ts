@@ -502,9 +502,9 @@ describe('room utility interaction without a real browser', () => {
     expect(container.querySelectorAll('.ranking-table tbody tr')).toHaveLength(
       20,
     );
-    expect(element('.ranking-table tbody td:nth-child(4)').textContent).toBe(
-      '0.0000',
-    );
+    expect(
+      element('.ranking-table tbody .ranking-metric-primary').textContent,
+    ).toBe('0.0000');
   });
 
   it('restores the home-page selection and scroll position after reading rules with Escape', async () => {
@@ -676,7 +676,9 @@ describe('room utility interaction without a real browser', () => {
     expect(container.querySelectorAll('.ranking-table tbody tr')).toHaveLength(
       20,
     );
-    expect(container.querySelectorAll('.ranking-table th')).toHaveLength(5);
+    expect(
+      container.querySelectorAll('.ranking-table thead th[scope="col"]'),
+    ).toHaveLength(4);
     await click(button('规则', element('nav[aria-label="主导航"]')));
     await click(button('道具图鉴', element('nav[aria-label="规则分类"]')));
     expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(false);
@@ -756,9 +758,9 @@ describe('room utility interaction without a real browser', () => {
       /^\+\d+\.\d{4}$/,
     );
     await click(button('积分排行'));
-    expect(element('.ranking-table tbody td:nth-child(7)').textContent).toMatch(
-      /^\d+\.\d{4}$/,
-    );
+    expect(
+      element('.ranking-table tbody .ranking-metric-primary').textContent,
+    ).toMatch(/^\d+\.\d{4}$/);
     await click(button('进入下一房间'));
     expect(element('#ranking-drawer').getAttribute('aria-hidden')).toBe(
       'false',

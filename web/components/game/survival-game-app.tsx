@@ -355,12 +355,12 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               hideViewTabs
               hideHeading
               hideFooter
+              scoreScope="survival"
               finalRoom={false}
               game={{ ...survivalRoomView(game), roomRankingView: view }}
               onSwitch={setRankingView}
               onAdvance={() => dispatch({ type: 'advance_room' })}
               scoreDecimals={decimals}
-              scoreDescription="已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。"
             />
           )}
           {game.phase === 'room_result' &&
@@ -452,15 +452,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                   : 'LEARN BY PLAYING'
         }
         description={
-          selected === 'ranking'
-            ? roomRanking === 'score'
-              ? '已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。'
-              : roomRanking === 'contest'
-                ? '按照市场等价出价排列，扰乱者同样参与名额争夺。'
-                : '已结算房间与层末成绩 · 查看不重复结算'
-            : selected === 'rules'
-              ? '现行生存机制与道具说明'
-              : undefined
+          selected === 'rules' ? '现行生存机制与道具说明' : undefined
         }
       >
         <Button variant="secondary" onClick={close}>

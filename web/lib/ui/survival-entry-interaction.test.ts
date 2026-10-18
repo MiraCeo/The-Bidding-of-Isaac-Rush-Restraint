@@ -387,7 +387,7 @@ describe('formal independent survival entry', () => {
     ].find((t) => t.textContent === '生存榜')!;
     await click(survivalTab);
     expect(node('.survival-board-table thead').textContent).toContain(
-      '玩家状态第 1 层进行中累计分数',
+      '玩家状态累计分数第 1 层进行中',
     );
     for (const player of session.game.players) {
       const row = node(`[data-player-id="${player.id}"]`),

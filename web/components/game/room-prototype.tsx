@@ -8,6 +8,7 @@ import {
 } from '@/lib/ui/quote-capacity';
 import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
+import { LocateSelfButton } from './ranking-self-summary';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import {
@@ -333,35 +334,43 @@ export function RoomPrototype({
           hidden={!rankingOpen}
           aria-hidden={!rankingOpen}
           inert={!rankingOpen}
+          data-ranking-scope
         >
           <div className="drawer-heading">
             <div>
               <p className="eyebrow">PLAYER RANKING</p>
               <h2>资金排行</h2>
             </div>
+            <LocateSelfButton />
           </div>
           <p className="drawer-description">
-            按资金排序；竞／扰为单目标理论市场等价上限，并非本房报价。
+            按当前资金降序 · {ranking.length} 人
           </p>
           <details className="ranking-capacity-help">
             <summary>计算口径</summary>
             <p>
-              按当前资金、已持有道具和合法名义报价上限计算。完美视力修正竞拍市场等价；Steam折扣只减扣款，不扩大名义上限。双行动受各自总额限制，不把两项单目标上限相加；悬停数值可查看双行动能力。
+              下行竞／扰为单目标理论市场等价上限，并非本房报价。按当前资金、已持有道具和合法名义报价上限计算。完美视力修正竞拍市场等价；Steam折扣只减扣款，不扩大名义上限。双行动受各自总额限制，不把两项单目标上限相加；悬停数值可查看双行动能力。
             </p>
           </details>
+          <p className="ranking-capacity-legend">
+            上行资金 · 下行竞拍／扰乱能力上限
+          </p>
           <ol className="ranking-list">
             {ranking.map((player, index) => (
               <li
                 key={player.id}
+                data-player-id={player.id}
                 className={player.isHuman ? 'ranking-self' : ''}
+                data-ranking-self={player.isHuman}
+                tabIndex={player.isHuman ? -1 : undefined}
               >
                 <span className="ranking-position">{index + 1}</span>
                 <span className="ranking-avatar" aria-hidden="true">
                   {player.name.slice(0, 1)}
                 </span>
-                <span className="ranking-name">
+                <span className="ranking-name" title={player.name}>
                   {player.name}
-                  {player.isHuman && <small>当前玩家</small>}
+                  {player.isHuman && <small>本人</small>}
                 </span>
                 <div className="ranking-amounts">
                   <strong>
@@ -373,12 +382,16 @@ export function RoomPrototype({
                     title={capacityDescription(player.capacity)}
                     aria-label={capacityDescription(player.capacity)}
                   >
-                    竞{' '}
-                    {formatMarketAmount(player.capacity.bid.marketEquivalent)} ·
-                    扰{' '}
-                    {formatMarketAmount(
-                      player.capacity.disrupt.marketEquivalent,
-                    )}
+                    <span>
+                      竞{' '}
+                      {formatMarketAmount(player.capacity.bid.marketEquivalent)}
+                    </span>
+                    <span>
+                      扰{' '}
+                      {formatMarketAmount(
+                        player.capacity.disrupt.marketEquivalent,
+                      )}
+                    </span>
                   </small>
                 </div>
               </li>
