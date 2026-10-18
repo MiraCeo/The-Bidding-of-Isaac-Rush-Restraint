@@ -49,7 +49,7 @@ function completed() {
   }
   return s;
 }
-it('keeps recorded final order, full table and compact podium at selected precision, without invoking restart while reading', async () => {
+it('keeps recorded final order, full table and character podium at selected precision, without invoking restart while reading', async () => {
   const s = completed(),
     game = s.game,
     before = structuredClone(game),
@@ -82,6 +82,32 @@ it('keeps recorded final order, full table and compact podium at selected precis
   expect(
     [...node.querySelectorAll('.podium-card>strong')].map((e) => e.textContent),
   ).toEqual(game.finalRanking.slice(0, 3).map((e) => e.finalScore.toFixed(4)));
+  const awards = [...node.querySelectorAll<HTMLElement>('.podium-card')];
+  expect(awards.map((e) => e.dataset.podiumPlayer)).toEqual(
+    game.finalRanking.slice(0, 3).map((e) => e.playerId),
+  );
+  for (const award of awards) {
+    const p = game.players.find((p) => p.id === award.dataset.podiumPlayer)!;
+    expect(
+      award.querySelector<HTMLElement>('.character-art')!.dataset.characterId,
+    ).toBe(p.characterId);
+    expect(award.querySelectorAll('.character-art-figure')).toHaveLength(
+      p.characterId === 'jacob_esau' ? 2 : 1,
+    );
+  }
+  expect(
+    node.querySelector('.classic-final-showcase .final-ranking-panel'),
+  ).toBeNull();
+  expect(
+    node.querySelector('.classic-final-layout > .final-ranking-panel'),
+  ).not.toBeNull();
+  expect(
+    node.querySelector('.classic-final-showcase .classic-final-outcomes'),
+  ).not.toBeNull();
+  expect(
+    node.querySelector('.classic-final-lifecycle .final-actions button'),
+  ).not.toBeNull();
+  expect(node.textContent).not.toContain('按本局已记录的最终顺序');
   const own = game.finalRanking.find((e) => e.playerId === 'human')!;
   expect(node.querySelector('[data-classic-final-score]')!.textContent).toBe(
     own.finalScore.toFixed(4),
@@ -97,7 +123,7 @@ it('keeps recorded final order, full table and compact podium at selected precis
   await click(button('重新开始'));
   expect(restart).toHaveBeenCalledOnce();
 });
-it('retains terminal phase through build/replay/settings navigation and moves real restart to the summary', async () => {
+it('retains terminal phase through build/replay/settings navigation and moves real restart to the bottom action bar', async () => {
   const s = completed();
   localStorage.setItem(gameSaveKey, serializeGameCheckpoint(s));
   await show(createElement(GameApp));
