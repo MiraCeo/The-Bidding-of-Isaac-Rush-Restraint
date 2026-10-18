@@ -469,9 +469,10 @@ it('fits only an active public board to remaining viewport height without removi
   expect(node.querySelector('#room-utilities-title')!.textContent).toBe(
     '当前公开排行',
   );
-  expect(node.querySelector('.ranking-context')!.textContent).toContain(
-    '行动前公开数据',
-  );
+  expect(
+    node.querySelector('.utility-page-description')!.textContent,
+  ).toContain('行动前公开数据');
+  expect(node.querySelector('.ranking-context')).toBeNull();
   expect(node.querySelector('.ranking-basis')!.textContent).toContain(
     '相同数值并列',
   );
@@ -521,4 +522,71 @@ it('gives numeric headers enough selector specificity and paints focused sticky 
   expect(css).toContain(
     'main:has(>[data-public-ranking="active"]) { display:flex; flex-direction:column; height:100dvh; min-height:100dvh; }',
   );
+});
+it('combines public mode/count/phase into the heading without repeating floor context or dropping scoring caveats', async () => {
+  const game = room(),
+    before = structuredClone(game);
+  await render(
+    createElement(RoomRanking, { variant: 'public', game, onReturn: () => {} }),
+  );
+  const heading = node.querySelector('.utility-page-title-line')!;
+  expect(heading.textContent).toContain('经典 · 20 人 · 本房已结算');
+  expect(node.querySelector('.ranking-context')).toBeNull();
+  expect(node.querySelector('.ranking-basis')!.textContent).toContain(
+    '未含终局倍率',
+  );
+  expect(node.querySelector('.ranking-basis')!.textContent).toContain(
+    '本房行动结算后公开',
+  );
+  expect(node.querySelector('.ranking-basis')!.textContent).toContain(
+    '相同数值并列',
+  );
+  await click(button('资金排行'));
+  expect(node.querySelector('.ranking-basis')!.textContent).toContain(
+    '非竞价能力',
+  );
+  expect(heading.textContent).not.toContain('房间');
+  expect(game).toEqual(before);
+  await render(
+    createElement(RoomRanking, {
+      variant: 'public',
+      game: { ...game, phase: 'game_result' },
+      onReturn: () => {},
+    }),
+  );
+  expect(
+    node.querySelector('.utility-page-description')!.textContent,
+  ).toContain('整局已结束');
+});
+it('uses public-only fixed columns and a single frame with readable two-line player rows', async () => {
+  await render(
+    createElement(RoomRanking, {
+      variant: 'public',
+      game: startClientGame('isaac', 42),
+      onReturn: () => {},
+    }),
+  );
+  expect(rows('.ranking-table colgroup col')).toHaveLength(4);
+  expect(rows('.ranking-table tbody tr')).toHaveLength(20);
+  expect(rows('.ranking-player-cell small')).toHaveLength(20);
+  await render(
+    createElement(RoomRanking, {
+      game: room(),
+      embedded: true,
+      onSwitch: () => {},
+      onAdvance: () => {},
+    }),
+  );
+  expect(node.querySelector('.ranking-table colgroup')).toBeNull();
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).toContain(
+    '[data-public-ranking="active"] .round-ranking-panel { border:0; border-radius:0; padding:0; background:none; margin-top:14px; }',
+  );
+  expect(css).toContain(
+    '[data-public-ranking="active"] .ranking-table { table-layout:fixed; }',
+  );
+  expect(css).toContain(
+    '[data-public-ranking="active"] .ranking-table tbody tr>* { height:54px; padding-block:7px; }',
+  );
+  expect(css).toContain('white-space:normal; overflow-wrap:anywhere;');
 });

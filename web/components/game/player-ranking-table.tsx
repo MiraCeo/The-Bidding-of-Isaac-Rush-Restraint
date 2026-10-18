@@ -36,6 +36,14 @@ export function PlayerRankingTable({
       >
         <table className="result-table ranking-table">
           <caption className="sr-only">{caption}</caption>
+          {!settlement && (
+            <colgroup>
+              <col className="public-rank-column" />
+              <col />
+              <col className="public-primary-column" />
+              <col className="public-secondary-column" />
+            </colgroup>
+          )}
           <thead>
             <tr>
               <th scope="col">{settlement ? '顺位' : '排名'}</th>

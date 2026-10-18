@@ -2010,3 +2010,16 @@
   [data-public-ranking="active"] .round-ranking-panel { display:flex; flex:1; flex-direction:column; min-height:0; }
   [data-public-ranking="active"] .ranking-data-scroll { flex:1; min-height:140px; max-height:none; }
 }
+/* Public ranking density pass: one frame, unchanged facts and sticky behavior. */
+[data-public-ranking="active"] .public-ranking-heading { margin-top:0; }
+[data-public-ranking="active"] .round-ranking-panel { border:0; border-radius:0; padding:0; background:none; margin-top:14px; }
+[data-public-ranking="active"] .ranking-data-scroll { margin-top:0; background:#1d1813; }
+[data-public-ranking="active"] .ranking-table { table-layout:fixed; }
+[data-public-ranking="active"] .public-rank-column { width:54px; }
+[data-public-ranking="active"] .public-primary-column { width:26%; }
+[data-public-ranking="active"] .public-secondary-column { width:22%; }
+[data-public-ranking="active"] .ranking-table tbody tr>* { height:54px; padding-block:7px; }
+[data-public-ranking="active"] .ranking-player-cell { line-height:18px; }
+[data-public-ranking="active"] .ranking-player-cell small { margin-top:2px; line-height:15px; }
+[data-public-ranking="active"] .ranking-table .ranking-number,
+[data-public-ranking="active"] .ranking-table .ranking-metric-primary { white-space:normal; overflow-wrap:anywhere; }

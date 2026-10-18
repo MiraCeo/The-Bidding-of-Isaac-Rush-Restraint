@@ -58,8 +58,11 @@ export function RoomRanking(props: RoomRankingProps) {
           eyebrow="PLAYER RANKING"
           title="当前公开排行"
           titleId="room-utilities-title"
+          inlineDescription={Boolean(game)}
           description={
-            game ? `当前资金与积分 · ${game.players.length} 人` : '尚未开始对局'
+            game
+              ? `经典 · ${game.players.length} 人 · ${game.phase === 'room_action' ? '行动前公开数据' : game.phase === 'game_result' ? '整局已结束' : '本房已结算'}`
+              : '尚未开始对局'
           }
         >
           <Button type="button" variant="secondary" onClick={props.onReturn}>

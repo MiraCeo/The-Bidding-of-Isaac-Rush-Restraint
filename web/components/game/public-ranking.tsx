@@ -30,14 +30,6 @@ export function PublicRanking({ game, scoreDecimals }: PublicRankingProps) {
   const human = ranking.find((entry) => entry.isHuman);
   return (
     <div data-ranking-scope>
-      <p className="ranking-context">
-        经典 · 第 {game.floorIndex + 1} 层 / 房间 {game.roomIndex + 1} ·{' '}
-        {game.phase === 'room_action'
-          ? '行动前公开数据'
-          : game.phase === 'game_result'
-            ? '整局已结束 · 此表仍为未乘终局倍率的累计分'
-            : '本房已结算'}
-      </p>
       <div className="public-ranking-heading">
         <div className="ranking-view-tabs" aria-label="公开排行类型">
           <button
@@ -69,9 +61,9 @@ export function PublicRanking({ game, scoreDecimals }: PublicRankingProps) {
       </div>
       <p className="ranking-basis">
         {view === 'score'
-          ? '按累计积分降序，未含终局倍率。'
-          : '按当前资金降序，不按竞价能力排序。'}
-        相同数值并列；本房行动提交结算后才公开。
+          ? '累计积分降序 · 未含终局倍率'
+          : '当前资金降序 · 非竞价能力'}
+        {' · 相同数值并列 · 本房行动结算后公开'}
       </p>
       <PlayerRankingTable
         entries={ranking}
