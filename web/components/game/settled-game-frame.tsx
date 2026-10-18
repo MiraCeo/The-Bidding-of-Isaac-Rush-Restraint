@@ -8,6 +8,10 @@ import { RoomUtilities } from './room-utilities';
 import { MatchRestartControl } from './match-restart-control';
 import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
+import {
+  SettlementStatus,
+  SettlementNavigationContext,
+} from './settlement-navigation';
 
 /** Utility navigation preserves the actual settled phase and never advances a room. */
 export function SettledGameFrame({
@@ -20,6 +24,7 @@ export function SettledGameFrame({
   const tools = useSessionTools()!;
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
   const human = game.players.find((p) => p.isHuman)!;
+  const isRoomResult = game.phase === 'room_result';
   return (
     <main
       className={
@@ -33,7 +38,37 @@ export function SettledGameFrame({
       }
     >
       <GameHeader
-        showContext={utilityPanel !== 'settings' && utilityPanel !== 'rules'}
+        showContext={
+          !isRoomResult &&
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules'
+        }
+        status={
+          isRoomResult &&
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules' ? (
+            <SettlementStatus
+              brief={`经典 · ${game.floorIndex + 1}层 ${game.roomIndex + 1}/5房 · 资金${human.money}`}
+            >
+              <dl>
+                <div>
+                  <dt>角色</dt>
+                  <dd>{characterNames[game.selectedCharacter]}</dd>
+                </div>
+                <div>
+                  <dt>难度</dt>
+                  <dd>{classicDifficultyLabel(game.classicAi?.difficulty)}</dd>
+                </div>
+                <div>
+                  <dt>累计积分</dt>
+                  <dd>
+                    {human.score.toFixed(tools.preferences.scoreDecimals)}
+                  </dd>
+                </div>
+              </dl>
+            </SettlementStatus>
+          ) : undefined
+        }
         navigation={
           <GameNavigation
             page={utilityPanel}
@@ -72,19 +107,60 @@ export function SettledGameFrame({
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        <nav className="settled-toolbar" aria-label="结算页面操作">
-          {tools.onReturnMenu && (
-            <button
-              type="button"
-              className="survival-menu-return"
-              onClick={tools.onReturnMenu}
-            >
-              返回主菜单
-            </button>
-          )}
-          {utilityPanel === null && <MatchRestartControl />}
-        </nav>
-        {children}
+        {!isRoomResult && (
+          <nav className="settled-toolbar" aria-label="结算页面操作">
+            {tools.onReturnMenu && (
+              <button
+                type="button"
+                className="survival-menu-return"
+                onClick={tools.onReturnMenu}
+              >
+                返回主菜单
+              </button>
+            )}
+            {utilityPanel === null && <MatchRestartControl />}
+          </nav>
+        )}
+        <SettlementNavigationContext.Provider
+          value={{
+            auxiliaryActions:
+              utilityPanel === null ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="查看角色构筑"
+                    onClick={() => changeUtilityPanel('build')}
+                  >
+                    查看构筑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeUtilityPanel('replay')}
+                  >
+                    本局回放
+                  </button>
+                </>
+              ) : undefined,
+            lifecycleActions: (
+              <>
+                {tools.onReturnMenu && (
+                  <button
+                    type="button"
+                    className="survival-menu-return"
+                    onClick={tools.onReturnMenu}
+                  >
+                    返回主菜单
+                  </button>
+                )}
+                {utilityPanel === null && (
+                  <MatchRestartControl label="重新开始" />
+                )}
+              </>
+            ),
+          }}
+        >
+          {children}
+        </SettlementNavigationContext.Provider>
       </div>
       <RoomUtilities
         panel={utilityPanel}

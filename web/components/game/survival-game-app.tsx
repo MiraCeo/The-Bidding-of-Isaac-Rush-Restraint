@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
+import { SettlementStatus } from './settlement-navigation';
 import { RoomRanking } from './room-ranking';
 import { SurvivalActionStatus } from './survival-action-status';
 import { SurvivalScoreBoard } from './survival-score-board';
@@ -482,6 +483,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   const lastHumanScore = game?.floorRecords.at(-1)?.scores.human;
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
+  const compactSettlement =
+    game?.phase === 'room_result' && game.humanEliminatedAt === null;
   const strip =
     game &&
     (game.phase === 'room_action' && session?.draft ? (
@@ -575,9 +578,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                   : '历史原版'}
             </p>
           </details>
-          <Button variant="secondary" onClick={props.onReturnMenu}>
-            返回主菜单
-          </Button>
+          {!compactSettlement && (
+            <Button variant="secondary" onClick={props.onReturnMenu}>
+              返回主菜单
+            </Button>
+          )}
         </div>
       </section>
     ));
@@ -687,6 +692,31 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       body = (
         <RoomResult
           embedded
+          scoreScope="survival"
+          auxiliaryActions={
+            <>
+              <button type="button" onClick={() => setPanel('build')}>
+                查看构筑
+              </button>
+              <button type="button" onClick={() => setPanel('replay')}>
+                本局回放
+              </button>
+            </>
+          }
+          lifecycleActions={
+            <>
+              <Button variant="secondary" onClick={props.onReturnMenu}>
+                返回主菜单
+              </Button>
+              <Button variant="ghost" onClick={() => setRestart(true)}>
+                重新开始
+              </Button>
+              <output className="settlement-save-state">
+                {message || saveStatus}
+                {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+              </output>
+            </>
+          }
           game={survivalRoomView(game!)}
           rules={survivalRoomRules(game!)}
           finalRoom={false}
@@ -702,6 +732,15 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     page = (
       <main className="ranking-page">
         <GameHeader
+          status={
+            compactSettlement && panel !== 'settings' && panel !== 'rules' ? (
+              <SettlementStatus
+                brief={`生存 · ${game!.floorIndex + 1}层 ${game!.roomIndex + 1}/5房 · 资金${human?.money ?? 0}`}
+              >
+                {strip}
+              </SettlementStatus>
+            ) : undefined
+          }
           navigation={
             <GameNavigation
               page={panel}
@@ -712,10 +751,14 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             />
           }
         />
-        {(panel === null || panel === 'ranking' || panel === 'build') && strip}
+        {!compactSettlement &&
+          (panel === null || panel === 'ranking' || panel === 'build') &&
+          strip}
         <div
           className="survival-tools"
-          hidden={panel === 'settings' || panel === 'rules'}
+          hidden={
+            compactSettlement || panel === 'settings' || panel === 'rules'
+          }
         >
           <Button variant="secondary" onClick={() => setPanel('build')}>
             构筑与当前状态
@@ -725,7 +768,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           </Button>
           {game!.phase !== 'competition_complete' && (
             <Button variant="secondary" onClick={() => setRestart(true)}>
-              重新选角
+              重新开始
             </Button>
           )}
         </div>
@@ -783,10 +826,12 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         >
           {page}
         </AchievementFeedbackContext.Provider>
-        <output className="survival-save-message">
-          {message || saveStatus}
-          {props.restoreMessage && <span> · {props.restoreMessage}</span>}
-        </output>
+        {!compactSettlement && (
+          <output className="survival-save-message">
+            {message || saveStatus}
+            {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+          </output>
+        )}
         {liveSave.message && (
           <Button disabled={liveSave.busy} onClick={liveSave.retry}>
             重试保存
@@ -802,7 +847,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             aria-label="重新开始生存对局"
             className="survival-confirm"
           >
-            <h2>放弃当前生存对局并重新选角？</h2>
+            <h2>重新开始生存对局？</h2>
+            <p>
+              结束当前对局，重新选择角色并开始新局？当前生存自动进度将被替换。
+            </p>
             <p>不会删除经典存档、玩家进度与已导出的文件。</p>
             <Button
               onClick={() => {
@@ -812,7 +860,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                 props.onNew();
               }}
             >
-              确认重新选角
+              确认重新开始
             </Button>
             <Button variant="secondary" onClick={() => setRestart(false)}>
               取消

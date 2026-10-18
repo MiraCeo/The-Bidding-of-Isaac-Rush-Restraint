@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button';
 import { useSessionTools } from './session-context';
 
 /** Match lifecycle belongs to the game view, never to file import/export controls. */
-export function MatchRestartControl() {
+export function MatchRestartControl({
+  label = '重新选角',
+}: {
+  label?: string;
+}) {
   const tools = useSessionTools();
   const [confirm, setConfirm] = useState(false);
   if (
@@ -20,12 +24,15 @@ export function MatchRestartControl() {
           variant="secondary"
           onClick={() => setConfirm(true)}
         >
-          重新选角
+          {label}
         </Button>
       ) : (
         <div className="match-restart-confirm">
           <p>
-            重新选角会放弃本局自动进度；需要保留时先在进度 →
+            {label === '重新开始'
+              ? '结束当前对局，重新选择角色并开始新局？这会放弃本局自动进度；'
+              : '重新选角会放弃本局自动进度；'}
+            需要保留时先在进度 →
             存档与备份中导出续玩存档。玩家档案和已完成对局记录不清除。
           </p>
           <div className="data-actions">
@@ -37,7 +44,7 @@ export function MatchRestartControl() {
               保留当前对局
             </Button>
             <Button type="button" onClick={tools.onNewGame}>
-              确认重新选角
+              确认{label}
             </Button>
           </div>
         </div>

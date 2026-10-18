@@ -352,7 +352,7 @@ describe('formal independent survival entry', () => {
       },
     } as unknown as Storage);
     await click(button('重新选角'));
-    await click(button('确认重新选角'));
+    await click(button('确认重新开始'));
     expect(container.textContent).toContain('未放弃当前局');
     expect(button('出价竞拍')).toBeTruthy();
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
@@ -744,11 +744,11 @@ describe('formal independent survival entry', () => {
     await mount();
     const before = localStorage.getItem(survivalSaveKey);
     await click(button('重新选角'));
-    expect(node('dialog').textContent).toContain('放弃');
+    expect(node('dialog').textContent).toContain('结束当前对局');
     await click(button('取消'));
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
     await click(button('重新选角'));
-    await click(button('确认重新选角'));
+    await click(button('确认重新开始'));
     expect(container.textContent).toContain('选择角色');
     expect(localStorage.getItem(survivalSaveKey)).toBeNull();
     await act(async () => root.unmount());

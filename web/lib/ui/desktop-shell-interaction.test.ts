@@ -296,13 +296,7 @@ it.each(['classic', 'survival'] as const)(
       } else
         await click('返回游戏', node.querySelector('.ranking-page-heading')!);
       shell('游戏');
-      expect(
-        node.querySelector(
-          mode === 'classic'
-            ? '.page-context-bar .round-status'
-            : '.survival-status',
-        ),
-      ).not.toBeNull();
+      expect(node.querySelector('.topbar .settlement-status')).not.toBeNull();
     }
     expect(node.textContent).toContain('进入下一房间');
     expect(localStorage.getItem(key)).toBe(before);
