@@ -12,7 +12,12 @@ import {
   padCurrentProfileTo,
   probeCurrentSave,
 } from './closeout-capacity.test-helper';
-import { readPlayerProfile } from '../player-profile';
+import {
+  createPlayerProfile,
+  readPlayerProfile,
+  type ProfileValue,
+} from '../player-profile';
+import { packAchievementRegistry } from './ledger-codec';
 import {
   readAchievementRegistry,
   projectAchievementRegistry,
@@ -124,16 +129,62 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
             count + 1,
           );
           let batchProfile = valid;
-          const batch = timing(() => {
-            batchProfile = applyGrowthContext(
-              valid,
+          // A readable near-limit profile need not have room for a complete batch.
+          // Predict the encoded candidate independently; do not swallow arbitrary
+          // failures or relax the production budget to make a report pass.
+          const additions = readAchievementRegistry(
+            applyGrowthContext(
+              createPlayerProfile(capacityClock),
               traces[0]!.context,
               capacityClock,
-            ).profile;
-          }, 1);
-          expect(readAchievementRegistry(batchProfile)!.receipts.length).toBe(
-            count + traces[0]!.context.units.length,
+            ).profile,
+          )!;
+          const candidateWire = packAchievementRegistry({
+            ...(f.registry ?? additions),
+            stages: f.registry?.stages ?? {
+              from: count,
+              at: capacityClock.toISOString(),
+            },
+            receipts: [...(f.registry?.receipts ?? []), ...additions.receipts],
+          });
+          const batchCandidateBytes = Buffer.byteLength(
+            canonicalJson(candidateWire),
           );
+          const batchCandidateProfileBytes = currentCorpusBytes({
+            ...valid,
+            progression: {
+              ...valid.progression,
+              modules: {
+                ...valid.progression.modules,
+                achievementRegistryV1: candidateWire as unknown as ProfileValue,
+              },
+            },
+          });
+          const batchFits =
+            batchCandidateBytes <= achievementRegistryByteLimit &&
+            batchCandidateProfileBytes <= 1024 * 1024;
+          let batchError: unknown;
+          const batch = timing(() => {
+            try {
+              batchProfile = applyGrowthContext(
+                valid,
+                traces[0]!.context,
+                capacityClock,
+              ).profile;
+            } catch (error) {
+              batchError = error;
+            }
+          }, 1);
+          if (batchFits) {
+            expect(batchError).toBeUndefined();
+            expect(readAchievementRegistry(batchProfile)!.receipts.length).toBe(
+              count + traces[0]!.context.units.length,
+            );
+          } else {
+            expect(batchError).toBeInstanceOf(Error);
+            expect(String(batchError)).toContain('容量超限');
+            expect(batchProfile).toBe(valid);
+          }
           const duplicate = count
             ? timing(() => {
                 const r = f.registry!.receipts[0]!;
@@ -188,6 +239,12 @@ it.runIf(process.env.LEDGER_CAPACITY_REPORT === '1')(
             project,
             append,
             batch,
+            batchOutcome: {
+              status: batchFits ? 'committed' : 'budget-rejected',
+              candidateModuleBytes: batchCandidateBytes,
+              candidateProfileBytes: batchCandidateProfileBytes,
+              sourceUnchanged: canonicalJson(valid) === snapshot,
+            },
             duplicate,
             backup,
             clientSave,
