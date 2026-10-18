@@ -66,7 +66,14 @@ export function ReplayMarket({
     place(g.points, model.combinedMaximum),
   );
   const rows = Math.max(...layouts.map((l) => l.rows));
-  const top = 44,
+  const ownLabelRows = compact
+    ? Math.max(
+        ...model.groups.map(
+          (g) => g.points.filter((p) => p.playerId === playerId).length,
+        ),
+      )
+    : 0;
+  const top = 44 + ownLabelRows * 20,
     bottom = top + (rows - 1) * 17 + 20,
     height = bottom + 44;
   const x = (v: number) => 54 + (v / model.combinedMaximum) * 480;
@@ -248,7 +255,16 @@ export function ReplayMarket({
                       {selected && (
                         <text
                           x={p.left}
-                          y={py - 13}
+                          y={
+                            compact
+                              ? 36 +
+                                own.findIndex(
+                                  (entry) =>
+                                    entry.actionIndex === p.point.actionIndex,
+                                ) *
+                                  20
+                              : py - 13
+                          }
                           textAnchor={p.left > 395 ? 'end' : 'start'}
                           className="market-own-label"
                         >

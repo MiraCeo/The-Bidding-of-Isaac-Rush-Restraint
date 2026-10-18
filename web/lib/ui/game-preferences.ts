@@ -5,6 +5,9 @@ export type ScoreDisplayDecimals = 2 | 4;
 export interface GamePreferences {
   rankingInitiallyOpen: boolean;
   marketInitiallyOpen: boolean;
+  settlementRewardsInitiallyOpen: boolean;
+  settlementScoreInitiallyOpen: boolean;
+  settlementMarketInitiallyOpen: boolean;
   scoreDecimals: ScoreDisplayDecimals;
   reduceMotion: boolean;
 }
@@ -13,6 +16,9 @@ export const defaultGamePreferences: Readonly<GamePreferences> = {
   rankingInitiallyOpen: false,
   marketInitiallyOpen: false,
   scoreDecimals: defaultRules.scoreDisplayDecimals === 4 ? 4 : 2,
+  settlementRewardsInitiallyOpen: false,
+  settlementScoreInitiallyOpen: false,
+  settlementMarketInitiallyOpen: false,
   reduceMotion: false,
 };
 
@@ -41,6 +47,18 @@ export function normalizeGamePreferences(value: unknown): GamePreferences {
       typeof input.marketInitiallyOpen === 'boolean'
         ? input.marketInitiallyOpen
         : defaultGamePreferences.marketInitiallyOpen,
+    settlementRewardsInitiallyOpen:
+      typeof input.settlementRewardsInitiallyOpen === 'boolean'
+        ? input.settlementRewardsInitiallyOpen
+        : defaultGamePreferences.settlementRewardsInitiallyOpen,
+    settlementScoreInitiallyOpen:
+      typeof input.settlementScoreInitiallyOpen === 'boolean'
+        ? input.settlementScoreInitiallyOpen
+        : defaultGamePreferences.settlementScoreInitiallyOpen,
+    settlementMarketInitiallyOpen:
+      typeof input.settlementMarketInitiallyOpen === 'boolean'
+        ? input.settlementMarketInitiallyOpen
+        : defaultGamePreferences.settlementMarketInitiallyOpen,
     scoreDecimals:
       input.scoreDecimals === 2 || input.scoreDecimals === 4
         ? input.scoreDecimals

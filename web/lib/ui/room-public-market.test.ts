@@ -69,6 +69,16 @@ it('expands only already-settled shared market data and preserves both score sem
   const charts = [
     ...details.querySelectorAll('svg[data-market-chart=combined]'),
   ];
+  for (const chart of charts) {
+    const markers = [...chart.querySelectorAll('[data-marker="market"]')].map(
+      (e) => Number(e.getAttribute(e.tagName === 'circle' ? 'cy' : 'y')),
+    );
+    for (const label of chart.querySelectorAll('.market-own-label')) {
+      expect(Number(label.getAttribute('y'))).toBeLessThan(
+        Math.min(...markers) - 8,
+      );
+    }
+  }
   expect(charts[0]!.getAttribute('viewBox')).toBe(
     charts[1]!.getAttribute('viewBox'),
   );

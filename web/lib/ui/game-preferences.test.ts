@@ -31,6 +31,7 @@ describe('interface preferences', () => {
         playerCount: 1,
       }),
     ).toEqual({
+      ...defaultGamePreferences,
       rankingInitiallyOpen: true,
       marketInitiallyOpen: true,
       scoreDecimals: 4,
@@ -88,4 +89,28 @@ describe('interface preferences', () => {
       false,
     );
   });
+});
+
+it('validates and persists each settlement disclosure independently, with old preferences kept closed', () => {
+  expect(
+    normalizeGamePreferences({ scoreDecimals: 4 })
+      .settlementMarketInitiallyOpen,
+  ).toBe(false);
+  const preferences = normalizeGamePreferences({
+    settlementRewardsInitiallyOpen: true,
+    settlementScoreInitiallyOpen: 'true',
+    settlementMarketInitiallyOpen: true,
+  });
+  expect(preferences.settlementRewardsInitiallyOpen).toBe(true);
+  expect(preferences.settlementScoreInitiallyOpen).toBe(false);
+  expect(preferences.settlementMarketInitiallyOpen).toBe(true);
+  let stored = '';
+  const storage = {
+    getItem: () => stored,
+    setItem: (_: string, value: string) => {
+      stored = value;
+    },
+  };
+  expect(saveGamePreferences(storage, preferences)).toBe(true);
+  expect(loadGamePreferences(storage)).toEqual(preferences);
 });

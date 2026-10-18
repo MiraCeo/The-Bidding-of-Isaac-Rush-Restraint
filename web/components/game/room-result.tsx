@@ -1,14 +1,18 @@
 import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { ReplayMarket } from './replay-market';
-import { useState, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useContext, type ReactNode } from 'react';
 import { SettlementNavigationContext } from './settlement-navigation';
 import type { SettlementEvent } from '@/lib/game/item-types';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
+import {
+  defaultGamePreferences,
+  type GamePreferences,
+  type ScoreDisplayDecimals,
+} from '@/lib/ui/game-preferences';
 import {
   defaultRules,
   getItemDefinition,
@@ -29,6 +33,7 @@ interface RoomResultProps {
   onShowRanking: (view: ClientRankingView) => void;
   onAdvance: () => void;
   scoreDecimals?: ScoreDisplayDecimals;
+  preferences?: GamePreferences;
 }
 
 const roomKindNames = {
@@ -44,6 +49,21 @@ function actionLabel(action: PlayerAction): string {
   return `${action.type === 'bid' ? '竞拍' : '扰乱'} ${action.group} · ${action.amount}`;
 }
 
+// Utility pages keep the match mounted: apply changed defaults without resetting manual toggles on unrelated renders.
+function useDisclosurePreference(initiallyOpen: boolean) {
+  const [open, setOpen] = useState(initiallyOpen);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setOpen(initiallyOpen);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initiallyOpen]);
+  return [open, setOpen] as const;
+}
+
 export function RoomResult({
   rules = defaultRules,
   advanceLabel,
@@ -56,8 +76,17 @@ export function RoomResult({
   auxiliaryActions,
   lifecycleActions,
   scoreScope = 'classic',
+  preferences = defaultGamePreferences,
 }: RoomResultProps) {
-  const [marketOpen, setMarketOpen] = useState(false);
+  const [marketOpen, setMarketOpen] = useDisclosurePreference(
+    preferences.settlementMarketInitiallyOpen,
+  );
+  const [rewardsOpen, setRewardsOpen] = useDisclosurePreference(
+    preferences.settlementRewardsInitiallyOpen,
+  );
+  const [scoreOpen, setScoreOpen] = useDisclosurePreference(
+    preferences.settlementScoreInitiallyOpen,
+  );
   const navigation = useContext(SettlementNavigationContext);
   const Container = embedded ? 'div' : 'main';
   const settlement = game.roomSettlement;
@@ -211,10 +240,6 @@ export function RoomResult({
             </article>
           </div>
           <div className="settlement-primary-actions">
-            <div>
-              <span>本房已结算</span>
-              <strong>准备好就继续</strong>
-            </div>
             <Button type="button" size="lg" onClick={onAdvance}>
               {advanceLabel ?? (isFinalRoom ? '最终排行' : '进入下一房间')}
               <ArrowRight aria-hidden="true" />
@@ -257,7 +282,11 @@ export function RoomResult({
           </span>
         </section>
         <div className="settlement-disclosures">
-          <details className="result-panel reward-settlement settlement-detail">
+          <details
+            className="result-panel reward-settlement settlement-detail"
+            open={rewardsOpen}
+            onToggle={(event) => setRewardsOpen(event.currentTarget.open)}
+          >
             <summary>
               道具资格与发放 <span>查看全部名额与最终结果</span>
             </summary>
@@ -303,6 +332,7 @@ export function RoomResult({
                         label="最高价名额"
                         values={high.map((entry) => ({
                           name: playerName(entry.playerId),
+                          self: entry.playerId === game.humanPlayerId,
                           badge:
                             entry.actionType === 'disrupt'
                               ? '扰乱占位'
@@ -313,6 +343,7 @@ export function RoomResult({
                         label="合作区名额"
                         values={cooperation.map((entry) => ({
                           name: playerName(entry.playerId),
+                          self: entry.playerId === game.humanPlayerId,
                           badge:
                             entry.actionType === 'disrupt'
                               ? '扰乱占位'
@@ -323,6 +354,7 @@ export function RoomResult({
                         label="最终发放"
                         values={awards.map((entry) => ({
                           name: playerName(entry.playerId),
+                          self: entry.playerId === game.humanPlayerId,
                           badge:
                             entry.copies > 1 ? `×${entry.copies}` : undefined,
                         }))}
@@ -349,7 +381,11 @@ export function RoomResult({
             </div>
           </details>
 
-          <details className="result-panel player-settlement settlement-detail">
+          <details
+            className="result-panel player-settlement settlement-detail"
+            open={scoreOpen}
+            onToggle={(event) => setScoreOpen(event.currentTarget.open)}
+          >
             <summary>
               积分计算明细 <span>名义报价、实际扣款与计分依据</span>
             </summary>
@@ -515,6 +551,7 @@ export function RoomResult({
 
           <details
             className="result-market-details settlement-detail"
+            open={marketOpen}
             onToggle={(event) => setMarketOpen(event.currentTarget.open)}
           >
             <summary>本房共同市场 · 查看已公开行动</summary>
@@ -542,7 +579,7 @@ function ResultLine({
   values,
 }: {
   label: string;
-  values: { name: string; badge?: string }[];
+  values: { name: string; badge?: string; self?: boolean }[];
 }) {
   return (
     <div className="result-line">
@@ -556,7 +593,10 @@ function ResultLine({
       >
         {values.length
           ? values.map((value, index) => (
-              <span className="settlement-person" key={index}>
+              <span
+                className={`settlement-person${value.self ? ' is-self' : ''}`}
+                key={index}
+              >
                 {value.name}
                 {value.badge && <em>{value.badge}</em>}
               </span>

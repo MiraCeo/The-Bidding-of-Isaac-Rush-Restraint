@@ -389,6 +389,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   } else if (game.phase === 'room_result') {
     page = (
       <RoomResult
+        preferences={preferences}
         embedded
         game={game}
         onShowRanking={(view) => dispatch({ type: 'show_room_ranking', view })}

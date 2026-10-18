@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
+import { defaultGamePreferences, gamePreferencesKey } from './game-preferences';
 import { RoomResult } from '@/components/game/room-result';
 import { GameApp } from '@/components/game/game-app';
 import { SettlementStatus } from '@/components/game/settlement-navigation';
@@ -416,5 +417,110 @@ it('keeps refund and destruction explanations with their outcomes, without prese
     node.querySelector('.settlement-disclosures')!.textContent,
   ).not.toContain('获得道具 grab_bag');
   expect(node.querySelectorAll('.settlement-person')).not.toHaveLength(0);
+  expect(node.querySelector('.settlement-person.is-self')?.textContent).toBe(
+    '你',
+  );
   expect(g).toEqual(before);
 });
+
+it.each(['classic', 'survival'] as const)(
+  'persists independent %s settlement disclosure settings, allows manual collapse and restores defaults without changing the match',
+  async (mode) => {
+    if (mode === 'classic') {
+      let s = reduceGameSession(createGameSession(42), {
+        type: 'start_game',
+        characterId: 'isaac',
+      });
+      s = reduceGameSession(s, {
+        type: 'submit_player_turn',
+        turn: {
+          playerId: 'human',
+          actions: [{ type: 'bid', group: 'A', amount: 25 }],
+        },
+      });
+      localStorage.setItem(gameSaveKey, serializeGameCheckpoint(s));
+    } else {
+      let s = startSurvivalClient('isaac', 1, 'standard');
+      s = reduceSurvivalClient(s, {
+        type: 'submit_player_turn',
+        turn: {
+          playerId: 'human',
+          actions: [{ type: 'bid', group: 'B', amount: 250 }],
+        },
+      });
+      localStorage.setItem(
+        survivalSaveKey,
+        serializeSurvivalCheckpoint(s.game, s.draft),
+      );
+    }
+    localStorage.setItem(activeModeKey, mode);
+    await show(createElement(GameApp));
+    const key = mode === 'classic' ? gameSaveKey : survivalSaveKey;
+    const before = localStorage.getItem(key);
+    const details = () => [
+      ...node.querySelectorAll<HTMLDetailsElement>(
+        '.settlement-disclosures>details',
+      ),
+    ];
+    expect(details().map((d) => d.open)).toEqual([false, false, false]);
+    expect(
+      node.querySelector('.settlement-primary-actions')!.textContent,
+    ).not.toMatch(/本房已结算|准备好就继续/);
+    await click(button('设置'));
+    const labels = [
+      '默认展开道具资格与发放',
+      '默认展开积分计算明细',
+      '默认展开结算共同市场',
+    ];
+    for (const [index, label] of labels.entries()) {
+      await click(
+        node.querySelector<HTMLInputElement>(
+          `label[aria-label="${label}"] input`,
+        )!,
+      );
+      await click(button('游戏'));
+      expect(details().map((d) => d.open)).toEqual(
+        labels.map((_, i) => i <= index),
+      );
+      expect(localStorage.getItem(key)).toBe(before);
+      await click(button('设置'));
+    }
+    const stored = JSON.parse(localStorage.getItem(gamePreferencesKey)!);
+    expect(stored.preferences).toEqual({
+      ...defaultGamePreferences,
+      settlementRewardsInitiallyOpen: true,
+      settlementScoreInitiallyOpen: true,
+      settlementMarketInitiallyOpen: true,
+    });
+    await click(button('游戏'));
+    expect(details().map((d) => d.open)).toEqual([true, true, true]);
+    expect(node.querySelector('.result-market-details svg')).not.toBeNull();
+    await act(async () => {
+      details()[2]!.querySelector('summary')!.click();
+      await new Promise((r) => setTimeout(r, 25));
+    });
+    expect(details()[2]!.open).toBe(false);
+    expect(node.querySelector('.result-market-details svg')).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem(gamePreferencesKey)!).preferences
+        .settlementMarketInitiallyOpen,
+    ).toBe(true);
+    expect(localStorage.getItem(key)).toBe(before);
+    const matchFacts = (raw: string | null) => {
+      const {
+        savedAt: _savedAt,
+        checksum: _checksum,
+        ...facts
+      } = JSON.parse(raw!);
+      return facts;
+    };
+    await show(createElement(GameApp, { key: 'reload' }));
+    expect(details().map((d) => d.open)).toEqual([true, true, true]);
+    expect(matchFacts(localStorage.getItem(key))).toEqual(matchFacts(before));
+    await click(button('设置'));
+    await click(button('恢复默认设置'));
+    await click(button('游戏'));
+    expect(details().map((d) => d.open)).toEqual([false, false, false]);
+    expect(matchFacts(localStorage.getItem(key))).toEqual(matchFacts(before));
+  },
+);

@@ -2132,3 +2132,9 @@
 .market-reading-help>p { margin-top:6px; line-height:1.75; }
 @media(min-width:900px) and (max-width:1050px) { .topbar-with-session .topbar-inner { gap:10px; }.topbar-with-session .nav-item { min-width:48px; padding-inline:7px; }.topbar-with-session .brand-block h1 { font-size:1.04rem; }.settlement-status>summary { gap:7px; padding-inline:8px; font-size:.75rem; } }
 @media(max-width:700px) { .settlement-status>summary { flex-wrap:wrap; }.settlement-detail .result-line { grid-template-columns:70px minmax(0,1fr); }.settlement-detail .resolved-action-list dl { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+/* Final settlement polish and persisted disclosure preferences. */
+.settlement-primary-actions { display:flex; align-items:center; justify-content:center; }
+.settlement-detail .settlement-person.is-self { color:var(--primary); font-weight:800; }
+.settings-group-description { margin:0 0 12px; color:var(--muted-foreground); font-size:.76rem; line-height:1.7; }
+@media(max-width:1050px) { .settlement-primary-actions { justify-content:flex-end; } }

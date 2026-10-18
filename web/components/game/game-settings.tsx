@@ -113,23 +113,71 @@ export function GameSettings({
                   />
                 </label>
               </div>
-              <div className="settings-footer">
-                <output>
-                  {saveStatus === 'saved'
-                    ? '界面偏好已保存到当前浏览器。'
-                    : saveStatus === 'session'
-                      ? '浏览器存储不可用；修改仅在当前会话生效。'
-                      : '界面偏好与对局分别保存。'}
-                </output>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => onChange({ ...defaultGamePreferences })}
-                >
-                  恢复默认设置
-                </Button>
+            </fieldset>
+            <fieldset className="settings-group settings-settlement">
+              <legend>房间结算</legend>
+              <p className="settings-group-description">
+                修改立即应用，并用于后续结算页；页面内仍可手动开合。
+              </p>
+              <div className="settings-display-grid">
+                {(
+                  [
+                    [
+                      'settlementRewardsInitiallyOpen',
+                      '默认展开道具资格与发放',
+                      '查看各组名额与最终获奖名单。',
+                    ],
+                    [
+                      'settlementScoreInitiallyOpen',
+                      '默认展开积分计算明细',
+                      '查看行动数值、积分计算与资金效果。',
+                    ],
+                    [
+                      'settlementMarketInitiallyOpen',
+                      '默认展开结算共同市场',
+                      '查看已公开行动的市场分布图。',
+                    ],
+                  ] as const
+                ).map(([key, label, description]) => (
+                  <label
+                    key={key}
+                    className="setting-toggle"
+                    aria-label={label}
+                  >
+                    <span>
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={preferences[key]}
+                      onChange={(event) =>
+                        onChange({
+                          ...preferences,
+                          [key]: event.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+                ))}
               </div>
             </fieldset>
+            <div className="settings-footer">
+              <output>
+                {saveStatus === 'saved'
+                  ? '界面偏好已保存到当前浏览器。'
+                  : saveStatus === 'session'
+                    ? '浏览器存储不可用；修改仅在当前会话生效。'
+                    : '界面偏好与对局分别保存。'}
+              </output>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onChange({ ...defaultGamePreferences })}
+              >
+                恢复默认设置
+              </Button>
+            </div>
           </>
         }
         <CharacterAccessSettings />

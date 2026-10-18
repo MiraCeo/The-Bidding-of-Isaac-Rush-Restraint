@@ -694,6 +694,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     else
       body = (
         <RoomResult
+          preferences={preferences}
           embedded
           scoreScope="survival"
           auxiliaryActions={
