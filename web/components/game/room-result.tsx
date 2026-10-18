@@ -1,5 +1,7 @@
 import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
+import { ReplayMarket } from './replay-market';
+import { useState } from 'react';
 import { displayItemText } from '@/lib/ui/item-labels';
 import { ArrowRight, Coins } from 'lucide-react';
 
@@ -48,6 +50,7 @@ export function RoomResult({
   scoreDecimals = 2,
   embedded = false,
 }: RoomResultProps) {
+  const [marketOpen, setMarketOpen] = useState(false);
   const Container = embedded ? 'div' : 'main';
   const settlement = game.roomSettlement;
   if (!settlement) throw new Error('结算页面缺少房间结算记录。');
@@ -155,6 +158,21 @@ export function RoomResult({
             </small>
           </article>
         </div>
+
+        <details
+          className="result-market-details"
+          onToggle={(event) => setMarketOpen(event.currentTarget.open)}
+        >
+          <summary>本房共同市场 · 查看已公开行动</summary>
+          {marketOpen && (
+            <ReplayMarket
+              record={{ settlement }}
+              playerId={game.humanPlayerId}
+              name={playerName}
+              radius={cooperationRadius}
+            />
+          )}
+        </details>
 
         {humanAwards.length > 0 && (
           <section

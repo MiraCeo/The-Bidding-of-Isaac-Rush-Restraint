@@ -1,7 +1,13 @@
+import { MarketImpactPreview } from './market-impact-preview';
+import {
+  getQuoteCapacity,
+  formatMarketAmount,
+  capacityDescription,
+} from '@/lib/ui/quote-capacity';
 import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { displayItemText } from '@/lib/ui/item-labels';
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -38,7 +44,6 @@ import {
   itemPresentations,
   validateTurn,
   type ActiveClientGameState,
-  type PlayerAction,
   type PlayerTurn,
   type RewardGroup,
 } from '@/lib/game';
@@ -71,10 +76,6 @@ const roomKindNames = {
   hidden: '隐藏房',
   boss: 'BOSS 房',
 } as const;
-function actionLabel(action: PlayerAction): string {
-  if (action.type === 'withdraw') return '静观其变';
-  return `${action.type === 'bid' ? '竞拍' : '扰乱'} ${action.group} · ${action.amount}`;
-}
 
 export function RoomPrototype({
   rules = defaultRules,
@@ -89,7 +90,6 @@ export function RoomPrototype({
   preferenceSaveStatus,
   onPreferencesChange,
 }: RoomPrototypeProps) {
-  const floorMoney = rules.floorStartingMoney[game.floorIndex]!;
   const [rankingOpen, setRankingOpen] = useState(
     preferences.rankingInitiallyOpen,
   );
@@ -143,17 +143,23 @@ export function RoomPrototype({
   const humanEntryEvents = game.roomEntryEvents.filter(
     (event) => event.playerId === human.id || event.message.includes(human.id),
   );
-  const ranking = [...game.players]
-    .sort(
-      (left, right) =>
-        right.money - left.money || left.id.localeCompare(right.id),
-    )
-    .map((player) => ({
-      ...player,
-      name: player.isHuman
-        ? '你'
-        : (game.aiProfiles[player.id]?.name ?? player.id),
-    }));
+  const ranking = useMemo(
+    () =>
+      [...game.players]
+        .sort(
+          (left, right) =>
+            right.money - left.money || left.id.localeCompare(right.id),
+        )
+        .map((player) => ({
+          ...player,
+          name: player.isHuman
+            ? '你'
+            : (game.aiProfiles[player.id]?.name ?? player.id),
+          capacity: getQuoteCapacity(player, rules),
+        })),
+    [game.players, game.aiProfiles, rules],
+  );
+  const ownCapacity = ranking.find((player) => player.isHuman)!.capacity;
 
   const turn: PlayerTurn = {
     playerId: human.id,
@@ -180,30 +186,6 @@ export function RoomPrototype({
   const totalActualCost = resolvedPreviews.reduce(
     (sum, preview) => sum + preview.amounts.actualCost,
     0,
-  );
-  const publicMarketEntries = (game.pendingRoomTurns ?? [previewTurn]).flatMap(
-    (publicTurn) => {
-      const player = game.players.find(
-        (candidate) => candidate.id === publicTurn.playerId,
-      );
-      if (!player) return [];
-      return publicTurn.actions.flatMap((action, actionIndex) =>
-        action.type === 'withdraw'
-          ? []
-          : [
-              {
-                player,
-                action,
-                actionIndex,
-                amounts: getRuntimeActionAmounts(player, action, rules),
-              },
-            ],
-      );
-    },
-  );
-  const maximumMarketValue = Math.max(
-    floorMoney * 1.25,
-    ...publicMarketEntries.map((entry) => entry.amounts.marketEquivalent ?? 0),
   );
 
   function canDouble(kind: ActiveActionKind): boolean {
@@ -349,7 +331,15 @@ export function RoomPrototype({
               <h2>资金排行</h2>
             </div>
           </div>
-          <p className="drawer-description">按照当前剩余资金从高到低排列。</p>
+          <p className="drawer-description">
+            按资金排序；竞／扰为单目标理论市场等价上限，并非本房报价。
+          </p>
+          <details className="ranking-capacity-help">
+            <summary>计算口径</summary>
+            <p>
+              按当前资金、已持有道具和合法名义报价上限计算。完美视力修正竞拍市场等价；Steam折扣只减扣款，不扩大名义上限。双行动受各自总额限制，不把两项单目标上限相加；悬停数值可查看双行动能力。
+            </p>
+          </details>
           <ol className="ranking-list">
             {ranking.map((player, index) => (
               <li
@@ -364,10 +354,24 @@ export function RoomPrototype({
                   {player.name}
                   {player.isHuman && <small>当前玩家</small>}
                 </span>
-                <strong>
-                  <Coins aria-hidden="true" />
-                  {player.money}
-                </strong>
+                <div className="ranking-amounts">
+                  <strong>
+                    <Coins aria-hidden="true" />
+                    {player.money}
+                  </strong>
+                  <small
+                    className="ranking-capacity"
+                    title={capacityDescription(player.capacity)}
+                    aria-label={capacityDescription(player.capacity)}
+                  >
+                    竞{' '}
+                    {formatMarketAmount(player.capacity.bid.marketEquivalent)} ·
+                    扰{' '}
+                    {formatMarketAmount(
+                      player.capacity.disrupt.marketEquivalent,
+                    )}
+                  </small>
+                </div>
               </li>
             ))}
           </ol>
@@ -382,90 +386,17 @@ export function RoomPrototype({
         >
           <div className="drawer-heading">
             <div>
-              <p className="eyebrow">SHARED MARKET</p>
-              <h2>全房间共同市场</h2>
+              <p className="eyebrow">YOUR MARKET IMPACT</p>
+              <h2>我的市场影响</h2>
             </div>
           </div>
-          <p className="drawer-description">
-            {locked
-              ? '本房间全部行动已经公开；共同基准线将在结算时生成。'
-              : '玩家提交后才会公开本房间的共同基准线与全部行动。'}
-          </p>
-          <div className="vertical-market-wrap">
-            <span className="market-top-label">
-              预览上限 · {maximumMarketValue}
-            </span>
-            <div
-              className="vertical-market"
-              aria-label={
-                locked ? '本房间公开市场等价出价' : '当前行动的市场等价出价预览'
-              }
-            >
-              {!locked && (
-                <span className="market-pending">其他玩家尚未提交</span>
-              )}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-                <span
-                  key={ratio}
-                  className="market-tick"
-                  style={{ bottom: `${ratio * 100}%` }}
-                >
-                  {Math.round(maximumMarketValue * ratio)}
-                </span>
-              ))}
-              {publicMarketEntries.map((entry) => (
-                <span
-                  key={`${entry.player.id}-${entry.actionIndex}`}
-                  className={`vertical-action-marker ${entry.action.type === 'disrupt' ? 'vertical-action-marker-disrupt' : ''} ${entry.player.isHuman ? 'vertical-self-marker' : ''}`}
-                  style={{
-                    bottom: `${((entry.amounts.marketEquivalent ?? 0) / maximumMarketValue) * 100}%`,
-                    left: entry.player.isHuman
-                      ? entry.action.group === 'A'
-                        ? '42%'
-                        : '58%'
-                      : `${38 + ((Number(entry.player.id.replace('ai-', '')) * 17 + entry.actionIndex * 11) % 25)}%`,
-                  }}
-                  title={`${entry.player.isHuman ? '你' : (game.aiProfiles[entry.player.id]?.name ?? entry.player.id)}：${actionLabel(entry.action)}；市场等价 ${entry.amounts.marketEquivalent}`}
-                >
-                  {entry.player.isHuman && <b>你{entry.action.group}</b>}
-                </span>
-              ))}
-            </div>
-            <span className="market-bottom-label">低投入 · 0</span>
-          </div>
-          <div className="market-legend">
-            <span>
-              <i className="legend-dot legend-self" />
-              你的行动
-            </span>
-            {locked && (
-              <span>
-                <i className="legend-dot" />
-                竞拍
-              </span>
-            )}
-            {locked && (
-              <span>
-                <i className="legend-dot legend-disrupt" />
-                扰乱
-              </span>
-            )}
-          </div>
-          <div className="market-readout">
-            <span>{locked ? '公开市场样本' : '你的市场等价出价'}</span>
-            <strong>
-              {locked
-                ? `${publicMarketEntries.length} 份`
-                : resolvedPreviews.length === 0
-                  ? '—'
-                  : resolvedPreviews
-                      .map(
-                        (preview) =>
-                          `${preview.action.group} ${preview.amounts.marketEquivalent}`,
-                      )
-                      .join(' / ')}
-            </strong>
-          </div>
+          <MarketImpactPreview
+            player={human}
+            turn={previewTurn}
+            kind={activeKind}
+            capacity={ownCapacity}
+            rules={rules}
+          />
         </aside>
 
         <section className="game-stage" aria-label="房间行动区">

@@ -439,3 +439,78 @@ describe('single target entry per reward card', () => {
     },
   );
 });
+
+describe('public capability and own market preview', () => {
+  it('adds theoretical market ceilings without changing money sorting or treating discounts as extra funds', async () => {
+    const game = gameWith(['steam_sale', 'twenty_twenty', 'twenty_twenty']);
+    game.players.find((p) => p.isHuman)!.money = 100;
+    const before = structuredClone(game);
+    await mount(game);
+    const rows = [...container.querySelectorAll('.ranking-list li')];
+    const expected = [...game.players].sort(
+      (a, b) => b.money - a.money || a.id.localeCompare(b.id),
+    );
+    expect(
+      rows.findIndex((row) => row.classList.contains('ranking-self')),
+    ).toBe(expected.findIndex((p) => p.isHuman));
+    const own = element('.ranking-self .ranking-capacity');
+    expect(own.textContent).toContain('竞 156.25');
+    expect(own.textContent).toContain('扰 125');
+    expect(own.getAttribute('title')).toContain('不代表本房实际出价');
+    expect(element('.market-impact-limit strong').textContent).toBe('156.25');
+    expect(element('.market-impact-action p').textContent).toContain(
+      '市场倍率 1.5625',
+    );
+    expect(game).toEqual(before);
+    await mode('扰乱');
+    expect(element('.market-impact-limit strong').textContent).toBe('125');
+    expect(own.textContent).toContain('竞 156.25');
+  });
+  it('cannot reveal a supplied private turn through the preview', async () => {
+    const game = gameWith(),
+      submit = await mount(game);
+    const before = element('#market-drawer').innerHTML;
+    await mount(
+      {
+        ...game,
+        pendingRoomTurns: [
+          {
+            playerId: 'ai-1',
+            actions: [{ type: 'bid', group: 'B', amount: 98765 }],
+          },
+        ],
+      },
+      submit,
+    );
+    expect(element('#market-drawer').innerHTML).toBe(before);
+    expect(element('#market-drawer').textContent).not.toContain('98765');
+    expect(element('#market-drawer').textContent).toContain('我的市场影响');
+    expect(container.querySelector('.vertical-market')).toBeNull();
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it('renders double actions as two own samples with their shared nominal restriction', async () => {
+    await mount(gameWith(['more_options']));
+    await amount('竞拍', 'A', 19);
+    await amount('竞拍', 'B', 21);
+    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(2);
+    expect(element('.market-impact-pair').textContent).toContain('55');
+    await click('.observe-button');
+    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(0);
+    expect(element('.market-impact-empty').textContent).toContain(
+      '不产生市场样本',
+    );
+  });
+  it('shows zero capability and no imaginary sample when no quote is available', async () => {
+    const game = gameWith();
+    game.players.find((p) => p.isHuman)!.money = 0;
+    await mount(game);
+    expect(element('.ranking-self .ranking-capacity').textContent).toContain(
+      '竞 0',
+    );
+    expect(element('.market-impact-limit strong').textContent).toBe('0');
+    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(0);
+    expect(element('.market-impact-empty').textContent).toContain(
+      '没有可用报价',
+    );
+  });
+});

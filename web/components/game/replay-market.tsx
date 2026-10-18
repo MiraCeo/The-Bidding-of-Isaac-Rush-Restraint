@@ -43,7 +43,7 @@ export function ReplayMarket({
   name,
   radius,
 }: {
-  record: ReplayRoomRecord;
+  record: Pick<ReplayRoomRecord, 'settlement'>;
   playerId: string;
   name: (id: string) => string;
   radius: number;
