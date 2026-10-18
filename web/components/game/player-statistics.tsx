@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { characterNames } from '@/lib/game';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { PlayerProfile } from '@/lib/ui/player-profile';
 import {
   completionReceiptLimit,
@@ -32,7 +33,7 @@ function select(
         return (
           m === mode &&
           (role === 'all' || r === role) &&
-          (mode === 'classic' || difficulty === 'all' || d === difficulty)
+          (difficulty === 'all' || (d ?? 'ungraded') === difficulty)
         );
       })
       .map(([, c]) => c),
@@ -159,23 +160,27 @@ export function PlayerStatistics({
             ))}
           </select>
         </label>
-        {mode === 'survival' && (
-          <label>
-            难度
-            <select
-              aria-label="统计难度"
-              value={filters.difficulty}
-              onChange={(e) => filter('difficulty', e.target.value)}
-            >
-              <option value="all">全部难度</option>
-              {statisticDifficulties.map((id) => (
-                <option key={id} value={id}>
-                  {id === 'ungraded' ? '未分层' : survivalDifficultyLabel(id)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label>
+          难度
+          <select
+            aria-label="统计难度"
+            value={filters.difficulty}
+            onChange={(e) => filter('difficulty', e.target.value)}
+          >
+            <option value="all">全部难度</option>
+            {statisticDifficulties.map((id) => (
+              <option key={id} value={id}>
+                {id === 'ungraded'
+                  ? mode === 'classic'
+                    ? '原版（未分档）'
+                    : '未分层'
+                  : mode === 'classic'
+                    ? classicDifficultyLabel(id)
+                    : survivalDifficultyLabel(id)}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <p className="utility-notice">
         {filters.scope === 'history'

@@ -169,7 +169,7 @@ function replayMetadata(doc: LibraryReplay) {
     difficulty:
       doc.mode === 'survival'
         ? (doc.replay.ruleFacts.parameters.aiDifficulty ?? null)
-        : null,
+        : (doc.replay.classicAi?.difficulty ?? null),
     seed: doc.replay.seed,
     completed: !!doc.replay.final,
     rooms: doc.replay.rooms.length,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { characterNames } from '@/lib/game';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import { downloadJsonFile } from '@/lib/ui/json-download';
 import { maxFileBytes } from '@/lib/ui/file-json';
 import { ReplayLibraryBackupPanel } from './replay-library-backup-panel';
@@ -251,9 +252,7 @@ export function ReplayLibraryPanel({
     (e) =>
       e.mode === mode &&
       (role === 'all' || role === e.characterId) &&
-      (mode === 'classic' ||
-        difficulty === 'all' ||
-        difficulty === (e.difficulty ?? 'ungraded')) &&
+      (difficulty === 'all' || difficulty === (e.difficulty ?? 'ungraded')) &&
       (completion === 'all' || e.completed === (completion === 'complete')),
   );
   const used = entries.reduce((sum, e) => sum + e.bytes, 0);
@@ -396,24 +395,26 @@ export function ReplayLibraryPanel({
             ))}
           </select>
         </label>
-        {mode === 'survival' && (
-          <label>
-            难度
-            <select
-              aria-label="回放库难度"
-              value={difficulty}
-              onChange={(e) => filter('difficulty', e.target.value)}
-            >
-              <option value="all">全部难度</option>
-              {(['easy', 'standard', 'hard', 'highest'] as const).map((d) => (
-                <option key={d} value={d}>
-                  {survivalDifficultyLabel(d)}
-                </option>
-              ))}
-              <option value="ungraded">未分层</option>
-            </select>
-          </label>
-        )}
+        <label>
+          难度
+          <select
+            aria-label="回放库难度"
+            value={difficulty}
+            onChange={(e) => filter('difficulty', e.target.value)}
+          >
+            <option value="all">全部难度</option>
+            {(['easy', 'standard', 'hard', 'highest'] as const).map((d) => (
+              <option key={d} value={d}>
+                {mode === 'classic'
+                  ? classicDifficultyLabel(d)
+                  : survivalDifficultyLabel(d)}
+              </option>
+            ))}
+            <option value="ungraded">
+              {mode === 'classic' ? '原版（未分档）' : '未分层'}
+            </option>
+          </select>
+        </label>
         <label>
           状态
           <select
@@ -462,7 +463,7 @@ export function ReplayLibraryPanel({
                   <small>
                     {entry.mode === 'survival'
                       ? survivalDifficultyLabel(entry.difficulty ?? undefined)
-                      : '经典'}
+                      : classicDifficultyLabel(entry.difficulty ?? undefined)}
                   </small>
                 </td>
                 <td>{entry.rooms} 房</td>
@@ -558,7 +559,7 @@ export function ReplayLibraryPanel({
             {deleting.rooms} 房 ·{' '}
             {deleting.mode === 'survival'
               ? survivalDifficultyLabel(deleting.difficulty ?? undefined)
-              : '经典'}{' '}
+              : classicDifficultyLabel(deleting.difficulty ?? undefined)}{' '}
             · 入库于 {new Date(deleting.savedAt).toLocaleString('zh-CN')}
           </p>
           <Button

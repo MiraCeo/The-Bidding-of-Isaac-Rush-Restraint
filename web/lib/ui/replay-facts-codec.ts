@@ -249,6 +249,7 @@ export function unpackReplayFacts(value: unknown): ReplayLog {
     'seed',
     'characterId',
     'rulesVersion',
+    'classicAi',
     'startedBuild',
     'ruleFacts',
     'playerNames',

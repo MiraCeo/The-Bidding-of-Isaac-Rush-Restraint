@@ -1,6 +1,7 @@
 import { prepareAchievementBaseline, withAchievementVerificationScope } from './achievements/registry';
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
+import { readClassicAiSettings, classicDifficultyLabel } from '../game/classic-difficulty';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import {
@@ -348,6 +349,7 @@ export function parseGameSave(source: string): SaveDocument {
   let verified = reduceGameSession(createGameSession(seed), {
     type: 'start_game',
     characterId: game.selectedCharacter as CharacterId,
+    ...(Object.hasOwn(game, 'classicAi') ? { classicAi: readClassicAiSettings(game.classicAi) } : {}),
   });
   const growth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'classic') : undefined;
   if (growth) verified = beginClassicGrowth(verified, growth.excludedThrough, growth.expansionFrom ?? 34, growth.milestonesFrom ?? 34, growth.revisionsFrom ?? 34, growth.cfFrom ?? 34);
@@ -427,7 +429,7 @@ export function describeSave(session: GameSession): string {
     room_ranking: '房间排行',
     game_result: '对局已结束',
   };
-  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}`;
+  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}${game.classicAi ? ' · 难度 ' + classicDifficultyLabel(game.classicAi.difficulty) : ''}`;
 }
 const storageCache = new WeakMap<
   SaveStorage,

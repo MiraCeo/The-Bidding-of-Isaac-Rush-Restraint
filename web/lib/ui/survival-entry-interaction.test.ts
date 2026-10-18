@@ -465,7 +465,12 @@ describe('formal independent survival entry', () => {
   it('never offers survival difficulty in classic selection', async () => {
     await mount();
     await click(button('经典模式'));
-    expect(container.querySelector('.survival-difficulty-options')).toBeNull();
+    expect(container.querySelector('[aria-label="生存AI难度设置"]')).toBeNull();
+    const picker = node<HTMLElement>('.classic-difficulty-picker');
+    expect(picker.querySelectorAll('input[type="radio"]')).toHaveLength(4);
+    expect(picker.querySelector<HTMLInputElement>('input:checked')!.value).toBe(
+      'highest',
+    );
   });
   it('opens three entries without starting a world, and tutorial remains isolated', async () => {
     const spy = vi.spyOn(kernel, 'startSurvivalGame');

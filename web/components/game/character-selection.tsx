@@ -13,6 +13,11 @@ import {
 import { Button } from '@/components/ui/button';
 import type { SurvivalDifficulty } from '@/lib/game/survival-difficulty';
 import { SurvivalDifficultyPicker } from './survival-difficulty-picker';
+import { ClassicDifficultyPicker } from './classic-difficulty-picker';
+import {
+  defaultClassicDifficulty,
+  type ClassicDifficulty,
+} from '@/lib/game/classic-difficulty';
 import { CharacterArt } from './character-art';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
@@ -62,6 +67,8 @@ const characterPresentation: Readonly<
 };
 
 interface CharacterSelectionProps {
+  classicDifficulty?: ClassicDifficulty;
+  onClassicDifficultyChange?: (difficulty: ClassicDifficulty) => void;
   selected?: CharacterId | null;
   startMessage?: string;
   onSelect?: (character: CharacterId) => void;
@@ -80,6 +87,8 @@ interface CharacterSelectionProps {
 }
 
 export function CharacterSelection({
+  classicDifficulty = defaultClassicDifficulty,
+  onClassicDifficultyChange,
   selected,
   startMessage,
   onSelect,
@@ -173,6 +182,12 @@ export function CharacterSelection({
             <strong>角色档案</strong>
             <output>{access.operationMessage || access.message}</output>
           </section>
+        )}
+        {mode === 'classic' && (
+          <ClassicDifficultyPicker
+            value={classicDifficulty}
+            onChange={onClassicDifficultyChange}
+          />
         )}
         {mode === 'survival' && (
           <SurvivalDifficultyPicker

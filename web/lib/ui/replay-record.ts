@@ -13,6 +13,7 @@ import type {
 } from '../game/item-types';
 import { countItem } from '../game/runtime';
 import { defaultRules } from '../game/config';
+import { classicReplayId, type ClassicAiSettings } from '../game/classic-difficulty';
 import { readBuildVersion, saveCompatibility, shortHash } from './game-version';
 
 export interface ReplayRoomRecord {
@@ -34,6 +35,7 @@ export interface ReplayFinalRecord {
   crownMultipliers: Record<string, number>;
 }
 export interface ReplayLog {
+  classicAi?: ClassicAiSettings;
   id: string;
   seed: number;
   characterId: CharacterId;
@@ -51,7 +53,8 @@ export interface ReplayRuleFacts {
 }
 export function createReplayLog(game: ActiveClientGameState): ReplayLog {
   return {
-    id: `ISAAC-${game.seed.toString(16).padStart(8, '0')}-${game.selectedCharacter}-${saveCompatibility.split('-').at(-1)}`,
+    ...(game.classicAi ? { classicAi: { ...game.classicAi } } : {}),
+    id: classicReplayId(game.seed, game.selectedCharacter, saveCompatibility, game.classicAi),
     seed: game.seed,
     characterId: game.selectedCharacter,
     rulesVersion: saveCompatibility,

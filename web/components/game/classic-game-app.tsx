@@ -12,6 +12,11 @@ import {
 import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
+import {
+  classicAiPolicy,
+  defaultClassicDifficulty,
+  type ClassicDifficulty,
+} from '@/lib/game/classic-difficulty';
 import { selectMarketHistory } from '@/lib/ui/market-history';
 import { defaultRules } from '@/lib/game/config';
 import { useMatchScroll } from './use-match-scroll';
@@ -83,6 +88,14 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   const [selectedCharacter, setSelectedCharacter] =
     useState<CharacterId | null>(null);
   const [initial] = useState(() => loadAutoSave(getPreferenceStorage()));
+  const [classicDifficulty, setClassicDifficulty] = useState<ClassicDifficulty>(
+    () => {
+      const game = initial.session?.game;
+      return game && game.phase !== 'character_selection'
+        ? (game.classicAi?.difficulty ?? defaultClassicDifficulty)
+        : defaultClassicDifficulty;
+    },
+  );
   const [session, setSession] = useState(
     () => initial.session ?? createGameSession(),
   );
@@ -352,11 +365,22 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
   } else if (game.phase === 'character_selection') {
     page = (
       <CharacterSelection
+        classicDifficulty={classicDifficulty}
+        onClassicDifficultyChange={setClassicDifficulty}
         startMessage={restoreMessage}
         selected={selectedCharacter}
         onSelect={setSelectedCharacter}
         onReturnMenu={props.onReturnMenu}
-        onStart={(characterId) => dispatch({ type: 'start_game', characterId })}
+        onStart={(characterId) =>
+          dispatch({
+            type: 'start_game',
+            characterId,
+            classicAi: {
+              policy: classicAiPolicy,
+              difficulty: classicDifficulty,
+            },
+          })
+        }
         preferences={preferences}
         preferenceSaveStatus={preferenceSaveStatus}
         onPreferencesChange={changePreferences}

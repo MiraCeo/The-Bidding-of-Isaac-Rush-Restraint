@@ -9,6 +9,7 @@ import { replayRuleFacts } from '@/lib/ui/replay-facts-codec';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { downloadPortableJsonFile } from '@/lib/ui/json-download';
 import { compressedFileSummary } from '@/lib/ui/compressed-file';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import { useSessionTools } from './session-context';
 import {
   ReplayRoomPanel,
@@ -177,7 +178,10 @@ export function ReplayArchive({
             {characterNames[log.characterId]} ·{' '}
             {log.final ? '已完成对局' : '进行中记录'}
           </strong>
-          <span>已结算 {log.rooms.length} / 15 房间 · 只读复盘</span>
+          <span>
+            已结算 {log.rooms.length} / 15 房间 · 难度{' '}
+            {classicDifficultyLabel(log.classicAi?.difficulty)} · 只读复盘
+          </span>
         </div>
         {record && (
           <nav className="replay-scope-tabs" aria-label="回放范围">

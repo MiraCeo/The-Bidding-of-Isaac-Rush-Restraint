@@ -1,4 +1,5 @@
 import { GameHeader } from './game-header';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { ReactNode } from 'react';
 import { Coins } from 'lucide-react';
 import { characterNames, type ActiveClientGameState } from '@/lib/game';
@@ -42,6 +43,9 @@ export function SettledGameFrame({
         context={
           <>
             <div className="round-status">
+              <span className="status-chip">
+                难度 {classicDifficultyLabel(game.classicAi?.difficulty)}
+              </span>
               <span className="status-chip">
                 第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5
               </span>

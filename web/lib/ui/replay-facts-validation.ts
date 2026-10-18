@@ -1,4 +1,5 @@
 import { characterCatalog } from '../game/characters';
+import { classicReplayId, readClassicAiSettings } from '../game/classic-difficulty';
 import { itemCatalog } from '../game/item-catalog';
 import type { RuntimePlayerState, SettlementEvent } from '../game/item-types';
 import {
@@ -167,7 +168,8 @@ export function validateReplayFacts(value: ReplayLog): ReplayLog {
   text(log.startedBuild);
   integer(log.seed);
   if (log.seed > 0xffffffff || !characterIds.has(log.characterId)) fail();
-  const expectedId = `ISAAC-${log.seed.toString(16).padStart(8, '0')}-${log.characterId}-${log.rulesVersion.split('-').at(-1)}`;
+  const classicAi = Object.hasOwn(log, 'classicAi') ? readClassicAiSettings(log.classicAi) : undefined;
+  const expectedId = classicReplayId(log.seed, log.characterId, log.rulesVersion, classicAi);
   if (log.id !== expectedId) fail();
   if (!log.playerNames || typeof log.playerNames !== 'object') fail();
   equal(Object.keys(log.playerNames).sort(), [...playerIds].sort());

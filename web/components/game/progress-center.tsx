@@ -22,6 +22,7 @@ import {
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
 import { readBuildVersion } from '@/lib/ui/game-version';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
 import { currentFileVersion } from '@/lib/ui/file-protocol';
@@ -506,7 +507,7 @@ export function ProgressCenter({
                                 <td>
                                   {mode === 'survival'
                                     ? survivalDifficultyLabel(row.aiDifficulty)
-                                    : '—'}
+                                    : classicDifficultyLabel(row.aiDifficulty)}
                                 </td>
                                 <td>
                                   {mode === 'classic'

@@ -65,7 +65,7 @@ export function GameModeMenu({
             <small>
               {tools?.session.game.phase !== 'character_selection'
                 ? '已有经典对局，可继续或重新选角'
-                : '1名真人＋19名AI'}
+                : '1名真人＋19名AI · 四档AI难度 · 默认最高（原版）'}
             </small>
             <Button onClick={onClassic}>经典模式</Button>
           </article>

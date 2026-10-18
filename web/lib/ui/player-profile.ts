@@ -129,7 +129,7 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
     date(h.completedAt);
     if (
       h.aiDifficulty !== undefined &&
-      (h.mode !== 'survival' || !isSurvivalDifficulty(h.aiDifficulty))
+      ((h.mode !== 'survival' && h.mode !== 'classic') || !isSurvivalDifficulty(h.aiDifficulty))
     )
       fail();
     if (h.mode !== undefined && h.mode !== 'classic' && h.mode !== 'survival')
@@ -197,6 +197,7 @@ export function recordCompletedMatch(
       finalScore: human.finalScore,
       rank,
       mode: 'classic',
+      ...(log.classicAi ? { aiDifficulty: log.classicAi.difficulty } : {}),
     },
     [key],
     rank === 1,

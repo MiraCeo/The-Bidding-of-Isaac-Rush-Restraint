@@ -20,7 +20,7 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.7.0');
+    expect(appVersion).toBe('0.7.1');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
@@ -47,7 +47,7 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.5.4')!.compatibility,
     ).toContain('纯展示');
-    expect(appReleaseNotes[0]!.version).toBe('0.7.0');
+    expect(appReleaseNotes[0]!.version).toBe('0.7.1');
     expect(appReleaseNotes.find((n) => n.version === '0.5.5')!.title).toContain(
       '达成回显',
     );
@@ -98,9 +98,11 @@ describe('UI release version independent of save compatibility', () => {
     expect(
       appReleaseNotes.find((n) => n.version === '0.6.11')!.highlights.join(' '),
     ).toContain('报价');
-    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain(
-      '理论市场等价上限',
-    );
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.7.0')!.highlights.join(' '),
+    ).toContain('理论市场等价上限');
+    expect(appReleaseNotes[0]!.compatibility).toContain('classic-tiered-1');
+    expect(appReleaseNotes[0]!.highlights.join(' ')).toContain('最高（原版）');
     const numbering = appReleaseNotes.find((n) => n.version === '0.5.12')!;
     expect(numbering.title).toContain('编号');
     expect(numbering.highlights.join(' ')).toContain('具体行为');

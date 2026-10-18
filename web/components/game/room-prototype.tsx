@@ -1,4 +1,5 @@
 import { MarketImpactPreview } from './market-impact-preview';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { HistoricalMarket } from '@/lib/ui/market-history';
 import {
   getQuoteCapacity,
@@ -289,6 +290,11 @@ export function RoomPrototype({
         context={
           <>
             <div className="round-status">
+              {!extraStatus && (
+                <span className="status-chip">
+                  难度 {classicDifficultyLabel(game.classicAi?.difficulty)}
+                </span>
+              )}
               <span className="status-chip">
                 <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
                 {game.roomIndex + 1}/5

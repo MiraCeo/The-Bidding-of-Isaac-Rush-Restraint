@@ -9,7 +9,8 @@ import releaseNotes from '../../release-notes.json';
 import { persistedItemNames } from './item-labels';
 import { survivalOfficialCutLines } from '../game/survival-rules';
 
-// Bump when runtime/RNG/AI behavior changes. UI-only releases remain compatible.
+// Base engine identity covers the legacy algorithm. Opt-in classic AI behavior
+// has its own validated policy version in game/replay; never reinterpret absence.
 const engineVersion = releaseConfig.engineVersion;
 export const appVersion = packageInfo.version;
 export const saveFormatVersion = releaseConfig.saveFormatVersion;
