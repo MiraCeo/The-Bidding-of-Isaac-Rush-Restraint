@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { CatalogItemCard } from '@/components/game/catalog-item-card';
 import { ItemBadges } from '@/components/game/item-badges';
 import { ItemArtAvailability } from '@/components/game/item-icon';
+import { ItemEffectText } from '@/components/game/item-effect-text';
 import { itemCatalog } from '../game/item-catalog';
 import { itemPresentations } from '../game/item-presentation';
 import { getItemBadges } from './item-badges';
@@ -140,7 +141,7 @@ it('enlarges only dialog artwork and typography while keeping its return action 
     '.final-item-dialog .rule-item-heading h4 { color:#ffe2a4; font-size:1.75rem;',
   );
   expect(css).toContain(
-    '.final-item-dialog-actions { display:flex; justify-content:flex-end;',
+    '.final-item-dialog .rule-item-actions { grid-column:2; display:flex; justify-content:flex-end;',
   );
   const action = css.split('.final-item-done {')[1]!.split('}')[0]!;
   expect(action).not.toContain('width:');
@@ -152,4 +153,27 @@ it('enlarges only dialog artwork and typography while keeping its return action 
   expect(css).toContain(
     '.final-item-dialog .rule-item-art .item-icon { --item-icon-size:96px; }',
   );
+  expect(css).not.toContain('.final-item-dialog-actions');
+  expect(css).toContain(
+    'background:radial-gradient(ellipse at center,#edaf3d12,transparent 68%),#2b2116',
+  );
+});
+
+it('emphasizes probabilities and percentages without changing authoritative item descriptions', () => {
+  for (const item of itemCatalog) {
+    const text = itemPresentations[item.id].description;
+    const el = document.createElement('div');
+    el.innerHTML = renderToStaticMarkup(
+      createElement(ItemEffectText, { text }),
+    );
+    expect(el.textContent).toBe(text);
+    if (item.id === 'd6') {
+      expect(
+        [...el.querySelectorAll('strong')].map((e) => e.textContent),
+      ).toEqual(['六分之一概率', '200%']);
+    }
+    if (item.id === 'brimstone') {
+      expect(el.querySelector('strong')!.textContent).toBe('80%～125%');
+    }
+  }
 });

@@ -261,6 +261,13 @@ it('retains every repeated instance and empty inventory, and opens a read-only i
   expect(dialog.textContent).not.toContain('仅供查看');
   expect(dialog.textContent).not.toContain('以本局结算记录为准');
   expect(dialog.querySelector('.final-item-dialog-heading')).toBeNull();
+  expect(dialog.querySelector('.final-item-dialog-actions')).toBeNull();
+  expect(
+    dialog.querySelector('.rule-item-actions .final-item-done'),
+  ).not.toBeNull();
+  expect(
+    [...card.querySelectorAll('p strong')].map((e) => e.textContent),
+  ).toEqual(['六分之一概率', '200%']);
   expect(dialog.getAttribute('aria-labelledby')).toBe(
     card.querySelector('h4')!.id,
   );

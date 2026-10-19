@@ -16,6 +16,7 @@ import {
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import { ItemArtProvider, ItemIcon } from './item-icon';
 import { CatalogItemCard } from './catalog-item-card';
+import { ItemEffectText } from './item-effect-text';
 import { AiGuideLink } from './ai-guide-link';
 import { LocateSelfButton, RankingScrollArea } from './ranking-self-summary';
 
@@ -234,8 +235,15 @@ export function FinalPlayerRanking({
                 }
                 description={
                   <Dialog.Description>
-                    {itemPresentations[inspected.id].description}
+                    <ItemEffectText
+                      text={itemPresentations[inspected.id].description}
+                    />
                   </Dialog.Description>
+                }
+                actions={
+                  <Dialog.Close className="final-item-done">
+                    返回排行
+                  </Dialog.Close>
                 }
               />
               <Dialog.Close
@@ -244,9 +252,6 @@ export function FinalPlayerRanking({
               >
                 <X size={20} aria-hidden="true" />
               </Dialog.Close>
-              <footer className="final-item-dialog-actions">
-                <Dialog.Close className="final-item-done">返回排行</Dialog.Close>
-              </footer>
             </Dialog.Popup>
           </ItemArtProvider>
         )}

@@ -9,11 +9,13 @@ export function CatalogItemCard({
   item,
   title,
   description,
+  actions,
 }: {
   item: ItemDefinition;
   /** Semantic slots let dialog title/description reuse the exact catalog layout. */
   title?: ReactNode;
   description?: ReactNode;
+  actions?: ReactNode;
 }) {
   const badges = getItemBadges(item);
   const attributes = badges.filter(
@@ -62,6 +64,7 @@ export function CatalogItemCard({
           </li>
         ))}
       </ul>
+      {actions && <div className="rule-item-actions">{actions}</div>}
     </article>
   );
 }
