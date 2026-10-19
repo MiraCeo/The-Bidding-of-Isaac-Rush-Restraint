@@ -20,6 +20,7 @@ import {
 import { playLongRun } from './survival-long-run';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { packDataFile } from './compressed-file';
+import { classicCompletionFixture } from './completion-registry.test-helper';
 import { waitForFileUi } from './file-export.test-helper';
 import oldCheckpoint from './fixtures/checkpoint-v2-lost-20261012.json';
 (
@@ -361,8 +362,11 @@ it('keeps AI continuation alive while progress is open and refreshes completed h
   expect(container.querySelector('.progress-page')).not.toBeNull();
   expect(container.textContent).toContain('已结束');
   expect(container.querySelector('table')!.textContent).toContain('第1层淘汰');
-  expect(button('查看本局生存回放')).toBeDefined();
-  await click('查看本局生存回放');
+  const currentReplay = container.querySelector<HTMLButtonElement>(
+    '[aria-label="查看本局生存回放"]',
+  )!;
+  expect(currentReplay.textContent).toBe('查看对局');
+  await act(async () => currentReplay.click());
   expect(container.textContent).toContain('已结算 35 房');
   await click('返回进度');
   expect(container.querySelector('#progress-title')).not.toBeNull();
@@ -502,7 +506,9 @@ it('routes overview shortcuts to the selected mode and preserves both games, dra
       .click(),
   );
   expect(button('对局记录').getAttribute('aria-current')).toBe('page');
-  expect(container.textContent).toContain('生存对局与回放');
+  expect(container.querySelector('.progress-replays>h3')!.textContent).toBe(
+    '对局与记录',
+  );
   await click('总览');
   await click('查看详细统计');
   expect(button('统计').getAttribute('aria-current')).toBe('page');
@@ -607,4 +613,43 @@ it('keeps record sources and shared filters by mode without mixing result histor
       localStorage.getItem(k),
     ),
   ).toEqual(saved);
+});
+
+it('uses the same context frame, state pill, action labels and save disclosure for both completed modes', async () => {
+  const c = classicCompletionFixture(),
+    s = playLongRun(3, 'isaac', 'standard').game;
+  localStorage.setItem(gameSaveKey, serializeGameCheckpoint(c));
+  localStorage.setItem(survivalSaveKey, serializeSurvivalCheckpoint(s, null));
+  await mount();
+  await click('进度');
+  await click('对局记录');
+  const before = [gameSaveKey, survivalSaveKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  const shape = () => {
+    const card = container.querySelector('.records-context-card')!;
+    return {
+      heading: card.querySelector('h3')!.textContent,
+      state: card.querySelector('.data-state')!.textContent,
+      actions: [...card.querySelectorAll('.data-actions button')].map(
+        (e) => e.textContent,
+      ),
+      summary: card.querySelector('.records-save-status>summary')!.textContent,
+    };
+  };
+  const first = shape();
+  expect(first).toEqual({
+    heading: '对局与记录',
+    state: '已结束',
+    actions: ['查看对局', '导出回放'],
+    summary: '保存状态',
+  });
+  await click('生存');
+  expect(shape()).toEqual(first);
+  expect(
+    container.querySelector('.records-context-card small')!.textContent,
+  ).toBe(`已结算 ${s.roomRecords.length} 房`);
+  expect(
+    [gameSaveKey, survivalSaveKey].map((k) => localStorage.getItem(k)),
+  ).toEqual(before);
 });

@@ -1327,6 +1327,14 @@
 .library-auto-status, .library-empty { color:#bfaf90; }
 .progress-records { display:grid; gap:16px; min-width:0; }
 .records-source-panel, .progress-records>.data-management { min-width:0; }
+.progress-records .records-context-card { margin:0; padding:16px 18px; gap:12px; border:1px solid #8f6d3c55; border-radius:12px; background:linear-gradient(110deg,#edaf3d09,transparent 70%),#211b14; }
+.progress-records .records-context-card>h3 { margin:0; color:#d8bb87; font-size:.8rem; font-weight:800; }
+.progress-records .records-context-card .data-record-row { margin:0; }
+.progress-records .records-context-card .data-state { font-size:.7rem; line-height:1.5; }
+.progress-records .records-save-status { border-top:1px solid #a58a5933; padding-top:10px; font-size:.67rem; color:#b9a17d; }
+.progress-records .records-save-status>div { margin-top:8px; line-height:1.8; }
+.progress-records .records-save-status p:empty { display:none; }
+.progress-records .records-save-status .data-autosave { margin:0; }
 .records-source-panel[hidden] { display:none; }
 .progress-records .data-records, .progress-records .progress-replays { margin:0; padding:14px 18px; gap:10px; border-color:#8f6d3c55; background:linear-gradient(110deg,#edaf3d09,transparent 70%),#211b14; border-radius:12px; }
 .progress-records .data-records>h3, .progress-records .progress-replays>h3 { font-size:.8rem; font-weight:800; color:#d8bb87; }

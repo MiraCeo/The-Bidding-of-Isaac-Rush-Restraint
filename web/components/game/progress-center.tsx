@@ -1,3 +1,4 @@
+import { SurvivalRecordCard } from './survival-record-card';
 import { ProgressOverview } from './progress-overview';
 import { CompletionHistoryPanel } from './completion-history-panel';
 import { AchievementProgress } from './achievement-progress';
@@ -11,7 +12,6 @@ import { useSessionTools } from './session-context';
 import { useDataManagement } from './use-data-management';
 import { DataManagement, dataTaskTitle } from './data-management';
 import { SurvivalDataManagement } from './survival-data-management';
-import { characterNames } from '@/lib/game';
 import { loadPlayerProfile } from '@/lib/ui/game-save';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import type { SurvivalClientSession } from '@/lib/ui/survival-client';
@@ -22,10 +22,8 @@ import {
   type SurvivalReplayDocument,
 } from '@/lib/ui/survival-persistence';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import { readBuildVersion } from '@/lib/ui/game-version';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
-import { currentFileVersion } from '@/lib/ui/file-protocol';
 import { StorageDiagnostics } from './storage-diagnostics';
 import {
   ReplayLibraryPanel,
@@ -360,74 +358,14 @@ export function ProgressCenter({
                 {mode === 'classic' ? (
                   <DataManagement data={data} scope="records" />
                 ) : (
-                  <section className="settings-group progress-replays">
-                    <h3>生存对局与回放</h3>
-                    {survivalLog?.rooms.length ? (
-                      <div className="data-record-row">
-                        <div className="data-record-info">
-                          <strong>
-                            本局 · {characterNames[survivalLog.characterId]}
-                          </strong>
-                          <small>
-                            已结算 {survivalLog.rooms.length} 房 ·{' '}
-                            {survivalLog.final ? '已结束' : '进行中'}
-                          </small>
-                        </div>
-                        <Button
-                          onClick={() =>
-                            onSurvivalReplay({
-                              format: 'the-bidding-of-isaac-replay',
-                              version: currentFileVersion,
-                              kind: 'replay',
-                              mode: 'survival',
-                              exportedAt: new Date().toISOString(),
-                              exportedBuild: readBuildVersion(),
-                              replay: survivalLog,
-                            })
-                          }
-                        >
-                          查看本局生存回放
-                        </Button>
-                      </div>
-                    ) : (
-                      <p>本局尚无已结算房间。</p>
-                    )}
-                    {recent.document &&
-                      (recent.document.replay.id !== survivalLog?.id ||
-                        recent.document.replay.rooms.length !==
-                          survivalLog?.rooms.length ||
-                        !!recent.document.replay.final !==
-                          !!survivalLog?.final) && (
-                        <div className="data-record-row">
-                          <div className="data-record-info">
-                            <strong>
-                              最近完成 ·{' '}
-                              {
-                                characterNames[
-                                  recent.document.replay.characterId
-                                ]
-                              }
-                            </strong>
-                            <small>
-                              {recent.document.replay.rooms.length} 房 ·
-                              只读查看
-                            </small>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            onClick={() => onSurvivalReplay(recent.document!)}
-                          >
-                            查看最近完成的生存回放
-                          </Button>
-                        </div>
-                      )}
-                    {recent.message && (
-                      <output className="save-message">{recent.message}</output>
-                    )}
-                    {survivalStatus && (
-                      <output className="save-message">{survivalStatus}</output>
-                    )}
-                  </section>
+                  <SurvivalRecordCard
+                    log={survivalLog}
+                    recent={recent.document}
+                    error={recent.message}
+                    saveStatus={survivalStatus}
+                    onReplay={onSurvivalReplay}
+                    onReturnGame={onSurvival}
+                  />
                 )}
                 <nav className="records-sources" aria-label="记录来源">
                   <button
