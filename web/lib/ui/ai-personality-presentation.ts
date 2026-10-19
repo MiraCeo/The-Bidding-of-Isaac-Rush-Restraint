@@ -131,3 +131,26 @@ export const aiDoctrinePresentation: Readonly<
     summary: '两类扰乱的基础占比更高，仍保留正常竞拍与静观，并非每房必定扰乱。',
   },
 };
+
+/** Reading links only: no change to the engine's conflicts or multipliers. */
+export const aiPersonalityComparisons: readonly {
+  ids: readonly [AiPersonality, AiPersonality];
+  text: string;
+}[] = [
+  {
+    ids: ['stable', 'steady'],
+    text: '稳定主要减少扰乱；稳健主要随奖励价值调整参与力度。',
+  },
+  {
+    ids: ['conservative', 'stubborn'],
+    text: '守旧偏向重复上一次行动；固执削弱分析与人格修正，让权重更靠近原流派。',
+  },
+  {
+    ids: ['common_good', 'generous'],
+    text: '两者都偏合作；共赢倾向合作区中心，慷慨的合作报价位置更靠下。',
+  },
+  {
+    ids: ['follower', 'rebellious'],
+    text: '两者都参考公开市场历史；跟风顺应风向，叛逆更倾向反向选择。',
+  },
+];

@@ -279,3 +279,42 @@ it('keeps item names and inspection accessible when an atlas is unavailable', as
     ),
   ).toBe(true);
 });
+
+it('opens the exact AI trait or doctrine from final capsules without changing the completed checkpoint', async () => {
+  const s = completed();
+  localStorage.setItem(gameSaveKey, serializeGameCheckpoint(s));
+  await show(createElement(GameApp));
+  const before = localStorage.getItem(gameSaveKey),
+    table = node.querySelector('.final-table')!;
+  const trait = node.querySelector<HTMLButtonElement>(
+    'button[data-ai-personality]',
+  )!;
+  const traitId = trait.dataset.aiPersonality!;
+  await click(trait);
+  expect(
+    node.querySelector(
+      `.ai-guide-reader [data-guide-personality="${traitId}"]`,
+    ),
+  ).not.toBeNull();
+  expect(
+    node.querySelector('.rules-tabs [aria-current="page"]')!.textContent,
+  ).toBe('AI性格');
+  await click(button('游戏'));
+  expect(node.querySelector('.final-table')).toBe(table);
+  const doctrine = node.querySelector<HTMLButtonElement>(
+      'button[data-ai-doctrine]',
+    )!,
+    doctrineId = doctrine.dataset.aiDoctrine!;
+  await click(doctrine);
+  expect(
+    node.querySelector(
+      `.ai-guide-reader [data-guide-doctrine="${doctrineId}"]`,
+    ),
+  ).not.toBeNull();
+  await click(button('游戏'));
+  await click(button('规则'));
+  expect(
+    node.querySelector('.rules-tabs [aria-current="page"]')!.textContent,
+  ).toBe('玩法规则');
+  expect(localStorage.getItem(gameSaveKey)).toBe(before);
+});

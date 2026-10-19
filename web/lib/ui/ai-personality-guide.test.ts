@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 import { AiPersonalityGuide } from '@/components/game/ai-personality-guide';
 import { GameRules } from '@/components/game/game-rules';
@@ -23,40 +22,93 @@ import {
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-it('covers all current personalities and explicitly distinguishes the excluded compatibility entry', () => {
+const click = async (button: HTMLElement) => act(async () => button.click());
+const fill = async (node: HTMLElement, value: string) =>
+  act(async () => {
+    const input = node.querySelector<HTMLInputElement>(
+      '.ai-guide-search input',
+    )!;
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+const withGuide = async (check: (node: HTMLDivElement) => Promise<void>) => {
+  const node = document.createElement('div');
+  document.body.append(node);
+  const root = createRoot(node);
+  try {
+    await act(async () => root.render(createElement(AiPersonalityGuide)));
+    await check(node);
+  } finally {
+    await act(async () => root.unmount());
+    node.remove();
+  }
+};
+it('covers all personalities through a compact directory with one detail and a separate compatibility group', async () => {
   expect(Object.keys(aiPersonalityPresentation).sort()).toEqual(
     [...implementedAiPersonalityOrder].sort(),
   );
-  const node = document.createElement('div');
-  node.innerHTML = renderToStaticMarkup(createElement(AiPersonalityGuide));
-  expect(node.querySelectorAll('[data-guide-personality]')).toHaveLength(21);
-  expect(
-    node.querySelectorAll('[data-compatibility-only="false"]'),
-  ).toHaveLength(aiPersonalityOrder.length);
-  for (const id of implementedAiPersonalityOrder) {
-    const card = node.querySelector(`[data-guide-personality="${id}"]`)!;
-    expect(card.textContent).toContain(aiPersonalityNames[id]);
-    expect(card.textContent).toContain(aiPersonalityPresentation[id].summary);
-    expect(card.textContent).toContain(aiPersonalityPresentation[id].detail);
-  }
-  const compatibility = node.querySelector('[data-compatibility-only="true"]')!;
-  expect(compatibility.getAttribute('data-guide-personality')).toBe('all_in');
-  expect(compatibility.textContent).toContain('当前不生成');
-});
-
-it('shows engine doctrine weights as weights, preserves zero strategies and explains non-obvious traits', () => {
-  const node = document.createElement('div');
-  node.innerHTML = renderToStaticMarkup(createElement(AiPersonalityGuide));
-  for (const id of Object.keys(
-    aiDoctrinePresentation,
-  ) as (keyof typeof aiDoctrinePresentation)[]) {
+  await withGuide(async (node) => {
     expect(
-      [...node.querySelectorAll(`[data-guide-doctrine="${id}"] dd`)].map((e) =>
-        Number(e.textContent),
+      node.querySelectorAll(
+        '.ai-guide-directory [data-ai-entry^="personality:"]',
       ),
-    ).toEqual(Object.values(aiDoctrineWeights[id]));
-  }
-  expect(node.textContent).toContain('不是修正后的最终概率');
+    ).toHaveLength(21);
+    expect(
+      node.querySelector<HTMLDetailsElement>('.ai-guide-compatibility')!.open,
+    ).toBe(false);
+    expect(
+      node.querySelectorAll('.ai-guide-reader [data-guide-personality]'),
+    ).toHaveLength(1);
+    for (const id of aiPersonalityOrder) {
+      await click(node.querySelector(`[data-ai-entry="personality:${id}"]`)!);
+      const detail = node.querySelector(`[data-guide-personality="${id}"]`)!;
+      expect(detail.textContent).toContain(aiPersonalityNames[id]);
+      expect(detail.textContent).toContain(
+        aiPersonalityPresentation[id].summary,
+      );
+      expect(detail.textContent).toContain(
+        aiPersonalityPresentation[id].detail,
+      );
+    }
+    await fill(node, '孤注一掷');
+    expect(
+      node.querySelector<HTMLDetailsElement>('.ai-guide-compatibility')!.open,
+    ).toBe(true);
+    expect(
+      node.querySelector('[data-compatibility-only="true"]')!.textContent,
+    ).toContain('当前新局不生成');
+    expect(
+      node.querySelector('[data-guide-personality="all_in"]')!.textContent,
+    ).toContain(aiPersonalityPresentation.all_in.detail);
+  });
+});
+it('preserves all doctrine weights behind an explicit disclosure and explains non-obvious behavior', async () => {
+  await withGuide(async (node) => {
+    await click(
+      [...node.querySelectorAll<HTMLElement>('.ai-guide-kinds button')].find(
+        (e) => e.textContent === '流派',
+      )!,
+    );
+    for (const id of Object.keys(
+      aiDoctrinePresentation,
+    ) as (keyof typeof aiDoctrinePresentation)[]) {
+      await click(node.querySelector(`[data-ai-entry="doctrine:${id}"]`)!);
+      expect(
+        node.querySelector<HTMLDetailsElement>('.ai-guide-weights')!.open,
+      ).toBe(false);
+      expect(
+        [...node.querySelectorAll(`[data-guide-doctrine="${id}"] dd`)].map(
+          (e) => Number(e.textContent),
+        ),
+      ).toEqual(Object.values(aiDoctrineWeights[id]));
+      expect(node.querySelector('.ai-guide-reader')!.textContent).toContain(
+        '不是修正后的最终概率',
+      );
+    }
+  });
   expect(aiDoctrineWeights.cooperative.disrupt_high).toBe(0);
   expect(aiDoctrinePresentation.cooperative.summary).toContain(
     '仍可能使用合作区扰乱',
@@ -76,6 +128,37 @@ it('shows engine doctrine weights as weights, preserves zero strategies and expl
   expect(aiPersonalityPresentation.gambler.detail).toContain(
     `${Math.round(personalityQuoteNoiseRatio(['gambler']) * 100)}%`,
   );
+});
+it('searches names and effects, clears an empty result and switches a related reading target', async () => {
+  await withGuide(async (node) => {
+    await fill(node, '资金');
+    expect(
+      Number(
+        node
+          .querySelector('.ai-guide-directory output')!
+          .textContent!.split('/')[0],
+      ),
+    ).toBeGreaterThan(0);
+    await fill(node, 'greedy');
+    expect(
+      node.querySelector('[data-guide-personality="greedy"]'),
+    ).not.toBeNull();
+    await fill(node, '完全不存在的词条');
+    expect(
+      node.querySelector('.ai-guide-reader [data-guide-personality]'),
+    ).toBeNull();
+    expect(node.querySelector('.ai-guide-empty')!.textContent).toContain(
+      '没有匹配',
+    );
+    await click(node.querySelector('.ai-guide-empty button')!);
+    expect(
+      node.querySelector('[data-guide-personality="stable"]'),
+    ).not.toBeNull();
+    await click(node.querySelector('.ai-guide-compare button')!);
+    expect(
+      node.querySelector('[data-guide-personality="steady"]'),
+    ).not.toBeNull();
+  });
 });
 
 it('makes the guide available in both modes without activating hidden peer panels or writing storage', async () => {
@@ -115,7 +198,12 @@ it('makes the guide available in both modes without activating hidden peer panel
         expect(peer.hidden).toBe(true);
         expect(peer.hasAttribute('inert')).toBe(true);
       }
-      expect(ai.querySelectorAll('[data-guide-personality]')).toHaveLength(21);
+      expect(
+        ai.querySelectorAll('.ai-guide-reader [data-guide-personality]'),
+      ).toHaveLength(1);
+      expect(
+        ai.querySelectorAll('.ai-guide-directory [data-ai-entry]'),
+      ).toHaveLength(21);
       await act(async () =>
         tabs.find((e) => e.textContent === '道具图鉴')!.click(),
       );

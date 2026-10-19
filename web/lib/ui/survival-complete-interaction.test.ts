@@ -289,3 +289,27 @@ it('does not explain a survival-priority boundary using an incomparable point ga
   expect(node.textContent).toContain('流派未记录');
   expect(log).toEqual(before);
 });
+
+it('routes survival AI capsules to the exact read-only glossary entry and back', async () => {
+  const s = complete(2, 'budget');
+  localStorage.setItem(
+    survivalSaveKey,
+    serializeSurvivalCheckpoint(s.game, s.draft),
+  );
+  localStorage.setItem(activeModeKey, 'survival');
+  await render(createElement(GameApp));
+  await act(async () => new Promise((r) => setTimeout(r, 30)));
+  const before = localStorage.getItem(survivalSaveKey),
+    table = node.querySelector('.survival-final .final-table')!;
+  const trait = node.querySelector<HTMLButtonElement>(
+      'button[data-ai-personality]',
+    )!,
+    key = trait.dataset.aiPersonality!;
+  await click(trait);
+  expect(
+    node.querySelector(`.ai-guide-reader [data-guide-personality="${key}"]`),
+  ).not.toBeNull();
+  await click(button('游戏'));
+  expect(node.querySelector('.survival-final .final-table')).toBe(table);
+  expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+});

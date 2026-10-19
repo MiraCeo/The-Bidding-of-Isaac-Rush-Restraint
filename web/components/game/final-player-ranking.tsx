@@ -16,6 +16,7 @@ import {
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import { ItemArtProvider, ItemIcon } from './item-icon';
 import { ItemBadges } from './item-badges';
+import { AiGuideLink } from './ai-guide-link';
 import { LocateSelfButton, RankingScrollArea } from './ranking-self-summary';
 
 import type { AiClientProfile } from '@/lib/game/client-runtime';
@@ -124,32 +125,37 @@ export function FinalPlayerRanking({
                         >
                           {isHuman ? '真人' : 'AI'}
                         </span>
-                        {!isHuman && (
-                          <span
-                            className="final-doctrine-pill"
-                            title={
-                              profile
-                                ? aiDoctrinePresentation[profile.doctrine]
-                                    .summary
-                                : '此记录没有流派信息。'
-                            }
-                            data-ai-doctrine={profile?.doctrine}
-                            aria-label={`AI流派：${profile ? aiDoctrinePresentation[profile.doctrine].name : '未记录'}`}
-                          >
-                            {profile
-                              ? aiDoctrinePresentation[profile.doctrine].name
-                              : '流派未记录'}
-                          </span>
-                        )}
+                        {!isHuman &&
+                          (profile ? (
+                            <AiGuideLink
+                              target={{
+                                kind: 'doctrine',
+                                id: profile.doctrine,
+                              }}
+                              className="final-doctrine-pill"
+                              title={
+                                aiDoctrinePresentation[profile.doctrine].summary
+                              }
+                            >
+                              {aiDoctrinePresentation[profile.doctrine].name}
+                            </AiGuideLink>
+                          ) : (
+                            <span
+                              className="final-doctrine-pill"
+                              title="此记录没有流派信息。"
+                            >
+                              流派未记录
+                            </span>
+                          ))}
                         {profile?.personalities.map((personality) => (
-                          <span
-                            className="final-personality-pill"
-                            data-ai-personality={personality}
-                            title={`${aiPersonalityNames[personality]}：${aiPersonalityPresentation[personality].summary}`}
+                          <AiGuideLink
                             key={personality}
+                            target={{ kind: 'personality', id: personality }}
+                            className="final-personality-pill"
+                            title={`${aiPersonalityNames[personality]}：${aiPersonalityPresentation[personality].summary}`}
                           >
                             {aiPersonalityNames[personality]}
-                          </span>
+                          </AiGuideLink>
                         ))}
                       </div>
                       <div className="final-inventory">

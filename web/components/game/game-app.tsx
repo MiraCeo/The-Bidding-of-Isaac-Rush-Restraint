@@ -40,6 +40,7 @@ import {
 import { currentGrowthEpoch } from './use-live-persistence';
 import { SessionContext, type SessionTools } from './session-context';
 import { ProgressNavigationContext } from './progress-navigation';
+import type { AiGuideTarget } from '@/lib/ui/ai-guide-target';
 import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
 import { useReplayArchive } from './use-replay-archive';
@@ -77,6 +78,15 @@ export function GameApp() {
   const [pendingPage, setPendingPage] = useState<
     RoomUtilityPanel | null | undefined
   >();
+  const [aiGuideTarget, setAiGuideTarget] = useState<AiGuideTarget>();
+  const openAiGuide = useCallback((target: AiGuideTarget) => {
+    setAiGuideTarget(target);
+    setPendingPage('rules');
+  }, []);
+  const consumeAiGuideTarget = useCallback(
+    () => setAiGuideTarget(undefined),
+    [],
+  );
   const [classicTools, setClassicTools] = useState<SessionTools | null>(null);
   const [survivalStatus, setSurvivalStatus] = useState('');
   const [replayOrigin, setReplayOrigin] = useState<
@@ -128,6 +138,7 @@ export function GameApp() {
     setProgressOpen(false);
     setReplayReturnToProgress(false);
     setPendingPage(null);
+    setAiGuideTarget(undefined);
     try {
       getPreferenceStorage()?.setItem(activeModeKey, mode);
     } catch {
@@ -300,6 +311,9 @@ export function GameApp() {
         replayReturnToProgress,
         pendingPage,
         consumePage: () => setPendingPage(undefined),
+        aiGuideTarget,
+        openAiGuide,
+        consumeAiGuideTarget,
       }}
     >
       <AchievementBaselineMaintenance />

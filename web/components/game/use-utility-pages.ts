@@ -9,20 +9,22 @@ export function useUtilityPages(enabled = true) {
   const [utilityPanel, setUtilityPanel] = useState<RoomUtilityPanel | null>(
     () => (enabled ? (navigation?.pendingPage ?? null) : null),
   );
+  const homeScrollRef = useRef(0);
+  const previousPanelRef = useRef<RoomUtilityPanel | null>(null);
   useEffect(() => {
     if (!enabled || !navigation || navigation.pendingPage === undefined) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
+      if (navigation.pendingPage && utilityPanel === null)
+        homeScrollRef.current = window.scrollY;
       setUtilityPanel(navigation.pendingPage ?? null);
       navigation.consumePage();
     });
     return () => {
       cancelled = true;
     };
-  }, [enabled, navigation]);
-  const homeScrollRef = useRef(0);
-  const previousPanelRef = useRef<RoomUtilityPanel | null>(null);
+  }, [enabled, navigation, utilityPanel]);
   useEffect(() => {
     if (utilityPanel) {
       window.scrollTo(0, 0);

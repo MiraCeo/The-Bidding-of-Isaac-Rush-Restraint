@@ -94,7 +94,7 @@ describe('in-game rule reference', () => {
     expect(html.match(/<th scope="row">/g)).toHaveLength(4);
     expect(html.match(/<figure class="rule-formula">/g)).toHaveLength(2);
     expect(html).toContain('T = 2/3 × M + 10% × F');
-    expect(html).not.toContain('<details');
+    expect(html).toContain('class="ai-guide-help"');
     expect(html).toContain('aria-label="规则分类"');
     expect(html).toContain('aria-label="道具图鉴"');
   });

@@ -1,8 +1,16 @@
 import { UtilityPageHeading } from './utility-page-heading';
 import { Search, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { CatalogItemCard } from './catalog-item-card';
 import { AiPersonalityGuide } from './ai-personality-guide';
+import { useProgressNavigation } from './progress-navigation';
 import { Button } from '@/components/ui/button';
 
 import { itemCatalog } from '@/lib/game/item-catalog';
@@ -113,9 +121,17 @@ export function GameRules({
   gameplay?: ReactNode;
   catalog?: readonly (typeof itemCatalog)[number][];
 } = {}) {
+  const aiNavigation = useProgressNavigation();
   const [query, setQuery] = useState('');
   const [activeChapter, setActiveChapter] = useState('rules-quick-start');
-  const [tab, setTab] = useState<'rules' | 'items' | 'ai'>('rules');
+  const [tab, setTab] = useState<'rules' | 'items' | 'ai'>(() =>
+    aiNavigation?.aiGuideTarget ? 'ai' : 'rules',
+  );
+  const consumeAiTarget = aiNavigation?.consumeAiGuideTarget;
+  const appliedAiTarget = useCallback(() => {
+    setTab('ai');
+    consumeAiTarget?.();
+  }, [consumeAiTarget]);
   const panelId = useId();
   const manualRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -350,7 +366,10 @@ export function GameRules({
           inert={tab !== 'ai'}
           aria-label="AI性格"
         >
-          <AiPersonalityGuide />
+          <AiPersonalityGuide
+            target={aiNavigation?.aiGuideTarget}
+            onTargetApplied={appliedAiTarget}
+          />
         </section>
         <section
           className="rules-tab-panel rule-item-directory"
