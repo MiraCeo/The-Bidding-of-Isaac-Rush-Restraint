@@ -99,7 +99,7 @@ it('opens statistics from a no-game menu without creating a profile, receipt, sa
   expect(completed()).toBe('0');
   expect(container.textContent).toContain('尚未启用统一登记累计');
   await click('生存');
-  expect(container.textContent).toContain('存活次数／存活率');
+  expect(container.textContent).toContain('存活与淘汰');
   expect(localStorage.getItem(playerProfileKey)).toBeNull();
   expect(localStorage.getItem(gameSaveKey)).toBeNull();
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
@@ -139,21 +139,24 @@ it('shows registered mode/role/difficulty counters, survival rate and histogram 
   );
   await click('生存');
   expect(completed()).toBe('2');
-  expect(container.querySelector('.statistics-cards')!.textContent).toContain(
-    '1 · 50.0%',
-  );
+  expect(
+    container.querySelector('.statistics-survival-rate')!.textContent,
+  ).toContain('50.0%');
+  expect(
+    container.querySelector('.statistics-outcomes')!.textContent,
+  ).toContain('存活 1 局');
   await change('统计难度', 'highest');
   expect(completed()).toBe('1');
-  expect(container.querySelector('.statistics-cards')!.textContent).toContain(
-    '淘汰 1 局',
-  );
+  expect(
+    container.querySelector('.statistics-outcomes')!.textContent,
+  ).toContain('淘汰 1 局');
   expect(
     container.querySelector('.statistics-elimination')!.textContent,
   ).toContain('第1层 1');
   await change('统计难度', 'easy');
-  expect(container.querySelector('.statistics-cards')!.textContent).toContain(
-    '1 · 100.0%',
-  );
+  expect(
+    container.querySelector('.statistics-survival-rate')!.textContent,
+  ).toContain('100.0%');
   expect(localStorage.getItem(playerProfileKey)).toBe(source);
 });
 it('preserves per-mode filters and both unsubmitted drafts when leaving and returning to statistics', async () => {
@@ -280,9 +283,153 @@ it('registers AI-only continuation once while statistics stay open and keeps the
   ).toBe(1);
   const source = localStorage.getItem(playerProfileKey);
   await click('对局记录');
-  await click('查看本局生存回放');
+  await click('查看对局');
   await click('返回进度');
   await click('统计');
   expect(completed()).toBe('1');
   expect(localStorage.getItem(playerProfileKey)).toBe(source);
 }, 20000);
+
+it('separates independently computed best score and rank, units and averages without changing registry facts', async () => {
+  let profile = registered();
+  profile = registerCompletion(
+    profile,
+    { ...completionRecordFixture(3), rank: 4, finalScore: 900.9876 },
+    [],
+    false,
+  );
+  const before = JSON.stringify(profile),
+    updates = vi.fn();
+  await act(async () =>
+    root.render(
+      createElement(PlayerStatistics, {
+        profile,
+        message: '',
+        mode: 'classic',
+        decimals: 4,
+        onFiltersChange: updates,
+      }),
+    ),
+  );
+  const metric = (key: string) =>
+    container.querySelector(`[data-metric="${key}"]`)!;
+  expect(container.querySelectorAll('.statistics-cards article')).toHaveLength(
+    6,
+  );
+  expect(metric('best-score').querySelector('strong')!.textContent).toBe(
+    '900.9876',
+  );
+  expect(metric('best-score').textContent).toContain('分');
+  expect(metric('best-rank').querySelector('strong')!.textContent).toBe('#1');
+  expect(metric('average-score').querySelector('strong')!.textContent).toBe(
+    '455.5555',
+  );
+  expect(metric('average-rank').querySelector('strong')!.textContent).toBe(
+    '2.50',
+  );
+  expect(
+    container.querySelector<HTMLDetailsElement>('.statistics-methodology')!
+      .open,
+  ).toBe(false);
+  expect(
+    container.querySelector('.statistics-methodology')!.textContent,
+  ).toContain('不代表来自同一局');
+  expect(JSON.stringify(profile)).toBe(before);
+  expect(updates).not.toHaveBeenCalled();
+});
+it('switches survival distribution rows under the same filters and exposes focusable overflow regions', async () => {
+  const profile = registered(),
+    before = JSON.stringify(profile),
+    updates = vi.fn();
+  await act(async () =>
+    root.render(
+      createElement(PlayerStatistics, {
+        profile,
+        message: '',
+        mode: 'survival',
+        decimals: 2,
+        onFiltersChange: updates,
+      }),
+    ),
+  );
+  expect(
+    container.querySelectorAll('.statistics-distribution tbody tr'),
+  ).toHaveLength(2);
+  expect(
+    container.querySelectorAll('.statistics-row-name .character-art'),
+  ).toHaveLength(2);
+  const scroll = container.querySelector<HTMLElement>(
+    '.statistics-table-wrap',
+  )!;
+  expect(scroll.tabIndex).toBe(0);
+  expect(scroll.getAttribute('aria-label')).toContain('角色统计');
+  await click('按难度');
+  expect(button('按难度').getAttribute('aria-pressed')).toBe('true');
+  expect(
+    container.querySelectorAll('.statistics-distribution tbody tr'),
+  ).toHaveLength(2);
+  expect(
+    container.querySelector('.statistics-distribution tbody')!.textContent,
+  ).toContain('简单');
+  expect(
+    container.querySelector('.statistics-distribution tbody')!.textContent,
+  ).toContain('最高');
+  expect(scroll.getAttribute('aria-label')).toContain('难度统计');
+  await change('统计角色', 'lost');
+  expect(
+    container.querySelectorAll('.statistics-distribution tbody tr'),
+  ).toHaveLength(1);
+  expect(completed()).toBe('1');
+  expect(
+    container.querySelector('.statistics-survival-rate')!.textContent,
+  ).toContain('0.0%');
+  await click('按角色');
+  expect(
+    container.querySelectorAll('.statistics-distribution tbody tr'),
+  ).toHaveLength(1);
+  expect(
+    container.querySelector('.statistics-distribution tbody')!.textContent,
+  ).toContain('游魂');
+  expect(JSON.stringify(profile)).toBe(before);
+});
+it('clears role and difficulty without changing the chosen data source, preserves meaningful zero and unknown values', async () => {
+  const profile = profileFileFixture(),
+    updates = vi.fn();
+  await act(async () =>
+    root.render(
+      createElement(PlayerStatistics, {
+        profile,
+        message: '',
+        mode: 'survival',
+        decimals: 2,
+        initialFilters: { scope: 'history', role: 'isaac', difficulty: 'easy' },
+        onFiltersChange: updates,
+      }),
+    ),
+  );
+  expect(completed()).toBe('0');
+  expect(
+    container.querySelector('[data-metric="best-score"] strong')!.textContent,
+  ).toBe('—');
+  expect(
+    container.querySelector('[data-metric="average-rank"] strong')!.textContent,
+  ).toBe('—');
+  expect(
+    container.querySelector('.statistics-survival-rate strong')!.textContent,
+  ).toBe('—');
+  expect(container.textContent).toContain('这不是终身累计');
+  await click('清除筛选');
+  expect(updates).toHaveBeenLastCalledWith({
+    scope: 'history',
+    role: 'all',
+    difficulty: 'all',
+  });
+  expect(completed()).toBe('2');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="统计数据范围"]')!
+      .value,
+  ).toBe('history');
+  expect(
+    container.querySelector('.statistics-outcomes')!.textContent,
+  ).toContain('淘汰 1 局');
+});
