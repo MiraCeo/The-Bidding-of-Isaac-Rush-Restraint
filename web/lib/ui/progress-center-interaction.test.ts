@@ -518,3 +518,93 @@ it('routes overview shortcuts to the selected mode and preserves both games, dra
     ),
   ).toEqual(before);
 });
+
+it('keeps record sources and shared filters by mode without mixing result history and full replay actions', async () => {
+  classic();
+  survival();
+  const p = createPlayerProfile();
+  p.history = [
+    {
+      key: 'records-classic',
+      replayId: 'history-only',
+      characterId: 'lost',
+      completedAt: '2026-10-18T10:00:00Z',
+      finalScore: 123.4567,
+      rank: 3,
+    },
+  ];
+  localStorage.setItem(playerProfileKey, JSON.stringify(p));
+  await mount();
+  await click('进度');
+  await click('对局记录');
+  const saved = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  const source = async (name: string) =>
+    act(async () =>
+      container
+        .querySelector<HTMLButtonElement>(
+          `.records-sources [aria-label="${name}"]`,
+        )!
+        .click(),
+    );
+  await source('完成结果');
+  const panel = container.querySelector<HTMLElement>('.records-history')!;
+  expect(panel.closest<HTMLElement>('.records-source-panel')!.hidden).toBe(
+    false,
+  );
+  expect(container.querySelector('.replay-library')).toBeNull();
+  expect(panel.querySelectorAll('[data-history-key]')).toHaveLength(1);
+  expect(panel.querySelectorAll('button')).toHaveLength(0);
+  await act(async () => {
+    const select = panel.querySelector<HTMLSelectElement>(
+      '[aria-label="完成记录角色"]',
+    )!;
+    select.value = 'lost';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await source('完整回放');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('lost');
+  const maintenance = container.querySelector<HTMLDetailsElement>(
+    '.records-maintenance',
+  )!;
+  expect(maintenance.open).toBe(false);
+  const area = container.querySelector('.library-table-wrap')!;
+  expect(
+    !!(
+      area.compareDocumentPosition(maintenance) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    ),
+  ).toBe(true);
+  await click('生存');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('all');
+  await source('完成结果');
+  await click('经典');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('lost');
+  await source('完成结果');
+  await click('总览');
+  await click('对局记录');
+  expect(
+    container
+      .querySelector('[aria-label="完成结果"]')!
+      .getAttribute('aria-pressed'),
+  ).toBe('true');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="完成记录角色"]')!
+      .value,
+  ).toBe('lost');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(saved);
+});

@@ -1,4 +1,5 @@
 import { ProgressOverview } from './progress-overview';
+import { CompletionHistoryPanel } from './completion-history-panel';
 import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -22,8 +23,6 @@ import {
 } from '@/lib/ui/survival-persistence';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
 import { readBuildVersion } from '@/lib/ui/game-version';
-import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
-import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
 import { currentFileVersion } from '@/lib/ui/file-protocol';
@@ -52,6 +51,9 @@ export interface ProgressSelection {
   libraryFilters?: Partial<Record<'classic' | 'survival', LibraryFilters>>;
   statisticsFilters?: Partial<
     Record<'classic' | 'survival', StatisticsFilters>
+  >;
+  recordSources?: Partial<
+    Record<'classic' | 'survival', 'replays' | 'results'>
   >;
 }
 function recentSurvival() {
@@ -133,6 +135,15 @@ export function ProgressCenter({
   const [statisticsFilters, setStatisticsFilters] = useState(
     initialSelection?.statisticsFilters ?? {},
   );
+  const [recordSources, setRecordSources] = useState(
+    initialSelection?.recordSources ?? {},
+  );
+  const recordSource = recordSources[mode] ?? 'replays';
+  const recordFilters = libraryFilters[mode] ?? {
+    role: 'all',
+    difficulty: 'all',
+    completion: 'all',
+  };
   const [profile, setProfile] = useState(() =>
     loadPlayerProfile(getPreferenceStorage()),
   );
@@ -146,8 +157,21 @@ export function ProgressCenter({
   });
   const survivalGame = survival?.game;
   useEffect(() => {
-    onSelectionChange({ tab, mode, libraryFilters, statisticsFilters });
-  }, [tab, mode, libraryFilters, statisticsFilters, onSelectionChange]);
+    onSelectionChange({
+      tab,
+      mode,
+      libraryFilters,
+      statisticsFilters,
+      recordSources,
+    });
+  }, [
+    tab,
+    mode,
+    libraryFilters,
+    statisticsFilters,
+    recordSources,
+    onSelectionChange,
+  ]);
   const survivalLog = useMemo(
     () => (survivalGame ? createSurvivalReplay(survivalGame) : null),
     [survivalGame],
@@ -332,7 +356,7 @@ export function ProgressCenter({
                 }
               />
             ) : (
-              <>
+              <section className="progress-records" aria-label="对局记录列表">
                 {mode === 'classic' ? (
                   <DataManagement data={data} scope="records" />
                 ) : (
@@ -405,121 +429,91 @@ export function ProgressCenter({
                     )}
                   </section>
                 )}
-                <section className="settings-group">
-                  <h3>已登记的完成记录</h3>
-                  <p>这里只记录结果，不承诺每条记录都保留完整回放。</p>
-                  <details className="progress-light-history">
-                    <summary>
-                      {profile.message ? (
-                        '完成记录暂不可核验'
-                      ) : (
-                        <>
-                          展开轻量完成记录（
-                          {
-                            profile.profile.history.filter(
-                              (row) => (row.mode ?? 'classic') === mode,
-                            ).length
-                          }{' '}
-                          条）
-                        </>
-                      )}
-                    </summary>
-                    <div className="progress-history-wrap">
-                      <table className="survival-table">
-                        <caption className="sr-only">玩家完成记录</caption>
-                        <thead>
-                          <tr>
-                            <th>模式</th>
-                            <th>角色</th>
-                            <th>难度</th>
-                            <th>结果</th>
-                            <th>名次</th>
-                            <th>累计分数</th>
-                            <th>完成时间</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {profile.profile.history
-                            .filter((row) => (row.mode ?? 'classic') === mode)
-                            .slice()
-                            .reverse()
-                            .map((row) => (
-                              <tr key={row.key}>
-                                <td>{mode === 'classic' ? '经典' : '生存'}</td>
-                                <td>{characterNames[row.characterId]}</td>
-                                <td>
-                                  {mode === 'survival'
-                                    ? survivalDifficultyLabel(row.aiDifficulty)
-                                    : classicDifficultyLabel(row.aiDifficulty)}
-                                </td>
-                                <td>
-                                  {mode === 'classic'
-                                    ? '已完成'
-                                    : row.status === 'survived'
-                                      ? '存活'
-                                      : row.eliminationFloorIndex != null
-                                        ? `第${row.eliminationFloorIndex + 1}层淘汰`
-                                        : '已完成'}
-                                </td>
-                                <td>{row.rank}</td>
-                                <td>
-                                  {row.finalScore.toFixed(
-                                    tools.preferences.scoreDecimals,
-                                  )}
-                                </td>
-                                <td>
-                                  {new Date(row.completedAt).toLocaleString(
-                                    'zh-CN',
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {!profile.message &&
-                      !profile.profile.history.some(
-                        (row) => (row.mode ?? 'classic') === mode,
-                      ) && (
-                        <p className="utility-notice">暂无此模式的完成记录。</p>
-                      )}
-                  </details>
-                  {profile.message && (
-                    <output className="save-message">{profile.message}</output>
+                <nav className="records-sources" aria-label="记录来源">
+                  <button
+                    type="button"
+                    aria-label="完整回放"
+                    aria-pressed={recordSource === 'replays'}
+                    onClick={() =>
+                      setRecordSources((old) => ({ ...old, [mode]: 'replays' }))
+                    }
+                  >
+                    完整回放 <span>过程与逐房复盘</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="完成结果"
+                    aria-pressed={recordSource === 'results'}
+                    onClick={() =>
+                      setRecordSources((old) => ({ ...old, [mode]: 'results' }))
+                    }
+                  >
+                    完成结果 <span>档案中保留的最终成绩</span>
+                  </button>
+                </nav>
+                <div
+                  className="records-source-panel"
+                  hidden={recordSource !== 'results'}
+                  inert={recordSource !== 'results'}
+                >
+                  <CompletionHistoryPanel
+                    profile={profile.profile}
+                    message={profile.message}
+                    mode={mode}
+                    filters={recordFilters}
+                    decimals={tools.preferences.scoreDecimals}
+                    onFiltersChange={(filters) =>
+                      setLibraryFilters((old) => ({ ...old, [mode]: filters }))
+                    }
+                  />
+                </div>
+                <div
+                  className="records-source-panel"
+                  hidden={recordSource !== 'replays'}
+                  inert={recordSource !== 'replays'}
+                >
+                  {recordSource === 'replays' && (
+                    <ReplayLibraryPanel
+                      presentation="records"
+                      filters={recordFilters}
+                      key={mode}
+                      mode={mode}
+                      current={
+                        mode === 'classic'
+                          ? tools.session.replay
+                            ? newLibraryDocument({
+                                mode: 'classic',
+                                replay: tools.session.replay,
+                              })
+                            : null
+                          : survivalLog
+                            ? newLibraryDocument({
+                                mode: 'survival',
+                                replay: survivalLog,
+                              })
+                            : null
+                      }
+                      recent={
+                        mode === 'classic' ? recentClassic : recent.document
+                      }
+                      archiveStatus={archiveStatus[mode]}
+                      scoreDecimals={tools.preferences.scoreDecimals}
+                      initialFilters={libraryFilters[mode]}
+                      onFiltersChange={(filters) =>
+                        setLibraryFilters((old) => ({
+                          ...old,
+                          [mode]: filters,
+                        }))
+                      }
+                      onReplay={(doc) =>
+                        doc.mode === 'classic'
+                          ? onClassicReplay(doc)
+                          : onSurvivalReplay(doc)
+                      }
+                    />
                   )}
-                </section>
-                <ReplayLibraryPanel
-                  key={mode}
-                  mode={mode}
-                  current={
-                    mode === 'classic'
-                      ? tools.session.replay
-                        ? newLibraryDocument({
-                            mode: 'classic',
-                            replay: tools.session.replay,
-                          })
-                        : null
-                      : survivalLog
-                        ? newLibraryDocument({
-                            mode: 'survival',
-                            replay: survivalLog,
-                          })
-                        : null
-                  }
-                  recent={mode === 'classic' ? recentClassic : recent.document}
-                  archiveStatus={archiveStatus[mode]}
-                  scoreDecimals={tools.preferences.scoreDecimals}
-                  initialFilters={libraryFilters[mode]}
-                  onFiltersChange={(filters) =>
-                    setLibraryFilters((old) => ({ ...old, [mode]: filters }))
-                  }
-                  onReplay={(doc) =>
-                    doc.mode === 'classic'
-                      ? onClassicReplay(doc)
-                      : onSurvivalReplay(doc)
-                  }
-                />
-              </>
+                </div>
+              </section>
             )}
           </>
         )}
