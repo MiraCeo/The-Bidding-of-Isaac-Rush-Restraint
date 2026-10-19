@@ -129,3 +129,22 @@ it('scopes artwork and attribute styling to catalog cards without fixed heights,
     'height:',
   );
 });
+
+it('enlarges only dialog artwork and typography while keeping its return action compact', () => {
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).toContain('width:min(800px,calc(100vw - 32px))');
+  expect(css).toContain(
+    '.final-item-dialog .rule-item-art .item-icon { --item-icon-size:160px;',
+  );
+  expect(css).toContain(
+    '.final-item-dialog .rule-item-heading h4 { color:#fff2d5; font-size:1.75rem;',
+  );
+  expect(css).toContain(
+    '.final-item-dialog-actions { display:flex; justify-content:flex-end;',
+  );
+  const action = css.split('.final-item-done {')[1]!.split('}')[0]!;
+  expect(action).not.toContain('width:');
+  expect(css).toContain(
+    '.final-item-dialog .rule-item-art .item-icon { --item-icon-size:96px; }',
+  );
+});

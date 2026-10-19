@@ -244,7 +244,9 @@ export function FinalPlayerRanking({
               >
                 <X size={20} aria-hidden="true" />
               </Dialog.Close>
-              <Dialog.Close className="final-item-done">返回排行</Dialog.Close>
+              <footer className="final-item-dialog-actions">
+                <Dialog.Close className="final-item-done">返回排行</Dialog.Close>
+              </footer>
             </Dialog.Popup>
           </ItemArtProvider>
         )}
