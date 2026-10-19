@@ -114,6 +114,17 @@ export function ClassicFinalRanking({
                         >
                           {isHuman ? '真人' : 'AI'}
                         </span>
+                        {!isHuman && (
+                          <span
+                            className="final-doctrine-pill"
+                            data-ai-doctrine={profile?.doctrine}
+                            aria-label={`AI流派：${profile ? doctrineNames[profile.doctrine] : '未记录'}`}
+                          >
+                            {profile
+                              ? doctrineNames[profile.doctrine]
+                              : '流派未记录'}
+                          </span>
+                        )}
                         {profile?.personalities.map((personality) => (
                           <span
                             className="final-personality-pill"
@@ -159,19 +170,6 @@ export function ClassicFinalRanking({
                         {!player?.items.length && (
                           <span className="final-empty-inventory">
                             暂无道具
-                          </span>
-                        )}
-                      </div>
-                      <div className="final-player-metadata">
-                        <span>
-                          资金 <b data-final-money>{player?.money ?? 0}</b>
-                        </span>
-                        {!isHuman && (
-                          <span data-ai-doctrine={profile?.doctrine}>
-                            流派：
-                            {profile
-                              ? doctrineNames[profile.doctrine]
-                              : '未记录'}
                           </span>
                         )}
                       </div>

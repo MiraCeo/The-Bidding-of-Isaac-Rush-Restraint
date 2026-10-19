@@ -80,9 +80,8 @@ it('keeps recorded final order, full table and character podium at selected prec
     expect(row.querySelector('[data-final-score]')!.textContent).toBe(
       entry.finalScore.toFixed(4),
     );
-    expect(row.querySelector('[data-final-money]')!.textContent).toBe(
-      String(p.money),
-    );
+    expect(row.querySelector('[data-final-money]')).toBeNull();
+    expect(row.textContent).not.toContain('资金');
     expect(
       row.querySelector<HTMLElement>('[data-item-count]')!.dataset.itemCount,
     ).toBe(String(p.items.length));
@@ -109,6 +108,16 @@ it('keeps recorded final order, full table and character podium at selected prec
       p.id === game.humanPlayerId ? '真人' : 'AI',
     );
     const profile = game.aiProfiles[p.id];
+    const identity = row.querySelector('[data-player-kind]')!;
+    const doctrine = row.querySelector<HTMLElement>('[data-ai-doctrine]');
+    if (profile) {
+      expect(doctrine?.dataset.aiDoctrine).toBe(profile.doctrine);
+      expect(doctrine?.classList.contains('final-doctrine-pill')).toBe(true);
+      expect(identity.nextElementSibling).toBe(doctrine);
+      expect(doctrine?.nextElementSibling).toBe(
+        row.querySelector('[data-ai-personality]'),
+      );
+    } else expect(doctrine).toBeNull();
     expect(
       [...row.querySelectorAll('[data-ai-personality]')].map(
         (e) => e.textContent,
@@ -119,6 +128,12 @@ it('keeps recorded final order, full table and character podium at selected prec
     [...node.querySelectorAll('.podium-card>strong')].map((e) => e.textContent),
   ).toEqual(game.finalRanking.slice(0, 3).map((e) => e.finalScore.toFixed(4)));
   const awards = [...node.querySelectorAll<HTMLElement>('.podium-card')];
+  expect(
+    node.querySelector('.classic-final-awards')!.textContent,
+  ).not.toContain('资金');
+  expect(node.querySelector('.classic-final-outcomes')!.textContent).toContain(
+    `${game.players.find((p) => p.id === game.humanPlayerId)!.money} 资金`,
+  );
   expect(awards.map((e) => e.dataset.podiumPlayer)).toEqual(
     game.finalRanking.slice(0, 3).map((e) => e.playerId),
   );

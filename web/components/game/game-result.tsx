@@ -139,10 +139,7 @@ export function GameResult({
                           : '未知角色'}
                       </p>
                       <strong>{entry.finalScore.toFixed(scoreDecimals)}</strong>
-                      <small>
-                        {player?.items.length ?? 0} 件道具 ·{' '}
-                        {player?.money ?? 0} 资金
-                      </small>
+                      <small>{player?.items.length ?? 0} 件道具</small>
                     </article>
                   );
                 })}
