@@ -172,7 +172,7 @@ export function PlayerStatistics({
         ? score(selected.scoreSumUnits / selected.completed)
         : '—',
       unit: '分',
-      note: `基于 ${selected.completed} 局完成记录`,
+      note: `${selected.completed} 局样本`,
     },
     {
       key: 'average-rank',
@@ -181,8 +181,13 @@ export function PlayerStatistics({
         ? (selected.rankSum / selected.completed).toFixed(2)
         : '—',
       unit: '名',
-      note: '数值越低，名次越靠前',
+      note: '越低越靠前',
     },
+  ];
+  const metricGroups = [
+    { title: '参赛表现', primary: metrics[0]!, secondary: metrics[1]! },
+    { title: '积分表现', primary: metrics[2]!, secondary: metrics[4]! },
+    { title: '名次表现', primary: metrics[3]!, secondary: metrics[5]! },
   ];
   return (
     <section
@@ -195,7 +200,10 @@ export function PlayerStatistics({
           <h3 id="player-statistics-title">对局统计</h3>
         </div>
         <span>
-          {scopeName} · 两模式共 {allCount} 局
+          当前{mode === 'classic' ? '经典' : '生存'}筛选 {selected.completed} 局
+          <small>
+            {scopeName} · 两模式共 {allCount} 局
+          </small>
         </span>
       </header>
       <div className="statistics-toolbar">
@@ -269,14 +277,26 @@ export function PlayerStatistics({
         aria-live="polite"
         aria-atomic="true"
       >
-        {metrics.map((metric) => (
-          <article key={metric.key} data-metric={metric.key}>
-            <span>{metric.label}</span>
-            <div className="statistics-value">
-              <strong>{metric.value}</strong>
-              {metric.unit && <span>{metric.unit}</span>}
+        {metricGroups.map(({ title, primary, secondary }) => (
+          <article key={title} className="statistics-metric-group">
+            <h4>{title}</h4>
+            <div className="statistics-group-values">
+              <div className="statistics-primary" data-metric={primary.key}>
+                <span>{primary.label}</span>
+                <div className="statistics-value">
+                  <strong>{primary.value}</strong>
+                  {primary.unit && <span>{primary.unit}</span>}
+                </div>
+              </div>
+              <div className="statistics-secondary" data-metric={secondary.key}>
+                <span>{secondary.label}</span>
+                <div className="statistics-value">
+                  <strong>{secondary.value}</strong>
+                  {secondary.unit && <span>{secondary.unit}</span>}
+                </div>
+                <small>{secondary.note}</small>
+              </div>
             </div>
-            <small>{metric.note}</small>
           </article>
         ))}
       </div>
@@ -367,7 +387,13 @@ export function PlayerStatistics({
                     </td>
                     <td className="statistics-champions">{count.champions}</td>
                     {mode === 'survival' && (
-                      <td className="statistics-positive">
+                      <td
+                        className={
+                          count.survived
+                            ? 'statistics-positive'
+                            : 'statistics-neutral'
+                        }
+                      >
                         {count.survived} ·{' '}
                         {percent(count.survived, count.completed)}
                       </td>
@@ -394,50 +420,69 @@ export function PlayerStatistics({
               <h4 id="statistics-survival-title">存活与淘汰</h4>
               <span>{selected.completed} 局样本</span>
             </header>
-            <div className="statistics-survival-rate">
+            <div
+              className={`statistics-survival-rate ${selected.survived ? 'statistics-positive' : 'statistics-neutral'}`}
+            >
               <span>存活率</span>
               <strong>{percent(selected.survived, selected.completed)}</strong>
             </div>
             <div className="statistics-outcomes">
               <span>
                 存活{' '}
-                <strong className="statistics-positive">
+                <strong
+                  className={
+                    selected.survived
+                      ? 'statistics-positive'
+                      : 'statistics-neutral'
+                  }
+                >
                   {selected.survived}
                 </strong>{' '}
                 局
               </span>
               <span>
                 淘汰{' '}
-                <strong className="statistics-negative">
+                <strong
+                  className={
+                    selected.eliminated
+                      ? 'statistics-negative'
+                      : 'statistics-neutral'
+                  }
+                >
                   {selected.eliminated}
                 </strong>{' '}
                 局
               </span>
             </div>
-            <div className="statistics-elimination">
-              <h5>
-                淘汰层分布 <span>仅含 {selected.eliminated} 局淘汰记录</span>
-              </h5>
-              <div className="statistics-floors">
-                {selected.eliminationFloors.map((n, i) => (
-                  <div key={i}>
-                    <span>
-                      第{i + 1}层 <strong>{n}</strong>
-                    </span>
-                    <div className="statistics-floor-track" aria-hidden="true">
-                      <i
-                        style={{
-                          width: `${selected.eliminated ? (n * 100) / selected.eliminated : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </section>
         )}
       </div>
+      {mode === 'survival' && (
+        <section
+          className="statistics-elimination"
+          aria-labelledby="statistics-elimination-title"
+        >
+          <h5 id="statistics-elimination-title">
+            淘汰层分布 <span>仅含 {selected.eliminated} 局淘汰记录</span>
+          </h5>
+          <div className="statistics-floors">
+            {selected.eliminationFloors.map((n, i) => (
+              <div key={i} data-has-value={n > 0}>
+                <span>
+                  第{i + 1}层 <strong>{n}</strong>
+                </span>
+                <div className="statistics-floor-track" aria-hidden="true">
+                  <i
+                    style={{
+                      width: `${selected.eliminated ? (n * 100) / selected.eliminated : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <details className="statistics-methodology">
         <summary>
           统计口径与数据说明 <span>登记范围、成绩与备份</span>

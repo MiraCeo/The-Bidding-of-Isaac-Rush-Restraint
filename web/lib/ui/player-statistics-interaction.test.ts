@@ -148,6 +148,24 @@ it('shows registered mode/role/difficulty counters, survival rate and histogram 
   await change('统计难度', 'highest');
   expect(completed()).toBe('1');
   expect(
+    container
+      .querySelector('.statistics-survival-rate')!
+      .classList.contains('statistics-neutral'),
+  ).toBe(true);
+  expect(
+    container.querySelector('.statistics-distribution .statistics-neutral')!
+      .textContent,
+  ).toContain('0 · 0.0%');
+  expect(
+    container.querySelector('.statistics-survival .statistics-elimination'),
+  ).toBeNull();
+  expect(
+    container
+      .querySelector('.statistics-elimination')!
+      .parentElement!.classList.contains('player-statistics'),
+  ).toBe(true);
+  expect(container.querySelectorAll('.statistics-floors>div')).toHaveLength(7);
+  expect(
     container.querySelector('.statistics-outcomes')!.textContent,
   ).toContain('淘汰 1 局');
   expect(
@@ -314,8 +332,22 @@ it('separates independently computed best score and rank, units and averages wit
   const metric = (key: string) =>
     container.querySelector(`[data-metric="${key}"]`)!;
   expect(container.querySelectorAll('.statistics-cards article')).toHaveLength(
-    6,
+    3,
   );
+  expect(
+    container.querySelectorAll('.statistics-cards [data-metric]'),
+  ).toHaveLength(6);
+  expect(
+    [...container.querySelectorAll('.statistics-cards article h4')].map(
+      (e) => e.textContent,
+    ),
+  ).toEqual(['参赛表现', '积分表现', '名次表现']);
+  expect(
+    container.querySelector('.statistics-secondary [data-metric]'),
+  ).toBeNull();
+  expect(
+    metric('average-score').classList.contains('statistics-secondary'),
+  ).toBe(true);
   expect(metric('best-score').querySelector('strong')!.textContent).toBe(
     '900.9876',
   );
