@@ -257,6 +257,22 @@ it('has bounded scrollable passive feedback and respects both existing and OS re
     expect(css).toContain(`[data-tier="${tier}"] { --medal-ink:`);
 });
 
+it('lets classic terminal content grow around a live notice while keeping the ledger internally scrollable', () => {
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).toContain(
+    '.classic-final-layout { flex:1 0 auto; min-height:500px; grid-template-rows:minmax(min-content,1fr); }',
+  );
+  expect(css).toContain(
+    '.classic-final .final-ranking-panel { contain:size; }',
+  );
+  expect(css).toContain(
+    '.classic-final .ranking-data-scroll { flex:1; min-height:160px; max-height:none; }',
+  );
+  expect(css).not.toContain(
+    '.classic-final-layout { flex:1; min-height:500px; grid-template-rows:minmax(0,1fr); }',
+  );
+});
+
 it('retains a large saved batch without dropping entries or starting any dismissal timer', async () => {
   const timer = vi.spyOn(globalThis, 'setTimeout');
   await act(async () =>
