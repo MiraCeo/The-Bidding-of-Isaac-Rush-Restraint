@@ -137,13 +137,18 @@ it('enlarges only dialog artwork and typography while keeping its return action 
     '.final-item-dialog .rule-item-art .item-icon { --item-icon-size:160px;',
   );
   expect(css).toContain(
-    '.final-item-dialog .rule-item-heading h4 { color:#fff2d5; font-size:1.75rem;',
+    '.final-item-dialog .rule-item-heading h4 { color:#ffe2a4; font-size:1.75rem;',
   );
   expect(css).toContain(
     '.final-item-dialog-actions { display:flex; justify-content:flex-end;',
   );
   const action = css.split('.final-item-done {')[1]!.split('}')[0]!;
   expect(action).not.toContain('width:');
+  expect(action).toContain('background:var(--primary)');
+  expect(action).toContain('color:var(--primary-foreground)');
+  expect(css).toContain(
+    'background:linear-gradient(135deg,#3a2b1b 0%,#281e14 55%,#21190f 100%)',
+  );
   expect(css).toContain(
     '.final-item-dialog .rule-item-art .item-icon { --item-icon-size:96px; }',
   );
