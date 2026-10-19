@@ -1,3 +1,4 @@
+import { ProgressOverview } from './progress-overview';
 import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -184,12 +185,6 @@ export function ProgressCenter({
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
   }, [task, cancel, onNavigate]);
-  const classic = tools.session.game;
-  const classicActive = classic.phase !== 'character_selection';
-  const aiRunning =
-    !!survivalGame &&
-    !survivalGame.activePlayerIds.includes('human') &&
-    survivalGame.phase !== 'competition_complete';
   function chooseTab(next: ProgressTab) {
     data.cancel();
     setTab(next);
@@ -252,85 +247,33 @@ export function ProgressCenter({
           ))}
         </nav>
         {tab === 'overview' ? (
-          <>
-            <div className="progress-overview-cards">
-              <article className="progress-match-card">
-                <p className="eyebrow">CLASSIC</p>
-                <h3>经典模式</h3>
-                <strong>
-                  {classicActive
-                    ? `${characterNames[classic.selectedCharacter]} · ${classic.phase === 'game_result' ? '已结束' : '进行中'}`
-                    : '尚未开始对局'}
-                </strong>
-                <p>
-                  {classicActive
-                    ? `第 ${classic.floorIndex + 1} 层 · 房间 ${classic.roomIndex + 1}/5 · 已结算 ${tools.session.replay?.rooms.length ?? 0}/15 房`
-                    : '每种模式各保留一份自动续玩存档。'}
-                </p>
-                <small>
-                  {tools.restoreMessage ||
-                    (tools.autoSaveStatus === 'saved'
-                      ? '当前对局已自动保存'
-                      : tools.autoSaveStatus === 'session'
-                        ? '自动保存未完成，可导出文件保留进度。'
-                        : '暂无需要保存的对局')}
-                </small>
-                <Button onClick={onClassic}>
-                  {classicActive
-                    ? classic.phase === 'game_result'
-                      ? '查看经典结果'
-                      : '继续经典对局'
-                    : '进入经典模式'}
-                </Button>
-              </article>
-              <article className="progress-match-card">
-                <p className="eyebrow">SURVIVAL</p>
-                <h3>生存模式</h3>
-                <strong>
-                  {survivalGame
-                    ? `${characterNames[survivalGame.selectedCharacter]} · ${survivalGame.phase === 'competition_complete' ? '已结束' : aiRunning ? 'AI续赛中' : '进行中'}`
-                    : '尚未开始对局'}
-                </strong>
-                <p>
-                  {survivalGame
-                    ? `第 ${survivalGame.floorIndex + 1} 层 · 房间 ${survivalGame.roomIndex + 1}/5 · ${survivalGame.activePlayerIds.length} 人存活 · ${survivalDifficultyLabel(survivalGame.aiDifficulty)}`
-                    : '逐层淘汰，真人出局后由AI完成整局。'}
-                </p>
-                <small>
-                  {survivalStatus ||
-                    (survivalGame
-                      ? '当前对局保留在会话中'
-                      : '暂无需要保存的对局')}
-                </small>
-                <Button onClick={onSurvival}>
-                  {survivalGame
-                    ? survivalGame.phase === 'competition_complete'
-                      ? '查看生存结果'
-                      : '继续生存对局'
-                    : '进入生存模式'}
-                </Button>
-              </article>
-            </div>
-            <section className="settings-group progress-profile">
-              <h3>玩家档案</h3>
-              <p>
-                {profile.message ? (
-                  '玩家档案暂不可核验，不能将读取失败当作记录为空。'
-                ) : (
-                  <>
-                    已保留 {profile.profile.history.length}{' '}
-                    条完成记录，最多保留最近200条。这不是完整回放库。
-                  </>
-                )}
-              </p>
-              {profile.message && (
-                <output className="save-message">{profile.message}</output>
-              )}
-              <p className="utility-notice">
-                正式结算保存成功后记入成就进度；在“成就”分类查看条件和角色解锁关系。默认开放以撒，一键授权不会完成成就。
-              </p>
-            </section>
-          </>
+          <ProgressOverview
+            classic={tools.session}
+            survival={survival}
+            profile={profile.profile}
+            profileMessage={profile.message}
+            classicSaveMessage={
+              tools.restoreMessage ||
+              (tools.autoSaveStatus === 'saved'
+                ? '当前对局已自动保存'
+                : tools.autoSaveStatus === 'session'
+                  ? '自动保存未完成，可导出文件保留进度。'
+                  : '暂无需要保存的对局')
+            }
+            survivalSaveMessage={
+              (!survivalGame && survivalStatus === '生存进度待保存。'
+                ? ''
+                : survivalStatus) ||
+              (survivalGame ? '当前对局保留在会话中' : '暂无需要保存的对局')
+            }
+            decimals={tools.preferences.scoreDecimals}
+            onClassic={onClassic}
+            onSurvival={onSurvival}
+            onOpen={(next, nextMode) => {
+              if (nextMode) setMode(nextMode);
+              chooseTab(next);
+            }}
+          />
         ) : tab === 'achievements' ? (
           <AchievementProgress
             profile={profile.profile}

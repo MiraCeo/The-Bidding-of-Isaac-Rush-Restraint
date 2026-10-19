@@ -205,9 +205,11 @@ it('restores only after acknowledgement and preserves both match states, drafts,
   );
   expect(await replayLibrary.list()).toHaveLength(1);
   await click('总览');
-  expect(container.querySelector('.progress-profile')!.textContent).toContain(
-    '已保留 3 条完成记录',
-  );
+  expect(
+    container.querySelector('.overview-profile-metrics>div:last-child strong')!
+      .textContent,
+  ).toBe('3');
+  expect(container.querySelectorAll('[data-overview-result]')).toHaveLength(3);
   await click('继续生存对局');
   expect(
     container.querySelector<HTMLInputElement>(
@@ -385,11 +387,12 @@ it('keeps corrupt original text until an explicit validated replacement and neve
   await click('取消恢复档案');
   expect(localStorage.getItem(playerProfileKey)).toBe('broken-original');
   await click('总览');
-  expect(container.querySelector('.progress-profile')!.textContent).toContain(
+  expect(container.querySelector('.overview-profile')!.textContent).toContain(
     '暂不可核验',
   );
+  expect(container.querySelector('.overview-profile-metrics')).toBeNull();
   expect(
-    container.querySelector('.progress-profile')!.textContent,
+    container.querySelector('.overview-profile')!.textContent,
   ).not.toContain('已保留 0');
   await click('存档与备份');
   await preview();

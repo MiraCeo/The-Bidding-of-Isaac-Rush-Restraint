@@ -466,3 +466,55 @@ it('rejects old raw and compressed development files from the shared entry witho
     expect(localStorage.getItem(playerProfileKey)).toBe(profile);
   }
 });
+
+it('routes overview shortcuts to the selected mode and preserves both games, drafts and profile', async () => {
+  classic();
+  survival();
+  const p = createPlayerProfile();
+  p.history = [
+    {
+      key: 'overview-history',
+      replayId: 'history-only',
+      characterId: 'lost',
+      completedAt: '2026-10-18T10:00:00.000Z',
+      finalScore: 123.4567,
+      rank: 3,
+      mode: 'survival',
+      aiDifficulty: 'standard',
+      status: 'eliminated',
+      eliminationFloorIndex: 1,
+    },
+  ];
+  localStorage.setItem(playerProfileKey, JSON.stringify(p));
+  await mount();
+  await click('进度');
+  const before = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  expect(container.querySelectorAll('.overview-match')).toHaveLength(2);
+  expect(container.querySelectorAll('[data-overview-result]')).toHaveLength(1);
+  expect(container.querySelector('.overview-recent')!.textContent).toContain(
+    '第2层淘汰',
+  );
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>('[aria-label="查看生存对局记录"]')!
+      .click(),
+  );
+  expect(button('对局记录').getAttribute('aria-current')).toBe('page');
+  expect(container.textContent).toContain('生存对局与回放');
+  await click('总览');
+  await click('查看详细统计');
+  expect(button('统计').getAttribute('aria-current')).toBe('page');
+  await click('总览');
+  await click('管理存档');
+  expect(button('存档与备份').getAttribute('aria-current')).toBe('page');
+  await click('总览');
+  await click('全部记录');
+  expect(button('对局记录').getAttribute('aria-current')).toBe('page');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(before);
+});
