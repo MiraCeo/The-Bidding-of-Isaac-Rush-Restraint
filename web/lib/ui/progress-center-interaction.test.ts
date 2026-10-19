@@ -653,3 +653,51 @@ it('uses the same context frame, state pill, action labels and save disclosure f
     [gameSaveKey, survivalSaveKey].map((k) => localStorage.getItem(k)),
   ).toEqual(before);
 });
+
+it('groups file operations by object in both modes and returns to the same mode record list without modifying drafts', async () => {
+  classic();
+  survival();
+  localStorage.setItem(activeModeKey, 'classic');
+  await mount();
+  const before = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  await click('进度');
+  await click('存档与备份');
+  const headings = () =>
+    [...container.querySelectorAll('.backup-object-title h3')].map(
+      (e) => e.textContent,
+    );
+  expect(headings()).toEqual(['当前对局', '独立玩家档案', '完整回放库']);
+  expect(
+    container.querySelector('.backup-match .backup-object-badge')!.textContent,
+  ).toBe('经典模式');
+  expect(
+    container.querySelector<HTMLDetailsElement>('.backup-profile-details')!
+      .open,
+  ).toBe(false);
+  expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
+  await click('生存');
+  expect(headings()).toEqual(['当前对局', '独立玩家档案', '完整回放库']);
+  expect(
+    container.querySelector('.backup-match .backup-object-badge')!.textContent,
+  ).toBe('生存模式');
+  expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
+  expect(container.querySelector('.backup-save-state')!.textContent).not.toBe(
+    '',
+  );
+  await click('前往对局记录');
+  expect(
+    container.querySelector('.progress-tabs button[aria-current="page"]')!
+      .textContent,
+  ).toBe('对局记录');
+  expect(
+    container.querySelector('.records-context-card')!.textContent,
+  ).toContain('本局尚无已结算房间');
+  expect(button('生存').className).toContain('bg-primary');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(before);
+});

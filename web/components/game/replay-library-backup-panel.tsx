@@ -15,9 +15,11 @@ const size = (n: number) => `${(n / 1024 / 1024).toFixed(2)} MiB`;
 export function ReplayLibraryBackupPanel({
   disabled,
   onBusyChange,
+  focusPreview = false,
 }: {
   disabled: boolean;
   onBusyChange: (busy: boolean) => void;
+  focusPreview?: boolean;
 }) {
   const [phase, setPhase] = useState<
     'idle' | 'reading' | 'exporting' | 'restoring'
@@ -37,6 +39,16 @@ export function ReplayLibraryBackupPanel({
       token: 0,
       controller: null as AbortController | null,
     });
+  const previewRef = useRef<HTMLElement>(null),
+    hadPreview = useRef(false);
+  useEffect(() => {
+    if (!focusPreview) return;
+    if (candidate) {
+      previewRef.current?.focus({ preventScroll: true });
+      previewRef.current?.scrollIntoView?.({ block: 'start' });
+    } else if (hadPreview.current) input.current?.focus();
+    hadPreview.current = !!candidate;
+  }, [candidate, focusPreview]);
   const releasePreview = useCallback(() => {
     if (heldPreview.current)
       replayLibrary.discardBackupPreview(heldPreview.current);
@@ -276,7 +288,12 @@ export function ReplayLibraryBackupPanel({
         )}
       </div>
       {candidate && preview && (
-        <section className="library-confirm" aria-label="整库增量恢复预览">
+        <section
+          ref={previewRef}
+          tabIndex={-1}
+          className="library-confirm"
+          aria-label="整库增量恢复预览"
+        >
           <h4>{candidate.filename}</h4>
           <p>
             备份时间 {new Date(preview.exportedAt).toLocaleString('zh-CN')} ·

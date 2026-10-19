@@ -248,7 +248,7 @@ describe('specific data layouts and confirmation flows', () => {
     expect(localStorage.getItem(gameSaveKey)).toBe(before);
     expect(node('#progress-title').textContent).toBe('进度');
   });
-  it('has one unified game import plus a separate profile import, with no empty game backup/replay controls', async () => {
+  it('has distinct game, profile and library imports, with no empty game backup/replay controls', async () => {
     await mount();
     await settings();
     expect(
@@ -257,7 +257,10 @@ describe('specific data layouts and confirmation flows', () => {
     expect(
       container.querySelectorAll('input[aria-label="读取玩家档案文件"]'),
     ).toHaveLength(1);
-    expect(container.querySelectorAll('input[type="file"]')).toHaveLength(2);
+    expect(
+      container.querySelectorAll('input[aria-label="读取整库备份文件"]'),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
     expect(labels()).toContain('导入文件');
     expect(labels()).not.toContain('完整备份');
     expect(labels()).not.toContain('导出存档');

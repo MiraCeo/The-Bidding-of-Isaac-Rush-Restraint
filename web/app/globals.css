@@ -1431,6 +1431,79 @@
 .profile-restore-ack input { accent-color:#edb233; }
 @media(max-width:800px) { .profile-comparison { grid-template-columns:1fr; } .profile-summary { grid-template-columns:1fr 1.6fr; } }
 
+/* Backup objects share a frame, never their file operation state. */
+.files-dashboard { min-width:0; container:backup-files / inline-size; }
+.backup-page-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.backup-page-heading h3 { margin:4px 0 0; font-size:1.3rem; font-weight:750; }
+.backup-page-heading .eyebrow { font-size:.65rem; }
+.backup-page-heading>span,.backup-page-note { font-size:.74rem; color:var(--muted-foreground); line-height:1.7; }
+.backup-page-note { padding:10px 14px; margin-bottom:14px; border-left:2px solid #8d692c; background:#20190f; border-radius:0 7px 7px 0; }
+.backup-files-grid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); align-items:start; gap:16px; }
+.backup-files-grid>*,.files-dashboard .data-task-page { min-width:0; }
+.files-dashboard .backup-match,.files-dashboard .profile-management,.files-dashboard .backup-library-section { margin:0; padding:18px; border:1px solid #493b28; border-radius:11px; background:linear-gradient(125deg,#241d14,#1a1610 85%); min-width:0; }
+.files-dashboard .backup-match { display:grid; gap:14px; }
+.files-dashboard .backup-match .data-records.settings-group { border:0; padding:0; margin:0; background:transparent; gap:14px; }
+.files-dashboard .backup-match .data-files.settings-group { margin:0; border:0; border-radius:0; border-top:1px solid #44351f; padding:14px 0 0; background:transparent; gap:14px; }
+.files-dashboard .backup-match .data-files h4 { margin:0; font-size:.75rem; color:#c6af85; font-weight:650; }
+.files-dashboard .settings-group { margin-bottom:0; }
+.backup-object-heading { min-width:0; }
+.backup-object-title { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.backup-object-icon { display:flex; justify-content:center; align-items:center; width:34px; height:34px; border:1px solid #594321; border-radius:9px; background:#342715; color:var(--primary); flex:none; }
+.backup-object-icon svg { width:18px; height:18px; }
+.files-dashboard .backup-object-title h3 { color:#f0e2c5; font-size:1rem; font-weight:750; margin:0; }
+.backup-object-badge { font-size:.67rem; color:#c8b58f; padding:3px 8px; border:1px solid #4d3e26; border-radius:99px; margin-left:auto; }
+.backup-object-heading>p { margin:10px 0 0; line-height:1.75; color:var(--muted-foreground); font-size:.75rem; }
+.files-dashboard .backup-match .data-record-row { gap:10px; flex-wrap:wrap; }
+.files-dashboard .backup-match .data-record-info { flex:1; min-width:140px; }
+.files-dashboard .backup-match .data-record-row>.data-actions { flex-basis:100%; margin-top:4px; }
+.files-dashboard .backup-match .character-art { min-height:48px; width:52px; flex:none; }
+.files-dashboard .backup-match .character-art-figure { width:44px; height:48px; background-size:64px 64px; }
+.files-dashboard .backup-match .character-art[data-character-id="jacob_esau"] .character-art-figure { width:26px; }
+.files-dashboard .backup-save-state { display:block; font-size:.75rem; color:#ccb795; line-height:1.7; border-left:2px solid #6e5430; padding-left:10px; }
+.files-dashboard .data-actions { gap:8px; }
+.files-dashboard .data-actions button,.files-dashboard .library-toolbar button,.files-dashboard .backup-library-link button { min-height:34px; padding:7px 12px; font-size:.76rem; }
+.files-dashboard .data-file-row { gap:12px; }
+.files-dashboard .data-file-row small { font-size:.72rem; }
+.files-dashboard .data-technical { font-size:.72rem; }
+.files-dashboard .data-technical p { font-size:.72rem; line-height:1.8; }
+.files-dashboard .save-message { font-size:.75rem; line-height:1.8; overflow-wrap:anywhere; }
+.files-dashboard .save-message:empty { display:none; }
+.files-dashboard .profile-management { display:grid; gap:14px; }
+.files-dashboard .profile-local { padding:0; margin:0; border:0; background:transparent; }
+.files-dashboard .profile-local>strong { font-size:.76rem; color:#d6c49d; }
+.backup-profile-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0; }
+.backup-profile-metrics>div { min-width:0; padding-right:10px; border-right:1px solid #44351f; }
+.backup-profile-metrics>div:last-child { border:0; padding:0; }
+.backup-profile-metrics dt { font-size:.7rem; color:var(--muted-foreground); }
+.backup-profile-metrics dd { margin:8px 0 0; color:var(--primary); font-size:1.25rem; font-weight:700; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.files-dashboard .profile-summary { grid-template-columns:minmax(100px,1fr) minmax(0,1.7fr); font-size:.73rem; gap:8px; }
+.files-dashboard .profile-candidate { margin:0; }
+.files-dashboard .backup-task-active,.backup-files-grid>.profile-management[data-preview="true"],.backup-files-grid>.progress-data-content:has(.data-candidate) { grid-column:1/-1; }
+.files-dashboard .backup-library-section { margin-top:16px; }
+.files-dashboard .library-backup { margin:14px 0 0; padding:14px 0 0; border:0; border-radius:0; border-top:1px solid #44351f; background:transparent; }
+.files-dashboard .library-backup>h4 { font-size:.8rem; margin:0 0 7px; color:#d6c49d; }
+.files-dashboard .library-backup>.utility-notice { font-size:.73rem; color:var(--muted-foreground); margin:0 0 12px; }
+.files-dashboard .library-toolbar { gap:10px; margin-top:12px; flex-wrap:wrap; }
+.files-dashboard :is(.profile-file-picker,.survival-file-picker,.library-file) { position:relative; width:fit-content; max-width:100%; border:1px solid #5b4629; background:#302417; color:#ead5ac; padding:8px 12px; margin:0; border-radius:8px; font-size:.76rem; cursor:pointer; }
+.files-dashboard :is(.profile-file-picker,.survival-file-picker,.library-file):focus-within { outline:2px solid var(--primary); outline-offset:3px; }
+.files-dashboard :is(.profile-file-picker,.survival-file-picker,.library-file):has(input:disabled) { opacity:.45; cursor:not-allowed; }
+.files-dashboard :is(.profile-file-picker,.survival-file-picker,.library-file) input[type="file"] { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.backup-library-link { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border-top:1px solid #44351f; padding-top:12px; margin-top:12px; }
+.backup-library-link>span { font-size:.72rem; color:var(--muted-foreground); }
+.files-dashboard .storage-diagnostics { margin-top:16px; padding:14px 18px; background:#17130e; }
+.files-dashboard .storage-diagnostics>summary { font-size:.8rem; color:#cfb789; }
+.files-dashboard .data-candidate { border-color:#89662d; background:#241c12; border-radius:10px; padding:18px; }
+.files-dashboard .data-candidate>p { overflow-wrap:anywhere; }
+.files-dashboard .data-files.settings-group { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.files-dashboard .data-files>h4 { display:none; }
+.files-dashboard .data-files>.data-file-row { flex-direction:column; align-items:flex-start; gap:8px; padding:0; border:0; }
+.files-dashboard .data-files>.data-technical,.files-dashboard .data-files>.save-message { grid-column:1/-1; }
+.files-dashboard .library-backup>h4 { display:none; }
+.files-dashboard .library-backup>.utility-notice { padding:0; border:0; background:transparent; }
+.files-dashboard :is(.profile-candidate,.data-candidate,.library-confirm):focus { outline:2px solid #bc8b35; outline-offset:3px; }
+@container backup-files (max-width:1000px) { .backup-files-grid { grid-template-columns:minmax(0,1fr); } }
+@container backup-files (max-width:540px) { .files-dashboard .backup-match,.files-dashboard .profile-management,.files-dashboard .backup-library-section { padding:14px; } .backup-profile-metrics { gap:8px; } .backup-profile-metrics dd { font-size:1.05rem; } .files-dashboard .data-file-row { align-items:flex-start; flex-direction:column; gap:8px; } .files-dashboard .profile-comparison { grid-template-columns:minmax(0,1fr); } .files-dashboard .data-candidate dl { grid-template-columns:90px minmax(0,1fr); gap:8px; font-size:.76rem; } }
+
 /* Read-only statistics: scope, metrics and distributions share the progress palette. */
 .player-statistics { min-width:0; container:statistics / inline-size; }
 .statistics-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:14px 0 12px; }

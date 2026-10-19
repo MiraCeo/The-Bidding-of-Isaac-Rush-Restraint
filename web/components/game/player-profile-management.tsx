@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { BackupObjectHeading } from './backup-object-heading';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import { maxFileBytes } from '@/lib/ui/file-json';
 import { downloadPortableJsonFile } from '@/lib/ui/json-download';
@@ -84,6 +85,15 @@ export function PlayerProfileManagement() {
     [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLElement>(null);
+  const hadPreview = useRef(false);
+  useEffect(() => {
+    if (candidate) {
+      previewRef.current?.focus({ preventScroll: true });
+      previewRef.current?.scrollIntoView?.({ block: 'start' });
+    } else if (hadPreview.current) input.current?.focus();
+    hadPreview.current = !!candidate;
+  }, [candidate]);
   const operations = useRef({
     live: false,
     id: 0,
@@ -252,21 +262,22 @@ export function PlayerProfileManagement() {
     !!candidate &&
     snapshot.available &&
     candidate.local.source !== snapshot.source;
+  const registry = snapshot.profile
+    ? readCompletionRegistry(snapshot.profile)
+    : null;
   return (
     <section
       className="settings-group profile-management"
       aria-labelledby="profile-management-title"
+      data-preview={!!candidate}
     >
-      <div className="profile-management-heading">
-        <div>
-          <p className="eyebrow">PLAYER PROFILE BACKUP</p>
-          <h3 id="profile-management-title">独立玩家档案</h3>
-        </div>
-        <span>两种模式共用 · 不依附对局</span>
-      </div>
-      <p className="utility-notice">
-        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
-      </p>
+      <BackupObjectHeading
+        kind="profile"
+        title="独立玩家档案"
+        titleId="profile-management-title"
+        badge="两模式共用"
+        description="保留完成记录、累计统计与档案扩展数据，不包含续玩位置、完整回放或显示设置。恢复是替换，不是合并。"
+      />
       <div className="profile-local">
         <strong>
           {snapshot.profile
@@ -275,10 +286,42 @@ export function PlayerProfileManagement() {
               : '本机已保存的玩家档案'
             : '本机档案不可核验'}
         </strong>
-        <ProfileSummary
-          profile={snapshot.profile}
-          empty={snapshot.source === null}
-        />
+        <dl className="backup-profile-metrics">
+          <div>
+            <dt>已保留记录</dt>
+            <dd>
+              {snapshot.profile ? snapshot.profile.history.length : '无法核验'}
+            </dd>
+          </div>
+          <div>
+            <dt>经典／生存</dt>
+            <dd>
+              {snapshot.profile
+                ? `${count(snapshot.profile, 'classic')} / ${count(snapshot.profile, 'survival')}`
+                : '无法核验'}
+            </dd>
+          </div>
+          <div>
+            <dt>登记累计</dt>
+            <dd>
+              {!snapshot.profile
+                ? '无法核验'
+                : registry
+                  ? sumCounters(Object.values(registry.groups)).completed
+                  : '未启用'}
+            </dd>
+          </div>
+        </dl>
+        <details className="data-technical backup-profile-details">
+          <summary>档案时间、凭据与恢复说明</summary>
+          <ProfileSummary
+            profile={snapshot.profile}
+            empty={snapshot.source === null}
+          />
+          <p>
+            最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
+          </p>
+        </details>
         {snapshot.message && <p className="save-message">{snapshot.message}</p>}
       </div>
       <div className="data-actions">
@@ -317,7 +360,12 @@ export function PlayerProfileManagement() {
         </div>
       )}
       {candidate && (
-        <section className="profile-candidate" aria-label="玩家档案恢复预览">
+        <section
+          ref={previewRef}
+          tabIndex={-1}
+          className="profile-candidate"
+          aria-label="玩家档案恢复预览"
+        >
           <h4>独立玩家档案恢复预览</h4>
           <p>
             {candidate.filename} · 档案备份v1 · 导出于{' '}

@@ -1,4 +1,5 @@
 import { SurvivalRecordCard } from './survival-record-card';
+import { BackupLibrarySection } from './backup-library-section';
 import { ProgressOverview } from './progress-overview';
 import { CompletionHistoryPanel } from './completion-history-panel';
 import { AchievementProgress } from './achievement-progress';
@@ -318,29 +319,49 @@ export function ProgressCenter({
               </Button>
             </div>
             {tab === 'files' ? (
-              <>
-                <p className="progress-intro">
-                  续玩保留当前位置与草稿；回放保留过程；完整备份包含玩家档案。导入先预览，确认后才载入。
-                </p>
-                <div className="progress-data-content">
-                  {mode === 'classic' ? (
-                    <DataManagement data={data} />
-                  ) : (
-                    <SurvivalDataManagement
-                      recentOverride={{
-                        doc: recent.document,
-                        error: recent.message,
-                      }}
-                      session={survival}
-                      imported={null}
-                      onImport={onImport}
-                      onReplay={onSurvivalReplay}
-                    />
+              <section className="files-dashboard" aria-label="存档与备份管理">
+                <div className="backup-page-heading">
+                  <div>
+                    <p className="eyebrow">SAVES &amp; BACKUPS</p>
+                    <h3>存档与备份</h3>
+                  </div>
+                  <span>对局按模式保存 · 档案与回放库两模式共用</span>
+                </div>
+                <div className="backup-page-note">
+                  读取文件先预览，确认后才写入；续玩存档、玩家档案与整库备份保存不同内容。
+                </div>
+                <div className="backup-files-grid">
+                  <div
+                    className={`progress-data-content ${data.task !== 'settings' ? 'backup-task-active' : ''}`}
+                  >
+                    {mode === 'classic' ? (
+                      <DataManagement data={data} />
+                    ) : (
+                      <SurvivalDataManagement
+                        recentOverride={{
+                          doc: recent.document,
+                          error: recent.message,
+                        }}
+                        session={survival}
+                        saveStatus={survivalStatus}
+                        imported={null}
+                        onImport={onImport}
+                        onReplay={onSurvivalReplay}
+                      />
+                    )}
+                  </div>
+                  {(mode === 'survival' || data.task === 'settings') && (
+                    <PlayerProfileManagement key={mode} />
                   )}
                 </div>
-                <PlayerProfileManagement key={mode} />
+                {(mode === 'survival' || data.task === 'settings') && (
+                  <BackupLibrarySection
+                    key={mode}
+                    onRecords={() => chooseTab('records')}
+                  />
+                )}
                 <StorageDiagnostics />
-              </>
+              </section>
             ) : tab === 'statistics' ? (
               <PlayerStatistics
                 key={mode}

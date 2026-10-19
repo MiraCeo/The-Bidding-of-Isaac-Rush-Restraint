@@ -9,6 +9,8 @@ import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { DataManagementController } from './use-data-management';
 import { ModeFilePreview } from './mode-file-preview';
 import { BackupProfileNotice } from './backup-profile-notice';
+import { BackupObjectHeading } from './backup-object-heading';
+import { CharacterArt } from './character-art';
 
 export function dataTaskTitle(data: DataManagementController) {
   if (data.task === 'backup') return '完整备份';
@@ -317,6 +319,15 @@ export function DataManagement({
     <>
       {data.activeSession ? (
         <div className="data-record-row" data-record-source="current">
+          {scope === 'all' && (
+            <CharacterArt
+              characterId={
+                data.activeSession.game.phase !== 'character_selection'
+                  ? data.activeSession.game.selectedCharacter
+                  : 'isaac'
+              }
+            />
+          )}
           <div className="data-record-info">
             <strong>
               {
@@ -420,8 +431,7 @@ export function DataManagement({
         )
       )}
       {(scope !== 'records' || tools.autoSaveStatus === 'session') && status}
-      {scope === 'records' &&
-        data.activeSession &&
+      {data.activeSession &&
         !data.ongoing &&
         tools.autoSaveStatus === 'session' && (
           <output className="data-autosave data-autosave-unavailable">
@@ -458,7 +468,7 @@ export function DataManagement({
     </>
   );
   return (
-    <div className="data-management">
+    <div className={`data-management ${scope === 'all' ? 'backup-match' : ''}`}>
       {picker}
       {scope === 'records' ? (
         <RecordContextCard
@@ -484,16 +494,19 @@ export function DataManagement({
           className="save-panel settings-group data-records"
           aria-labelledby="data-records-title"
         >
-          <h3 id="data-records-title">对局与记录</h3>
+          <BackupObjectHeading
+            kind="match"
+            title="当前对局"
+            titleId="data-records-title"
+            badge="经典模式"
+            description="续玩存档保存当前位置与未提交报价；本局完整备份还包含原始回放与玩家档案，不是整库备份。"
+          />
           {recordContent}
         </section>
       )}
       {scope !== 'records' && (
         <section className="settings-group data-files">
-          <h3>数据管理</h3>
-          <p>
-            对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
-          </p>
+          <h4>文件操作</h4>
           <div className="data-file-row">
             <div>
               <strong>导入文件</strong>
@@ -530,6 +543,9 @@ export function DataManagement({
           )}
           <details className="data-technical">
             <summary>格式与技术信息</summary>
+            <p>
+              对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
+            </p>
             <p>
               经典与生存文件统一使用v5，旧v2/v3/v4不读取或自动迁移；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
             </p>
