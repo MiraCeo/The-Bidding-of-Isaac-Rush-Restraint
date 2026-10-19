@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { AiPersonalityGuide } from '@/components/game/ai-personality-guide';
 import { GameRules } from '@/components/game/game-rules';
 import { aiDoctrineWeights } from '../game/ai-decision';
@@ -46,6 +47,19 @@ const withGuide = async (check: (node: HTMLDivElement) => Promise<void>) => {
     node.remove();
   }
 };
+it('shares the full rules page width and catalog panel treatment instead of a nested narrow shell', () => {
+  const css = readFileSync('app/globals.css', 'utf8');
+  expect(css).toContain(
+    '.ai-personality-guide { width:100%; min-width:0; max-width:none; margin:0;',
+  );
+  expect(css).not.toContain('.ai-personality-guide { max-width:1120px;');
+  for (const selector of ['.ai-guide-directory', '.ai-guide-reader']) {
+    const rule = css.slice(css.indexOf(selector + ' {')).split('}')[0]!;
+    expect(rule).toContain('border:1px solid var(--border)');
+    expect(rule).toContain('border-radius:10px');
+    expect(rule).toContain('background:#1b171380');
+  }
+});
 it('covers all personalities through a compact directory with one detail and a separate compatibility group', async () => {
   expect(Object.keys(aiPersonalityPresentation).sort()).toEqual(
     [...implementedAiPersonalityOrder].sort(),

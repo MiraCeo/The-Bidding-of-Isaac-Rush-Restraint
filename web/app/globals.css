@@ -2567,26 +2567,26 @@
 }
 
 /* Search-first AI reference. No fixed-height nested reading scroller. */
-.ai-personality-guide { max-width:1120px; margin:0 auto; color:var(--rules-ink,var(--foreground)); }
+.ai-personality-guide { width:100%; min-width:0; max-width:none; margin:0; color:var(--rules-ink,var(--foreground)); }
 .ai-guide-intro { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 16px; margin:0 0 16px; color:#bfae91; font-size:.76rem; line-height:1.8; }
 .ai-guide-intro>p { margin:0; }
 .ai-guide-help { color:#a99470; }
 .ai-guide-help>summary { cursor:pointer; width:fit-content; }
-.ai-guide-help[open] { flex-basis:100%; padding:12px 16px; border:1px solid #a17a3d44; border-radius:8px; background:#bf8c3008; }
+.ai-guide-help[open] { flex-basis:100%; padding:12px 16px; border:1px solid var(--border); border-radius:10px; background:#1b171380; }
 .ai-guide-help p { margin:8px 0 0; max-width:84ch; color:#bead95; }
 .ai-guide-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
 .ai-guide-search-wrap { position:relative; flex:1; min-width:0; }
-.ai-guide-search { display:flex; align-items:center; gap:9px; height:42px; padding:0 38px 0 13px; border:1px solid #8a74544d; border-radius:8px; background:#17130f; color:#a18f73; }
+.ai-guide-search { display:flex; align-items:center; gap:9px; height:36px; padding:0 38px 0 13px; border:1px solid var(--input); border-radius:8px; background:#120f0d; color:#a18f73; }
 .ai-guide-search:focus-within { border-color:#bd9246; }
 .ai-guide-search input { width:100%; min-width:0; outline:none; background:none; border:0; color:var(--foreground); font-size:.79rem; }
 .ai-guide-search input::-webkit-search-cancel-button { display:none; }
-.ai-guide-clear { position:absolute; right:8px; top:7px; width:28px; height:28px; display:grid; place-items:center; border-radius:4px; color:#bba987; cursor:pointer; }
+.ai-guide-clear { position:absolute; right:8px; top:4px; width:28px; height:28px; display:grid; place-items:center; border-radius:4px; color:#bba987; cursor:pointer; }
 .ai-guide-clear:hover { background:#ffffff0b; }
-.ai-guide-kinds { display:flex; flex:none; gap:3px; padding:3px; border:1px solid #8a74544d; border-radius:8px; }
+.ai-guide-kinds { display:flex; flex:none; gap:3px; padding:3px; border:1px solid var(--border); border-radius:8px; }
 .ai-guide-kinds button { min-width:66px; min-height:34px; padding:6px 12px; border-radius:5px; color:#a99576; font-size:.76rem; cursor:pointer; }
 .ai-guide-kinds button[aria-pressed="true"] { color:#efc364; background:#b78a2f23; }
-.ai-guide-workspace { display:grid; grid-template-columns:212px minmax(0,1fr); gap:20px; align-items:start; }
-.ai-guide-directory { padding:14px; border:1px solid #8a74543d; border-radius:9px; background:#1d181260; }
+.ai-guide-workspace { display:grid; grid-template-columns:208px minmax(0,1fr); gap:28px; align-items:start; }
+.ai-guide-directory { padding:14px; border:1px solid var(--border); border-radius:10px; background:#1b171380; }
 .ai-guide-directory>header { display:flex; gap:10px; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:.73rem; color:#c8b698; }
 .ai-guide-directory output { font-family:var(--font-mono); font-size:.64rem; color:#948268; }
 .ai-guide-entry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
@@ -2595,7 +2595,7 @@
 .ai-guide-entry-grid button[aria-current="true"] { color:#efc364; border-color:#b88d3e66; background:#edaf3d10; font-weight:700; }
 .ai-guide-compatibility { margin-top:13px; padding-top:10px; border-top:1px solid #8a745433; color:#a38e6e; font-size:.66rem; }
 .ai-guide-compatibility>summary { cursor:pointer; margin-bottom:7px; }
-.ai-guide-reader { min-width:0; padding:23px 26px; border:1px solid #8a74544d; border-radius:10px; background:linear-gradient(140deg,#aa80320a,transparent 75%),#1b171260; }
+.ai-guide-reader { min-width:0; padding:23px 26px; border:1px solid var(--border); border-radius:10px; background:#1b171380; }
 .ai-guide-detail-heading>span { color:#a28e6d; font-size:.67rem; }
 .ai-guide-detail-heading h3 { margin:6px 0 0; font-size:1.45rem; font-weight:850; line-height:1.5; }
 .ai-guide-detail-heading small { display:inline-block; margin-top:8px; color:#b29a75; font-size:.66rem; }

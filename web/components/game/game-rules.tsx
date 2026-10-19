@@ -21,8 +21,10 @@ import {
 } from '@/lib/ui/game-rules';
 import { getItemBadges } from '@/lib/ui/item-badges';
 import { itemVisualAlias } from '@/lib/ui/item-art';
+import { createSurvivalRuleSections } from '@/lib/ui/survival-rule-sections';
 
-const sections = createGameRuleSections();
+const classicSections = createGameRuleSections();
+const survivalSections = createSurvivalRuleSections();
 
 function RuleParagraph({ text }: { text: string }) {
   const colon = text.indexOf('：');
@@ -112,15 +114,20 @@ function RuleChapter({
 
 export function GameRules({
   onOpenTutorial,
+  tutorial,
+  tutorialLabel = '进入交互式教程',
   gameplay,
   catalog = itemCatalog,
   mode = 'classic',
 }: {
   onOpenTutorial?: () => void;
+  tutorial?: ReactNode;
+  tutorialLabel?: string;
   mode?: 'classic' | 'survival';
   gameplay?: ReactNode;
   catalog?: readonly (typeof itemCatalog)[number][];
 } = {}) {
+  const sections = mode === 'survival' ? survivalSections : classicSections;
   const aiNavigation = useProgressNavigation();
   const [query, setQuery] = useState('');
   const [activeChapter, setActiveChapter] = useState('rules-quick-start');
@@ -177,7 +184,7 @@ export function GameRules({
       observer?.disconnect();
       window.removeEventListener('resize', watch);
     };
-  }, [tab, gameplay]);
+  }, [tab, gameplay, sections, tutorial]);
   const normalizedQuery = query.trim().toLowerCase();
   const items = catalog.filter((item) =>
     `${item.name} ${itemVisualAlias(item.id)} ${itemPresentations[item.id].description} ${getItemBadges(
@@ -276,12 +283,14 @@ export function GameRules({
                   <div className="rules-overview-copy">
                     <h3 id="rules-quick-start-title">快速上手</h3>
                     <p className="rules-overview-description">
-                      目标是在整局结束时取得更高的最终积分。先选角色，再逐房报价、获取道具并完成构筑。
+                      {mode === 'survival'
+                        ? '逐房报价、获取道具并完成构筑；每层结束按生存分与斩杀线判定，争取存活到最后。'
+                        : '目标是在整局结束时取得更高的最终积分。先选角色，再逐房报价、获取道具并完成构筑。'}
                     </p>
                   </div>
                   {onOpenTutorial && (
                     <Button type="button" onClick={onOpenTutorial}>
-                      进入交互式教程
+                      {tutorialLabel}
                     </Button>
                   )}
                 </div>
@@ -305,12 +314,15 @@ export function GameRules({
                     <div>
                       <strong>结算与推进</strong>
                       <p>
-                        提交后查看得分、道具与榜单，继续下一房间直到最终排行。
+                        {mode === 'survival'
+                          ? '提交后查看得分、道具与榜单；每层5房后查看层末判定，存活后进入下一层。'
+                          : '提交后查看得分、道具与榜单，继续下一房间直到最终排行。'}
                       </p>
                     </div>
                   </li>
                 </ol>
               </section>
+              {tutorial}
               <div className="rules-document-layout">
                 <aside className="rules-contents">
                   <nav aria-label="规则目录">

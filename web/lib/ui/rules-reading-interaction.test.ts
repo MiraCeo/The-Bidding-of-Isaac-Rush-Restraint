@@ -255,7 +255,11 @@ it('keeps the query across peer tabs with no inactive focus targets or profile w
   const tabs = [
     ...node.querySelectorAll<HTMLButtonElement>('.rules-tabs button'),
   ];
-  expect(tabs.map((el) => el.textContent)).toEqual(['玩法规则', '道具图鉴', 'AI性格']);
+  expect(tabs.map((el) => el.textContent)).toEqual([
+    '玩法规则',
+    '道具图鉴',
+    'AI性格',
+  ]);
   await click(tabs[1]!);
   expect(
     node.querySelector('.rules-page-heading .rule-search-feedback'),
@@ -381,5 +385,59 @@ it('keeps survival gameplay and its 25-item pool separate from classic rules and
   expect(node.querySelector('.rule-search-feedback')!.textContent).toContain(
     '显示 25 / 25 件道具',
   );
+  unchanged();
+});
+
+it('restores the full survival overview and chapter directory without classic progression claims', async () => {
+  const openTutorial = vi.fn();
+  await act(async () =>
+    root.render(
+      createElement<NonNullable<Parameters<typeof GameRules>[0]>>(GameRules, {
+        mode: 'survival',
+        catalog: survivalItemCatalog,
+        onOpenTutorial: openTutorial,
+        tutorialLabel: '打开生存教学',
+      }),
+    ),
+  );
+  const panel = node.querySelector<HTMLElement>('[aria-label="玩法规则"]')!;
+  expect(panel.querySelectorAll('.rules-start-steps li')).toHaveLength(3);
+  const links = [
+    ...panel.querySelectorAll<HTMLAnchorElement>('.rules-contents a'),
+  ];
+  expect(links).toHaveLength(13);
+  for (const link of links)
+    expect(panel.querySelector(link.hash)).not.toBeNull();
+  expect(panel.querySelectorAll('.rule-chapter')).toHaveLength(12);
+  expect(panel.textContent).toContain('每层5房');
+  expect(panel.textContent).toContain('200／325／500／750／1050／1500／2500');
+  expect(panel.textContent).toContain('不使用经典第三层双心脏规则');
+  expect(panel.textContent).toContain('继承分不重复计入');
+  expect(panel.textContent).toContain('玩家提前淘汰后冻结');
+  expect(panel.textContent).toContain('同层同分抽签');
+  expect(panel.textContent).not.toContain(
+    '第三层 BOSS 的两组妈妈的心脏属于固定终局奖励例外',
+  );
+  expect(panel.textContent).not.toContain('100 / 500 / 1000');
+  await click(
+    [...panel.querySelectorAll<HTMLButtonElement>('button')].find(
+      (e) => e.textContent === '打开生存教学',
+    )!,
+  );
+  expect(openTutorial).toHaveBeenCalledOnce();
+  await click(
+    node.querySelector<HTMLButtonElement>(
+      '.rules-tabs button[aria-controls$=ai]',
+    )!,
+  );
+  expect(panel.hidden).toBe(true);
+  expect(panel.hasAttribute('inert')).toBe(true);
+  await click(
+    node.querySelector<HTMLButtonElement>(
+      '.rules-tabs button[aria-controls$=rules]',
+    )!,
+  );
+  expect(panel.hidden).toBe(false);
+  expect(panel.querySelectorAll('.rule-chapter')).toHaveLength(12);
   unchanged();
 });
