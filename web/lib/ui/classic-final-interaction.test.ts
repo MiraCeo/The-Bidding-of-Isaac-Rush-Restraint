@@ -248,6 +248,25 @@ it('retains every repeated instance and empty inventory, and opens a read-only i
   expect(dialog).not.toBeNull();
   expect(dialog.textContent).toContain(getItemDefinition('d6').name);
   expect(dialog.textContent).toContain(itemPresentations.d6.description);
+  const card = dialog.querySelector('.rule-item-card')!;
+  expect(card.getAttribute('data-item-id')).toBe('d6');
+  expect(card.querySelector('.rule-item-art .item-icon-large')).not.toBeNull();
+  expect(card.querySelector('.rule-item-heading h4')!.textContent).toBe(
+    getItemDefinition('d6').name,
+  );
+  expect(card.querySelectorAll('.rule-item-attributes li')).toHaveLength(2);
+  expect(card.querySelector('.rule-item-effects')!.textContent).toContain(
+    '随机触发',
+  );
+  expect(dialog.textContent).not.toContain('仅供查看');
+  expect(dialog.textContent).not.toContain('以本局结算记录为准');
+  expect(dialog.querySelector('.final-item-dialog-heading')).toBeNull();
+  expect(dialog.getAttribute('aria-labelledby')).toBe(
+    card.querySelector('h4')!.id,
+  );
+  expect(dialog.getAttribute('aria-describedby')).toBe(
+    card.querySelector('p')!.id,
+  );
   await click(
     dialog.querySelector<HTMLButtonElement>('[aria-label="关闭道具详情"]')!,
   );

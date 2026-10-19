@@ -2,9 +2,19 @@ import type { ItemDefinition } from '@/lib/game/item-types';
 import { itemPresentations } from '@/lib/game/item-presentation';
 import { getItemBadges } from '@/lib/ui/item-badges';
 import { ItemIcon } from './item-icon';
+import type { ReactNode } from 'react';
 
 /** Reference-only layout. Pool/rarity are fixed attributes, not item effects. */
-export function CatalogItemCard({ item }: { item: ItemDefinition }) {
+export function CatalogItemCard({
+  item,
+  title,
+  description,
+}: {
+  item: ItemDefinition;
+  /** Semantic slots let dialog title/description reuse the exact catalog layout. */
+  title?: ReactNode;
+  description?: ReactNode;
+}) {
   const badges = getItemBadges(item);
   const attributes = badges.filter(
     (badge) => badge.kind === 'pool' || badge.kind === 'rarity',
@@ -18,7 +28,7 @@ export function CatalogItemCard({ item }: { item: ItemDefinition }) {
         <ItemIcon itemId={item.id} size="large" />
       </div>
       <header className="rule-item-heading">
-        <h4>{item.name}</h4>
+        {title ?? <h4>{item.name}</h4>}
         <ul className="rule-item-attributes" aria-label="道具属性">
           {attributes.map((badge) => (
             <li
@@ -35,7 +45,7 @@ export function CatalogItemCard({ item }: { item: ItemDefinition }) {
           ))}
         </ul>
       </header>
-      <p>{itemPresentations[item.id].description}</p>
+      {description ?? <p>{itemPresentations[item.id].description}</p>}
       <ul className="item-badges rule-item-effects" aria-label="道具效果">
         {effects.map((badge) => (
           <li

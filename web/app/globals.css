@@ -2547,14 +2547,13 @@
 .final-item-button .item-icon { --item-icon-size:32px; pointer-events:none; }
 .classic-final .final-empty-inventory { padding-top:7px; color:#8c806d; font-size:.66rem; }
 .final-item-backdrop { position:fixed; inset:0; z-index:140; background:#080604b8; }
-.final-item-dialog { position:fixed; z-index:141; inset:50% auto auto 50%; transform:translate(-50%,-50%); width:min(440px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); overflow-y:auto; border:1px solid #8b6635; border-radius:12px; padding:22px; background:#211b15; color:var(--foreground); outline:none; box-shadow:0 20px 64px #0008; }
-.final-item-dialog-heading { display:flex; align-items:center; gap:12px; }
-.final-item-dialog-heading h2 { font-size:1.1rem; font-weight:750; }
-.final-item-close { display:grid; place-items:center; margin-left:auto; flex:none; width:30px; height:30px; border-radius:5px; color:#c5b69b; cursor:pointer; }
+.final-item-dialog { position:fixed; z-index:141; inset:50% auto auto 50%; transform:translate(-50%,-50%); width:min(560px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); overflow-y:auto; border:1px solid var(--border); border-radius:10px; padding:0; background:#17130f; color:var(--foreground); outline:none; box-shadow:0 20px 64px #0008; }
+.final-item-dialog>.rule-item-card { border:0; border-radius:0; }
+.final-item-dialog .rule-item-heading { padding-right:48px; }
+.final-item-close { position:absolute; top:7px; right:7px; display:grid; place-items:center; width:30px; height:30px; border-radius:5px; color:#c5b69b; cursor:pointer; }
 .final-item-close:hover { background:#ffffff0a; }
-.final-item-dialog>p { margin:12px 0; font-size:.82rem; line-height:1.8; }
-.final-item-dialog p.final-item-reference { color:#9e907b; font-size:.68rem; }
-.final-item-done { margin-top:6px; width:100%; border:1px solid #8b6635; border-radius:7px; background:#3d2e1c; color:#efc364; padding:9px; font-size:.8rem; cursor:pointer; }
+.final-item-done { display:block; margin:12px 16px 16px; width:calc(100% - 32px); border:1px solid var(--border); border-radius:7px; background:#ffffff04; color:#d6c5a8; padding:8px; font-size:.78rem; cursor:pointer; }
+.final-item-done:hover { background:#ffffff0a; color:var(--foreground); }
 .final-item-close:focus-visible, .final-item-done:focus-visible { outline:2px solid #efc364; outline-offset:2px; }
 @media(max-width:699px) {
  .classic-final .final-col-rank { width:34px; }

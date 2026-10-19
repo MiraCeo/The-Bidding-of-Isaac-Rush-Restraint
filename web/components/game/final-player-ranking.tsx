@@ -15,7 +15,7 @@ import {
 } from '@/lib/ui/ai-personality-presentation';
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import { ItemArtProvider, ItemIcon } from './item-icon';
-import { ItemBadges } from './item-badges';
+import { CatalogItemCard } from './catalog-item-card';
 import { AiGuideLink } from './ai-guide-link';
 import { LocateSelfButton, RankingScrollArea } from './ranking-self-summary';
 
@@ -225,23 +225,25 @@ export function FinalPlayerRanking({
                 origin.current?.isConnected ? origin.current : null
               }
             >
-              <div className="final-item-dialog-heading">
-                <ItemIcon itemId={inspected.id} size="large" />
-                <Dialog.Title>{inspected.name}</Dialog.Title>
-                <Dialog.Close
-                  className="final-item-close"
-                  aria-label="关闭道具详情"
-                >
-                  <X size={20} aria-hidden="true" />
-                </Dialog.Close>
-              </div>
-              <Dialog.Description>
-                {itemPresentations[inspected.id].description}
-              </Dialog.Description>
-              <ItemBadges item={inspected} />
-              <p className="final-item-reference">
-                道具说明仅供查看，实际计分与触发以本局结算记录为准。
-              </p>
+              <CatalogItemCard
+                item={inspected}
+                title={
+                  <Dialog.Title render={<h4>{inspected.name}</h4>}>
+                    {inspected.name}
+                  </Dialog.Title>
+                }
+                description={
+                  <Dialog.Description>
+                    {itemPresentations[inspected.id].description}
+                  </Dialog.Description>
+                }
+              />
+              <Dialog.Close
+                className="final-item-close"
+                aria-label="关闭道具详情"
+              >
+                <X size={20} aria-hidden="true" />
+              </Dialog.Close>
               <Dialog.Close className="final-item-done">返回排行</Dialog.Close>
             </Dialog.Popup>
           </ItemArtProvider>

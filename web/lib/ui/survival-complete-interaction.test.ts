@@ -313,3 +313,27 @@ it('routes survival AI capsules to the exact read-only glossary entry and back',
   expect(node.querySelector('.survival-final .final-table')).toBe(table);
   expect(localStorage.getItem(survivalSaveKey)).toBe(before);
 });
+
+it('reuses the catalog item card in survival inspection without changing frozen results', async () => {
+  const s = complete(2, 'budget');
+  localStorage.setItem(
+    survivalSaveKey,
+    serializeSurvivalCheckpoint(s.game, s.draft),
+  );
+  localStorage.setItem(activeModeKey, 'survival');
+  await render(createElement(GameApp));
+  await act(async () => new Promise((r) => setTimeout(r, 30)));
+  const before = localStorage.getItem(survivalSaveKey);
+  const trigger = node.querySelector<HTMLButtonElement>(
+    '.survival-final .final-item-button',
+  )!;
+  await click(trigger);
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+  expect(dialog.querySelector('.rule-item-card')).not.toBeNull();
+  expect(dialog.querySelectorAll('.rule-item-attributes li')).toHaveLength(2);
+  expect(dialog.querySelector('.rule-item-effects')).not.toBeNull();
+  expect(dialog.textContent).not.toContain('仅供查看');
+  await click(dialog.querySelector<HTMLButtonElement>('.final-item-done')!);
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(localStorage.getItem(survivalSaveKey)).toBe(before);
+});
