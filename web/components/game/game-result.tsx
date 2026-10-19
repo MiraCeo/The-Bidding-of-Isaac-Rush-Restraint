@@ -110,10 +110,13 @@ export function GameResult({
               className="classic-final-awards"
               aria-label="本局前三名领奖台"
             >
-              <h3>
-                <Crown aria-hidden="true" />
-                本局领奖台
-              </h3>
+              <header className="podium-heading">
+                <h3>
+                  <Crown aria-hidden="true" />
+                  本局领奖台
+                </h3>
+                <span aria-hidden="true">TOP 3</span>
+              </header>
               <div className="podium-grid">
                 {game.finalRanking.slice(0, 3).map((entry, index) => {
                   const player = playerById.get(entry.playerId);
@@ -130,7 +133,10 @@ export function GameResult({
                         )}
                       </div>
                       <div className="podium-step">
-                        <span className="podium-rank">{index + 1}</span>
+                        <span className="podium-rank">
+                          {index === 0 && <Crown aria-hidden="true" />}
+                          <b>{index + 1}</b>
+                        </span>
                       </div>
                       <h3>{playerName(entry.playerId)}</h3>
                       <p>

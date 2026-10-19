@@ -6,20 +6,17 @@ import {
   characterNames,
   getItemDefinition,
   type ActiveClientGameState,
-  type AiDoctrine,
   type ItemId,
 } from '@/lib/game';
 import { itemPresentations } from '@/lib/game/item-presentation';
+import {
+  aiDoctrinePresentation,
+  aiPersonalityPresentation,
+} from '@/lib/ui/ai-personality-presentation';
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import { ItemArtProvider, ItemIcon } from './item-icon';
 import { ItemBadges } from './item-badges';
 import { LocateSelfButton, RankingScrollArea } from './ranking-self-summary';
-
-const doctrineNames: Readonly<Record<AiDoctrine, string>> = {
-  balanced: '均衡主义',
-  cooperative: '合作主义',
-  chaotic: '混乱主义',
-};
 
 /** Compare adjacent recorded entries, never resort or infer a tied placing. */
 export function classicFinalGapLabel(
@@ -117,11 +114,17 @@ export function ClassicFinalRanking({
                         {!isHuman && (
                           <span
                             className="final-doctrine-pill"
+                            title={
+                              profile
+                                ? aiDoctrinePresentation[profile.doctrine]
+                                    .summary
+                                : '此记录没有流派信息。'
+                            }
                             data-ai-doctrine={profile?.doctrine}
-                            aria-label={`AI流派：${profile ? doctrineNames[profile.doctrine] : '未记录'}`}
+                            aria-label={`AI流派：${profile ? aiDoctrinePresentation[profile.doctrine].name : '未记录'}`}
                           >
                             {profile
-                              ? doctrineNames[profile.doctrine]
+                              ? aiDoctrinePresentation[profile.doctrine].name
                               : '流派未记录'}
                           </span>
                         )}
@@ -129,6 +132,7 @@ export function ClassicFinalRanking({
                           <span
                             className="final-personality-pill"
                             data-ai-personality={personality}
+                            title={`${aiPersonalityNames[personality]}：${aiPersonalityPresentation[personality].summary}`}
                             key={personality}
                           >
                             {aiPersonalityNames[personality]}

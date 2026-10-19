@@ -87,7 +87,9 @@ describe('in-game rule reference', () => {
     const html = renderToStaticMarkup(createElement(GameRules));
     expect(html).toContain('class="rules-start-steps"');
     expect(html).toContain('<dl class="rule-actions">');
-    expect(html.match(/<dt>/g)).toHaveLength(3);
+    expect(
+      html.match(/<dl class="rule-actions">[\s\S]*?<\/dl>/)?.[0].match(/<dt>/g),
+    ).toHaveLength(3);
     expect(html).toContain('<table class="rule-comparison">');
     expect(html.match(/<th scope="row">/g)).toHaveLength(4);
     expect(html.match(/<figure class="rule-formula">/g)).toHaveLength(2);

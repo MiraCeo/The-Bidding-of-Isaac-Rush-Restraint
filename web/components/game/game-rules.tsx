@@ -2,6 +2,7 @@ import { UtilityPageHeading } from './utility-page-heading';
 import { Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CatalogItemCard } from './catalog-item-card';
+import { AiPersonalityGuide } from './ai-personality-guide';
 import { Button } from '@/components/ui/button';
 
 import { itemCatalog } from '@/lib/game/item-catalog';
@@ -114,7 +115,7 @@ export function GameRules({
 } = {}) {
   const [query, setQuery] = useState('');
   const [activeChapter, setActiveChapter] = useState('rules-quick-start');
-  const [tab, setTab] = useState<'rules' | 'items'>('rules');
+  const [tab, setTab] = useState<'rules' | 'items' | 'ai'>('rules');
   const panelId = useId();
   const manualRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -221,6 +222,7 @@ export function GameRules({
             [
               ['rules', '玩法规则'],
               ['items', '道具图鉴'],
+              ['ai', 'AI性格'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -341,6 +343,15 @@ export function GameRules({
             </>
           )}
         </div>
+        <section
+          className="rules-tab-panel"
+          id={panelId + '-ai'}
+          hidden={tab !== 'ai'}
+          inert={tab !== 'ai'}
+          aria-label="AI性格"
+        >
+          <AiPersonalityGuide />
+        </section>
         <section
           className="rules-tab-panel rule-item-directory"
           id={panelId + '-items'}

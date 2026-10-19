@@ -7,6 +7,10 @@ import { classicFinalGapLabel } from '@/components/game/classic-final-ranking';
 import { getItemDefinition, aiPersonalityNames } from '@/lib/game';
 import { itemPresentations } from '@/lib/game/item-presentation';
 import { ItemArtAvailability } from '@/components/game/item-icon';
+import {
+  aiPersonalityPresentation,
+  aiDoctrinePresentation,
+} from './ai-personality-presentation';
 import { GameApp } from '@/components/game/game-app';
 import { createGameSession, reduceGameSession } from './game-session';
 import { serializeGameCheckpoint, gameSaveKey } from './game-save';
@@ -112,6 +116,14 @@ it('keeps recorded final order, full table and character podium at selected prec
     const doctrine = row.querySelector<HTMLElement>('[data-ai-doctrine]');
     if (profile) {
       expect(doctrine?.dataset.aiDoctrine).toBe(profile.doctrine);
+      expect(doctrine?.title).toBe(
+        aiDoctrinePresentation[profile.doctrine].summary,
+      );
+      for (const trait of profile.personalities)
+        expect(
+          row.querySelector<HTMLElement>(`[data-ai-personality="${trait}"]`)
+            ?.title,
+        ).toContain(aiPersonalityPresentation[trait].summary);
       expect(doctrine?.classList.contains('final-doctrine-pill')).toBe(true);
       expect(identity.nextElementSibling).toBe(doctrine);
       expect(doctrine?.nextElementSibling).toBe(

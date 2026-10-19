@@ -255,7 +255,7 @@ it('keeps the query across peer tabs with no inactive focus targets or profile w
   const tabs = [
     ...node.querySelectorAll<HTMLButtonElement>('.rules-tabs button'),
   ];
-  expect(tabs.map((el) => el.textContent)).toEqual(['玩法规则', '道具图鉴']);
+  expect(tabs.map((el) => el.textContent)).toEqual(['玩法规则', '道具图鉴', 'AI性格']);
   await click(tabs[1]!);
   expect(
     node.querySelector('.rules-page-heading .rule-search-feedback'),
