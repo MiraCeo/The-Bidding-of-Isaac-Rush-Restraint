@@ -11,6 +11,7 @@ import {
 } from './survival-client';
 import { createSurvivalReplay } from './survival-record';
 import { finalSurvivalBoard } from './survival-board';
+import { survivalFinalGapLabel } from '@/components/game/survival-final-board';
 import {
   startSurvivalGame,
   survivalGameReducer,
@@ -104,10 +105,47 @@ it.each([
       model = finalSurvivalBoard(log),
       p = props();
     expect(log.final!.eliminated.human!.reason).toBe(reason);
-    await render(createElement(SurvivalComplete, { ...p, log, decimals: 4 }));
+    await render(
+      createElement(SurvivalComplete, {
+        ...p,
+        log,
+        decimals: 4,
+        aiProfiles: s.game.aiProfiles,
+      }),
+    );
     expect(node.querySelectorAll('h2')).toHaveLength(1);
-    expect(node.querySelector('.survival-complete-reason')!.textContent).not.toContain('原判定');
-    expect([...node.querySelectorAll('thead th small')].map(e=>e.textContent)).toEqual(model.rows[0]!.floors.map(()=>'新增积分'));
+    expect(
+      node.querySelector('.survival-complete-reason')!.textContent,
+    ).not.toContain('原判定');
+    expect(node.querySelectorAll('.final-table tbody tr')).toHaveLength(20);
+    for (const [index, row] of [
+      ...node.querySelectorAll<HTMLElement>('.final-table tbody tr'),
+    ].entries()) {
+      const expected = model.rows[index]!,
+        player = log.final!.players.find((p) => p.id === expected.playerId)!;
+      expect(row.dataset.playerId).toBe(expected.playerId);
+      expect(row.querySelector('[data-final-score]')!.textContent).toBe(
+        expected.total.toFixed(4),
+      );
+      expect(row.querySelector('[data-final-status]')!.textContent).toBe(
+        expected.statusLabel,
+      );
+      expect(
+        [...row.querySelectorAll<HTMLElement>('[data-item-instance]')].map(
+          (e) => e.dataset.itemInstance,
+        ),
+      ).toEqual(player.items.map((i) => i.instanceId));
+      expect(row.textContent).not.toContain('资金');
+    }
+    expect(
+      [...node.querySelectorAll<HTMLElement>('.podium-card')].map(
+        (e) => e.dataset.podiumPlayer,
+      ),
+    ).toEqual(model.rows.slice(0, 3).map((r) => r.playerId));
+    await click(button('分层成绩'));
+    expect(
+      [...node.querySelectorAll('thead th small')].map((e) => e.textContent),
+    ).toEqual(model.rows[0]!.floors.map(() => '新增积分'));
     expect(
       node.querySelector('.survival-complete-outcomes')!.textContent,
     ).toContain(label);
@@ -194,6 +232,7 @@ it('shows a surviving human and no-champion outcome without manufacturing a cham
     createElement(SurvivalComplete, { ...props(), log: noChampion }),
   );
   expect(node.querySelector('.complete-champion')!.textContent).toBe('无冠军');
+  expect(node.querySelector('.podium-1 .podium-rank svg')).toBeNull();
 });
 it('keeps early-eliminated personal header facts frozen while the final AI floor and read-only tools differ', async () => {
   const s = complete(1, 'withdraw'),
@@ -222,4 +261,31 @@ it('keeps early-eliminated personal header facts frozen while the final AI floor
   }
   await click(button('再来一局生存'));
   expect(node.textContent).toContain('选择角色');
+});
+
+it('does not explain a survival-priority boundary using an incomparable point gap or invent AI traits from a factual replay', async () => {
+  const s = complete(1, 'budget'),
+    log = createSurvivalReplay(s.game),
+    model = finalSurvivalBoard(log),
+    before = structuredClone(log);
+  const boundary = model.rows.findIndex(
+    (row, i) => i > 0 && row.active !== model.rows[i - 1]!.active,
+  );
+  expect(boundary).toBeGreaterThan(0);
+  expect(
+    survivalFinalGapLabel(model.rows[boundary]!, model.rows[boundary - 1], 2),
+  ).toBe('存活状态优先排序');
+  const row = model.rows.find((r) => !r.active)!;
+  expect(
+    survivalFinalGapLabel(
+      row,
+      { ...row, eliminationFloorIndex: (row.eliminationFloorIndex ?? 0) + 1 },
+      2,
+    ),
+  ).toBe('淘汰层数优先排序');
+  expect(survivalFinalGapLabel(row, { ...row }, 4)).toBe('与上一名同分');
+  await render(createElement(SurvivalComplete, { ...props(), log }));
+  expect(node.querySelectorAll('[data-ai-personality]')).toHaveLength(0);
+  expect(node.textContent).toContain('流派未记录');
+  expect(log).toEqual(before);
 });

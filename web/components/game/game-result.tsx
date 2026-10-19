@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { SettlementNavigationContext } from './settlement-navigation';
 import { GameHeader } from './game-header';
-import { CharacterArt } from './character-art';
+import { FinalPodium } from './final-podium';
 import { Crown, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -106,51 +106,19 @@ export function GameResult({
                 </span>
               </div>
             </section>
-            <section
-              className="classic-final-awards"
-              aria-label="本局前三名领奖台"
-            >
-              <header className="podium-heading">
-                <h3>
-                  <Crown aria-hidden="true" />
-                  本局领奖台
-                </h3>
-                <span aria-hidden="true">TOP 3</span>
-              </header>
-              <div className="podium-grid">
-                {game.finalRanking.slice(0, 3).map((entry, index) => {
-                  const player = playerById.get(entry.playerId);
-                  return (
-                    <article
-                      key={entry.playerId}
-                      className={`podium-card podium-${index + 1}`}
-                      data-podium-player={entry.playerId}
-                      aria-label={`第${index + 1}名 ${playerName(entry.playerId)}`}
-                    >
-                      <div className="podium-model">
-                        {player?.characterId && (
-                          <CharacterArt characterId={player.characterId} />
-                        )}
-                      </div>
-                      <div className="podium-step">
-                        <span className="podium-rank">
-                          {index === 0 && <Crown aria-hidden="true" />}
-                          <b>{index + 1}</b>
-                        </span>
-                      </div>
-                      <h3>{playerName(entry.playerId)}</h3>
-                      <p>
-                        {player?.characterId
-                          ? characterNames[player.characterId]
-                          : '未知角色'}
-                      </p>
-                      <strong>{entry.finalScore.toFixed(scoreDecimals)}</strong>
-                      <small>{player?.items.length ?? 0} 件道具</small>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
+            <FinalPodium
+              decimals={scoreDecimals}
+              entries={game.finalRanking.slice(0, 3).map((entry) => {
+                const player = playerById.get(entry.playerId);
+                return {
+                  playerId: entry.playerId,
+                  name: playerName(entry.playerId),
+                  characterId: player?.characterId ?? null,
+                  score: entry.finalScore,
+                  itemCount: player?.items.length ?? 0,
+                };
+              })}
+            />
           </aside>
 
           <ClassicFinalRanking game={game} scoreDecimals={scoreDecimals} />

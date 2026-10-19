@@ -2602,3 +2602,59 @@
  main:has(.ai-personality-guide)>.topbar:not(.topbar-with-session) .nav-item { flex:1; min-width:0; }
  main:has(.ai-personality-guide)>.topbar:not(.topbar-with-session) .app-version { grid-column:2; grid-row:1; align-self:start; }
 }
+
+/* 0.7.5 survival terminal sync. Live boards and read-only replay matrices remain unchanged. */
+.survival-final .survival-complete-outcomes { grid-template-columns:.8fr 1.2fr; align-items:start; }
+.survival-final .survival-complete-outcomes small.complete-alive { color:#a4d69b; }
+.survival-final .survival-complete-outcomes small.complete-out { color:#ef9b8d; }
+.survival-final-verdict { grid-column:1/-1; font-size:.7rem; line-height:1.8; color:#c9b897; }
+.survival-reason-details { margin-top:5px; color:#af9b7a; }
+.survival-reason-details>summary { width:fit-content; cursor:pointer; padding:3px 0; }
+.survival-reason-details .survival-complete-reason { margin:6px 0 0; font-size:.7rem; line-height:1.85; }
+.survival-final .podium-card small { display:block; }
+.survival-final .podium-heading .complete-champion { font-size:.66rem; line-height:1.5; font-weight:600; letter-spacing:0; }
+.survival-final .classic-final-outcomes { padding:16px; gap:12px; }
+.survival-final .classic-final-build { padding-top:8px; }
+.survival-final .classic-final-awards { padding:14px 16px; min-height:0; }
+.survival-final .podium-heading { padding-bottom:8px; }
+.survival-final .podium-grid { margin-top:8px; }
+.survival-final .survival-final-board { display:flex; flex-direction:column; min-width:0; min-height:0; }
+.survival-final-board>.final-ranking-panel { flex:1; }
+.survival-final-tabs { display:flex; flex-wrap:wrap; gap:4px; }
+.survival-final-tabs button { padding:4px 7px; border:1px solid #a47b3840; border-radius:5px; color:#a99779; font-size:.65rem; cursor:pointer; }
+.survival-final-tabs button[aria-pressed="true"] { color:#efc364; background:#edaf3d12; border-color:#b88d3e88; }
+.survival-final-tabs button:focus-visible, .survival-reason-details>summary:focus-visible { outline:2px solid #efc364; outline-offset:2px; }
+.survival-final-board[data-final-view="floors"]>.survival-final-tabs { margin:0 0 10px; flex-shrink:0; }
+.survival-final .final-ranking-tools { justify-content:flex-end; }
+.final-survival-status { display:inline-flex; align-items:center; padding:1px 6px; border:1px solid #91b38540; border-radius:20px; color:#a4d69b; background:#91b3850b; font-size:.61rem; line-height:1.5; font-weight:500; white-space:nowrap; }
+.final-survival-status.is-out { color:#ef9b8d; border-color:#de786740; background:#de78670b; }
+.survival-final .podium-model, .survival-final .podium-model .character-art { height:88px; }
+.survival-final .podium-model .character-art-figure { width:64px; height:88px; background-size:128px 128px; background-position:center bottom -28px; }
+.survival-final .podium-model .character-art[data-character-id="jacob_esau"] .character-art-figure { width:64px; }
+.survival-final .podium-1 { --podium-height:72px; }
+.survival-final .podium-2 { --podium-height:52px; }
+.survival-final .settlement-save-state { font-size:.66rem; color:#a99574; max-width:48%; }
+@media(min-width:900px) and (min-height:700px) {
+ .survival-final .classic-final-layout { min-height:540px; }
+ .survival-final:has(.survival-reason-details[open]) .classic-final-layout { min-height:800px; }
+}
+@media(min-width:1100px) and (max-height:849px) {
+ .survival-final .podium-model, .survival-final .podium-model .character-art { height:88px; }
+ .survival-final .podium-model .character-art-figure { height:88px; }
+ .survival-final .podium-1 { --podium-height:64px; }
+ .survival-final .podium-2 { --podium-height:44px; }
+ .survival-final .podium-3 { --podium-height:30px; }
+ .survival-final .classic-final-outcomes { padding:16px; gap:12px; }
+}
+@media(min-width:1400px) and (min-height:1050px) {
+ .survival-final .podium-model, .survival-final .podium-model .character-art { height:156px; }
+ .survival-final .podium-model .character-art-figure { width:120px; height:156px; background-size:192px 192px; background-position:center bottom -42px; }
+ .survival-final .podium-model .character-art[data-character-id="jacob_esau"] .character-art-figure { width:90px; }
+}
+@media(max-width:1099px) {
+ .survival-final .podium-model { height:88px; }
+ .survival-final .podium-1 { --podium-height:52px; }
+ .survival-final .podium-2 { --podium-height:36px; }
+ .survival-final .podium-3 { --podium-height:24px; }
+}
+@media(max-width:699px) { .survival-final .settlement-save-state { max-width:100%; order:3; width:100%; justify-content:flex-start; }.survival-final .final-ranking-tools>span { max-width:none; } }

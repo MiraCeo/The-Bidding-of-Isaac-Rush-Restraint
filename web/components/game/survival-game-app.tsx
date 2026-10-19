@@ -646,6 +646,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       body = (
         <SurvivalComplete
           log={log!}
+          aiProfiles={game!.aiProfiles}
           decimals={decimals}
           onNew={props.onNew}
           onBuild={() => setPanel('build')}

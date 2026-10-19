@@ -823,9 +823,15 @@ describe('formal independent survival entry', () => {
         ),
     ).toBe(true);
     expect(container.textContent).toContain('你的最终名次');
+    expect(container.querySelectorAll('.final-table tbody tr')).toHaveLength(
+      20,
+    );
+    const savedFinal = localStorage.getItem(survivalSaveKey);
+    await click(button('分层成绩'));
     expect(
       container.querySelectorAll('.survival-board-table tbody tr'),
     ).toHaveLength(20);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(savedFinal);
     expect(localStorage.getItem(survivalLastCompletedKey)).not.toBeNull();
   }, 30000);
 });
