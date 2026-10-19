@@ -3,6 +3,10 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GameResult } from '@/components/game/game-result';
+import { classicFinalGapLabel } from '@/components/game/classic-final-ranking';
+import { getItemDefinition, aiPersonalityNames } from '@/lib/game';
+import { itemPresentations } from '@/lib/game/item-presentation';
+import { ItemArtAvailability } from '@/components/game/item-icon';
 import { GameApp } from '@/components/game/game-app';
 import { createGameSession, reduceGameSession } from './game-session';
 import { serializeGameCheckpoint, gameSaveKey } from './game-save';
@@ -73,11 +77,43 @@ it('keeps recorded final order, full table and character podium at selected prec
     const entry = game.finalRanking[i]!,
       p = game.players.find((p) => p.id === entry.playerId)!;
     expect(row.children[0]!.textContent).toBe(String(i + 1));
-    expect(row.querySelector('.ranking-metric-primary')!.textContent).toBe(
+    expect(row.querySelector('[data-final-score]')!.textContent).toBe(
       entry.finalScore.toFixed(4),
     );
-    expect(row.children[3]!.textContent).toBe(String(p.money));
-    expect(row.children[4]!.textContent).toBe(String(p.items.length));
+    expect(row.querySelector('[data-final-money]')!.textContent).toBe(
+      String(p.money),
+    );
+    expect(
+      row.querySelector<HTMLElement>('[data-item-count]')!.dataset.itemCount,
+    ).toBe(String(p.items.length));
+    expect(
+      [...row.querySelectorAll<HTMLElement>('[data-item-instance]')].map(
+        (e) => e.dataset.itemInstance,
+      ),
+    ).toEqual(p.items.map((i) => i.instanceId));
+    expect(
+      [
+        ...row.querySelectorAll<HTMLElement>(
+          '.final-inventory-icons [data-item-id]',
+        ),
+      ].map((e) => e.dataset.itemId),
+    ).toEqual(p.items.map((i) => i.itemId));
+    expect(row.querySelector('[data-final-gap]')!.textContent).toBe(
+      classicFinalGapLabel(
+        entry.finalScore,
+        game.finalRanking[i - 1]?.finalScore,
+        4,
+      ),
+    );
+    expect(row.querySelector('[data-player-kind]')!.textContent).toBe(
+      p.id === game.humanPlayerId ? '真人' : 'AI',
+    );
+    const profile = game.aiProfiles[p.id];
+    expect(
+      [...row.querySelectorAll('[data-ai-personality]')].map(
+        (e) => e.textContent,
+      ),
+    ).toEqual(profile?.personalities.map((p) => aiPersonalityNames[p]) ?? []);
   }
   expect(
     [...node.querySelectorAll('.podium-card>strong')].map((e) => e.textContent),
@@ -144,4 +180,75 @@ it('retains terminal phase through build/replay/settings navigation and moves re
   expect(localStorage.getItem(gameSaveKey)).toBe(before);
   await click(button('重新开始'));
   expect(node.textContent).toContain('选择角色');
+});
+
+it('formats adjacent gaps without changing ties or rounding a positive difference into a tie', () => {
+  expect(classicFinalGapLabel(1563.02, 1569.07, 2)).toBe('距上一名差6.05分');
+  expect(classicFinalGapLabel(2048.44, undefined, 2)).toBe('榜首');
+  expect(classicFinalGapLabel(100, 100, 4)).toBe('与上一名同分');
+  expect(classicFinalGapLabel(1, 1.000001, 2)).toBe('距上一名不足0.01分');
+  expect(classicFinalGapLabel(1, 1.000001, 4)).toBe('距上一名不足0.0001分');
+  expect(classicFinalGapLabel(2, 1, 2)).toBe('较上一名高1.00分');
+});
+it('retains every repeated instance and empty inventory, and opens a read-only item description', async () => {
+  const game = structuredClone(completed().game);
+  if (game.phase !== 'game_result') throw Error('final');
+  const first = game.players.find(
+    (p) => p.id === game.finalRanking[0]!.playerId,
+  )!;
+  first.items = Array.from({ length: 18 }, (_, i) => ({
+    instanceId: `display-copy-${i}`,
+    itemId: 'd6' as const,
+    acquiredOrder: i,
+  }));
+  const second = game.players.find(
+    (p) => p.id === game.finalRanking[1]!.playerId,
+  )!;
+  second.items = [];
+  const before = structuredClone(game),
+    restart = vi.fn();
+  await show(
+    createElement(GameResult, { game, onRestart: restart, embedded: true }),
+  );
+  const rows = node.querySelectorAll('tbody tr');
+  expect(rows[0]!.querySelectorAll('[data-item-instance]')).toHaveLength(18);
+  expect(rows[1]!.textContent).toContain('0件道具暂无道具');
+  const trigger =
+    rows[0]!.querySelector<HTMLButtonElement>('.final-item-button')!;
+  expect(trigger.title).toContain(itemPresentations.d6.description);
+  await click(trigger);
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog).not.toBeNull();
+  expect(dialog.textContent).toContain(getItemDefinition('d6').name);
+  expect(dialog.textContent).toContain(itemPresentations.d6.description);
+  await click(
+    dialog.querySelector<HTMLButtonElement>('[aria-label="关闭道具详情"]')!,
+  );
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(game).toEqual(before);
+  expect(restart).not.toHaveBeenCalled();
+});
+
+it('keeps item names and inspection accessible when an atlas is unavailable', async () => {
+  const game = completed().game;
+  if (game.phase !== 'game_result') throw Error('final');
+  await show(
+    createElement(
+      ItemArtAvailability.Provider,
+      { value: { collectibles: false, trinkets: false, pickups: false } },
+      createElement(GameResult, { game, onRestart: vi.fn(), embedded: true }),
+    ),
+  );
+  const icons = node.querySelectorAll('.final-inventory-icons .item-icon');
+  expect(icons.length).toBeGreaterThan(0);
+  expect(
+    [...icons].every((e) => e.getAttribute('data-icon-kind') === 'fallback'),
+  ).toBe(true);
+  expect(
+    [...node.querySelectorAll<HTMLButtonElement>('.final-item-button')].every(
+      (e) =>
+        e.title.includes('：') &&
+        e.getAttribute('aria-label')?.startsWith('查看'),
+    ),
+  ).toBe(true);
 });

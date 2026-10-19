@@ -428,13 +428,13 @@ it('preserves classic final scores/order and all AI information while demoting a
       scoreDecimals: 4,
     }),
   );
-  expect(rows('.final-table thead th')).toHaveLength(6);
+  expect(rows('.final-table thead th')).toHaveLength(3);
   expect(rows('.final-table tbody tr').map((r) => r.dataset.playerId)).toEqual(
     game.finalRanking.map((r) => r.playerId),
   );
-  expect(rows('.final-table .ranking-profile-cell details')).toHaveLength(19);
+  expect(rows('.final-table [data-player-kind="ai"]')).toHaveLength(19);
   for (const [i, row] of rows('.final-table tbody tr').entries())
-    expect(row.querySelector('.ranking-metric-primary')!.textContent).toBe(
+    expect(row.querySelector('[data-final-score]')!.textContent).toBe(
       game.finalRanking[i]!.finalScore.toFixed(4),
     );
   expect(

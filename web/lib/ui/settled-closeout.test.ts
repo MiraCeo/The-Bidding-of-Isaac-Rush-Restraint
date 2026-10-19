@@ -119,11 +119,9 @@ it('labels final ranking columns and retains every player and score', async () =
     ),
   );
   const table = node.querySelector('table[aria-label="整局最终排行"]')!;
-  expect(table.querySelectorAll('thead th[scope="col"]')).toHaveLength(6);
-  expect(table.querySelectorAll('.ranking-player-cell small')).toHaveLength(20);
-  expect(table.querySelectorAll('.ranking-profile-cell details')).toHaveLength(
-    19,
-  );
+  expect(table.querySelectorAll('thead th[scope="col"]')).toHaveLength(3);
+  expect(table.querySelectorAll('.final-player-character')).toHaveLength(20);
+  expect(table.querySelectorAll('[data-player-kind="ai"]')).toHaveLength(19);
   expect(table.querySelectorAll('tbody tr')).toHaveLength(20);
   expect(node.querySelector('.final-actions button')!.textContent).toContain(
     '重新开始',
