@@ -312,6 +312,13 @@ export function PlayerProfileManagement() {
             </dd>
           </div>
         </dl>
+        {snapshot.profile && (
+          <p className="backup-profile-scope-note">
+            {registry
+              ? `历史最多保留200条；登记累计自启用后计数${registry.baselineHistoryCount ? `，启用时的 ${registry.baselineHistoryCount} 条历史基线未补计` : '，与保留历史范围不同'}。`
+              : '登记累计尚未启用；保留历史不自动补计为累计。'}
+          </p>
+        )}
         <details className="data-technical backup-profile-details">
           <summary>档案时间、凭据与恢复说明</summary>
           <ProfileSummary

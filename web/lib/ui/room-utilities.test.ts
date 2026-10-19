@@ -121,7 +121,7 @@ async function openData() {
 }
 async function upload(source: string) {
   const entry = Array.from(container.querySelectorAll('button')).find(
-    (b) => b.textContent?.trim() === '导入文件',
+    (b) => b.textContent?.trim() === '读取对局文件',
   );
   if (entry) await click(entry);
   const input = element<HTMLInputElement>('input[aria-label="导入对局文件"]');

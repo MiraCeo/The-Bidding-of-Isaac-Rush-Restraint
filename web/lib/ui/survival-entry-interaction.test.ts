@@ -329,7 +329,7 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('经典模式'));
     await settings();
-    await click(button('导入文件'));
+    await click(button('读取对局文件'));
     await upload(
       serializeSurvivalReplay(
         createSurvivalReplay(withdraw(startSurvivalClient('isaac', 42)).game),
@@ -690,7 +690,7 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('经典模式'));
     await settings();
-    await click(button('导入文件'));
+    await click(button('读取对局文件'));
     await upload(
       serializeSurvivalCheckpoint(startSurvivalClient('lost', 99).game),
     );

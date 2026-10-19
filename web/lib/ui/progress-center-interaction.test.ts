@@ -244,7 +244,7 @@ it('opens the shared progress center from an empty menu and exposes both file mo
   expect(container.textContent).toContain('尚未开始对局');
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
   await click('存档与备份');
-  expect(button('导入文件')).toBeDefined();
+  expect(button('读取对局文件')).toBeDefined();
   await click('生存');
   expect(button('导出生存续玩存档').disabled).toBe(true);
   await click('返回主菜单');
@@ -416,7 +416,7 @@ it('cancels a classic read on a mode change and discards a late result without a
   });
   const file = new File(['pending'], 'pending.json');
   Object.defineProperty(file, 'text', { value: () => reading });
-  await click('导入文件');
+  await click('读取对局文件');
   const input = container.querySelector<HTMLInputElement>(
     'input[aria-label="导入对局文件"]',
   )!;
@@ -442,7 +442,7 @@ it('rejects old raw and compressed development files from the shared entry witho
   await mount();
   await click('进度');
   await click('存档与备份');
-  await click('导入文件');
+  await click('读取对局文件');
   const beforeClassic = localStorage.getItem(gameSaveKey),
     beforeSurvival = localStorage.getItem(survivalSaveKey),
     input = container.querySelector<HTMLInputElement>(

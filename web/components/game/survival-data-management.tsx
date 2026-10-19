@@ -251,7 +251,13 @@ export function SurvivalDataManagement({
         title="当前对局"
         titleId="survival-backup-title"
         badge="生存模式"
-        description="续玩存档保存当前位置与未提交报价；本局完整备份还包含原始回放与玩家档案，不是整库备份。"
+        description={
+          session
+            ? phase === 'competition_complete'
+              ? '本局已结束，可查看或导出回放；本局完整备份另含玩家档案，不是整库备份。'
+              : '续玩存档保存当前位置与未提交报价；本局完整备份另含原始回放与玩家档案。'
+            : '没有进行中的对局，可读取已有文件；最近完成记录与当前对局分开保留。'
+        }
       />
       <div className="data-record-row">
         {session && (
@@ -299,7 +305,9 @@ export function SurvivalDataManagement({
             })
           }
         >
-          导出生存续玩存档
+          {phase === 'competition_complete'
+            ? '导出生存存档'
+            : '导出生存续玩存档'}
         </Button>
         <Button
           variant={phase === 'competition_complete' ? 'default' : 'secondary'}

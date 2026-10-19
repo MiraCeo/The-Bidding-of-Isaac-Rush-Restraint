@@ -367,7 +367,7 @@ it.each(['classic', 'survival'] as const)(
     await act(async () => root.render(createElement(GameApp)));
     await click('进度');
     await click('存档与备份');
-    await click('导入文件');
+    await click('读取对局文件');
     const next = start(90),
       s = beginSurvivalGrowth(startSurvivalClient('isaac', 90));
     const source =

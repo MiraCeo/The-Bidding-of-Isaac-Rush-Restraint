@@ -84,7 +84,7 @@ async function openData() {
   await click(button('存档与备份'));
 }
 async function upload(source: string, filename = 'example.json') {
-  if (labels().includes('导入文件')) await click(button('导入文件'));
+  if (labels().includes('读取对局文件')) await click(button('读取对局文件'));
   const input = node<HTMLInputElement>('input[aria-label="导入对局文件"]');
   Object.defineProperty(input, 'files', {
     configurable: true,
@@ -261,7 +261,7 @@ describe('specific data layouts and confirmation flows', () => {
       container.querySelectorAll('input[aria-label="读取整库备份文件"]'),
     ).toHaveLength(1);
     expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
-    expect(labels()).toContain('导入文件');
+    expect(labels()).toContain('读取对局文件');
     expect(labels()).not.toContain('完整备份');
     expect(labels()).not.toContain('导出存档');
     expect(labels()).not.toContain('查看回放');

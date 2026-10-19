@@ -16,10 +16,12 @@ export function ReplayLibraryBackupPanel({
   disabled,
   onBusyChange,
   focusPreview = false,
+  compact = false,
 }: {
   disabled: boolean;
   onBusyChange: (busy: boolean) => void;
   focusPreview?: boolean;
+  compact?: boolean;
 }) {
   const [phase, setPhase] = useState<
     'idle' | 'reading' | 'exporting' | 'restoring'
@@ -247,11 +249,18 @@ export function ReplayLibraryBackupPanel({
       aria-busy={busy}
     >
       <h4 id="library-backup-title">整库备份与恢复</h4>
-      <p className="utility-notice">
-        包含经典＋生存全部原正文、首次来源、索引和删除证据，不受筛选影响。续玩存档、玩家档案与设置需分别备份。
-      </p>
+      {!compact && (
+        <p className="utility-notice">
+          包含经典＋生存全部原正文、首次来源、索引和删除证据，不受筛选影响。续玩存档、玩家档案与设置需分别备份。
+        </p>
+      )}
       <details className="data-technical">
         <summary>整库容量与文件边界</summary>
+        {compact && (
+          <p>
+            包含两模式原正文、首次来源、索引和删除证据，不受模式筛选影响。正文大小按索引计量，不含索引／删除证据，不能当作浏览器总占用。
+          </p>
+        )}
         <p>
           每份回放仍限8 MiB，整库正文64 MiB／100份；整库v1文件独立限160
           MiB，元数据16

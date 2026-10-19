@@ -21,7 +21,7 @@ export function dataTaskTitle(data: DataManagementController) {
       ? '载入完整备份'
       : data.candidate
         ? '载入对局'
-        : '导入文件';
+        : '读取对局文件';
 }
 export function DataManagement({
   data,
@@ -499,7 +499,13 @@ export function DataManagement({
             title="当前对局"
             titleId="data-records-title"
             badge="经典模式"
-            description="续玩存档保存当前位置与未提交报价；本局完整备份还包含原始回放与玩家档案，不是整库备份。"
+            description={
+              data.activeSession
+                ? finished
+                  ? '本局已结束，可查看或导出回放；本局完整备份另含玩家档案，不是整库备份。'
+                  : '续玩存档保存当前位置与未提交报价；本局完整备份另含原始回放与玩家档案。'
+                : '没有进行中的对局，可读取已有文件；最近完成记录与当前对局分开保留。'
+            }
           />
           {recordContent}
         </section>
@@ -509,11 +515,11 @@ export function DataManagement({
           <h4>文件操作</h4>
           <div className="data-file-row">
             <div>
-              <strong>导入文件</strong>
-              <small>选择后识别为对局、回放或备份，再确认操作。</small>
+              <strong>从文件恢复或查看</strong>
+              <small>识别存档、回放或完整备份，先预览再确认。</small>
             </div>
             <Button type="button" variant="secondary" onClick={data.openImport}>
-              导入文件
+              读取对局文件
             </Button>
           </div>
           {canBackup && (

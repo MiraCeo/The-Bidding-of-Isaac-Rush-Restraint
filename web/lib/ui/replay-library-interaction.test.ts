@@ -464,7 +464,7 @@ it('shows an unavailable library without blocking other progress pages or invent
   );
   expect(container.textContent).toContain('容量暂不可读取');
   await click('存档与备份');
-  expect(button('导入文件')).toBeDefined();
+  expect(button('读取对局文件')).toBeDefined();
 });
 it('respects the score display preference without altering original facts or stored text', async () => {
   const prepared = await prepareLibraryReplay(replaySource(classicDoc));

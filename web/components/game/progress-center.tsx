@@ -351,15 +351,15 @@ export function ProgressCenter({
                     )}
                   </div>
                   {(mode === 'survival' || data.task === 'settings') && (
-                    <PlayerProfileManagement key={mode} />
+                    <div className="backup-side-stack">
+                      <PlayerProfileManagement key={`profile-${mode}`} />
+                      <BackupLibrarySection
+                        key={`library-${mode}`}
+                        onRecords={() => chooseTab('records')}
+                      />
+                    </div>
                   )}
                 </div>
-                {(mode === 'survival' || data.task === 'settings') && (
-                  <BackupLibrarySection
-                    key={mode}
-                    onRecords={() => chooseTab('records')}
-                  />
-                )}
                 <StorageDiagnostics />
               </section>
             ) : tab === 'statistics' ? (

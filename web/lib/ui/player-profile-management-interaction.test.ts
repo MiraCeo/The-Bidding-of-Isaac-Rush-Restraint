@@ -1,3 +1,5 @@
+import { registerCompletion } from './completion-registry';
+import { completionRecordFixture } from './completion-registry.test-helper';
 // @vitest-environment happy-dom
 import { act, createElement, Fragment } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -511,4 +513,25 @@ it('refreshes from actual local storage rather than trusting arbitrary storage e
       '1 / 2',
     ),
   );
+});
+
+it('explains retained history and registered totals next to the actual metrics without backfilling old history', async () => {
+  const profile = registerCompletion(
+      profileFileFixture(),
+      completionRecordFixture(12),
+      [],
+      false,
+    ),
+    source = JSON.stringify(profile);
+  localStorage.setItem(playerProfileKey, source);
+  await mountApp();
+  expect(
+    container.querySelector('.backup-profile-scope-note')!.textContent,
+  ).toContain('3 条历史基线未补计');
+  const metrics = [
+    ...container.querySelectorAll('.backup-profile-metrics dd'),
+  ].map((e) => e.textContent);
+  expect(metrics[0]).toBe('4');
+  expect(metrics[2]).toBe('1');
+  expect(localStorage.getItem(playerProfileKey)).toBe(source);
 });
