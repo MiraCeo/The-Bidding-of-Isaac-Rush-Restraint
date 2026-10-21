@@ -10,14 +10,20 @@ export function useUtilityPages(enabled = true) {
     () => (enabled ? (navigation?.pendingPage ?? null) : null),
   );
   const homeScrollRef = useRef(0);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const previousPanelRef = useRef<RoomUtilityPanel | null>(null);
   useEffect(() => {
     if (!enabled || !navigation || navigation.pendingPage === undefined) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      if (navigation.pendingPage && utilityPanel === null)
+      if (navigation.pendingPage && utilityPanel === null) {
         homeScrollRef.current = window.scrollY;
+        returnFocusRef.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+      }
       setUtilityPanel(navigation.pendingPage ?? null);
       navigation.consumePage();
     });
@@ -33,18 +39,32 @@ export function useUtilityPages(enabled = true) {
         ?.focus({ preventScroll: true });
     } else if (previousPanelRef.current) {
       window.scrollTo(0, homeScrollRef.current);
-      document
-        .querySelector<HTMLButtonElement>(
-          'nav[aria-label="主导航"] button[aria-current="page"]',
-        )
-        ?.focus({ preventScroll: true });
+      const origin = returnFocusRef.current;
+      if (
+        origin?.isConnected &&
+        origin !== document.body &&
+        !origin.closest('[hidden], [inert]')
+      ) {
+        origin.focus({ preventScroll: true });
+      } else
+        document
+          .querySelector<HTMLButtonElement>(
+            'nav[aria-label="主导航"] button[aria-current="page"]',
+          )
+          ?.focus({ preventScroll: true });
     }
     previousPanelRef.current = utilityPanel;
   }, [utilityPanel]);
 
   const changeUtilityPanel = useCallback(
     (next: RoomUtilityPanel | null) => {
-      if (next && utilityPanel === null) homeScrollRef.current = window.scrollY;
+      if (next && utilityPanel === null) {
+        homeScrollRef.current = window.scrollY;
+        returnFocusRef.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+      }
       setUtilityPanel(next);
     },
     [utilityPanel],

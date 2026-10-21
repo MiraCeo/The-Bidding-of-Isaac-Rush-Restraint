@@ -23,6 +23,7 @@ import type {
   RoomReward,
 } from '../../game/item-types';
 import type { RulesConfig } from '../../game/types';
+import type { ClassicAiSettings } from '../../game/classic-difficulty';
 import type { SurvivalDifficulty } from '../../game/survival-difficulty';
 import type { SurvivalGameState } from '../../game/survival-session';
 import type {
@@ -66,6 +67,7 @@ export interface StudyMetrics {
 export interface StudyMatch {
   mode: 'classic' | 'survival';
   difficulty: 'classic' | SurvivalDifficulty;
+  classicAi?: ClassicAiSettings;
   role: CharacterId;
   policy: StudyPolicy;
   seed: number;
@@ -101,7 +103,7 @@ function rank(
         players.filter((p) => p[key] > human[key]).length /
           (players.length - 1);
 }
-function controller(seed: number, policy: StudyPolicy) {
+export function createStudyController(seed: number, policy: StudyPolicy) {
   const random = createSeededRandom((seed ^ 0x6a09e667) >>> 0),
     quoteRandom = createSeededRandom((seed ^ 0xbb67ae85) >>> 0);
   const quoteProfile = createAiQuoteProfile(
@@ -324,11 +326,19 @@ export function playAchievementStudy(
   policy: StudyPolicy,
   difficulty: 'classic' | SurvivalDifficulty = 'classic',
   observer?: {
-    room?: (record: ClientRoomSettlementRecord) => void;
+    room?: (record: ClientRoomSettlementRecord, rules: RulesConfig) => void;
+    aiOnlyRoom?: (
+      record: ClientRoomSettlementRecord,
+      rules: RulesConfig,
+    ) => void;
     complete?: (context: GrowthContext) => void;
+    terminal?: (game: ActiveClientGameState | SurvivalGameState) => void;
   },
+  classicAi?: ClassicAiSettings,
 ): StudyMatch {
-  const ctrl = controller(seed, policy),
+  if (classicAi && difficulty !== 'classic')
+    throw Error('Classic research settings cannot label a survival match');
+  const ctrl = createStudyController(seed, policy),
     actions: StudyMatch['actions'] = {
       bid: 0,
       disrupt: 0,
@@ -344,10 +354,10 @@ export function playAchievementStudy(
     transcendenceRooms: 0,
     fullBidActions: 0,
   };
-  const observe = (r: ClientRoomSettlementRecord) => {
+  const observe = (r: ClientRoomSettlementRecord, rules = defaultRules) => {
     const p = r.playersBefore.find((p) => p.id === 'human');
     if (!p) return;
-    observer?.room?.(r);
+    observer?.room?.(r, rules);
     for (const [key, item] of [
       ['interestRooms', 'interest'],
       ['bagRooms', 'money_bag'],
@@ -372,6 +382,7 @@ export function playAchievementStudy(
         reduceGameSession(createGameSession(seed), {
           type: 'start_game',
           characterId: role,
+          ...(classicAi ? { classicAi } : {}),
         }),
       ),
       commands = 0;
@@ -392,10 +403,12 @@ export function playAchievementStudy(
       if (s.growthIssue) throw Error(s.growthIssue);
     }
     const human = s.game.finalRanking.find((p) => p.playerId === 'human')!;
+    observer?.terminal?.(s.game);
     observer?.complete?.(s.growth!);
     return summarize(s.growth!, {
       mode: 'classic',
       difficulty,
+      ...(classicAi ? { classicAi: s.game.classicAi! } : {}),
       role,
       policy,
       seed,
@@ -424,14 +437,19 @@ export function playAchievementStudy(
           throw Error('Study submitted invalid survival action');
         s = reduceSurvivalClient(s, { type: 'submit_player_turn', turn });
         if (!s.game.roomSettlement) throw Error('Missing survival settlement');
-        observe(s.game.roomSettlement);
-      } else s = reduceSurvivalClient(s, { type: 'submit_ai_room' });
+        observe(s.game.roomSettlement, rules);
+      } else {
+        s = reduceSurvivalClient(s, { type: 'submit_ai_room' });
+        if (!s.game.roomSettlement) throw Error('Missing AI-only settlement');
+        observer?.aiOnlyRoom?.(s.game.roomSettlement, survivalRoomRules(g));
+      }
     } else
       s = reduceSurvivalClient(s, {
         type: g.phase === 'room_result' ? 'advance_room' : 'advance_floor',
       });
     if (s.growthIssue) throw Error(s.growthIssue);
   }
+  observer?.terminal?.(s.game);
   observer?.complete?.(s.growth!);
   return summarize(s.growth!, {
     mode: 'survival',

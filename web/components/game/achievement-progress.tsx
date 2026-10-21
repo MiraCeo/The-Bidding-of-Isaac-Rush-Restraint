@@ -103,7 +103,7 @@ export function AchievementProgress({
         <h3>成就暂不可核验</h3>
         <output className="save-message">{projection.error}</output>
         <p>
-          未将未知资料显示为零进度，也未重置档案；可在存档与备份中恢复有效快照。
+          未将未知资料显示为0进度，也未重置档案；可在存档与备份中恢复有效快照。
         </p>
       </section>
     );
@@ -133,7 +133,7 @@ export function AchievementProgress({
     ),
   }));
   const cardCountHint =
-    '已获卡片 / 当前筛选匹配卡片；系列任一级达成计一张，仅统计匹配的子级';
+    '已获卡片 / 当前筛选匹配卡片；系列任一级达成计1张，仅统计匹配的子级';
   const detail = achievementCatalog.find((a) => a.id === selected);
   const openDetail = (
     id: AchievementId,

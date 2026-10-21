@@ -13,7 +13,7 @@ import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
 import { SessionContext, type SessionTools } from './session-context';
 import { SettledGameFrame } from './settled-game-frame';
 import {
-  classicAiPolicy,
+  currentClassicAiPolicy,
   defaultClassicDifficulty,
   type ClassicDifficulty,
 } from '@/lib/game/classic-difficulty';
@@ -376,7 +376,7 @@ export function ClassicGameApp(props: ClassicGameAppProps = {}) {
             type: 'start_game',
             characterId,
             classicAi: {
-              policy: classicAiPolicy,
+              policy: currentClassicAiPolicy,
               difficulty: classicDifficulty,
             },
           })

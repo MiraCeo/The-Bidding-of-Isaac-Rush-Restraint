@@ -233,6 +233,7 @@ export function decideClientAiRoom(
         state.classicAi,
         mixClientSeed(state.seed, (0xd2511f53 ^ globalRoomIndex ^ Math.imul(Number(player.id.replace('ai-', '')), 0x85ebca6b)) >>> 0),
         decideTurn,
+        state.seed,
       );
       const errors = validateTurn(player, decision.turn, state.rules);
       if (errors.length > 0) {

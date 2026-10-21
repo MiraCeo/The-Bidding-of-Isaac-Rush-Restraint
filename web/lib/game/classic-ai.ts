@@ -1,5 +1,8 @@
+import { assignClassicPopulation } from './classic-population';
+import { applyClassicPopulationMistake } from './classic-mistake';
 import {
   classicDifficultyProfiles,
+  classicPopulationPolicy,
   readClassicAiSettings,
   type ClassicAiSettings,
 } from './classic-difficulty';
@@ -19,10 +22,27 @@ export function decideClassicAiTurn(
   settings: ClassicAiSettings | undefined,
   errorSeed: number,
   decide = decideAiTurn,
+  gameSeed?: number,
 ) {
   if (settings) settings = readClassicAiSettings(settings);
   if (!settings || settings.difficulty === 'highest')
     return decide(player, floor, rules, random, options);
+  if (settings.policy === classicPopulationPolicy) {
+    if (gameSeed === undefined) throw Error('经典混合AI缺少对局种子。');
+    const grade = assignClassicPopulation(gameSeed, settings.difficulty)
+      .assignment[player.id];
+    if (!grade) throw Error('经典混合AI缺少固定等级。');
+    const decision = decide(player, floor, rules, random, options);
+    return applyClassicPopulationMistake(
+      decision,
+      player,
+      floor,
+      rules,
+      options,
+      gameSeed,
+      grade,
+    );
+  }
   const profile = classicDifficultyProfiles[settings.difficulty];
   const error = createSeededRandom(errorSeed);
   const factor = () => 1 + (error.next() * 2 - 1) * profile.forecastError;

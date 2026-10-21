@@ -12,12 +12,18 @@ import { compressedFileSummary } from '@/lib/ui/compressed-file';
 import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import { useSessionTools } from './session-context';
 import {
+  marketReplayIndex,
+  type MarketReplayPosition,
+} from '@/lib/ui/market-reference-display';
+import {
   ReplayRoomPanel,
   ReplayOverviewPanel,
   ReplayFieldPanel,
 } from './replay-panels';
 
-export function ReplayViewer() {
+export function ReplayViewer({
+  initialRoom,
+}: { initialRoom?: MarketReplayPosition } = {}) {
   const tools = useSessionTools();
   if (!tools) return <p className="utility-notice">当前没有可读取的回放。</p>;
   const log =
@@ -61,6 +67,9 @@ export function ReplayViewer() {
               : 'live')
           }
           log={log}
+          initialRoom={
+            tools.replaySource === 'current' ? initialRoom : undefined
+          }
           scoreDecimals={tools.preferences.scoreDecimals}
         />
       ) : (
@@ -74,11 +83,18 @@ export function ReplayViewer() {
 export function ReplayArchive({
   log,
   scoreDecimals = 2,
+  initialRoom,
 }: {
   log: ReplayLog;
   scoreDecimals?: 2 | 4;
+  initialRoom?: MarketReplayPosition;
 }) {
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() =>
+    marketReplayIndex(
+      log.rooms.map((r) => r.settlement.room),
+      initialRoom,
+    ),
+  );
   const [playerId, setPlayerId] = useState('human');
   const [scope, setScope] = useState<'room' | 'match'>('room');
   const [roomView, setRoomView] = useState<'personal' | 'field'>('personal');
@@ -180,7 +196,11 @@ export function ReplayArchive({
           </strong>
           <span>
             已结算 {log.rooms.length} / 15 房间 · 难度{' '}
-            {classicDifficultyLabel(log.classicAi?.difficulty)} · 只读复盘
+            {classicDifficultyLabel(
+              log.classicAi?.difficulty,
+              log.classicAi?.policy,
+            )}{' '}
+            · 只读复盘
           </span>
         </div>
         {record && (

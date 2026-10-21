@@ -5,6 +5,7 @@ import {
 import { MarketImpactPreview } from './market-impact-preview';
 import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { HistoricalMarket } from '@/lib/ui/market-history';
+import type { MarketReplayPosition } from '@/lib/ui/market-reference-display';
 import {
   getQuoteCapacity,
   formatMarketAmount,
@@ -14,7 +15,14 @@ import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
 import { LocateSelfButton } from './ranking-self-summary';
 import { displayItemText } from '@/lib/ui/item-labels';
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -39,6 +47,7 @@ import {
   switchQuoteKind,
 } from '@/lib/ui/room-action-draft';
 import { useUtilityPages } from './use-utility-pages';
+import { useSessionTools } from './session-context';
 import type { PreferenceSaveStatus } from './game-settings';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 import {
@@ -67,6 +76,7 @@ interface RoomPrototypeProps {
     panel: import('./room-utilities').RoomUtilityPanel | null,
     turn: PlayerTurn,
     onReturn: () => void,
+    replayPosition?: MarketReplayPosition,
   ) => ReactNode;
   draft?: RoomDraft;
   onDraftChange?: (update: (current: RoomDraft) => RoomDraft) => void;
@@ -103,6 +113,14 @@ export function RoomPrototype({
     preferences.rankingInitiallyOpen,
   );
   const [marketOpen, setMarketOpen] = useState(preferences.marketInitiallyOpen);
+  const marketToggle = useRef<HTMLButtonElement>(null);
+  const marketHeading = useRef<HTMLHeadingElement>(null);
+  const marketElement = useRef<HTMLElement>(null);
+  const marketReturnScroll = useRef<number | null>(null);
+  const marketFocusRequested = useRef(false);
+  const marketScroll = useRef(0);
+  const tools = useSessionTools();
+  const [replayPosition, setReplayPosition] = useState<MarketReplayPosition>();
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
@@ -121,7 +139,83 @@ export function RoomPrototype({
       cancelled = true;
     };
   }, [preferences.marketInitiallyOpen]);
-  const { utilityPanel, changeUtilityPanel } = useUtilityPages();
+  const { utilityPanel, changeUtilityPanel: navigateUtilityPanel } =
+    useUtilityPages();
+  function changeUtilityPanel(
+    next: import('./room-utilities').RoomUtilityPanel | null,
+  ) {
+    setReplayPosition(undefined);
+    navigateUtilityPanel(next);
+  }
+  const closeMarket = useCallback(() => {
+    setMarketOpen(false);
+    marketToggle.current?.focus({ preventScroll: true });
+    if (marketReturnScroll.current !== null) {
+      window.scrollTo(0, marketReturnScroll.current);
+      marketReturnScroll.current = null;
+    } else if (window.matchMedia('(max-width: 1280px)').matches) {
+      marketToggle.current?.scrollIntoView({
+        block: 'center',
+        behavior: 'instant',
+      });
+    }
+  }, []);
+  useEffect(() => {
+    if (!marketOpen || !marketFocusRequested.current) return;
+    marketFocusRequested.current = false;
+    marketHeading.current?.focus({ preventScroll: true });
+    marketElement.current?.scrollIntoView({
+      block: 'start',
+      behavior: 'instant',
+    });
+  }, [marketOpen]);
+  useEffect(() => {
+    if (utilityPanel === null && marketElement.current)
+      marketElement.current.scrollTop = marketScroll.current;
+  }, [utilityPanel]);
+  useEffect(() => {
+    if (!marketOpen || utilityPanel) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        event.target instanceof Node &&
+        marketElement.current?.contains(event.target)
+      ) {
+        event.preventDefault();
+        closeMarket();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [marketOpen, utilityPanel, closeMarket]);
+  useEffect(() => {
+    if (!renderUtilities || utilityPanel !== 'replay') return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        setReplayPosition(undefined);
+        navigateUtilityPanel(null);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [renderUtilities, utilityPanel, navigateUtilityPanel]);
+
+  function toggleMarket() {
+    if (marketOpen) return closeMarket();
+    if (window.matchMedia('(max-width: 1280px)').matches) {
+      marketReturnScroll.current = window.scrollY;
+      marketFocusRequested.current = true;
+    }
+    setMarketOpen(true);
+  }
+  function openMarketReplay() {
+    if (!marketHistory?.[0]) return;
+    setReplayPosition(marketHistory[0]);
+    marketScroll.current = marketElement.current?.scrollTop ?? 0;
+    if (!renderUtilities) tools?.onReplaySourceChange('current');
+    navigateUtilityPanel('replay');
+  }
   const [localDraft, setLocalDraft] = useState(() =>
     createRoomDraft({ ...game, phase: 'room_action' }, rules)!,
   );
@@ -262,7 +356,8 @@ export function RoomPrototype({
       <button
         type="button"
         className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
-        onClick={() => setMarketOpen((open) => !open)}
+        ref={marketToggle}
+        onClick={toggleMarket}
         aria-controls="market-drawer"
         aria-expanded={marketOpen}
       >
@@ -320,7 +415,10 @@ export function RoomPrototype({
                   <div>
                     <dt>难度</dt>
                     <dd>
-                      {classicDifficultyLabel(game.classicAi?.difficulty)}
+                      {classicDifficultyLabel(
+                        game.classicAi?.difficulty,
+                        game.classicAi?.policy,
+                      )}
                     </dd>
                   </div>
                 )}
@@ -339,7 +437,11 @@ export function RoomPrototype({
             <div className="round-status">
               {!extraStatus && (
                 <span className="status-chip">
-                  难度 {classicDifficultyLabel(game.classicAi?.difficulty)}
+                  难度{' '}
+                  {classicDifficultyLabel(
+                    game.classicAi?.difficulty,
+                    game.classicAi?.policy,
+                  )}
                 </span>
               )}
               <span className="status-chip">
@@ -447,6 +549,8 @@ export function RoomPrototype({
 
         <aside
           id="market-drawer"
+          ref={marketElement}
+          aria-labelledby="market-reference-title"
           className={`side-drawer market-drawer ${marketOpen ? 'drawer-open' : ''}`}
           hidden={!marketOpen}
           aria-hidden={!marketOpen}
@@ -455,12 +559,21 @@ export function RoomPrototype({
           <div className="drawer-heading">
             <div>
               <p className="eyebrow">MARKET REFERENCE</p>
-              <h2>市场参考</h2>
+              <h2 id="market-reference-title" ref={marketHeading} tabIndex={-1}>
+                市场参考
+              </h2>
             </div>
+            <button
+              className="market-return-button"
+              type="button"
+              onClick={closeMarket}
+            >
+              返回报价
+            </button>
           </div>
           <MarketImpactPreview
             history={marketHistory}
-            onViewReplay={() => changeUtilityPanel('replay')}
+            onViewReplay={openMarketReplay}
             player={human}
             turn={previewTurn}
             kind={activeKind}
@@ -683,10 +796,16 @@ export function RoomPrototype({
         </section>
       </div>
       {renderUtilities ? (
-        renderUtilities(utilityPanel, turn, () => changeUtilityPanel(null))
+        renderUtilities(
+          utilityPanel,
+          turn,
+          () => changeUtilityPanel(null),
+          replayPosition,
+        )
       ) : (
         <RoomUtilities
           panel={utilityPanel}
+          replayPosition={replayPosition}
           game={game}
           turn={turn}
           preferences={preferences}

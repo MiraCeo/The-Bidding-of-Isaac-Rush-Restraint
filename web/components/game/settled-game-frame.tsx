@@ -89,7 +89,7 @@ export function SettledGameFrame({
                 </div>
                 <div>
                   <dt>难度</dt>
-                  <dd>{classicDifficultyLabel(game.classicAi?.difficulty)}</dd>
+                  <dd>{classicDifficultyLabel(game.classicAi?.difficulty, game.classicAi?.policy)}</dd>
                 </div>
                 <div>
                   <dt>累计积分</dt>
@@ -111,7 +111,7 @@ export function SettledGameFrame({
           <>
             <div className="round-status">
               <span className="status-chip">
-                难度 {classicDifficultyLabel(game.classicAi?.difficulty)}
+                难度 {classicDifficultyLabel(game.classicAi?.difficulty, game.classicAi?.policy)}
               </span>
               <span className="status-chip">
                 第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5

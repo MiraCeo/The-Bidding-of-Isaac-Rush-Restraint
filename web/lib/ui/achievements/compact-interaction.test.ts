@@ -58,7 +58,17 @@ it('uses three compact rows, no redundant stage dots and one rule section; notes
   ).toHaveLength(3);
   expect(popup().querySelector('.achievement-detail-facts')).toBeNull();
   expect(popup().querySelector('.achievement-level-head')).toBeNull();
-  expect(popup().querySelector('.achievement-level-target')).toBeNull();
+  expect(popup().querySelectorAll('.achievement-level-target')).toHaveLength(1);
+  expect(
+    popup().querySelector(
+      '[data-achievement-id=A01] .achievement-level-target',
+    )!.textContent,
+  ).toBe('目标：1次');
+  expect(
+    popup()
+      .querySelector('[data-achievement-id=A01] .achievement-level-target')!
+      .classList.contains('sr-only'),
+  ).toBe(false);
   expect(
     [...popup().querySelectorAll('.achievement-series-detail li')].map((li) => [
       li.getAttribute('data-tier'),

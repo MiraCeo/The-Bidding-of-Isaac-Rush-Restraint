@@ -21,7 +21,7 @@ const seriesCopy: Readonly<Record<string, readonly [string, string]>> = {
     '正常竞拍在本组高价排序恰为第N＋1位，且无资格、未获奖。',
     '次',
   ],
-  'S-LAST-HIGH': ['正常竞拍恰占本组高价最后一个名额，并实际获奖。', '次'],
+  'S-LAST-HIGH': ['正常竞拍恰占本组高价最后1个名额，并实际获奖。', '次'],
   'S-ALTERNATIVE': [
     '无本组最高价资格，凭合作区资格战胜更高报价并实际获奖。',
     '次',
@@ -37,12 +37,12 @@ const seriesCopy: Readonly<Record<string, readonly [string, string]>> = {
   'S-STOLEN-MONEY': ['累计通过偷钱袋实际窃取其他玩家的资金。', '资金'],
   'S-HIDDEN-GIFTS': ['累计取得宝箱房原本隐藏的问号奖励。', '件'],
   'S-ASYMMETRIC-BIDS': [
-    '使用雅阁和以扫双组不等额正常竞拍，且至少一组实际获奖。',
+    '使用雅阁和以扫2组不等额正常竞拍，且至少1组实际获奖。',
     '房',
   ],
   'S-LOWEST-SURVIVOR': ['以本层存活者最低层结算成绩通过正式淘汰。', '次'],
   'S-FIRST-FLOORS': [
-    '同局从第一层起连续通过淘汰；金阶须为困难或最高难度。',
+    '同局从第1层起连续通过淘汰；金阶须为困难或最高难度。',
     '层',
   ],
   'S-SURVIVAL': ['累计完成正式生存对局，被淘汰也计入。', '局'],
@@ -67,7 +67,10 @@ export function achievementDetailPresentation(a: AchievementDefinition) {
     ...new Set(
       series.ids.map((id) => {
         const level = achievementCatalog.find((d) => d.id === id)!;
-        return level.condition.replace(String(level.target), '目标值');
+        // The fixed start is 第1层, not the tier threshold (前1/3/5层).
+        return series.id === 'S-FIRST-FLOORS'
+          ? level.condition.replace(`前${level.target}层`, '前目标值层')
+          : level.condition.replace(String(level.target), '目标值');
       }),
     ),
   ].filter(Boolean);

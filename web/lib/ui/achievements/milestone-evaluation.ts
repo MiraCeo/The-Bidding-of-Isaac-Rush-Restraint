@@ -5,6 +5,7 @@ import {
 } from './v056-catalog';
 import { decodeAchievementEvent, isMilestoneEvent } from './event-codec';
 import type { AchievementReceipt } from './registry';
+import { balance081Target } from './balance081-targets';
 interface Run {
   failureAt: number | null;
   interest: number;
@@ -133,7 +134,11 @@ export function scanMilestoneReceipt(
   if (active)
     for (const id of milestoneAchievementIds) {
       if (
-        s.progress[id] >= achievementCatalog.find((a) => a.id === id)!.target &&
+        s.progress[id] >=
+          balance081Target(
+            id,
+            achievementCatalog.find((a) => a.id === id)!.target,
+          ) &&
         s.achievedAt[id] === undefined
       )
         s.achievedAt[id] = r.at;

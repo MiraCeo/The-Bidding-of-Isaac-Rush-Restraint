@@ -12,6 +12,7 @@ import type { SurvivalClientSession } from '../survival-client';
 import type { PlayerProfile } from '../player-profile';
 import { canonicalJson } from '../../shared/json-facts';
 import { sha256Hex } from '../../shared/sha256';
+import { canonicalAuthorityJson } from './authority-json';
 import {
   createSurvivalRuleFacts,
   survivalParameters,
@@ -131,26 +132,8 @@ export function bindGrowthEpoch(
         : (context.ignoredThrough ?? 0),
   };
 }
-/** Only the same unrounded knife explanation tails as existing completion
- * identities are normalized. All prices, authority scores and causes stay exact. */
-function authority(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(authority);
-  if (!value || typeof value !== 'object') return value;
-  const o = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.entries(o).map(([key, v]) => [
-      key,
-      o.itemId === 'moms_knife' &&
-      o.kind === 'additive_score' &&
-      key === 'amount' &&
-      typeof v === 'number'
-        ? Number(v.toFixed(8))
-        : authority(v),
-    ]),
-  );
-}
 function digest(value: unknown) {
-  return sha256Hex(canonicalJson(authority(value)));
+  return sha256Hex(canonicalAuthorityJson(value));
 }
 function append(
   ctx: GrowthContext,

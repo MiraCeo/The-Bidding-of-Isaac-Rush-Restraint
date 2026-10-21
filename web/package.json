@@ -1,6 +1,6 @@
 {
   "name": "the-bidding-of-isaac-web",
-  "version": "0.7.8",
+  "version": "0.8.2",
   "private": true,
   "engines": {
     "node": ">=22.13.0"

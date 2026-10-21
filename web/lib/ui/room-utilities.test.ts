@@ -475,7 +475,7 @@ describe('room utility interaction without a real browser', () => {
       element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input'),
     );
     await click(
-      element<HTMLInputElement>('label[aria-label="默认展开共同市场"] input'),
+      element<HTMLInputElement>('label[aria-label="默认展开市场参考"] input'),
     );
     await click(
       element<HTMLInputElement>('label[aria-label="减少界面动效"] input'),

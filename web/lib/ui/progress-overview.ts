@@ -59,7 +59,7 @@ export function overviewMatches(
           characterId: c.selectedCharacter,
           state: c.phase === 'game_result' ? 'complete' : 'active',
           status: c.phase === 'game_result' ? '已结束' : '进行中',
-          difficulty: classicDifficultyLabel(c.classicAi?.difficulty),
+          difficulty: classicDifficultyLabel(c.classicAi?.difficulty, c.classicAi?.policy),
           location: `第 ${c.floorIndex + 1} 层 · 房间 ${c.roomIndex + 1}/5`,
           detail:
             c.phase === 'game_result'

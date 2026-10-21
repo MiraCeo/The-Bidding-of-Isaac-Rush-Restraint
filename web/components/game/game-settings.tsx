@@ -96,10 +96,12 @@ export function GameSettings({
                     }
                   />
                 </label>
-                <label className="setting-toggle" aria-label="默认展开共同市场">
+                <label className="setting-toggle" aria-label="默认展开市场参考">
                   <span>
-                    <strong>默认展开共同市场</strong>
-                    <small>只预览自己的行动，不公开秘密报价。</small>
+                    <strong>默认展开市场参考</strong>
+                    <small>
+                      查看本层已结算市场与自己的报价，不公开本房秘密报价。
+                    </small>
                   </span>
                   <input
                     type="checkbox"

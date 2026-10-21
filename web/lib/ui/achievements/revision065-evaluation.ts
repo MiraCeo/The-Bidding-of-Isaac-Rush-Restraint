@@ -2,6 +2,7 @@ import { decodeAchievementEvent } from './event-codec';
 import { revision065NewSeries } from './revision065-catalog';
 import type { AchievementId } from './catalog';
 import type { AchievementReceipt } from './registry';
+import { balance081Target } from './balance081-targets';
 export function createRevision065Scan() {
   return {
     progress: Object.fromEntries(
@@ -39,7 +40,10 @@ export function scanRevision065Receipt(
   if (active)
     for (const series of revision065NewSeries)
       series.ids.forEach((id, i) => {
-        if ((s.progress[id] ?? 0) >= series.targets[i]! && !s.achievedAt[id])
+        if (
+          (s.progress[id] ?? 0) >= balance081Target(id, series.targets[i]!) &&
+          !s.achievedAt[id]
+        )
           s.achievedAt[id] = r.at;
       });
 }

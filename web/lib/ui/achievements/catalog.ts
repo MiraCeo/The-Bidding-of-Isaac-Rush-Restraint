@@ -9,7 +9,11 @@ import {
   revision066Catalog,
   revision066Categories,
 } from './revision066-catalog';
-import { achievementSeriesCopy } from './series-copy';
+import {
+  achievementSeriesCopy,
+  achievementStandaloneConditions,
+} from './series-copy';
+import { balance081Target } from './balance081-targets';
 export {
   achievementCatalogVersion,
   currentAchievementCatalogVersion,
@@ -26,18 +30,25 @@ export const stageAchievementCatalogVersion = 6;
 // approved balance targets/conditions, retaining the 0.6.5 series identities.
 export const achievementCatalog: readonly Revision065Definition[] =
   revision066Catalog.map((a) => {
+    const target = balance081Target(a.id, a.target);
     const series = revision065Series.find((s) => s.ids.includes(a.id));
-    if (!series) return a;
+    if (!series)
+      return {
+        ...a,
+        target,
+        condition: achievementStandaloneConditions[a.id] ?? a.condition,
+      };
     const copy = achievementSeriesCopy[series.id];
     if (!copy) throw Error(`成就系列缺少条件文案：${series.id}`);
     return {
       ...a,
+      target,
       // Survival's three named stages are intentional, not missing suffixes.
       name:
         series.id === 'S-SURVIVAL'
           ? a.name
           : `${series.name} ${['I', 'II', 'III'][series.ids.indexOf(a.id)]}`,
-      condition: copy.condition(a.target),
+      condition: copy.condition(target),
     };
   });
 export const achievementCategories = revision066Categories;

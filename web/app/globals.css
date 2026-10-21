@@ -1823,6 +1823,7 @@
 .achievement-series-detail li[data-selected="true"] { outline:none; }
 .achievement-series-detail li[data-achieved="true"] { border-color:color-mix(in srgb,var(--medal-edge) 70%,#463b30); background:linear-gradient(155deg,color-mix(in srgb,var(--medal-face) 60%,#201b16),#1c1814); }
 .achievement-level-progress { display:block; text-align:center; font-variant-numeric:tabular-nums; font-size:.82rem; }
+.achievement-level-target { display:block; text-align:center; font-variant-numeric:tabular-nums; font-size:.72rem; color:var(--muted-foreground); }
 .achievement-series-detail progress { display:block; width:100%; height:4px; accent-color:var(--medal-ink); border:0; border-radius:99px; overflow:hidden; background:#393127; }
 .achievement-series-detail progress::-webkit-progress-bar { background:#393127; }
 .achievement-series-detail progress::-webkit-progress-value { background:var(--medal-ink); }
@@ -2000,8 +2001,8 @@
 /* 0.6.11 action page: auxiliary panels share layout, never cover HUD or inputs. */
 .room-game-content { display:grid; grid-template-columns:minmax(0,1fr); column-gap:16px; row-gap:12px; align-items:start; width:var(--desktop-shell-width); margin:12px auto 32px; }
 .room-game-content[data-ranking-open="true"] { grid-template-columns:220px minmax(0,1fr); }
-.room-game-content[data-market-open="true"] { grid-template-columns:minmax(0,1fr) 240px; }
-.room-game-content[data-ranking-open="true"][data-market-open="true"] { grid-template-columns:220px minmax(0,1fr) 240px; }
+.room-game-content[data-market-open="true"] { grid-template-columns:minmax(0,1fr) 320px; }
+.room-game-content[data-ranking-open="true"][data-market-open="true"] { grid-template-columns:220px minmax(0,1fr) 320px; }
 .room-panel-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
 .game-page>.page-context-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; }
 .room-panel-controls .drawer-tab { position:static; inset:auto; writing-mode:horizontal-tb; padding:6px 10px; border:1px solid var(--border); border-radius:7px; box-shadow:none; font-size:.7rem; letter-spacing:0; transition:color 150ms,background 150ms; }
@@ -2072,11 +2073,12 @@
 .room-game-content .confirm-button { width:180px; height:40px; font-size:.85rem; order:3; }
 .room-game-content .observe-button { height:36px; padding-inline:14px; font-size:.75rem; order:2; }
 .game-page>.survival-action-status { padding:6px 12px; margin-top:10px; margin-bottom:0; gap:6px 14px; border-radius:8px; font-size:.68rem; line-height:1.6; }
-@media (max-width:1100px) {
+@media (max-width:1280px) {
   .room-game-content[data-ranking-open],.room-game-content[data-ranking-open][data-market-open] { grid-template-columns:minmax(0,1fr); }
   .room-game-content[data-ranking-open]>.game-stage { grid-column:1; grid-row:1; }
-  .room-game-content>.ranking-drawer { grid-row:2; grid-column:1; max-height:280px; }
-  .room-game-content>.market-drawer { grid-row:3; grid-column:1; max-height:none; }
+  .room-game-content>.side-drawer { position:static; }
+  .room-game-content>.ranking-drawer { grid-row:3; grid-column:1; max-height:280px; }
+  .room-game-content>.market-drawer { grid-row:2; grid-column:1; max-height:none; }
 }
 @media (max-width:700px) { .room-game-content .reward-grid { grid-template-columns:minmax(0,1fr); }.room-game-content .reward-column { margin-bottom:12px; } }
 
@@ -3060,3 +3062,44 @@
 @media(min-width:900px) and (max-width:1099px) and (min-height:700px) {
  .survival-final .classic-final-layout:has(.survival-final-board[data-final-view="floors"]) { min-height:600px; }
 }
+/* Market reference: readable A/B overview, original precision on demand. */
+.room-game-content>.market-drawer { max-height:calc(100dvh - 180px); scroll-margin-block:12px; }
+.market-drawer .drawer-heading { gap:12px; align-items:center; }
+.market-return-button { flex:none; border:1px solid var(--border); border-radius:6px; padding:6px 8px; color:var(--primary); font-size:.75rem; cursor:pointer; }
+.market-return-button:hover { background:#edaf3d12; }
+.market-return-button:focus-visible, #market-reference-title:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.market-history h3,.market-own-summary>h3 { font-size:.84rem; }
+.market-history>header>span { font-size:.72rem; }
+.market-history table { font-size:.78rem; }
+.market-history th,.market-history td { padding:6px 4px; vertical-align:middle; }
+.market-history thead th { font-size:.72rem; }
+.market-history th:first-child { width:36px; }
+.market-history th small { font-size:.66rem; }
+.market-history [data-active="true"] { background:#edaf3d09; color:#efc36f; }
+.market-history-note,.market-history-empty { font-size:.75rem; line-height:1.6; }
+.market-history-replay { font-size:.76rem; padding-block:4px; margin-top:3px; }
+.market-history-exact { margin-top:5px; font-size:.75rem; color:var(--muted-foreground); }
+.market-history-exact>summary { cursor:pointer; padding-block:4px; }
+.market-history-exact h4 { margin-top:10px; color:var(--foreground); }
+.market-own-summary { margin-top:12px; padding-top:10px; }
+.market-own-summary>.drawer-description { margin-top:5px; font-size:.75rem; line-height:1.6; }
+.market-quote-comparison { width:100%; table-layout:fixed; border-collapse:collapse; margin-top:8px; font-size:.78rem; font-variant-numeric:tabular-nums; }
+.market-quote-comparison th,.market-quote-comparison td { padding:6px 5px; border-bottom:1px solid var(--border); text-align:right; vertical-align:middle; overflow-wrap:anywhere; }
+.market-quote-comparison th:first-child { width:92px; text-align:left; color:var(--muted-foreground); font-weight:400; }
+.market-quote-comparison thead th { color:#efc36f; font-weight:700; }
+.market-quote-comparison small { display:block; color:var(--muted-foreground); font-size:.69rem; font-weight:400; }
+.market-quote-comparison .market-current-value td { color:#efc36f; font-weight:750; font-size:.92rem; }
+.market-shared-zone { display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:var(--muted-foreground); font-size:.75rem; overflow-wrap:anywhere; }
+.market-shared-zone strong { text-align:right; color:#dfc69d; font-weight:500; font-variant-numeric:tabular-nums; }
+.market-impact-pair,.market-impact-empty { font-size:.75rem; line-height:1.6; }
+.market-impact-pair { padding-top:6px; margin-top:6px; border-top:0; }
+.market-drawer .market-impact-help { font-size:.75rem; margin-top:8px; }
+.market-impact-help>summary { padding-block:5px; }
+.market-exact-values { display:grid; gap:5px; margin-top:8px; font-size:.75rem; }
+.market-exact-values>div { display:grid; grid-template-columns:100px minmax(0,1fr); gap:8px; align-items:baseline; }
+.market-exact-values dt { color:var(--muted-foreground); }
+.market-exact-values dd { margin:0; text-align:right; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; color:#dfc69d; }
+@media(max-width:1280px) { .room-game-content>.market-drawer { max-height:none; } }
+/* Keep the three historical rows compact without hiding participant counts. */
+.market-history th:first-child { width:54px; }
+.market-history th small { display:inline-block; margin:0 0 0 3px; }

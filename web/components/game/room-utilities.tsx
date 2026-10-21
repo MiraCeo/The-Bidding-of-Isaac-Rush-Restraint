@@ -15,6 +15,7 @@ import { useProgressNavigation } from './progress-navigation';
 import { UtilityPageHeading } from './utility-page-heading';
 import type { ActiveClientGameState } from '@/lib/game/client-session';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
+import type { MarketReplayPosition } from '@/lib/ui/market-reference-display';
 
 export type RoomUtilityPanel =
   | 'ranking'
@@ -34,6 +35,7 @@ const panelNames: Readonly<Record<RoomUtilityPanel, string>> = {
 };
 
 interface RoomUtilitiesProps {
+  replayPosition?: MarketReplayPosition;
   panel: RoomUtilityPanel | null;
   game?: ActiveClientGameState;
   turn?: PlayerTurn;
@@ -45,6 +47,7 @@ interface RoomUtilitiesProps {
 }
 
 export function RoomUtilities({
+  replayPosition,
   panel,
   game,
   turn,
@@ -171,7 +174,7 @@ export function RoomUtilities({
         {panel === 'build' && game ? (
           <PlayerBuild game={game} turn={buildTurn} />
         ) : panel === 'replay' ? (
-          <ReplayViewer />
+          <ReplayViewer initialRoom={replayPosition} />
         ) : panel === 'tutorial' ? (
           <GameTutorial scoreDecimals={preferences.scoreDecimals} />
         ) : null}

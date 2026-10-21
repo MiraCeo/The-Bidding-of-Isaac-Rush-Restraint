@@ -429,7 +429,7 @@ export function describeSave(session: GameSession): string {
     room_ranking: '房间排行',
     game_result: '对局已结束',
   };
-  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}${game.classicAi ? ' · 难度 ' + classicDifficultyLabel(game.classicAi.difficulty) : ''}`;
+  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}${game.classicAi ? ' · 难度 ' + classicDifficultyLabel(game.classicAi.difficulty, game.classicAi.policy) : ''}`;
 }
 const storageCache = new WeakMap<
   SaveStorage,

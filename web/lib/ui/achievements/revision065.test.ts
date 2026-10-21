@@ -69,9 +69,11 @@ it('counts exact effect/reward rooms once, not initial equipment or copies; pres
     p = appendCf(p, room());
     const v = projectAchievementRegistry(p)!;
     for (const s of revision065NewSeries)
-      s.ids.forEach((id, i) => {
+      s.ids.forEach((id) => {
         expect(v.progress[id]).toBe(n);
-        expect(!!v.achievedAt[id]).toBe(n >= s.targets[i]!);
+        expect(!!v.achievedAt[id]).toBe(
+          n >= achievementCatalog.find((a) => a.id === id)!.target,
+        );
         if (v.achievedAt[id])
           expect(v.achievedAt[id]).toBe(cfNow.toISOString());
       });

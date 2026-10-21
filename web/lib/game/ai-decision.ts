@@ -81,6 +81,16 @@ export interface AiDecisionOptions {
 }
 
 export interface AiDecision {
+  /** When present, quote/secondary analysis describes intendedTurn, NOT execution. */
+  classicMistake?: {
+    kind: 'reward' | 'budget' | 'quote';
+    severity: 'mild' | 'medium';
+    analysisBasis: 'before-mistake';
+    intendedTurn: PlayerTurn;
+    beforeCost: number;
+    afterCost: number;
+    modelLoss: number;
+  };
   survivalAnalysis?: SurvivalAiPlan;
   strategy: AiStrategy;
   finalWeights: AiStrategyWeights;

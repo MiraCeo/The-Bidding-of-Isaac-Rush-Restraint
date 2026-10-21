@@ -36,6 +36,7 @@ import { GameTutorial } from './game-tutorial';
 import type { RoomUtilityPanel } from './room-utilities';
 import { ItemArtProvider, ItemIcon } from './item-icon';
 import { SurvivalReplayViewer } from './survival-replay-viewer';
+import type { MarketReplayPosition } from '@/lib/ui/market-reference-display';
 import { useUtilityPages } from './use-utility-pages';
 import { useLivePersistence, currentGrowthEpoch } from './use-live-persistence';
 import { mergeSavedGrowth } from '@/lib/ui/achievements/client-persistence';
@@ -235,6 +236,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     selected: RoomUtilityPanel | null,
     _turn?: PlayerTurn,
     onReturn?: () => void,
+    replayPosition?: MarketReplayPosition,
   ): ReactNode {
     if (!selected) return null;
     const close = () => {
@@ -264,10 +266,15 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               </Button>
             )}
           </div>
-          {(props.imported?.replay ?? log) ? (
+          {(replayPosition ? log : (props.imported?.replay ?? log)) ? (
             <SurvivalReplayViewer
-              key={props.imported ? props.imported.exportedAt : 'current'}
-              log={(props.imported?.replay ?? log)!}
+              key={
+                !replayPosition && props.imported
+                  ? props.imported.exportedAt
+                  : 'current'
+              }
+              log={(replayPosition ? log : (props.imported?.replay ?? log))!}
+              initialRoom={replayPosition}
               decimals={decimals}
             />
           ) : (

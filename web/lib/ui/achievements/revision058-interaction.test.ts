@@ -91,7 +91,7 @@ it('does not reveal hidden redemption after one room and reveals only after the 
   expect(card('C08').textContent).toContain('反客为主');
   expect(card('C08').getAttribute('data-tier')).toBe('gold');
   await click(card('C08'));
-  expect(dialog().textContent).toContain('两个不同房间');
+  expect(dialog().textContent).toContain('2个不同房间');
 });
 it('keeps the role prerequisite on the three-copy bronze while the series continues toward ten and thirty', async () => {
   const p = append(createPlayerProfile(now), room(0, { copies: 3 }));
@@ -104,7 +104,7 @@ it('keeps the role prerequisite on the three-copy bronze while the series contin
       node.textContent,
   ).toContain('伊甸');
   await click(card('E05'));
-  expect(dialog().textContent).toContain('伊甸的解锁前置仍只需第一级的3件');
+  expect(dialog().textContent).toContain('伊甸的解锁前置仍只需第1级的3件');
 });
 
 it('keeps shared rules on the current catalog and explains tightened capital and gold difficulty without writing', async () => {
@@ -118,7 +118,11 @@ it('keeps shared rules on the current catalog and explains tightened capital and
     )!,
   );
   expect(dialog().textContent).toContain('现有117枚');
-  expect(dialog().textContent).toContain('30组单卡三级合为57张卡片');
+  expect(dialog().textContent).toContain('30组单卡3级合为57张卡片');
+  expect(dialog().textContent).toContain('5项按组累计允许A、B各计1次');
+  expect(dialog().textContent).toContain('1条／2条有实际名额的路径');
+  expect(dialog().textContent).toContain('2个不同房间');
+  expect(dialog().textContent).toContain('从第1层起连续通过前1／3／5层');
   expect(dialog().textContent).toContain('50%');
   expect(dialog().textContent).toContain('金阶仅限困难或最高');
   expect(localStorage.getItem(playerProfileKey)).toBe(raw);

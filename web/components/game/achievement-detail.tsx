@@ -81,10 +81,7 @@ export function AchievementDetail({
         {copy.summary}
       </Dialog.Description>
       {series ? (
-        <section
-          className="achievement-series-detail"
-          aria-label="三级独立徽章"
-        >
+        <section className="achievement-series-detail" aria-label="3级独立徽章">
           <ol>
             {series.ids.map((id) => {
               const level = achievementCatalog.find((d) => d.id === id)!,
@@ -103,6 +100,12 @@ export function AchievementDetail({
                     <AchievementBadge id={id} achieved={!!at} />
                     <h3 title={level.name}>{series.name}</h3>
                   </div>
+                  {at && (
+                    <span className="achievement-level-target">
+                      目标：{level.target}
+                      {copy.unit}
+                    </span>
+                  )}
                   {at && (
                     <blockquote
                       className="achievement-stage-note"

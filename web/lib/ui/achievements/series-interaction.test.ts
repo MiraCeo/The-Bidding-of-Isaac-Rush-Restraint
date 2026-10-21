@@ -113,6 +113,11 @@ it('renders 57 cards for 117 badges and keeps a legacy silver without inventing 
     oldAt.toISOString(),
   );
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
+  expect(levels[0]!.querySelector('.achievement-level-target')).toBeNull();
+  expect(
+    levels[1]!.querySelector('.achievement-level-target')!.textContent,
+  ).toBe('目标：10次');
+  expect(levels[1]!.querySelector('progress')).toBeNull();
   expect(
     popup().querySelector('[data-achievement-id=B02] blockquote')!.textContent,
   ).toBe(achievementCollectionNotes.B02);
@@ -136,9 +141,16 @@ it('updates independent times after confirmed inheritance and relocks new grades
     oldAt.toISOString(),
   );
   expect(levels[2]!.textContent).toContain('未达成');
+  expect(
+    levels[0]!.querySelector('.achievement-level-target')!.textContent,
+  ).toBe('目标：1次');
+  expect(
+    levels[1]!.querySelector('.achievement-level-target')!.textContent,
+  ).toBe('目标：10次');
   await mount(old);
   levels = popup().querySelectorAll('.achievement-series-detail li');
   expect(levels[0]!.querySelector('blockquote')).toBeNull();
+  expect(levels[0]!.querySelector('.achievement-level-target')).toBeNull();
   expect(
     popup().querySelector('[data-achievement-id=B02] blockquote'),
   ).not.toBeNull();

@@ -458,9 +458,16 @@ describe('public capability and own market preview', () => {
     expect(own.textContent).toContain('扰 125');
     expect(own.getAttribute('title')).toContain('不代表本房实际出价');
     expect(element('.market-impact-limit strong').textContent).toBe('156.25');
-    expect(element('.market-impact-action p').textContent).toContain(
-      '市场倍率 1.5625',
+    const ownMarket = element('.market-current-value td');
+    expect(ownMarket.textContent).toBe(
+      Number(ownMarket.getAttribute('title'))
+        .toFixed(2)
+        .replace(/0+$/, '')
+        .replace(/\.$/, ''),
     );
+    expect(
+      element('.market-exact-values[aria-label="目标 A 精确数值"]').textContent,
+    ).toContain('市场等价');
     expect(game).toEqual(before);
     await mode('扰乱');
     expect(element('.market-impact-limit strong').textContent).toBe('125');
@@ -492,10 +499,14 @@ describe('public capability and own market preview', () => {
     await mount(gameWith(['more_options']));
     await amount('竞拍', 'A', 19);
     await amount('竞拍', 'B', 21);
-    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(2);
+    expect(
+      container.querySelectorAll('.market-quote-comparison thead th'),
+    ).toHaveLength(3);
     expect(element('.market-impact-pair').textContent).toContain('55');
     await click('.observe-button');
-    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(0);
+    expect(container.querySelectorAll('.market-quote-comparison')).toHaveLength(
+      0,
+    );
     expect(element('.market-impact-empty').textContent).toContain(
       '不产生市场样本',
     );
@@ -508,7 +519,9 @@ describe('public capability and own market preview', () => {
       '竞 0',
     );
     expect(element('.market-impact-limit strong').textContent).toBe('0');
-    expect(container.querySelectorAll('.market-impact-action')).toHaveLength(0);
+    expect(container.querySelectorAll('.market-quote-comparison')).toHaveLength(
+      0,
+    );
     expect(element('.market-impact-empty').textContent).toContain(
       '没有可用报价',
     );

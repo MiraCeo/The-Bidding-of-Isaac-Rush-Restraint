@@ -5,6 +5,7 @@ import { gameSaveKey } from './game-save';
 import { playerProfileKey } from './player-profile';
 import {
   classicAiPolicy,
+  classicPopulationPolicy,
   classicDifficulties,
 } from '../game/classic-difficulty';
 import { createGameSession, reduceGameSession } from './game-session';
@@ -28,14 +29,18 @@ import {
 import { readAchievementRegistry } from './achievements/registry';
 import { canonicalJson } from '../shared/json-facts';
 import { stringifyChecked } from './file-json';
-it.each(classicDifficulties)(
-  'reconstructs checkpoints/paired backup and keeps read-only replay/config/receipt identity at %s',
-  async (difficulty) => {
+it.each(
+  [classicAiPolicy, classicPopulationPolicy].flatMap((policy) =>
+    classicDifficulties.map((difficulty) => ({ policy, difficulty })),
+  ),
+)(
+  'reconstructs checkpoints/paired backup and keeps read-only replay/config/receipt identity at $policy / $difficulty',
+  async ({ policy, difficulty }) => {
     let s = beginClassicGrowth(
       reduceGameSession(createGameSession(42), {
         type: 'start_game',
         characterId: 'isaac',
-        classicAi: { policy: classicAiPolicy, difficulty },
+        classicAi: { policy, difficulty },
       }),
     );
     for (let i = 0; i < 15; i++) {
@@ -116,57 +121,113 @@ it('does not relabel or change old no-setting checkpoints/replays, and rejects n
   );
 });
 
-it('saves the real easy-tier lifecycle and repeated terminal checkpoint exactly once', async () => {
-  const data = new Map<string, string>();
-  const storage = {
-    getItem: (k: string) => data.get(k) ?? null,
-    setItem: (k: string, v: string) => {
-      data.set(k, v);
-    },
-    removeItem: (k: string) => {
-      data.delete(k);
-    },
-  };
-  const coordinator = {
-    exclusive: async <T>(_name: string, work: () => T) => work(),
-  };
-  let s = beginClassicGrowth(
-    reduceGameSession(createGameSession(91), {
-      type: 'start_game',
-      characterId: 'isaac',
-      classicAi: { policy: classicAiPolicy, difficulty: 'easy' },
-    }),
-  );
-  const save = async () => {
-    const result = await saveClassicClient(storage, s, {
-      expectedSource: storage.getItem(gameSaveKey),
-      coordinator,
-    });
-    expect(result.message).toBe('');
-    s = result.session;
-    expect(s.growth!.acknowledged).toBe(s.growth!.units.length);
-  };
-  await save();
-  for (let i = 0; i < 15; i++) {
-    s = reduceGameSession(s, {
-      type: 'submit_player_turn',
-      turn: {
-        playerId: 'human',
-        actions: [{ type: 'bid', group: 'A', amount: 1 }],
+it.each([classicAiPolicy, classicPopulationPolicy])(
+  'saves the real easy-tier lifecycle and repeated terminal checkpoint exactly once: %s',
+  async (policy) => {
+    const data = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        data.set(k, v);
       },
-    });
+      removeItem: (k: string) => {
+        data.delete(k);
+      },
+    };
+    const coordinator = {
+      exclusive: async <T>(_name: string, work: () => T) => work(),
+    };
+    let s = beginClassicGrowth(
+      reduceGameSession(createGameSession(91), {
+        type: 'start_game',
+        characterId: 'isaac',
+        classicAi: { policy, difficulty: 'easy' },
+      }),
+    );
+    const save = async () => {
+      const result = await saveClassicClient(storage, s, {
+        expectedSource: storage.getItem(gameSaveKey),
+        coordinator,
+      });
+      expect(result.message).toBe('');
+      s = result.session;
+      expect(s.growth!.acknowledged).toBe(s.growth!.units.length);
+    };
     await save();
-    s = parseGameSave(storage.getItem(gameSaveKey)!).session;
-    s = reduceGameSession(s, { type: 'advance_room' });
+    for (let i = 0; i < 15; i++) {
+      s = reduceGameSession(s, {
+        type: 'submit_player_turn',
+        turn: {
+          playerId: 'human',
+          actions: [{ type: 'bid', group: 'A', amount: 1 }],
+        },
+      });
+      await save();
+      s = parseGameSave(storage.getItem(gameSaveKey)!).session;
+      s = reduceGameSession(s, { type: 'advance_room' });
+      await save();
+    }
+    const raw = storage.getItem(playerProfileKey)!;
+    const p = readPlayerProfile(JSON.parse(raw));
+    expect(readAchievementRegistry(p)!.receipts).toHaveLength(31);
+    expect(
+      readCompletionRegistry(p)!.groups['classic/isaac/easy']!.completed,
+    ).toBe(1);
     await save();
-  }
-  const raw = storage.getItem(playerProfileKey)!;
-  const p = readPlayerProfile(JSON.parse(raw));
-  expect(readAchievementRegistry(p)!.receipts).toHaveLength(31);
+    await save();
+    expect(storage.getItem(playerProfileKey)).toBe(raw);
+  },
+  30000,
+);
+
+it('keeps identical highest outcomes in different policy identities and rejects rewriting a played policy', () => {
+  const completed = [classicAiPolicy, classicPopulationPolicy].map((policy) => {
+    let s = beginClassicGrowth(
+      reduceGameSession(createGameSession(91), {
+        type: 'start_game',
+        characterId: 'isaac',
+        classicAi: { policy, difficulty: 'highest' },
+      }),
+    );
+    for (let i = 0; i < 15; i++) {
+      s = reduceGameSession(s, {
+        type: 'submit_player_turn',
+        turn: {
+          playerId: 'human',
+          actions: [{ type: 'bid', group: 'A', amount: 1 }],
+        },
+      });
+      s = reduceGameSession(s, { type: 'advance_room' });
+    }
+    return s;
+  });
+  const [old, next] = completed;
+  const oldGame = old!.game,
+    nextGame = next!.game;
+  if (
+    oldGame.phase === 'character_selection' ||
+    nextGame.phase === 'character_selection'
+  )
+    throw Error('Expected completed games');
+  expect(nextGame.players).toEqual(oldGame.players);
+  expect(next!.replay!.id).not.toBe(old!.replay!.id);
+  expect(classicCompletionKey(next!.replay!)).not.toBe(
+    classicCompletionKey(old!.replay!),
+  );
+  const profile = recordCompletedMatch(
+    recordCompletedMatch(createPlayerProfile(), old!.replay!, 'unused'),
+    next!.replay!,
+    'unused',
+  );
   expect(
-    readCompletionRegistry(p)!.groups['classic/isaac/easy']!.completed,
-  ).toBe(1);
-  await save();
-  await save();
-  expect(storage.getItem(playerProfileKey)).toBe(raw);
-}, 30000);
+    readCompletionRegistry(profile)!.groups['classic/isaac/highest']!.completed,
+  ).toBe(2);
+  const doc = JSON.parse(serializeGameCheckpoint(next!));
+  doc.checkpoint.game.classicAi.policy = classicAiPolicy;
+  expect(() => parseGameSave(stringifyChecked(doc))).toThrow();
+  const log = {
+    ...next!.replay!,
+    classicAi: { policy: classicAiPolicy, difficulty: 'highest' as const },
+  };
+  expect(() => verifyReplayLog(log)).toThrow();
+});

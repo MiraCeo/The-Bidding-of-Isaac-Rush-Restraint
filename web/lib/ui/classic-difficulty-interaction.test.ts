@@ -68,7 +68,7 @@ it('starts classic with a real chosen setting, locks it, preserves it across uti
   await click('开始游戏');
   const source = localStorage.getItem(gameSaveKey)!;
   expect(parseGameSave(source).session.game).toMatchObject({
-    classicAi: { policy: 'classic-tiered-1', difficulty: 'easy' },
+    classicAi: { policy: 'classic-population-1', difficulty: 'easy' },
   });
   expect(node.querySelector('.classic-difficulty-picker')).toBeNull();
   expect(node.querySelector('.page-context-bar')!.textContent).toContain(
@@ -110,6 +110,28 @@ it('starts classic with a real chosen setting, locks it, preserves it across uti
     '难度 简单',
   );
   expect(node.querySelector('.classic-difficulty-picker')).toBeNull();
+});
+it('resumes an old tiered session as old tiered, without offering a population switch', async () => {
+  const { createGameSession, reduceGameSession } =
+    await import('./game-session');
+  const { serializeGameCheckpoint } = await import('./game-save');
+  const old = reduceGameSession(createGameSession(91), {
+    type: 'start_game',
+    characterId: 'isaac',
+    classicAi: { policy: 'classic-tiered-1', difficulty: 'easy' },
+  });
+  const source = serializeGameCheckpoint(old);
+  localStorage.setItem(gameSaveKey, source);
+  await render(createElement(GameApp));
+  expect(node.querySelector('.page-context-bar')!.textContent).toContain(
+    '简单（旧分档）',
+  );
+  expect(node.querySelector('.classic-difficulty-picker')).toBeNull();
+  expect(
+    parseGameSave(localStorage.getItem(gameSaveKey)!).session.game,
+  ).toMatchObject({
+    classicAi: { policy: 'classic-tiered-1', difficulty: 'easy' },
+  });
 });
 it('filters registered classic counts by actual difficulty and keeps old aggregate rows ungraded rather than standard/highest', async () => {
   let p = createPlayerProfile();

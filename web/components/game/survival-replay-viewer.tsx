@@ -16,6 +16,10 @@ import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import { finalSurvivalBoard } from '@/lib/ui/survival-board';
 import { SurvivalScoreBoard } from './survival-score-board';
 import { SurvivalFloorPlayers } from './survival-floor-players';
+import {
+  marketReplayIndex,
+  type MarketReplayPosition,
+} from '@/lib/ui/market-reference-display';
 
 export function SurvivalTotalBoard({
   log,
@@ -162,11 +166,18 @@ export function SurvivalFloorFacts({
 export function SurvivalReplayViewer({
   log,
   decimals = 2,
+  initialRoom,
 }: {
   log: SurvivalReplayLog;
   decimals?: 2 | 4;
+  initialRoom?: MarketReplayPosition;
 }) {
-  const [index, setIndex] = useState(0),
+  const [index, setIndex] = useState(() =>
+      marketReplayIndex(
+        log.rooms.map((r) => r.room),
+        initialRoom,
+      ),
+    ),
     [playerId, setPlayerId] = useState('human');
   const [scope, setScope] = useState<'room' | 'match' | 'floors' | 'total'>(
       'room',

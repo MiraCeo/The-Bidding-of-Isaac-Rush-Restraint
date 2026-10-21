@@ -4,6 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { MarketImpactPreview } from '@/components/game/market-impact-preview';
 import { GameApp } from '@/components/game/game-app';
+import { RoomPrototype } from '@/components/game/room-prototype';
+import { defaultGamePreferences } from './game-preferences';
 import { getQuoteCapacity } from './quote-capacity';
 import { selectMarketHistory } from './market-history';
 import { publishedMarket } from './market-history.test-helper';
@@ -87,13 +89,21 @@ it('shows compact public history, keeps both own comparisons separate, and opens
     }),
   );
   expect(node.querySelectorAll('.market-history tbody tr')).toHaveLength(1);
-  const actions = node.querySelectorAll('.market-impact-action');
-  expect(actions).toHaveLength(2);
-  expect(actions[0]!.textContent).toContain('市场 25');
-  expect(actions[0]!.textContent).toContain('历史A高价线75');
-  expect(actions[1]!.textContent).toContain('市场 37.5');
-  expect(actions[1]!.textContent).toContain('历史B高价线10');
-  expect(node.textContent).toContain('计分等价 20');
+  const comparison = node.querySelector('.market-quote-comparison')!;
+  expect(comparison.querySelectorAll('thead th')).toHaveLength(3);
+  const values = [...comparison.querySelectorAll('tbody tr')].map(
+    (row) => row.textContent,
+  );
+  expect(values).toEqual([
+    '当前市场2537.5',
+    '历史高价线7510',
+    '市场差值−50+27.5',
+    '计分等价2030',
+  ]);
+  expect(node.querySelectorAll('.market-shared-zone')).toHaveLength(1);
+  expect(
+    node.querySelectorAll('.market-history thead [data-active="true"]'),
+  ).toHaveLength(2);
   expect(node.textContent).toContain('不等于获奖价');
   expect(onViewReplay).not.toHaveBeenCalled();
   await click('查看已结算回放');
@@ -115,7 +125,9 @@ it('shows brimstone scoring as a range, never a predicted score against an unkno
       rules: defaultRules,
     }),
   );
-  expect(node.textContent).toContain('计分区间 80 – 125');
+  expect(node.querySelector('.market-score-range')!.textContent).toBe(
+    '80 – 125',
+  );
   expect(node.textContent).toContain('本层尚无已结算市场');
   expect(node.querySelector('.market-reference-comparison')).toBeNull();
 });
@@ -170,10 +182,18 @@ it.each(['classic', 'survival'] as const)(
     expect(rows).toHaveLength(2);
     expect(rows[0]!.querySelector('th')!.textContent).toMatch(/^2/);
     expect(rows[1]!.querySelector('th')!.textContent).toMatch(/^1/);
+    const replayButton = node.querySelector<HTMLButtonElement>(
+      '.market-history-replay',
+    )!;
+    replayButton.focus();
+    node.querySelector<HTMLElement>('#market-drawer')!.scrollTop = 17;
     await click('查看已结算回放');
     expect(node.querySelector('#room-utilities')!.textContent).toContain(
       '回放',
     );
+    expect(
+      node.querySelector('.replay-selected-heading h3')!.textContent,
+    ).toContain('F1-R2');
     const back = [
       ...node.querySelectorAll<HTMLButtonElement>('#room-utilities button'),
     ].find((b) => b.textContent?.includes('返回游戏'))!;
@@ -184,6 +204,21 @@ it.each(['classic', 'survival'] as const)(
       ),
     ).toBe(input);
     expect(input.value).toBe(amount);
+    expect(document.activeElement).toBe(replayButton);
+    expect(node.querySelector<HTMLElement>('#market-drawer')!.scrollTop).toBe(
+      17,
+    );
+    replayButton.focus();
+    await click('查看已结算回放');
+    await act(async () =>
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      ),
+    );
+    expect(document.activeElement).toBe(replayButton);
+    expect(node.querySelector<HTMLElement>('.room-game-content')!.hidden).toBe(
+      false,
+    );
     expect(node.querySelectorAll('.market-history tbody tr')).toHaveLength(2);
     expect(
       localStorage.getItem(mode === 'classic' ? gameSaveKey : survivalSaveKey),
@@ -191,3 +226,89 @@ it.each(['classic', 'survival'] as const)(
     expect(localStorage.getItem(playerProfileKey)).toBe(profile);
   },
 );
+
+it('reaches the market heading on an explicit narrow-screen open, and Escape returns to its trigger without submitting', async () => {
+  vi.spyOn(window, 'matchMedia').mockReturnValue({
+    matches: true,
+  } as MediaQueryList);
+  const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+  const submit = vi.fn();
+  await render(
+    createElement(RoomPrototype, {
+      game: startClientGame('isaac', 42),
+      onSubmit: submit,
+      preferences: defaultGamePreferences,
+      preferenceSaveStatus: 'unchanged',
+      onPreferencesChange: vi.fn(),
+    }),
+  );
+  const button = node.querySelector<HTMLButtonElement>(
+    '[aria-controls="market-drawer"]',
+  )!;
+  button.focus();
+  await act(async () => button.click());
+  const title = node.querySelector('#market-reference-title')!;
+  expect(document.activeElement).toBe(title);
+  expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' });
+  await act(async () =>
+    title.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+  expect(submit).not.toHaveBeenCalled();
+});
+
+it('keeps missing high-price boundaries as missing, and raw precision readable without hovering', async () => {
+  const game = startClientGame('isaac', 42),
+    p = game.players.find((p) => p.isHuman)!;
+  const history = selectMarketHistory(
+    [publishedMarket(0, 0, true)],
+    { floorIndex: 0, roomIndex: 1 },
+    defaultRules,
+  );
+  await render(
+    createElement(MarketImpactPreview, {
+      player: p,
+      turn: {
+        playerId: 'human',
+        actions: [{ type: 'disrupt', group: 'A', amount: 20 }],
+      },
+      kind: 'disrupt',
+      capacity: getQuoteCapacity(p, defaultRules),
+      rules: defaultRules,
+      history,
+    }),
+  );
+  const comparison = node.querySelector('.market-quote-comparison')!;
+  expect(
+    [...comparison.querySelectorAll('tbody td')].map((td) => td.textContent),
+  ).toEqual(['50', '—', '—', '25']);
+  expect(node.querySelector('.market-history-exact')!.textContent).toContain(
+    '全场观望',
+  );
+  expect(node.querySelector('.market-shared-zone')!.textContent).toContain(
+    '无市场基准',
+  );
+  history[0]!.target = 30.31578947368421;
+  await render(
+    createElement(MarketImpactPreview, {
+      player: p,
+      turn: {
+        playerId: 'human',
+        actions: [{ type: 'bid', group: 'A', amount: 20 }],
+      },
+      kind: 'bid',
+      capacity: getQuoteCapacity(p, defaultRules),
+      rules: defaultRules,
+      history,
+    }),
+  );
+  expect(node.querySelector('.market-history tbody')!.textContent).toContain(
+    '30.32',
+  );
+  expect(node.querySelector('.market-history-exact')!.textContent).toContain(
+    '30.31578947368421',
+  );
+});

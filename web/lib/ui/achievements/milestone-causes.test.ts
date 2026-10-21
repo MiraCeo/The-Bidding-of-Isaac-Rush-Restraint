@@ -126,6 +126,12 @@ describe('authority-only new room causes without rule/RNG changes', () => {
       0,
     );
     expect(gone.record.transcendenceRedemptions.length).toBeGreaterThan(0);
+    expect(
+      extractAchievementRoomFacts(gone.record)!.transcendenceRedeemed,
+    ).toBe(true);
+    expect(
+      gone.record.awards.filter((a) => a.playerId === 'human'),
+    ).toHaveLength(0);
     expect(extractMilestoneRoomFacts(gone.record).milestoneFlags & 4).toBe(0);
     expect(() => settle([disrupt(10), disrupt(20, 'B')])).toThrow();
   });

@@ -20,6 +20,7 @@ import {
   type EncodedAchievementEvent,
 } from './event-codec';
 import { sha256Hex } from '../../shared/sha256';
+import { appendCf, cfRoom, cfNow } from './revision058.test-helper';
 import {
   beginClassicGrowth,
   applyGrowthContext,
@@ -227,6 +228,16 @@ describe('catalog3 activation and reliable metric inheritance', () => {
     expect(JSON.stringify(padded)).toBe(before);
   });
 });
+it('allows a single qualified savings amount to reach silver without a repeated-room requirement', () => {
+  const p = appendCf(
+    createPlayerProfile(cfNow),
+    cfRoom(0, { mask: 2 ** 11, savings: 1000 }),
+  );
+  const projection = projectAchievementRegistry(p)!;
+  expect(projection.progress.D21).toBe(1000);
+  expect(projection.achievedAt.D21).toBe(cfNow.toISOString());
+});
+
 describe('prospective causes and single-parent run combinations', () => {
   it.each([
     ['B09', 1, 0, 2, 1],

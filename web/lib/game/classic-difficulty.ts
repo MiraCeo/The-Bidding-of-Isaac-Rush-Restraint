@@ -7,8 +7,10 @@ export const classicDifficulties = [
 export type ClassicDifficulty = (typeof classicDifficulties)[number];
 export const defaultClassicDifficulty: ClassicDifficulty = 'highest';
 export const classicAiPolicy = 'classic-tiered-1' as const;
+export const classicPopulationPolicy = 'classic-population-1' as const;
+export const currentClassicAiPolicy = classicPopulationPolicy;
 export interface ClassicAiSettings {
-  policy: typeof classicAiPolicy;
+  policy: typeof classicAiPolicy | typeof classicPopulationPolicy;
   difficulty: ClassicDifficulty;
 }
 /** Classic-only attenuation, not survival policy/urgency or resource advantages. */
@@ -31,13 +33,18 @@ export function readClassicAiSettings(value: unknown): ClassicAiSettings {
     Object.keys(v).length !== 2 ||
     !Object.hasOwn(v, 'policy') ||
     !Object.hasOwn(v, 'difficulty') ||
-    v.policy !== classicAiPolicy ||
+    (v.policy !== classicAiPolicy && v.policy !== classicPopulationPolicy) ||
     !classicDifficulties.includes(v.difficulty)
   )
     throw Error('经典AI难度／策略版本无效，原对局与档案保留。');
   return { policy: v.policy, difficulty: v.difficulty };
 }
-export function classicDifficultyLabel(value?: ClassicDifficulty): string {
+export function classicDifficultyLabel(
+  value?: ClassicDifficulty,
+  policy?: ClassicAiSettings['policy'],
+): string {
+  if (policy === classicAiPolicy && value && value !== 'highest')
+    return `${classicDifficultyProfiles[value].label}（旧分档）`;
   return value === undefined
     ? '原版（未分档）'
     : value === 'highest'
@@ -52,7 +59,7 @@ export function classicReplayId(
   settings?: ClassicAiSettings,
 ) {
   const base = `ISAAC-${seed.toString(16).padStart(8, '0')}-${character}-${rulesVersion.split('-').at(-1)}`;
-  return settings
-    ? `${base}-CA1-${readClassicAiSettings(settings).difficulty}`
-    : base;
+  if (!settings) return base;
+  const config = readClassicAiSettings(settings);
+  return `${base}-${config.policy === classicPopulationPolicy ? 'CP1' : 'CA1'}-${config.difficulty}`;
 }

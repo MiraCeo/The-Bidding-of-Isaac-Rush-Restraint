@@ -1,5 +1,12 @@
 /** Research only: actual official match/context/profile APIs, no rule overrides. */
 import type { CharacterId, ItemId } from '../../game/item-types';
+import type { ClassicAiSettings } from '../../game/classic-difficulty';
+import type {
+  ClientRoomSettlementRecord,
+  ActiveClientGameState,
+} from '../../game/client-session';
+import type { SurvivalGameState } from '../../game/survival-session';
+import type { RulesConfig } from '../../game/types';
 import type { PlayerProfile } from '../player-profile';
 import { createPlayerProfile } from '../player-profile';
 import type { GrowthContext } from './lifecycle';
@@ -64,63 +71,85 @@ export function runCurrentStudyMatch(
   role: CharacterId,
   policy: StudyPolicy,
   difficulty: CurrentStudyDifficulty,
+  observerOptions: {
+    classicAi?: ClassicAiSettings;
+    room?: (record: ClientRoomSettlementRecord, rules: RulesConfig) => void;
+    aiOnlyRoom?: (
+      record: ClientRoomSettlementRecord,
+      rules: RulesConfig,
+    ) => void;
+    terminal?: (game: ActiveClientGameState | SurvivalGameState) => void;
+  } = {},
 ) {
   const exposure = blankExposure();
   let context: GrowthContext | undefined;
-  const match = playAchievementStudy(seed, role, policy, difficulty, {
-    room: (record) => {
-      const human = record.playersBefore.find(
-        (p) => p.isHuman && p.id === 'human',
-      );
-      if (!human) throw Error('Research included AI-only room');
-      exposure.humanRooms++;
-      const owns = (id: ItemId) => human.items.some((i) => i.itemId === id);
-      const entitlements = record.entitlements.filter(
-        (e) => e.playerId === 'human',
-      );
-      const tailGroups = owns('guppys_tail')
-        ? entitlements.filter(
-            (e) =>
-              record.room.rewards.find((r) => r.group === e.group)!.itemId !==
-              'guppys_tail',
-          ).length
-        : 0;
-      exposure.tailHeldRooms += Number(owns('guppys_tail'));
-      exposure.tailEligibleRooms += Number(tailGroups > 0);
-      exposure.tailEligibleGroups += tailGroups;
-      const facts = extractAchievementRoomFacts(record)!;
-      exposure.eternalHeldRooms += Number(owns('eternal_d6'));
-      exposure.eternalPositiveRooms += Number(
-        owns('eternal_d6') && (facts.scoreBeforeClear ?? 0) > 0,
-      );
-      exposure.eternalMissingEvidenceRooms += Number(
-        owns('eternal_d6') && facts.scoreBeforeClear === undefined,
-      );
-      const options = (id: ItemId) =>
-        id === 'more_options' || id === 'more_options_question';
-      exposure.optionsOfferedRooms += Number(
-        record.room.rewards.some((r) => options(r.itemId)),
-      );
-      exposure.optionsVisibleOfferedRooms += Number(
-        record.room.rewards.some((r) => !r.hidden && options(r.itemId)),
-      );
-      exposure.bossRooms += Number(record.room.kind === 'boss');
-      exposure.bossQualifiedRooms += Number(
-        record.room.kind === 'boss' && entitlements.length > 0,
-      );
-      for (const award of record.awards.filter((a) => a.playerId === 'human')) {
-        if (award.itemId === 'guppys_tail')
-          exposure.tailAcquiredCopies += award.copies;
-        if (award.itemId === 'eternal_d6')
-          exposure.eternalAcquiredCopies += award.copies;
-        if (options(award.itemId))
-          exposure.optionsAcquiredCopies += award.copies;
-      }
+  const match = playAchievementStudy(
+    seed,
+    role,
+    policy,
+    difficulty,
+    {
+      room: (record, rules) => {
+        const human = record.playersBefore.find(
+          (p) => p.isHuman && p.id === 'human',
+        );
+        if (!human) throw Error('Research included AI-only room');
+        exposure.humanRooms++;
+        const owns = (id: ItemId) => human.items.some((i) => i.itemId === id);
+        const entitlements = record.entitlements.filter(
+          (e) => e.playerId === 'human',
+        );
+        const tailGroups = owns('guppys_tail')
+          ? entitlements.filter(
+              (e) =>
+                record.room.rewards.find((r) => r.group === e.group)!.itemId !==
+                'guppys_tail',
+            ).length
+          : 0;
+        exposure.tailHeldRooms += Number(owns('guppys_tail'));
+        exposure.tailEligibleRooms += Number(tailGroups > 0);
+        exposure.tailEligibleGroups += tailGroups;
+        const facts = extractAchievementRoomFacts(record)!;
+        exposure.eternalHeldRooms += Number(owns('eternal_d6'));
+        exposure.eternalPositiveRooms += Number(
+          owns('eternal_d6') && (facts.scoreBeforeClear ?? 0) > 0,
+        );
+        exposure.eternalMissingEvidenceRooms += Number(
+          owns('eternal_d6') && facts.scoreBeforeClear === undefined,
+        );
+        const options = (id: ItemId) =>
+          id === 'more_options' || id === 'more_options_question';
+        exposure.optionsOfferedRooms += Number(
+          record.room.rewards.some((r) => options(r.itemId)),
+        );
+        exposure.optionsVisibleOfferedRooms += Number(
+          record.room.rewards.some((r) => !r.hidden && options(r.itemId)),
+        );
+        exposure.bossRooms += Number(record.room.kind === 'boss');
+        exposure.bossQualifiedRooms += Number(
+          record.room.kind === 'boss' && entitlements.length > 0,
+        );
+        for (const award of record.awards.filter(
+          (a) => a.playerId === 'human',
+        )) {
+          if (award.itemId === 'guppys_tail')
+            exposure.tailAcquiredCopies += award.copies;
+          if (award.itemId === 'eternal_d6')
+            exposure.eternalAcquiredCopies += award.copies;
+          if (options(award.itemId))
+            exposure.optionsAcquiredCopies += award.copies;
+        }
+        // Diagnostics must only observe; no decision/RNG or game-state writes.
+        observerOptions.room?.(record, rules);
+      },
+      terminal: observerOptions.terminal,
+      aiOnlyRoom: observerOptions.aiOnlyRoom,
+      complete: (c) => {
+        context = structuredClone(c);
+      },
     },
-    complete: (c) => {
-      context = structuredClone(c);
-    },
-  });
+    observerOptions.classicAi,
+  );
   if (!context || !match.terminal || exposure.humanRooms !== match.humanRooms)
     throw Error('Incomplete current study match');
   const confirmedContext: GrowthContext = context;

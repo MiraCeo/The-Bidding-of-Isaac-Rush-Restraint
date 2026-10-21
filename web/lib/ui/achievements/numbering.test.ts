@@ -120,6 +120,17 @@ describe('0.5.12 public numbers, stable persistence keys and trigger copy', () =
     ).toEqual([]);
   });
   it('describes a concrete trigger and target for every tier except approved balance targets, without changing scopes or evaluator identities', () => {
+    const approved: Record<string, number> = {
+      B18: 10,
+      B19: 50,
+      B24: 10,
+      B25: 50,
+      E10: 10,
+      F09: 10,
+      B16: 5,
+      B17: 10,
+      E22: 10,
+    };
     for (const a of achievementCatalog) {
       const prior = revision058Catalog.find((old) => old.id === a.id);
       if (prior) {
@@ -129,10 +140,9 @@ describe('0.5.12 public numbers, stable persistence keys and trigger copy', () =
           name: prior.name,
           condition: prior.condition,
           kind: prior.kind,
-          target: ['B18', 'B19', 'B24', 'B25'].includes(a.id)
-            ? prior.target
-            : a.target,
+          target: approved[a.id] !== undefined ? prior.target : a.target,
         }).toEqual(prior);
+        expect(a.target).toBe(approved[a.id] ?? prior.target);
         expect(a.kind).toBe(converted ? 'cumulative' : prior.kind);
       } else {
         expect([
