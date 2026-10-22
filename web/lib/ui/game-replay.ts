@@ -1,4 +1,5 @@
 import { characterCatalog } from '../game/characters';
+import { readClassicAiSettings } from '../game/classic-difficulty';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { createGameSession, reduceGameSession } from './game-session';
 import {
@@ -75,6 +76,7 @@ export function verifyReplayLog(
   alreadyVerified?: ReplayLog,
 ): ReplayLog {
   const input = record(value);
+  const classicAi = Object.hasOwn(input, 'classicAi') ? readClassicAiSettings(input.classicAi) : undefined;
   if (input.rulesVersion !== saveCompatibility)
     fail('回放规则版本不兼容，不能用当前算法解释此文件。');
   if (
@@ -92,6 +94,7 @@ export function verifyReplayLog(
     let session = reduceGameSession(createGameSession(input.seed), {
       type: 'start_game',
       characterId: input.characterId as CharacterId,
+      ...(classicAi ? { classicAi } : {}),
     });
     for (let i = 0; i < input.rooms.length; i++) {
       const room = record(input.rooms[i]);

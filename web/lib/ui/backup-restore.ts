@@ -14,15 +14,28 @@ import {
 } from './player-profile';
 import { PlayerProfileChangedError } from './player-profile-file';
 import { notifyPlayerProfileChanged } from './profile-events';
+import { prepareAchievementBaseline } from './achievements/registry';
 import type { GameSession } from './game-session';
+import { validateGrowthProfilePair } from './achievements/lifecycle';
+import {
+  profileReplacementEpochKey,
+  newProfileReplacementEpoch,
+} from './profile-write-coordinator';
 
 /** Bounded synchronous rollback, not a global cross-page transaction or crash journal. */
 export function restoreBackupWrites(
   storage: SaveStorage | null,
   writes: readonly (readonly [string, string])[],
   expectedProfileSource?: string | null,
+  options: { replaceProfile?: boolean } = {},
 ): void {
   if (!storage) throw Error('存储不可用，未覆盖对局与玩家进度。');
+  const changesProfile = writes.some(([key]) => key === playerProfileKey);
+  if (changesProfile && options.replaceProfile === true)
+    writes = [
+      ...writes,
+      [profileReplacementEpochKey, newProfileReplacementEpoch()],
+    ];
   const previous = writes.map(([key]) => storage.getItem(key));
   if (
     expectedProfileSource !== undefined &&
@@ -66,7 +79,7 @@ export function restoreBackupWrites(
         : '备份载入失败，已恢复原存储，当前对局与玩家进度未改变。',
     );
   }
-  notifyPlayerProfileChanged();
+  if (changesProfile) notifyPlayerProfileChanged();
 }
 
 /** Save the match and exact profile before changing React state; never register completion here. */
@@ -75,8 +88,11 @@ export function restoreClassicBackupProgress(
   session: GameSession,
   profile: PlayerProfile,
   expectedProfileSource?: string | null,
-): void {
+  stampReplacement = false,
+): string {
   const core = serializeGameCheckpoint(session);
+  if (session.growth && !session.growthIssue)
+    validateGrowthProfilePair(profile, session.growth);
   if (!session.replay) throw Error('备份缺少完整事实，未覆盖对局与玩家进度。');
   restoreBackupWrites(
     storage,
@@ -87,8 +103,17 @@ export function restoreClassicBackupProgress(
         draftSaveKey,
         JSON.stringify({ token: shortHash(core), draft: session.draft }),
       ],
-      [playerProfileKey, JSON.stringify(readPlayerProfile(profile))],
+      [
+        playerProfileKey,
+        JSON.stringify(
+          readPlayerProfile(
+            prepareAchievementBaseline(readPlayerProfile(profile)),
+          ),
+        ),
+      ],
     ],
     expectedProfileSource,
+    { replaceProfile: stampReplacement },
   );
+  return core;
 }

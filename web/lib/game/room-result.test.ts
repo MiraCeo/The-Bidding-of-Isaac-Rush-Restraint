@@ -36,41 +36,53 @@ function renderResult(itemId: ItemId, clearScore = false, withdraw = false) {
   const html = renderToStaticMarkup(createElement(RoomResult, {
     game, onShowRanking: () => {}, onAdvance: () => {},
   }));
-  return { html, text: html.replace(/<[^>]+>/g, ''), settlement, human };
+  const calculation = html.match(/<div class="settlement-calculation-line"[^>]*>(.*?)<\/div>/s)?.[1];
+  expect(calculation).toBeDefined();
+  return { html, text: html.replace(/<[^>]+>/g, ''), calculation: calculation!.replace(/<[^>]+>/g, '').replace(/\s+/g, ''), settlement, human };
 }
 
 describe('room result score presentation', () => {
   it('uses the same final room score in the summary and heart-adjusted breakdown', () => {
-    const { text, settlement, human } = renderResult('moms_heart');
+    const { text, calculation, settlement, human } = renderResult('moms_heart');
     const initial = settlement.scoreBreakdowns.human!.score;
     const final = (settlement.players[0]!.score - human.score).toFixed(2);
     expect(text).toContain(`本房积分+${final}`);
-    expect(text).toContain(`最终房间积分${final}`);
-    expect(text).toContain(`原始结算积分${initial.toFixed(2)}`);
-    expect(text).toContain(`追溯追加积分+${initial.toFixed(2)}`);
-    expect(text).toContain('积分乘算倍率×4.000');
+    const summary = settlement.roomScoreSummaries.human!;
+    expect(summary.initialScore).toBe(initial);
+    expect(summary.retroactiveScore).toBe(initial);
+    expect(summary.finalScore).toBe(initial * 2);
+    expect(summary.initialScore + summary.retroactiveScore).toBe(summary.finalScore);
+    expect(calculation).toContain(`倍率后${initial.toFixed(2)}＋追溯追加${initial.toFixed(2)}→本房积分${final}`);
+    expect(calculation).toContain('×本房倍率2.000');
+    expect(summary.retroactiveMultiplier).toBe(2);
+    expect(settlement.scoreBreakdowns.human!.multiplier * summary.retroactiveMultiplier).toBe(4);
   });
 
   it('shows no retroactive bonus for a newly awarded Sacred Heart', () => {
-    const { text, settlement } = renderResult('sacred_heart');
+    const { text, calculation, settlement } = renderResult('sacred_heart');
     const score = settlement.scoreBreakdowns.human!.score.toFixed(2);
     expect(text).toContain(`本房积分+${score}`);
-    expect(text).toContain(`最终房间积分${score}`);
-    expect(text).toContain('追溯追加积分+0.00');
+    expect(calculation).toContain(`→本房积分${score}`);
+    expect(settlement.roomScoreSummaries.human!.retroactiveScore).toBe(0);
+    expect(settlement.roomScoreSummaries.human!.finalScore).toBe(settlement.scoreBreakdowns.human!.score);
+    expect(calculation).not.toContain('追溯追加');
   });
 
   it('keeps cleared rooms at zero after a heart is awarded', () => {
-    const { text } = renderResult('moms_heart', true);
+    const { text, calculation, settlement } = renderResult('moms_heart', true);
     expect(text).toContain('本房积分+0.00');
-    expect(text).toContain('最终房间积分0.00');
-    expect(text).toContain('追溯追加积分+0.00');
+    expect(calculation).toContain('→本房积分0.00');
+    expect(settlement.roomScoreSummaries.human!.retroactiveScore).toBe(0);
+    expect(settlement.roomScoreSummaries.human!.finalScore).toBe(0);
+    expect(calculation).not.toContain('追溯追加');
     expect(text).toContain('本房间积分因道具效果被清零');
   });
 
   it('renders an all-withdraw room with a zero final score and no market baseline', () => {
-    const { text } = renderResult('moms_heart', false, true);
+    const { text, calculation, settlement } = renderResult('moms_heart', false, true);
     expect(text).toContain('无市场样本');
     expect(text).toContain('本房积分+0.00');
-    expect(text).toContain('最终房间积分0.00');
+    expect(calculation).toBe('计分小计0.00×本房倍率1.000→本房积分0.00');
+    expect(settlement.roomScoreSummaries.human!.finalScore).toBe(0);
   });
 });

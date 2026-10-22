@@ -1,7 +1,11 @@
+import { RecordFilters } from './record-filters';
+import { CharacterArt } from './character-art';
+import { RankingScrollArea } from './ranking-self-summary';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { characterNames } from '@/lib/game';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import { downloadJsonFile } from '@/lib/ui/json-download';
 import { maxFileBytes } from '@/lib/ui/file-json';
 import { ReplayLibraryBackupPanel } from './replay-library-backup-panel';
@@ -37,6 +41,8 @@ export function ReplayLibraryPanel({
   initialFilters,
   onFiltersChange,
   scoreDecimals = 2,
+  presentation = 'default',
+  filters,
 }: {
   mode: 'classic' | 'survival';
   current: LibraryReplay | null;
@@ -46,6 +52,8 @@ export function ReplayLibraryPanel({
   initialFilters?: LibraryFilters;
   onFiltersChange?: (filters: LibraryFilters) => void;
   scoreDecimals?: 2 | 4;
+  presentation?: 'default' | 'records';
+  filters?: LibraryFilters;
 }) {
   const [entries, setEntries] = useState<ReplayLibraryEntry[]>([]);
   const [ready, setReady] = useState(false),
@@ -61,16 +69,15 @@ export function ReplayLibraryPanel({
   const equivalenceToken = useRef(0),
     equivalenceActive = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [role, setRole] = useState(initialFilters?.role ?? 'all'),
-    [difficulty, setDifficulty] = useState(initialFilters?.difficulty ?? 'all');
-  const [completion, setCompletion] = useState(
-    initialFilters?.completion ?? 'all',
+  const [localFilters, setLocalFilters] = useState<LibraryFilters>(
+    initialFilters ?? { role: 'all', difficulty: 'all', completion: 'all' },
   );
+  const { role, difficulty, completion } = filters ?? localFilters;
+  const [toolsOpen, setToolsOpen] = useState(false);
   function filter(field: keyof LibraryFilters, value: string) {
-    if (field === 'role') setRole(value);
-    if (field === 'difficulty') setDifficulty(value);
-    if (field === 'completion') setCompletion(value);
-    onFiltersChange?.({ role, difficulty, completion, [field]: value });
+    const next = { role, difficulty, completion, [field]: value };
+    setLocalFilters(next);
+    onFiltersChange?.(next);
   }
   const [candidate, setCandidate] = useState<PreparedReplay | null>(null);
   const [deleting, setDeleting] = useState<ReplayLibraryEntry | null>(null);
@@ -251,32 +258,12 @@ export function ReplayLibraryPanel({
     (e) =>
       e.mode === mode &&
       (role === 'all' || role === e.characterId) &&
-      (mode === 'classic' ||
-        difficulty === 'all' ||
-        difficulty === (e.difficulty ?? 'ungraded')) &&
+      (difficulty === 'all' || difficulty === (e.difficulty ?? 'ungraded')) &&
       (completion === 'all' || e.completed === (completion === 'complete')),
   );
   const used = entries.reduce((sum, e) => sum + e.bytes, 0);
-  return (
-    <section
-      className="settings-group replay-library"
-      aria-labelledby="replay-library-title"
-    >
-      <div className="library-heading">
-        <div>
-          <p className="eyebrow">REPLAY LIBRARY</p>
-          <h3 id="replay-library-title">长期完整回放库</h3>
-        </div>
-        <span className="library-capacity">
-          {ready
-            ? `${entries.length} / ${replayLibraryLimits.count} 局 · ${size(used)} / 64 MiB`
-            : '容量暂不可读取'}
-        </span>
-      </div>
-      <p className="utility-notice">
-        独立保存在此浏览器的IndexedDB中。完成局自动入库；也可保留进行中片段。达到应用上限时停止新增，不自动删除。大小为已存文本，不是磁盘或浏览器剩余额度。
-      </p>
-      {archiveStatus && <p className="library-auto-status">{archiveStatus}</p>}
+  const maintenance = (
+    <>
       <div className="library-toolbar">
         <Button
           variant="secondary"
@@ -329,6 +316,39 @@ export function ReplayLibraryPanel({
         disabled={working || !!deleting || !!candidate}
         onBusyChange={setBulkBusy}
       />
+    </>
+  );
+  return (
+    <section
+      className={`settings-group replay-library ${presentation === 'records' ? 'records-library' : ''}`}
+      aria-labelledby="replay-library-title"
+    >
+      <div className="library-heading">
+        <div>
+          <p className="eyebrow">REPLAY LIBRARY</p>
+          <h3 id="replay-library-title">
+            {presentation === 'records' ? '完整回放' : '长期完整回放库'}
+          </h3>
+        </div>
+        <span
+          className="library-capacity"
+          title="经典与生存共用的回放库容量，不是浏览器剩余空间"
+        >
+          {presentation === 'records' ? '全库 ' : ''}
+          {ready
+            ? `${entries.length} / ${replayLibraryLimits.count} 局 · ${size(used)} / 64 MiB`
+            : '容量暂不可读取'}
+        </span>
+      </div>
+      {presentation === 'default' && (
+        <>
+          <p className="utility-notice">
+            独立保存在此浏览器的IndexedDB中。完成局自动入库；也可保留进行中片段。达到应用上限时停止新增，不自动删除。大小为已存文本，不是磁盘或浏览器剩余额度。
+          </p>
+        </>
+      )}
+      {archiveStatus && <p className="library-auto-status">{archiveStatus}</p>}
+      {presentation === 'default' && maintenance}
       {reading && (
         <Button variant="secondary" onClick={cancelRead}>
           取消读取回放
@@ -380,55 +400,13 @@ export function ReplayLibraryPanel({
           </Button>
         </section>
       )}
-      <div className="library-filters">
-        <label>
-          角色
-          <select
-            aria-label="回放库角色"
-            value={role}
-            onChange={(e) => filter('role', e.target.value)}
-          >
-            <option value="all">全部角色</option>
-            {Object.entries(characterNames).map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {mode === 'survival' && (
-          <label>
-            难度
-            <select
-              aria-label="回放库难度"
-              value={difficulty}
-              onChange={(e) => filter('difficulty', e.target.value)}
-            >
-              <option value="all">全部难度</option>
-              {(['easy', 'standard', 'hard', 'highest'] as const).map((d) => (
-                <option key={d} value={d}>
-                  {survivalDifficultyLabel(d)}
-                </option>
-              ))}
-              <option value="ungraded">未分层</option>
-            </select>
-          </label>
-        )}
-        <label>
-          状态
-          <select
-            aria-label="回放库状态"
-            value={completion}
-            onChange={(e) => filter('completion', e.target.value)}
-          >
-            <option value="all">全部状态</option>
-            <option value="complete">已完成</option>
-            <option value="partial">进行中片段</option>
-          </select>
-        </label>
-        <span>{filtered.length} 条符合筛选</span>
-      </div>
-      <div className="library-table-wrap">
+      <RecordFilters
+        mode={mode}
+        filters={{ role, difficulty, completion }}
+        onChange={filter}
+        count={ready ? filtered.length : null}
+      />
+      <RankingScrollArea className="library-table-wrap" label="完整回放列表">
         <table className="survival-table">
           <caption className="sr-only">完整回放库</caption>
           <thead>
@@ -444,29 +422,41 @@ export function ReplayLibraryPanel({
           </thead>
           <tbody>
             {filtered.map((entry) => (
-              <tr key={entry.key}>
+              <tr key={entry.key} data-replay-key={entry.key}>
                 <td>
-                  <strong>{characterNames[entry.characterId]}</strong>
-                  <small>种子 {entry.seed}</small>
-                  {mode === 'classic' &&
-                    equivalents?.some((g) => g.keeper === entry.key) && (
-                      <small>等价组参照</small>
+                  <div className="records-player">
+                    {presentation === 'records' && (
+                      <CharacterArt characterId={entry.characterId} />
                     )}
-                  {mode === 'classic' &&
-                    equivalents?.some((g) => g.copies.includes(entry.key)) && (
-                      <small>等价副本</small>
-                    )}
+                    <div>
+                      <strong>{characterNames[entry.characterId]}</strong>
+                      <small>种子 {entry.seed}</small>
+                      {mode === 'classic' &&
+                        equivalents?.some((g) => g.keeper === entry.key) && (
+                          <small>等价组参照</small>
+                        )}
+                      {mode === 'classic' &&
+                        equivalents?.some((g) =>
+                          g.copies.includes(entry.key),
+                        ) && <small>等价副本</small>}
+                    </div>
+                  </div>
                 </td>
                 <td>
-                  {entry.completed ? '已完成' : '进行中片段'}
+                  <span
+                    className="records-state"
+                    data-status={entry.completed ? 'complete' : 'partial'}
+                  >
+                    {entry.completed ? '已完成' : '进行中片段'}
+                  </span>
                   <small>
                     {entry.mode === 'survival'
                       ? survivalDifficultyLabel(entry.difficulty ?? undefined)
-                      : '经典'}
+                      : classicDifficultyLabel(entry.difficulty ?? undefined)}
                   </small>
                 </td>
                 <td>{entry.rooms} 房</td>
-                <td>
+                <td className="records-score">
                   {entry.score === null
                     ? '—'
                     : `${entry.score.toFixed(scoreDecimals)} 分`}
@@ -524,6 +514,7 @@ export function ReplayLibraryPanel({
                     </Button>
                     <Button
                       variant="secondary"
+                      className="records-delete"
                       disabled={busy}
                       onClick={() => setDeleting(entry)}
                     >
@@ -535,11 +526,33 @@ export function ReplayLibraryPanel({
             ))}
           </tbody>
         </table>
-      </div>
+      </RankingScrollArea>
       {ready && !filtered.length && (
         <p className="library-empty">
           暂无符合筛选的完整回放。已有的最近回放可手动入库，旧缓存不自动迁移。
         </p>
+      )}
+      {presentation === 'records' && (
+        <details
+          className="records-maintenance"
+          open={toolsOpen}
+          onToggle={(event) => {
+            if (
+              !event.currentTarget.open &&
+              (busy || reading || candidate || deleting)
+            )
+              event.currentTarget.open = true;
+            setToolsOpen(event.currentTarget.open);
+          }}
+        >
+          <summary>
+            回放管理与备份 <span>入库、导入、整库备份与技术说明</span>
+          </summary>
+          <p className="records-footnote">
+            独立保存在此浏览器的IndexedDB中，完成局自动入库，也可保留进行中片段。达到应用上限后停止新增，不自动删除；上方容量为两模式合计已存文本，不是浏览器剩余空间。
+          </p>
+          {maintenance}
+        </details>
       )}
       {deleting && (
         <div
@@ -558,7 +571,7 @@ export function ReplayLibraryPanel({
             {deleting.rooms} 房 ·{' '}
             {deleting.mode === 'survival'
               ? survivalDifficultyLabel(deleting.difficulty ?? undefined)
-              : '经典'}{' '}
+              : classicDifficultyLabel(deleting.difficulty ?? undefined)}{' '}
             · 入库于 {new Date(deleting.savedAt).toLocaleString('zh-CN')}
           </p>
           <Button

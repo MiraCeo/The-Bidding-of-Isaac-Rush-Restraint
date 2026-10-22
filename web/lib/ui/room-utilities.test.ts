@@ -1,3 +1,5 @@
+import { createPlayerProfile, playerProfileKey } from './player-profile';
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { decodedDownload } from './file-export.test-helper';
 
@@ -55,6 +57,21 @@ async function mount(node: ReactNode) {
   await act(async () => root.render(node));
 }
 
+async function returnToGame() {
+  const navigation = element('nav[aria-label="主导航"]');
+  const current = navigation.querySelector(
+    '[aria-current="page"]',
+  )?.textContent;
+  if (current === '设置' || current === '规则') {
+    expect(
+      [...container.querySelectorAll('.ranking-page-heading button')].some(
+        (el) => /返回游戏|返回主菜单/.test(el.textContent ?? ''),
+      ),
+    ).toBe(false);
+    await click(button('游戏', navigation));
+  } else await click(button('返回游戏'));
+}
+
 function element<T extends Element>(selector: string): T {
   const found = container.querySelector<T>(selector);
   if (!found) throw new Error(`Missing element ${selector}`);
@@ -104,7 +121,7 @@ async function openData() {
 }
 async function upload(source: string) {
   const entry = Array.from(container.querySelectorAll('button')).find(
-    (b) => b.textContent?.trim() === '导入文件',
+    (b) => b.textContent?.trim() === '读取对局文件',
   );
   if (entry) await click(entry);
   const input = element<HTMLInputElement>('input[aria-label="导入对局文件"]');
@@ -198,7 +215,7 @@ describe('room utility interaction without a real browser', () => {
     );
     expect(element('.room-game-content').hasAttribute('hidden')).toBe(true);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element('input[aria-label="竞拍奖励 A 的数值"]')).toBe(original);
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
@@ -317,7 +334,7 @@ describe('room utility interaction without a real browser', () => {
     expect(button('导出存档').disabled).toBe(false);
     await click(button('设置', element('nav[aria-label="主导航"]')));
     await click(button('恢复默认设置'));
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(
       element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]').value,
     ).toBe('12');
@@ -355,9 +372,13 @@ describe('room utility interaction without a real browser', () => {
           ),
         ).toBe(false);
       else expect(container.querySelector('.data-management')).toBeNull();
+      expect(container.querySelector('.page-context-bar')).toBeNull();
       await click(button('规则', element('nav')));
+      expect(container.querySelector('.page-context-bar')).toBeNull();
+      expect(container.querySelector('[aria-label="查看角色构筑"]')).toBeNull();
+      await returnToGame();
       await click(element<HTMLButtonElement>('[aria-label="查看角色构筑"]'));
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(localStorage.getItem(gameSaveKey)).toBe(before);
       if (phase !== 'game_result')
         expect(parseGameSave(before).session.game.phase).toBe(phase);
@@ -392,8 +413,11 @@ describe('room utility interaction without a real browser', () => {
     await click(button('设置', nav));
     expect(element('#room-utilities-title').textContent).toBe('设置');
     expect(container.querySelectorAll('fieldset.settings-group')).toHaveLength(
-      1,
+      3,
     );
+    expect(
+      container.querySelector('.settings-character-access'),
+    ).not.toBeNull();
     expect(container.querySelector('.save-panel')).toBeNull();
     await click(button('排行', nav));
     expect(element('.empty-ranking-state').textContent).toContain('暂无排行');
@@ -410,6 +434,12 @@ describe('room utility interaction without a real browser', () => {
   });
 
   it('preserves the chosen home-page character and only initializes the game after an explicit start', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
     const generate = vi.spyOn(roomGeneration, 'generateFloor');
     await mount(createElement(GameApp));
     const selected = element<HTMLInputElement>(
@@ -423,7 +453,7 @@ describe('room utility interaction without a real browser', () => {
       ).toBe(true);
       await click(element<HTMLButtonElement>('.character-start-button'));
       expect(generate).not.toHaveBeenCalled();
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(
         element<HTMLInputElement>('input[name="character"][value="azazel"]'),
       ).toBe(selected);
@@ -445,7 +475,7 @@ describe('room utility interaction without a real browser', () => {
       element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input'),
     );
     await click(
-      element<HTMLInputElement>('label[aria-label="默认展开共同市场"] input'),
+      element<HTMLInputElement>('label[aria-label="默认展开市场参考"] input'),
     );
     await click(
       element<HTMLInputElement>('label[aria-label="减少界面动效"] input'),
@@ -472,12 +502,18 @@ describe('room utility interaction without a real browser', () => {
     expect(container.querySelectorAll('.ranking-table tbody tr')).toHaveLength(
       20,
     );
-    expect(element('.ranking-table tbody td:nth-child(4)').textContent).toBe(
-      '0.0000',
-    );
+    expect(
+      element('.ranking-table tbody .ranking-metric-primary').textContent,
+    ).toBe('0.0000');
   });
 
   it('restores the home-page selection and scroll position after reading rules with Escape', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
     await mount(createElement(GameApp));
     await click(
       element<HTMLInputElement>('input[name="character"][value="eden"]'),
@@ -511,7 +547,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.settings-footer output').textContent).toContain(
       '当前会话',
     );
-    await click(button('返回游戏'));
+    await returnToGame();
     await click(
       element<HTMLInputElement>('input[name="character"][value="isaac"]'),
     );
@@ -538,7 +574,7 @@ describe('room utility interaction without a real browser', () => {
       );
       expect(document.activeElement).toBe(element('#room-utilities-title'));
       expect(container.querySelectorAll('.topbar')).toHaveLength(1);
-      await click(button('返回游戏'));
+      await returnToGame();
       expect(container.querySelector('#room-utilities')).toBeNull();
       expect(element<HTMLDivElement>('.room-game-content').hidden).toBe(false);
       expect(element<HTMLInputElement>('#bid-A')).toBe(originalInput);
@@ -563,7 +599,7 @@ describe('room utility interaction without a real browser', () => {
     );
     await click(button('排行', element('nav[aria-label="主导航"]')));
     await click(button('资金排行'));
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element<HTMLInputElement>('#bid-B').checked).toBe(true);
     expect(
       element<HTMLInputElement>(
@@ -587,7 +623,7 @@ describe('room utility interaction without a real browser', () => {
     window.scrollTo(0, 760);
     await click(button('设置', element('nav[aria-label="主导航"]')));
     expect(window.scrollY).toBe(0);
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(window.scrollY).toBe(340);
     expect(document.activeElement).toBe(
       button('游戏', element('nav[aria-label="主导航"]')),
@@ -640,12 +676,12 @@ describe('room utility interaction without a real browser', () => {
     expect(container.querySelectorAll('.ranking-table tbody tr')).toHaveLength(
       20,
     );
-    expect(container.querySelectorAll('.ranking-table th')).toHaveLength(5);
+    expect(
+      container.querySelectorAll('.ranking-table thead th[scope="col"]'),
+    ).toHaveLength(4);
     await click(button('规则', element('nav[aria-label="主导航"]')));
-    await click(
-      element<HTMLAnchorElement>('.rules-contents a[href="#rule-items"]'),
-    );
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(true);
+    await click(button('道具图鉴', element('nav[aria-label="规则分类"]')));
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(false);
     await setInput('input[type="search"]', '福袋');
     expect(container.querySelectorAll('.rule-item-card')).toHaveLength(1);
     expect(element('.rule-item-card').textContent).toContain('扰乱获得不返款');
@@ -653,16 +689,14 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.rule-item-grid output').textContent).toContain('没有匹配');
   });
 
-  it('opens the optional item catalog from the rule directory without starting a game', async () => {
+  it('opens the item catalog peer tab without starting a game', async () => {
     const generate = vi.spyOn(roomGeneration, 'generateFloor');
     await mount(createElement(GameApp));
     await click(button('规则', element('nav[aria-label="主导航"]')));
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(false);
-    expect(container.querySelectorAll('.rules-contents a')).toHaveLength(10);
-    await click(
-      element<HTMLAnchorElement>('.rules-contents a[href="#rule-items"]'),
-    );
-    expect(element<HTMLDetailsElement>('.rule-catalog').open).toBe(true);
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(true);
+    expect(container.querySelectorAll('.rules-contents a')).toHaveLength(9);
+    await click(button('道具图鉴', element('nav[aria-label="规则分类"]')));
+    expect(element<HTMLElement>('.rule-item-directory').hidden).toBe(false);
     await setInput('input[type="search"]', '屏障');
     expect(container.querySelectorAll('.rule-item-card')).toHaveLength(2);
     await setInput('input[type="search"]', '积分加算');
@@ -716,7 +750,7 @@ describe('room utility interaction without a real browser', () => {
     expect(element('.game-client').getAttribute('data-reduce-motion')).toBe(
       'true',
     );
-    await click(button('返回游戏'));
+    await returnToGame();
     await click(button('扰乱', element('.action-mode-switch')));
     await click(element<HTMLInputElement>('#disrupt-B'));
     await click(element<HTMLButtonElement>('.confirm-button'));
@@ -724,9 +758,9 @@ describe('room utility interaction without a real browser', () => {
       /^\+\d+\.\d{4}$/,
     );
     await click(button('积分排行'));
-    expect(element('.ranking-table tbody td:nth-child(7)').textContent).toMatch(
-      /^\d+\.\d{4}$/,
-    );
+    expect(
+      element('.ranking-table tbody .ranking-metric-primary').textContent,
+    ).toMatch(/^\d+\.\d{4}$/);
     await click(button('进入下一房间'));
     expect(element('#ranking-drawer').getAttribute('aria-hidden')).toBe(
       'false',
@@ -758,7 +792,7 @@ describe('room utility interaction without a real browser', () => {
       element<HTMLInputElement>('label[aria-label="默认展开资金排行"] input')
         .checked,
     ).toBe(false);
-    await click(button('返回游戏'));
+    await returnToGame();
     expect(element('.round-status').textContent).toBe(statusBefore);
     expect(element('#ranking-drawer').getAttribute('aria-hidden')).toBe('true');
   });

@@ -1,4 +1,6 @@
+import { prepareAchievementBaseline } from './achievements/registry';
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
+import { validateGrowthProfilePair, type GrowthContext } from './achievements/lifecycle';
 import type { SurvivalGameState } from '../game/survival-session';
 import type { RoomDraft } from './game-session';
 import { readPlayerProfile, type PlayerProfile } from './player-profile';
@@ -37,14 +39,16 @@ export function serializeSurvivalBackup(
   draft: RoomDraft | null,
   profile: PlayerProfile,
   now = new Date(),
+  growth?: GrowthContext,
 ): string {
+  if (growth) validateGrowthProfilePair(profile, growth);
   return stringifyChecked({
     format: 'the-bidding-of-isaac-save',
     version: currentFileVersion,
     mode: 'survival',
     kind: 'backup',
     savedAt: now.toISOString(),
-    checkpoint: JSON.parse(serializeSurvivalCheckpoint(game, draft, now)),
+    checkpoint: JSON.parse(serializeSurvivalCheckpoint(game, draft, now, growth)),
     replay: JSON.parse(
       serializeSurvivalReplay(
         createSurvivalReplay(game),
@@ -52,7 +56,7 @@ export function serializeSurvivalBackup(
         now,
       ),
     ),
-    profile: readPlayerProfile(profile),
+    profile: prepareAchievementBaseline(readPlayerProfile(profile), now),
   });
 }
 export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
@@ -81,6 +85,7 @@ export function parseSurvivalBackup(source: string): SurvivalBackupDocument {
   const checkpoint = parseSurvivalCheckpoint(JSON.stringify(doc.checkpoint));
   const replay = parseSurvivalReplay(JSON.stringify(doc.replay));
   equalBackupReplay(replay.replay, createSurvivalReplay(checkpoint.game));
+  if (checkpoint.growth) validateGrowthProfilePair(readPlayerProfile(doc.profile), checkpoint.growth);
   return {
     format: 'the-bidding-of-isaac-save',
     version: currentFileVersion,

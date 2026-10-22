@@ -1,14 +1,18 @@
+import { SurvivalRecordCard } from './survival-record-card';
+import { BackupLibrarySection } from './backup-library-section';
+import { ProgressOverview } from './progress-overview';
+import { CompletionHistoryPanel } from './completion-history-panel';
+import { AchievementProgress } from './achievement-progress';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Coins } from 'lucide-react';
-import { GameBrand } from './game-brand';
+import { ArrowLeft } from 'lucide-react';
+import { GameHeader } from './game-header';
 import { UtilityPageHeading } from './utility-page-heading';
 import { GameNavigation } from './game-navigation';
 import { useSessionTools } from './session-context';
 import { useDataManagement } from './use-data-management';
 import { DataManagement, dataTaskTitle } from './data-management';
 import { SurvivalDataManagement } from './survival-data-management';
-import { characterNames } from '@/lib/game';
 import { loadPlayerProfile } from '@/lib/ui/game-save';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import type { SurvivalClientSession } from '@/lib/ui/survival-client';
@@ -19,11 +23,8 @@ import {
   type SurvivalReplayDocument,
 } from '@/lib/ui/survival-persistence';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import { appVersion, readBuildVersion } from '@/lib/ui/game-version';
-import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 import type { RoomUtilityPanel } from './room-utilities';
-import { currentFileVersion } from '@/lib/ui/file-protocol';
 import { StorageDiagnostics } from './storage-diagnostics';
 import {
   ReplayLibraryPanel,
@@ -37,13 +38,21 @@ import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import { PlayerStatistics, type StatisticsFilters } from './player-statistics';
 export { progressChangedEvent } from '@/lib/ui/profile-events';
 
-type ProgressTab = 'overview' | 'records' | 'statistics' | 'files';
+type ProgressTab =
+  | 'overview'
+  | 'records'
+  | 'statistics'
+  | 'achievements'
+  | 'files';
 export interface ProgressSelection {
   tab: ProgressTab;
   mode: 'classic' | 'survival';
   libraryFilters?: Partial<Record<'classic' | 'survival', LibraryFilters>>;
   statisticsFilters?: Partial<
     Record<'classic' | 'survival', StatisticsFilters>
+  >;
+  recordSources?: Partial<
+    Record<'classic' | 'survival', 'replays' | 'results'>
   >;
 }
 function recentSurvival() {
@@ -102,7 +111,8 @@ export function ProgressCenter({
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
 }) {
   const tools = useSessionTools()!;
   const [tab, setTab] = useState<ProgressTab>(
@@ -124,6 +134,15 @@ export function ProgressCenter({
   const [statisticsFilters, setStatisticsFilters] = useState(
     initialSelection?.statisticsFilters ?? {},
   );
+  const [recordSources, setRecordSources] = useState(
+    initialSelection?.recordSources ?? {},
+  );
+  const recordSource = recordSources[mode] ?? 'replays';
+  const recordFilters = libraryFilters[mode] ?? {
+    role: 'all',
+    difficulty: 'all',
+    completion: 'all',
+  };
   const [profile, setProfile] = useState(() =>
     loadPlayerProfile(getPreferenceStorage()),
   );
@@ -137,8 +156,21 @@ export function ProgressCenter({
   });
   const survivalGame = survival?.game;
   useEffect(() => {
-    onSelectionChange({ tab, mode, libraryFilters, statisticsFilters });
-  }, [tab, mode, libraryFilters, statisticsFilters, onSelectionChange]);
+    onSelectionChange({
+      tab,
+      mode,
+      libraryFilters,
+      statisticsFilters,
+      recordSources,
+    });
+  }, [
+    tab,
+    mode,
+    libraryFilters,
+    statisticsFilters,
+    recordSources,
+    onSelectionChange,
+  ]);
   const survivalLog = useMemo(
     () => (survivalGame ? createSurvivalReplay(survivalGame) : null),
     [survivalGame],
@@ -176,12 +208,6 @@ export function ProgressCenter({
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
   }, [task, cancel, onNavigate]);
-  const classic = tools.session.game;
-  const classicActive = classic.phase !== 'character_selection';
-  const aiRunning =
-    !!survivalGame &&
-    !survivalGame.activePlayerIds.includes('human') &&
-    survivalGame.phase !== 'competition_complete';
   function chooseTab(next: ProgressTab) {
     data.cancel();
     setTab(next);
@@ -190,57 +216,23 @@ export function ProgressCenter({
     data.cancel();
     setMode(next);
   }
-  const contextGame =
-    origin === 'survival'
-      ? survivalGame
-      : origin === 'classic' && classicActive
-        ? classic
-        : null;
-  const contextHuman = contextGame?.players.find((player) => player.isHuman);
   return (
     <main className="ranking-page progress-page">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        navigation={
           <GameNavigation page="progress" onPageChange={onNavigate} />
-          {contextGame ? (
-            <div className="round-status">
-              <span className="status-chip">
-                第 {contextGame.floorIndex + 1} 层 · 房间{' '}
-                {contextGame.roomIndex + 1}/5
-              </span>
-              <button
-                type="button"
-                className="status-chip build-entry"
-                aria-label="查看角色构筑"
-                onClick={() => onNavigate('build')}
-              >
-                {characterNames[contextGame.selectedCharacter]}{' '}
-                <span aria-hidden="true">▾</span>
-              </button>
-              <span className="status-chip status-chip-money">
-                <Coins aria-hidden="true" />
-                <strong>{contextHuman?.money ?? '—'}</strong>
-              </span>
-            </div>
-          ) : origin === 'menu' ? (
-            <span className="status-chip">主菜单 · {appVersion}</span>
-          ) : (
-            <div className="character-step" aria-label="当前步骤">
-              <span>{origin === 'survival' ? '生存模式' : '经典模式'}</span>
-              <strong>未开始对局</strong>
-            </div>
-          )}
-        </div>
-      </header>
+        }
+      />
       <section
         className="ranking-stage game-tools-stage progress-stage"
         aria-labelledby="progress-title"
       >
         <UtilityPageHeading
+          inlineDescription
           eyebrow="PLAYER PROGRESS"
           title={data.task === 'settings' ? '进度' : dataTaskTitle(data)}
           titleId="progress-title"
+          description="对局与玩家档案分别保存 · 回放只读"
         >
           <Button
             variant="secondary"
@@ -256,13 +248,13 @@ export function ProgressCenter({
                 : '返回游戏'}
           </Button>
         </UtilityPageHeading>
-        <p className="progress-intro">对局与玩家档案分别保存 · 回放只读</p>
         <nav className="progress-tabs" aria-label="进度分类">
           {(
             [
               ['overview', '总览'],
               ['records', '对局记录'],
               ['statistics', '统计'],
+              ['achievements', '成就'],
               ['files', '存档与备份'],
             ] as const
           ).map(([key, label]) => (
@@ -278,85 +270,38 @@ export function ProgressCenter({
           ))}
         </nav>
         {tab === 'overview' ? (
-          <>
-            <div className="progress-overview-cards">
-              <article className="progress-match-card">
-                <p className="eyebrow">CLASSIC</p>
-                <h3>经典模式</h3>
-                <strong>
-                  {classicActive
-                    ? `${characterNames[classic.selectedCharacter]} · ${classic.phase === 'game_result' ? '已结束' : '进行中'}`
-                    : '尚未开始对局'}
-                </strong>
-                <p>
-                  {classicActive
-                    ? `第 ${classic.floorIndex + 1} 层 · 房间 ${classic.roomIndex + 1}/5 · 已结算 ${tools.session.replay?.rooms.length ?? 0}/15 房`
-                    : '每种模式各保留一份自动续玩存档。'}
-                </p>
-                <small>
-                  {tools.restoreMessage ||
-                    (tools.autoSaveStatus === 'saved'
-                      ? '当前对局已自动保存'
-                      : tools.autoSaveStatus === 'session'
-                        ? '自动保存未完成，可导出文件保留进度。'
-                        : '暂无需要保存的对局')}
-                </small>
-                <Button onClick={onClassic}>
-                  {classicActive
-                    ? classic.phase === 'game_result'
-                      ? '查看经典结果'
-                      : '继续经典对局'
-                    : '进入经典模式'}
-                </Button>
-              </article>
-              <article className="progress-match-card">
-                <p className="eyebrow">SURVIVAL</p>
-                <h3>生存模式</h3>
-                <strong>
-                  {survivalGame
-                    ? `${characterNames[survivalGame.selectedCharacter]} · ${survivalGame.phase === 'competition_complete' ? '已结束' : aiRunning ? 'AI续赛中' : '进行中'}`
-                    : '尚未开始对局'}
-                </strong>
-                <p>
-                  {survivalGame
-                    ? `第 ${survivalGame.floorIndex + 1} 层 · 房间 ${survivalGame.roomIndex + 1}/5 · ${survivalGame.activePlayerIds.length} 人存活 · ${survivalDifficultyLabel(survivalGame.aiDifficulty)}`
-                    : '逐层淘汰，真人出局后由AI完成整局。'}
-                </p>
-                <small>
-                  {survivalStatus ||
-                    (survivalGame
-                      ? '当前对局保留在会话中'
-                      : '暂无需要保存的对局')}
-                </small>
-                <Button onClick={onSurvival}>
-                  {survivalGame
-                    ? survivalGame.phase === 'competition_complete'
-                      ? '查看生存结果'
-                      : '继续生存对局'
-                    : '进入生存模式'}
-                </Button>
-              </article>
-            </div>
-            <section className="settings-group progress-profile">
-              <h3>玩家档案</h3>
-              <p>
-                {profile.message ? (
-                  '玩家档案暂不可核验，不能将读取失败当作记录为空。'
-                ) : (
-                  <>
-                    已保留 {profile.profile.history.length}{' '}
-                    条完成记录，最多保留最近200条。这不是完整回放库。
-                  </>
-                )}
-              </p>
-              {profile.message && (
-                <output className="save-message">{profile.message}</output>
-              )}
-              <p className="utility-notice">
-                成就与角色解锁将在规则确定、功能实现后开放，当前不发放成就或限制角色。
-              </p>
-            </section>
-          </>
+          <ProgressOverview
+            classic={tools.session}
+            survival={survival}
+            profile={profile.profile}
+            profileMessage={profile.message}
+            classicSaveMessage={
+              tools.restoreMessage ||
+              (tools.autoSaveStatus === 'saved'
+                ? '当前对局已自动保存'
+                : tools.autoSaveStatus === 'session'
+                  ? '自动保存未完成，可导出文件保留进度。'
+                  : '暂无需要保存的对局')
+            }
+            survivalSaveMessage={
+              (!survivalGame && survivalStatus === '生存进度待保存。'
+                ? ''
+                : survivalStatus) ||
+              (survivalGame ? '当前对局保留在会话中' : '暂无需要保存的对局')
+            }
+            decimals={tools.preferences.scoreDecimals}
+            onClassic={onClassic}
+            onSurvival={onSurvival}
+            onOpen={(next, nextMode) => {
+              if (nextMode) setMode(nextMode);
+              chooseTab(next);
+            }}
+          />
+        ) : tab === 'achievements' ? (
+          <AchievementProgress
+            profile={profile.profile}
+            message={profile.message}
+          />
         ) : (
           <>
             <div className="progress-mode-tabs" aria-label="记录与存档模式">
@@ -374,29 +319,49 @@ export function ProgressCenter({
               </Button>
             </div>
             {tab === 'files' ? (
-              <>
-                <p className="progress-intro">
-                  续玩保留当前位置与草稿；回放保留过程；完整备份包含玩家档案。导入先预览，确认后才载入。
-                </p>
-                <div className="progress-data-content">
-                  {mode === 'classic' ? (
-                    <DataManagement data={data} />
-                  ) : (
-                    <SurvivalDataManagement
-                      recentOverride={{
-                        doc: recent.document,
-                        error: recent.message,
-                      }}
-                      session={survival}
-                      imported={null}
-                      onImport={onImport}
-                      onReplay={onSurvivalReplay}
-                    />
+              <section className="files-dashboard" aria-label="存档与备份管理">
+                <div className="backup-page-heading">
+                  <div>
+                    <p className="eyebrow">SAVES &amp; BACKUPS</p>
+                    <h3>存档与备份</h3>
+                  </div>
+                  <span>对局按模式保存 · 档案与回放库两模式共用</span>
+                </div>
+                <div className="backup-page-note">
+                  读取文件先预览，确认后才写入；续玩存档、玩家档案与整库备份保存不同内容。
+                </div>
+                <div className="backup-files-grid">
+                  <div
+                    className={`progress-data-content ${data.task !== 'settings' ? 'backup-task-active' : ''}`}
+                  >
+                    {mode === 'classic' ? (
+                      <DataManagement data={data} />
+                    ) : (
+                      <SurvivalDataManagement
+                        recentOverride={{
+                          doc: recent.document,
+                          error: recent.message,
+                        }}
+                        session={survival}
+                        saveStatus={survivalStatus}
+                        imported={null}
+                        onImport={onImport}
+                        onReplay={onSurvivalReplay}
+                      />
+                    )}
+                  </div>
+                  {(mode === 'survival' || data.task === 'settings') && (
+                    <div className="backup-side-stack">
+                      <PlayerProfileManagement key={`profile-${mode}`} />
+                      <BackupLibrarySection
+                        key={`library-${mode}`}
+                        onRecords={() => chooseTab('records')}
+                      />
+                    </div>
                   )}
                 </div>
-                <PlayerProfileManagement key={mode} />
                 <StorageDiagnostics />
-              </>
+              </section>
             ) : tab === 'statistics' ? (
               <PlayerStatistics
                 key={mode}
@@ -410,194 +375,104 @@ export function ProgressCenter({
                 }
               />
             ) : (
-              <>
+              <section className="progress-records" aria-label="对局记录列表">
                 {mode === 'classic' ? (
                   <DataManagement data={data} scope="records" />
                 ) : (
-                  <section className="settings-group progress-replays">
-                    <h3>生存对局与回放</h3>
-                    {survivalLog?.rooms.length ? (
-                      <div className="data-record-row">
-                        <div className="data-record-info">
-                          <strong>
-                            本局 · {characterNames[survivalLog.characterId]}
-                          </strong>
-                          <small>
-                            已结算 {survivalLog.rooms.length} 房 ·{' '}
-                            {survivalLog.final ? '已结束' : '进行中'}
-                          </small>
-                        </div>
-                        <Button
-                          onClick={() =>
-                            onSurvivalReplay({
-                              format: 'the-bidding-of-isaac-replay',
-                              version: currentFileVersion,
-                              kind: 'replay',
-                              mode: 'survival',
-                              exportedAt: new Date().toISOString(),
-                              exportedBuild: readBuildVersion(),
-                              replay: survivalLog,
-                            })
-                          }
-                        >
-                          查看本局生存回放
-                        </Button>
-                      </div>
-                    ) : (
-                      <p>本局尚无已结算房间。</p>
-                    )}
-                    {recent.document &&
-                      (recent.document.replay.id !== survivalLog?.id ||
-                        recent.document.replay.rooms.length !==
-                          survivalLog?.rooms.length ||
-                        !!recent.document.replay.final !==
-                          !!survivalLog?.final) && (
-                        <div className="data-record-row">
-                          <div className="data-record-info">
-                            <strong>
-                              最近完成 ·{' '}
-                              {
-                                characterNames[
-                                  recent.document.replay.characterId
-                                ]
-                              }
-                            </strong>
-                            <small>
-                              {recent.document.replay.rooms.length} 房 ·
-                              只读查看
-                            </small>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            onClick={() => onSurvivalReplay(recent.document!)}
-                          >
-                            查看最近完成的生存回放
-                          </Button>
-                        </div>
-                      )}
-                    {recent.message && (
-                      <output className="save-message">{recent.message}</output>
-                    )}
-                    {survivalStatus && (
-                      <output className="save-message">{survivalStatus}</output>
-                    )}
-                  </section>
+                  <SurvivalRecordCard
+                    log={survivalLog}
+                    recent={recent.document}
+                    error={recent.message}
+                    saveStatus={survivalStatus}
+                    onReplay={onSurvivalReplay}
+                    onReturnGame={onSurvival}
+                  />
                 )}
-                <section className="settings-group">
-                  <h3>已登记的完成记录</h3>
-                  <p>这里只记录结果，不承诺每条记录都保留完整回放。</p>
-                  <details className="progress-light-history">
-                    <summary>
-                      {profile.message ? (
-                        '完成记录暂不可核验'
-                      ) : (
-                        <>
-                          展开轻量完成记录（
-                          {
-                            profile.profile.history.filter(
-                              (row) => (row.mode ?? 'classic') === mode,
-                            ).length
-                          }{' '}
-                          条）
-                        </>
-                      )}
-                    </summary>
-                    <div className="progress-history-wrap">
-                      <table className="survival-table">
-                        <caption className="sr-only">玩家完成记录</caption>
-                        <thead>
-                          <tr>
-                            <th>模式</th>
-                            <th>角色</th>
-                            <th>难度</th>
-                            <th>结果</th>
-                            <th>名次</th>
-                            <th>累计分数</th>
-                            <th>完成时间</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {profile.profile.history
-                            .filter((row) => (row.mode ?? 'classic') === mode)
-                            .slice()
-                            .reverse()
-                            .map((row) => (
-                              <tr key={row.key}>
-                                <td>{mode === 'classic' ? '经典' : '生存'}</td>
-                                <td>{characterNames[row.characterId]}</td>
-                                <td>
-                                  {mode === 'survival'
-                                    ? survivalDifficultyLabel(row.aiDifficulty)
-                                    : '—'}
-                                </td>
-                                <td>
-                                  {mode === 'classic'
-                                    ? '已完成'
-                                    : row.status === 'survived'
-                                      ? '存活'
-                                      : row.eliminationFloorIndex != null
-                                        ? `第${row.eliminationFloorIndex + 1}层淘汰`
-                                        : '已完成'}
-                                </td>
-                                <td>{row.rank}</td>
-                                <td>
-                                  {row.finalScore.toFixed(
-                                    tools.preferences.scoreDecimals,
-                                  )}
-                                </td>
-                                <td>
-                                  {new Date(row.completedAt).toLocaleString(
-                                    'zh-CN',
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {!profile.message &&
-                      !profile.profile.history.some(
-                        (row) => (row.mode ?? 'classic') === mode,
-                      ) && (
-                        <p className="utility-notice">暂无此模式的完成记录。</p>
-                      )}
-                  </details>
-                  {profile.message && (
-                    <output className="save-message">{profile.message}</output>
+                <nav className="records-sources" aria-label="记录来源">
+                  <button
+                    type="button"
+                    aria-label="完整回放"
+                    aria-pressed={recordSource === 'replays'}
+                    onClick={() =>
+                      setRecordSources((old) => ({ ...old, [mode]: 'replays' }))
+                    }
+                  >
+                    完整回放 <span>过程与逐房复盘</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="完成结果"
+                    aria-pressed={recordSource === 'results'}
+                    onClick={() =>
+                      setRecordSources((old) => ({ ...old, [mode]: 'results' }))
+                    }
+                  >
+                    完成结果 <span>档案中保留的最终成绩</span>
+                  </button>
+                </nav>
+                <div
+                  className="records-source-panel"
+                  hidden={recordSource !== 'results'}
+                  inert={recordSource !== 'results'}
+                >
+                  <CompletionHistoryPanel
+                    profile={profile.profile}
+                    message={profile.message}
+                    mode={mode}
+                    filters={recordFilters}
+                    decimals={tools.preferences.scoreDecimals}
+                    onFiltersChange={(filters) =>
+                      setLibraryFilters((old) => ({ ...old, [mode]: filters }))
+                    }
+                  />
+                </div>
+                <div
+                  className="records-source-panel"
+                  hidden={recordSource !== 'replays'}
+                  inert={recordSource !== 'replays'}
+                >
+                  {recordSource === 'replays' && (
+                    <ReplayLibraryPanel
+                      presentation="records"
+                      filters={recordFilters}
+                      key={mode}
+                      mode={mode}
+                      current={
+                        mode === 'classic'
+                          ? tools.session.replay
+                            ? newLibraryDocument({
+                                mode: 'classic',
+                                replay: tools.session.replay,
+                              })
+                            : null
+                          : survivalLog
+                            ? newLibraryDocument({
+                                mode: 'survival',
+                                replay: survivalLog,
+                              })
+                            : null
+                      }
+                      recent={
+                        mode === 'classic' ? recentClassic : recent.document
+                      }
+                      archiveStatus={archiveStatus[mode]}
+                      scoreDecimals={tools.preferences.scoreDecimals}
+                      initialFilters={libraryFilters[mode]}
+                      onFiltersChange={(filters) =>
+                        setLibraryFilters((old) => ({
+                          ...old,
+                          [mode]: filters,
+                        }))
+                      }
+                      onReplay={(doc) =>
+                        doc.mode === 'classic'
+                          ? onClassicReplay(doc)
+                          : onSurvivalReplay(doc)
+                      }
+                    />
                   )}
-                </section>
-                <ReplayLibraryPanel
-                  key={mode}
-                  mode={mode}
-                  current={
-                    mode === 'classic'
-                      ? tools.session.replay
-                        ? newLibraryDocument({
-                            mode: 'classic',
-                            replay: tools.session.replay,
-                          })
-                        : null
-                      : survivalLog
-                        ? newLibraryDocument({
-                            mode: 'survival',
-                            replay: survivalLog,
-                          })
-                        : null
-                  }
-                  recent={mode === 'classic' ? recentClassic : recent.document}
-                  archiveStatus={archiveStatus[mode]}
-                  scoreDecimals={tools.preferences.scoreDecimals}
-                  initialFilters={libraryFilters[mode]}
-                  onFiltersChange={(filters) =>
-                    setLibraryFilters((old) => ({ ...old, [mode]: filters }))
-                  }
-                  onReplay={(doc) =>
-                    doc.mode === 'classic'
-                      ? onClassicReplay(doc)
-                      : onSurvivalReplay(doc)
-                  }
-                />
-              </>
+                </div>
+              </section>
             )}
           </>
         )}

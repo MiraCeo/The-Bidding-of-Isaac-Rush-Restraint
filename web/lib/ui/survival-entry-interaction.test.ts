@@ -84,7 +84,12 @@ it.each(['classic', 'survival'] as const)(
       node<HTMLInputElement>('.data-candidate input[type="checkbox"]'),
     );
     await click(button(label));
-    expect(onImport).toHaveBeenCalledWith(expect.anything(), true, changed);
+    expect(onImport).toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+      changed,
+      expect.any(AbortSignal),
+    );
   },
 );
 afterEach(async () => {
@@ -266,7 +271,9 @@ describe('formal independent survival entry', () => {
     const incoming = withdraw(startSurvivalClient('lost', 42, 'easy'));
     await upload(serializeSurvivalCheckpoint(incoming.game));
     await click(button('载入生存对局'));
-    expect(container.textContent).toContain('难度 简单');
+    expect(
+      container.querySelector('.settlement-status-facts')?.textContent,
+    ).toContain('难度简单');
     expect(container.querySelector('.survival-replay')).toBeNull();
     expect(button('积分排行')).toBeTruthy();
     expect(
@@ -322,7 +329,7 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('经典模式'));
     await settings();
-    await click(button('导入文件'));
+    await click(button('读取对局文件'));
     await upload(
       serializeSurvivalReplay(
         createSurvivalReplay(withdraw(startSurvivalClient('isaac', 42)).game),
@@ -347,7 +354,7 @@ describe('formal independent survival entry', () => {
       },
     } as unknown as Storage);
     await click(button('重新选角'));
-    await click(button('确认重新选角'));
+    await click(button('确认重新开始'));
     expect(container.textContent).toContain('未放弃当前局');
     expect(button('出价竞拍')).toBeTruthy();
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
@@ -361,7 +368,7 @@ describe('formal independent survival entry', () => {
     expect(node('[role="tab"][aria-selected="true"]').textContent).toBe(
       '积分排行',
     );
-    expect(node('.survival-utility h2').textContent).toBe('当前积分排行');
+    expect(node('.survival-utility h2').textContent).toBe('排行');
     expect(node('.survival-utility .ranking-table').textContent).toContain(
       '本房积分',
     );
@@ -373,7 +380,7 @@ describe('formal independent survival entry', () => {
     expect(node('[role="tab"][aria-selected="true"]').textContent).toBe(
       '争夺榜',
     );
-    expect(node('.survival-utility h2').textContent).toBe('本房争夺榜');
+    expect(node('.survival-utility h2').textContent).toBe('排行');
     expect(
       container.querySelectorAll('.survival-utility .contest-panel'),
     ).toHaveLength(2);
@@ -382,7 +389,7 @@ describe('formal independent survival entry', () => {
     ].find((t) => t.textContent === '生存榜')!;
     await click(survivalTab);
     expect(node('.survival-board-table thead').textContent).toContain(
-      '玩家状态第 1 层进行中累计分数',
+      '玩家状态累计分数第 1 层进行中',
     );
     for (const player of session.game.players) {
       const row = node(`[data-player-id="${player.id}"]`),
@@ -420,28 +427,28 @@ describe('formal independent survival entry', () => {
   it('offers four tiers, defaults to standard and locks the selected tier after start', async () => {
     await mount();
     await click(button('生存模式'));
-    const select = node<HTMLSelectElement>('select[aria-label="生存AI难度"]');
-    expect(select.value).toBe('standard');
-    expect([...select.options].map((o) => o.text)).toEqual([
+    const radios = container.querySelectorAll<HTMLInputElement>(
+      '.survival-difficulty-options input',
+    );
+    expect([...radios].find((r) => r.checked)!.value).toBe('standard');
+    expect([...radios].map((r) => r.parentElement!.textContent)).toEqual([
       '简单',
       '标准',
       '困难',
       '最高',
     ]);
-    await act(async () => {
-      select.value = 'easy';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    await click(
+      node<HTMLInputElement>('.survival-difficulty-options input[value=easy]'),
+    );
     await click(button('返回主菜单'));
     await click(button('生存模式'));
     expect(
-      node<HTMLSelectElement>('select[aria-label="生存AI难度"]').value,
+      node<HTMLInputElement>('.survival-difficulty-options input:checked')
+        .value,
     ).toBe('easy');
     await click(node<HTMLInputElement>('input[value="isaac"]'));
     await click(button('开始游戏'));
-    expect(
-      container.querySelector('select[aria-label="生存AI难度"]'),
-    ).toBeNull();
+    expect(container.querySelector('.survival-difficulty-options')).toBeNull();
     expect(container.textContent).toContain('难度 简单');
     expect(
       parseSurvivalCheckpoint(localStorage.getItem(survivalSaveKey)!).game
@@ -460,9 +467,12 @@ describe('formal independent survival entry', () => {
   it('never offers survival difficulty in classic selection', async () => {
     await mount();
     await click(button('经典模式'));
-    expect(
-      container.querySelector('select[aria-label="生存AI难度"]'),
-    ).toBeNull();
+    expect(container.querySelector('[aria-label="生存AI难度设置"]')).toBeNull();
+    const picker = node<HTMLElement>('.classic-difficulty-picker');
+    expect(picker.querySelectorAll('input[type="radio"]')).toHaveLength(4);
+    expect(picker.querySelector<HTMLInputElement>('input:checked')!.value).toBe(
+      'highest',
+    );
   });
   it('opens three entries without starting a world, and tutorial remains isolated', async () => {
     const spy = vi.spyOn(kernel, 'startSurvivalGame');
@@ -495,9 +505,9 @@ describe('formal independent survival entry', () => {
     expect(doc.game.cutLines).toEqual([...survivalEntryCutLines]);
     expect(node('.survival-status').textContent).toContain('斩杀线 200');
     expect(doc.game.rules.floorStartingMoney).toBe(1000);
-    expect(node('.survival-status').textContent).toContain(
-      `资金 ${doc.game.players[0]!.money}`,
-    );
+    expect(
+      node('.page-context-bar .status-chip-money strong').textContent,
+    ).toBe(String(doc.game.players[0]!.money));
   });
   it('preserves the same draft across settings, main menu, classic and refresh', async () => {
     const session = seeded();
@@ -545,9 +555,11 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('规则', node('nav')));
     expect(container.textContent).toContain('S = R');
-    expect(container.textContent).toContain('25件');
+    await click(button('道具图鉴', node('.rules-tabs')));
+    expect(container.querySelectorAll('.rule-item-card')).toHaveLength(25);
+    await click(button('玩法规则', node('.rules-tabs')));
     expect(container.textContent).toContain('不提供黑王子之冠');
-    await click(button('返回游戏'));
+    await click(button('游戏', node('nav[aria-label="主导航"]')));
     await click(node('[aria-label="查看构筑与当前状态"]'));
     expect(container.textContent).not.toContain('终局王冠倍率');
     expect(container.textContent).not.toContain('NaN');
@@ -678,7 +690,7 @@ describe('formal independent survival entry', () => {
     await mount();
     await click(button('经典模式'));
     await settings();
-    await click(button('导入文件'));
+    await click(button('读取对局文件'));
     await upload(
       serializeSurvivalCheckpoint(startSurvivalClient('lost', 99).game),
     );
@@ -734,11 +746,11 @@ describe('formal independent survival entry', () => {
     await mount();
     const before = localStorage.getItem(survivalSaveKey);
     await click(button('重新选角'));
-    expect(node('dialog').textContent).toContain('放弃');
+    expect(node('dialog').textContent).toContain('结束当前对局');
     await click(button('取消'));
     expect(localStorage.getItem(survivalSaveKey)).toBe(before);
     await click(button('重新选角'));
-    await click(button('确认重新选角'));
+    await click(button('确认重新开始'));
     expect(container.textContent).toContain('选择角色');
     expect(localStorage.getItem(survivalSaveKey)).toBeNull();
     await act(async () => root.unmount());
@@ -810,10 +822,16 @@ describe('formal independent survival entry', () => {
           record.turns.every((turn) => turn.playerId !== 'human'),
         ),
     ).toBe(true);
-    expect(container.textContent).toContain('你的名次');
+    expect(container.textContent).toContain('你的最终名次');
+    expect(container.querySelectorAll('.final-table tbody tr')).toHaveLength(
+      20,
+    );
+    const savedFinal = localStorage.getItem(survivalSaveKey);
+    await click(button('分层成绩'));
     expect(
       container.querySelectorAll('.survival-board-table tbody tr'),
     ).toHaveLength(20);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(savedFinal);
     expect(localStorage.getItem(survivalLastCompletedKey)).not.toBeNull();
   }, 30000);
 });

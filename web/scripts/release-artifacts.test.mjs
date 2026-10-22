@@ -95,6 +95,7 @@ describe('release identity and offline deliverables', () => {
     expect(manifest.validation).toBeNull();
     expect(releaseReadme(manifest)).toContain('不能把它记为全量发布门禁通过');
     expect(releaseReadme(manifest)).toContain('未提交');
+    expect(releaseReadme(manifest)).toContain('进度 → 存档与备份');
     expect(() =>
       createArtifactManifest(
         { ...bundle, buildId: '000000000000' },

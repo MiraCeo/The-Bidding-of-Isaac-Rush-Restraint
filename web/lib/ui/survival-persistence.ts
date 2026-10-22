@@ -1,4 +1,7 @@
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
+import { resetLegacyGrowthContext, beginSurvivalGrowth, observeSurvivalGrowth, restoreGrowthContext, validateGrowthContext,
+  survivalGrowthOrder, validateGrowthProfilePair, type GrowthContext } from './achievements/lifecycle';
+import { playerProfileKey, readPlayerProfile } from './player-profile';
 import { measurePersistence } from './persistence-metrics';
 import { characterCatalog } from '../game/characters';
 import type { CharacterId, PlayerTurn } from '../game/item-types';
@@ -50,6 +53,7 @@ export const survivalSaveKey = 'bidding-survival-checkpoint-v5';
 export const survivalLastCompletedKey = 'bidding-survival-last-completed-v5';
 
 export interface SurvivalSaveDocument {
+  growth?: GrowthContext;
   format: 'the-bidding-of-isaac-save';
   version: typeof currentFileVersion;
   mode: 'survival';
@@ -197,7 +201,9 @@ export function serializeSurvivalCheckpoint(
   game: SurvivalGameState,
   draft: RoomDraft | null = null,
   now = new Date(),
+  growth?: GrowthContext,
 ): string {
+  if (growth) growth = resetLegacyGrowthContext(growth, survivalGrowthOrder(game));
   const facts = createSurvivalRuleFacts(survivalParameters(game));
   return stringifyChecked({
     format: 'the-bidding-of-isaac-save',
@@ -214,6 +220,7 @@ export function serializeSurvivalCheckpoint(
     commands: game.commandLog,
     snapshot: checkpointSnapshot(game),
     draft: readDraft(draft, game),
+    ...(growth ? { growth: validateGrowthContext(growth, 'survival') } : {}),
   });
 }
 
@@ -237,6 +244,7 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
     'snapshot',
     'draft',
     'checksum',
+    ...(Object.hasOwn(doc, 'growth') ? ['growth'] : []),
   ]);
   if (
     doc.format !== 'the-bidding-of-isaac-save' ||
@@ -272,11 +280,14 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
     characterId: doc.characterId as CharacterId,
     buildId: doc.startedBuild,
   });
+  const recordedGrowth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'survival') : undefined;
+  let growth = recordedGrowth ? beginSurvivalGrowth({ game, draft: null }, recordedGrowth.excludedThrough, recordedGrowth.expansionFrom ?? 78, recordedGrowth.milestonesFrom ?? 78, recordedGrowth.revisionsFrom ?? 78, recordedGrowth.cfFrom ?? 78).growth! : undefined;
   const commands = doc.commands.map(command);
   for (const entry of commands) {
     game = withSurvivalBuild(game, entry.build);
     const next = survivalGameReducer(game, entry.action);
     if (next === game) fail('生存检查点包含非法或重复阶段命令。');
+    if (growth) growth = observeSurvivalGrowth(game, next, growth);
     game = next;
   }
   game = withSurvivalBuild(game, doc.currentBuild);
@@ -291,6 +302,7 @@ export function parseSurvivalCheckpoint(source: string): SurvivalSaveDocument {
     compatibility: doc.compatibility,
     game,
     draft: readDraft(doc.draft, game),
+    ...(recordedGrowth ? { growth: restoreGrowthContext(recordedGrowth, growth!, survivalGrowthOrder(game)) } : {}),
   };
 }
 
@@ -362,10 +374,11 @@ export function saveSurvivalProgress(
   storage: SaveStorage | null,
   game: SurvivalGameState,
   draft: RoomDraft | null = null,
+  growth?: GrowthContext,
 ): SurvivalSaveResult {
   return measurePersistence(
     { mode: 'survival', operation: 'save', phase: game.phase },
-    () => writeSurvivalProgress(storage, game, draft),
+    () => writeSurvivalProgress(storage, game, draft, growth),
     (result) => result.checkpointSaved && result.archiveSaved !== false,
   );
 }
@@ -373,11 +386,17 @@ function writeSurvivalProgress(
   storage: SaveStorage | null,
   game: SurvivalGameState,
   draft: RoomDraft | null,
+  growth?: GrowthContext,
 ): SurvivalSaveResult {
   const failed = { checkpointSaved: false, archiveSaved: null };
   if (!storage) return failed;
   try {
-    const source = serializeSurvivalCheckpoint(game, draft);
+    if (growth && growth.acknowledged > 0) {
+      const source = storage.getItem(playerProfileKey);
+      if (source === null) return failed;
+      validateGrowthProfilePair(readPlayerProfile(checkedJson(source)), growth);
+    }
+    const source = serializeSurvivalCheckpoint(game, draft, new Date(), growth);
     storage.setItem(survivalSaveKey, source);
   } catch {
     return failed;

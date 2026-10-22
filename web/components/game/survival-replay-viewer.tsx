@@ -15,6 +15,11 @@ import type { SurvivalReplayLog } from '@/lib/ui/survival-record';
 import { survivalDifficultyLabel } from '@/lib/game/survival-difficulty';
 import { finalSurvivalBoard } from '@/lib/ui/survival-board';
 import { SurvivalScoreBoard } from './survival-score-board';
+import { SurvivalFloorPlayers } from './survival-floor-players';
+import {
+  marketReplayIndex,
+  type MarketReplayPosition,
+} from '@/lib/ui/market-reference-display';
 
 export function SurvivalTotalBoard({
   log,
@@ -31,101 +36,120 @@ export function SurvivalFloorFacts({
   log,
   index,
   decimals = 2,
+  compact = false,
 }: {
   log: SurvivalReplayLog;
   index: number;
   decimals?: 2 | 4;
+  compact?: boolean;
 }) {
   const floor = log.floors[index];
   if (!floor) return <p>暂无层末结算。</p>;
   return (
     <>
-      <h3>
-        第 {floor.floorIndex + 1} 层 · 斩杀线 {floor.cutLine} · 剩余{' '}
-        {floor.plan.survivorIds.length} 人
-      </h3>
-      <p>
-        生存分 = 房间分 R ＋ 余额兑换{' '}
-        {log.ruleFacts.parameters.rules.moneyExchangeRatio * 100}% ＋
-        上层生存分继承{' '}
-        {log.ruleFacts.parameters.rules.scoreInheritanceRatio * 100}
-        %。新增积分不包含继承分。
-      </p>
-      <div className="replay-overview-metrics survival-floor-stats">
-        {[
-          ['本层参与', floor.activePlayerIds.length],
-          [
-            '线下淘汰',
-            floor.plan.eliminations.filter((e) => e.reason === 'below_cut_line')
-              .length,
-          ],
-          [
-            '末位补淘汰',
-            floor.plan.eliminations.filter((e) => e.reason === 'lowest_score')
-              .length,
-          ],
-          ['存活人数', floor.plan.survivorIds.length],
-        ].map(([label, value]) => (
-          <article key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </article>
-        ))}
-      </div>
-      <div className="survival-table-wrap">
-        <table className="survival-table">
-          <caption className="sr-only">
-            第 {floor.floorIndex + 1} 层淘汰账本
-          </caption>
-          <thead>
-            <tr>
-              <th>玩家</th>
-              <th>房间分</th>
-              <th>余额兑换</th>
-              <th>继承分</th>
-              <th>新增积分</th>
-              <th>生存分</th>
-              <th>距斩杀线</th>
-              <th>判定</th>
-            </tr>
-          </thead>
-          <tbody>
-            {floor.activePlayerIds
-              .slice()
-              .sort(
-                (a, b) =>
-                  floor.scores[b]!.survivalScore -
-                  floor.scores[a]!.survivalScore,
-              )
-              .map((id) => {
-                const score = floor.scores[id]!;
-                const removed = floor.plan.eliminations.find(
-                  (entry) => entry.playerId === id,
-                );
-                return (
-                  <tr key={id} data-human={id === 'human'}>
-                    <th scope="row">{log.playerNames[id]}</th>
-                    <td>{score.roomScore.toFixed(decimals)}</td>
-                    <td>{score.exchangedScore.toFixed(decimals)}</td>
-                    <td>{score.inheritedScore.toFixed(decimals)}</td>
-                    <td>{score.newScore.toFixed(decimals)}</td>
-                    <td>{score.survivalScore.toFixed(decimals)}</td>
-                    <td>
-                      {(score.survivalScore - floor.cutLine).toFixed(decimals)}
-                    </td>
-                    <td>
-                      {removed
-                        ? removed.reason === 'below_cut_line'
-                          ? '线下淘汰'
-                          : '末位补淘汰'
-                        : '存活'}
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
+      {!compact && (
+        <>
+          <h3>
+            第 {floor.floorIndex + 1} 层 · 斩杀线 {floor.cutLine} · 剩余{' '}
+            {floor.plan.survivorIds.length} 人
+          </h3>
+          <p>
+            生存分 = 房间分 R ＋ 余额兑换{' '}
+            {log.ruleFacts.parameters.rules.moneyExchangeRatio * 100}% ＋
+            上层生存分继承{' '}
+            {log.ruleFacts.parameters.rules.scoreInheritanceRatio * 100}
+            %。新增积分不包含继承分。
+          </p>
+          <div className="replay-overview-metrics survival-floor-stats">
+            {[
+              ['本层参与', floor.activePlayerIds.length],
+              [
+                '线下淘汰',
+                floor.plan.eliminations.filter(
+                  (e) => e.reason === 'below_cut_line',
+                ).length,
+              ],
+              [
+                '末位补淘汰',
+                floor.plan.eliminations.filter(
+                  (e) => e.reason === 'lowest_score',
+                ).length,
+              ],
+              ['存活人数', floor.plan.survivorIds.length],
+            ].map(([label, value]) => (
+              <article key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+      {compact ? (
+        <SurvivalFloorPlayers log={log} index={index} decimals={decimals} />
+      ) : (
+        <div className="survival-table-wrap">
+          <table className="survival-table">
+            <caption className="sr-only">
+              第 {floor.floorIndex + 1} 层淘汰账本
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">玩家</th>
+                <th scope="col">房间分</th>
+                <th scope="col">余额兑换</th>
+                <th scope="col">继承分</th>
+                <th scope="col">新增积分</th>
+                <th scope="col">生存分</th>
+                <th scope="col">距斩杀线</th>
+                <th scope="col">判定</th>
+              </tr>
+            </thead>
+            <tbody>
+              {floor.activePlayerIds
+                .slice()
+                .sort(
+                  (a, b) =>
+                    floor.scores[b]!.survivalScore -
+                    floor.scores[a]!.survivalScore,
+                )
+                .map((id) => {
+                  const score = floor.scores[id]!;
+                  const removed = floor.plan.eliminations.find(
+                    (entry) => entry.playerId === id,
+                  );
+                  return (
+                    <tr
+                      key={id}
+                      data-human={id === 'human'}
+                      data-ranking-self={id === 'human'}
+                      tabIndex={id === 'human' && compact ? -1 : undefined}
+                    >
+                      <th scope="row">{log.playerNames[id]}</th>
+                      <td>{score.roomScore.toFixed(decimals)}</td>
+                      <td>{score.exchangedScore.toFixed(decimals)}</td>
+                      <td>{score.inheritedScore.toFixed(decimals)}</td>
+                      <td>{score.newScore.toFixed(decimals)}</td>
+                      <td>{score.survivalScore.toFixed(decimals)}</td>
+                      <td>
+                        {(score.survivalScore - floor.cutLine).toFixed(
+                          decimals,
+                        )}
+                      </td>
+                      <td>
+                        {removed
+                          ? removed.reason === 'below_cut_line'
+                            ? '线下淘汰'
+                            : '末位补淘汰'
+                          : '存活'}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
       {floor.resolution.tieBreaks.length > 0 && (
         <details>
           <summary>末位同分抽签事实</summary>
@@ -142,11 +166,18 @@ export function SurvivalFloorFacts({
 export function SurvivalReplayViewer({
   log,
   decimals = 2,
+  initialRoom,
 }: {
   log: SurvivalReplayLog;
   decimals?: 2 | 4;
+  initialRoom?: MarketReplayPosition;
 }) {
-  const [index, setIndex] = useState(0),
+  const [index, setIndex] = useState(() =>
+      marketReplayIndex(
+        log.rooms.map((r) => r.room),
+        initialRoom,
+      ),
+    ),
     [playerId, setPlayerId] = useState('human');
   const [scope, setScope] = useState<'room' | 'match' | 'floors' | 'total'>(
       'room',

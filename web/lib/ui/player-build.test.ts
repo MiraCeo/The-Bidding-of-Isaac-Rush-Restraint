@@ -6,6 +6,8 @@ import { grantItemInstance } from '../game/runtime';
 import type { ItemId } from '../game/item-types';
 import { getBuildSummary, getQuotePreviews } from './player-build';
 import { PlayerBuild } from '@/components/game/player-build';
+import { defaultRules } from '../game/config';
+import { getRuntimeActionAmounts } from '../game/turns';
 
 function withItems(ids: ItemId[]) {
   const game = startClientGame('isaac', 42);
@@ -23,6 +25,29 @@ function withItems(ids: ItemId[]) {
   return game;
 }
 describe('player inventory and quote presentation', () => {
+  it('uses supplied rules consistently for market/scoring numbers and scoring intervals', () => {
+    const game = withItems(['short_brimstone']);
+    const player = game.players.find((p) => p.isHuman)!;
+    const action = {
+      type: 'disrupt' as const,
+      group: 'A' as const,
+      amount: 20,
+    };
+    const rules = {
+      ...defaultRules,
+      disruptionMarketMultiplier: 3,
+      disruptionScoringMultiplier: 2,
+    };
+    const preview = getQuotePreviews(
+      player,
+      { playerId: player.id, actions: [action] },
+      rules,
+    )[0]!;
+    expect(preview).toMatchObject(
+      getRuntimeActionAmounts(player, action, rules),
+    );
+    expect(preview.scoringRange).toEqual([34, 48]);
+  });
   it('shows combined additive effects without pretending conditional or random outcomes are known', () => {
     const game = withItems([
       'score_charm',

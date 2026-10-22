@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "source": "Captured from immutable pre-refactor commits; not regenerated from code under review",
+  "classicFunctionalCommit": "8ea001f40d6476c7e75e9bf99a5c538e79f447e4",
+  "ecologyFunctionalCommit": "1db86bae1e499855d71d3861ae0e5a30f33628ff",
+  "originalCanonicalSha256": "e77376bd92362b1a2ac77155063a465cf51ce9abb5f0eb086b603dfa2f4ef84f",
+  "linuxRuntime": {
+    "platform": "linux",
+    "node": "v24.15.0",
+    "v8": "13.6.233.17-node.48"
+  },
+  "linuxArchiveSha256": "472655581fb851559730c48763e0c9d3bc25975c59d518003fc0849d3e4ba0f6",
+  "classicBeforeBundleSha256": "435559fafff20f5914f9fdd1e1adaf95724cefe872b56bce9c031778eeceaee8",
+  "states": 780,
+  "linuxOverrides": {
+    "isaac/42/5/result": "6ca86ebb2b906df4ebe9621a555c3cce0b4dae94f1f22a3078e71206f169cc2e",
+    "isaac/42/5/ranking": "aea3bcf6035cb71a8cbb3a4839305c75e037ca11289b14264cb428fe6af988e3",
+    "isaac/42/5/contest": "38932c31936c7273e2f80a27a5ab2619ded93fd92b7ff2d40820065d95b7d504",
+    "isaac/42/8/result": "c7fe6354f7498e6d71c522d2d21281f34976fdb7eb8db326dfe964584fb83b98",
+    "isaac/42/8/ranking": "b72d286e2ae568edcec4c8bbe710b4ac8152d3e0807c386a673613bb969101b9",
+    "isaac/42/8/contest": "9ce9a53ee913baa4555b32e1b680f0f4a153461b11fb81b4ea2c9a988413d10e",
+    "lost/424242/11/result": "235f8756f795d95f39ef2dbe8e90422bf9870c5fa226d099e3da160987ba24f7",
+    "lost/424242/11/ranking": "4ef9fbeb4ee1d824d434b7cbae73f8c216f11a04badfa02f336d9a5b671c8448",
+    "lost/424242/11/contest": "af8a6c5103267dd2412f61a863ac02bc50e74298dafc6d248ebd1494167bcf57",
+    "azazel/424242/10/result": "62f4f0af5d9f2f7b482c689a2362a96f9e904fd93e21571f74ff8e8c56f9efcd",
+    "azazel/424242/10/ranking": "b8a5bcee2b668ac53700dfc861b265b6a3a11e032f7f70f684a39100872ed7a4",
+    "azazel/424242/10/contest": "6a35331022ac0d4374a860a27878430ce9113addbdb314f329aca44808a3aec5",
+    "eden/42/5/result": "d4746ea62933af9de10445132f31d0475f6d3ecd0ea735d82edfa26fe4dbbe95",
+    "eden/42/5/ranking": "0f97d4b0284f933888246634898e34ba48e5d71cc2dfc041df2ba9ae7828f174",
+    "eden/42/5/contest": "861be9d53f2d930b7f9ec605056011167202df55a66bf41f94e6fe945cdf80f2",
+    "jacob_esau/42/5/result": "8c8f1ecd9b112c36d080412290a32fd30f43e49ec4b7c2d1e190e9e134024f44",
+    "jacob_esau/42/5/ranking": "f2eda96a4de0f5a152897d3bf0195ebd060b1e6a79ae4f88611a861f2d7d3295",
+    "jacob_esau/42/5/contest": "4fd5b54af898d853a618288a5db189eed79feab9b484666b0aa9602e695688dc"
+  },
+  "ecology": {
+    "original": {
+      "isaac": "a4e5f674",
+      "lost": "d8a1e137",
+      "azazel": "15afde7e",
+      "eden": "dde4acfc",
+      "jacob_esau": "07695d97"
+    },
+    "linux": {
+      "isaac": "a4e5f674",
+      "lost": "d8a1e137",
+      "azazel": "15afde7e",
+      "eden": "f0c669eb",
+      "jacob_esau": "07695d97"
+    }
+  },
+  "differences": {
+    "states": 18,
+    "maxAbsDifference": 7.105427357601002e-15,
+    "paths": [
+      "state.revealedAiDecisions.*.finalWeights.high_bid",
+      "state.revealedAiDecisions.*.finalWeights.disrupt_high",
+      "state.revealedAiDecisions.*.finalWeights.disrupt_cooperate",
+      "state.revealedAiDecisions.*.finalWeights.withdraw"
+    ],
+    "actualActionsAndAuthoritativeFactsChanged": false
+  }
+}

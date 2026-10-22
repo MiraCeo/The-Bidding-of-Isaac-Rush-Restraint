@@ -1,3 +1,5 @@
+import { registerCompletion } from './completion-registry';
+import { completionRecordFixture } from './completion-registry.test-helper';
 // @vitest-environment happy-dom
 import { act, createElement, Fragment } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -15,6 +17,7 @@ import {
   serializePlayerProfileBackup,
   parsePlayerProfileBackup,
 } from './player-profile-file';
+import { profileReplacementEpochKey } from './profile-write-coordinator';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { notifyPlayerProfileChanged } from './profile-events';
 import { packDataFile, unpackDataFile } from './compressed-file';
@@ -166,7 +169,9 @@ it('restores only after acknowledgement and preserves both match states, drafts,
     beforeS = localStorage.getItem(survivalSaveKey),
     before = new Map(
       Object.keys(localStorage)
-        .filter((k) => k !== playerProfileKey)
+        .filter(
+          (k) => k !== playerProfileKey && k !== profileReplacementEpochKey,
+        )
         .map((k) => [k, localStorage.getItem(k)]),
     );
   await preview(
@@ -180,13 +185,18 @@ it('restores only after acknowledgement and preserves both match states, drafts,
   await acknowledge();
   await click('确认恢复玩家档案');
   await waitUi(() => expect(container.textContent).toContain('已恢复玩家档案'));
+  expect(localStorage.getItem(profileReplacementEpochKey)).toMatch(
+    /^[a-f0-9]{64}$/,
+  );
   expect(JSON.parse(localStorage.getItem(playerProfileKey)!)).toEqual(
     profileFileFixture(),
   );
   expect(
     new Map(
       Object.keys(localStorage)
-        .filter((k) => k !== playerProfileKey)
+        .filter(
+          (k) => k !== playerProfileKey && k !== profileReplacementEpochKey,
+        )
         .map((k) => [k, localStorage.getItem(k)]),
     ),
   ).toEqual(before);
@@ -197,9 +207,11 @@ it('restores only after acknowledgement and preserves both match states, drafts,
   );
   expect(await replayLibrary.list()).toHaveLength(1);
   await click('总览');
-  expect(container.querySelector('.progress-profile')!.textContent).toContain(
-    '已保留 3 条完成记录',
-  );
+  expect(
+    container.querySelector('.overview-profile-metrics>div:last-child strong')!
+      .textContent,
+  ).toBe('3');
+  expect(container.querySelectorAll('[data-overview-result]')).toHaveLength(3);
   await click('继续生存对局');
   expect(
     container.querySelector<HTMLInputElement>(
@@ -377,11 +389,12 @@ it('keeps corrupt original text until an explicit validated replacement and neve
   await click('取消恢复档案');
   expect(localStorage.getItem(playerProfileKey)).toBe('broken-original');
   await click('总览');
-  expect(container.querySelector('.progress-profile')!.textContent).toContain(
+  expect(container.querySelector('.overview-profile')!.textContent).toContain(
     '暂不可核验',
   );
+  expect(container.querySelector('.overview-profile-metrics')).toBeNull();
   expect(
-    container.querySelector('.progress-profile')!.textContent,
+    container.querySelector('.overview-profile')!.textContent,
   ).not.toContain('已保留 0');
   await click('存档与备份');
   await preview();
@@ -500,4 +513,25 @@ it('refreshes from actual local storage rather than trusting arbitrary storage e
       '1 / 2',
     ),
   );
+});
+
+it('explains retained history and registered totals next to the actual metrics without backfilling old history', async () => {
+  const profile = registerCompletion(
+      profileFileFixture(),
+      completionRecordFixture(12),
+      [],
+      false,
+    ),
+    source = JSON.stringify(profile);
+  localStorage.setItem(playerProfileKey, source);
+  await mountApp();
+  expect(
+    container.querySelector('.backup-profile-scope-note')!.textContent,
+  ).toContain('3 条历史基线未补计');
+  const metrics = [
+    ...container.querySelectorAll('.backup-profile-metrics dd'),
+  ].map((e) => e.textContent);
+  expect(metrics[0]).toBe('4');
+  expect(metrics[2]).toBe('1');
+  expect(localStorage.getItem(playerProfileKey)).toBe(source);
 });

@@ -10,6 +10,12 @@ import {
   registerCompletion,
   type CompletionOrigin,
 } from './completion-registry';
+import { validateProfileAchievementRegistry } from './achievements/registry';
+import {
+  achievementBaselineModule,
+  currentAchievementBaseline,
+  hasCurrentAchievementBaseline,
+} from './achievements/baseline';
 
 export const playerProfileKey = 'bidding-player-profile-v1';
 export type ProfileValue =
@@ -60,7 +66,9 @@ export function createPlayerProfile(now = new Date()): PlayerProfile {
       characterUnlocks: {},
       achievements: {},
       statistics: {},
-      modules: {},
+      modules: {
+        [achievementBaselineModule]: { version: currentAchievementBaseline },
+      },
     },
     history: [],
   };
@@ -121,7 +129,7 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
     date(h.completedAt);
     if (
       h.aiDifficulty !== undefined &&
-      (h.mode !== 'survival' || !isSurvivalDifficulty(h.aiDifficulty))
+      ((h.mode !== 'survival' && h.mode !== 'classic') || !isSurvivalDifficulty(h.aiDifficulty))
     )
       fail();
     if (h.mode !== undefined && h.mode !== 'classic' && h.mode !== 'survival')
@@ -162,6 +170,8 @@ export function readPlayerProfile(value: unknown): PlayerProfile {
   }
   if (new TextEncoder().encode(canonicalJson(p)).length > 1024 * 1024) fail();
   readCompletionRegistry(p as unknown as PlayerProfile);
+  validateProfileAchievementRegistry(p as unknown as PlayerProfile);
+  hasCurrentAchievementBaseline(p as unknown as PlayerProfile);
   return structuredClone(p) as unknown as PlayerProfile;
 }
 export function recordCompletedMatch(
@@ -187,6 +197,7 @@ export function recordCompletedMatch(
       finalScore: human.finalScore,
       rank,
       mode: 'classic',
+      ...(log.classicAi ? { aiDifficulty: log.classicAi.difficulty } : {}),
     },
     [key],
     rank === 1,

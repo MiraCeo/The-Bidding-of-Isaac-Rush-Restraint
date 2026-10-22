@@ -14,6 +14,10 @@ import {
 } from './file-json';
 import { unpackDataFile, type FileCodecOptions } from './compressed-file';
 import { readBuildVersion } from './game-version';
+import {
+  prepareAchievementBaseline,
+  withAchievementVerificationScope,
+} from './achievements/registry';
 import { notifyPlayerProfileChanged } from './profile-events';
 import type { SaveStorage } from './game-save';
 
@@ -35,8 +39,18 @@ export interface PlayerProfileSnapshot {
 }
 function validatedProfile(value: unknown): PlayerProfile {
   // Same guarded JSON boundary as game files; never rebuild a game or grant progression.
-  const validated = readPlayerProfile(value);
-  return readPlayerProfile(checkedJson(JSON.stringify(validated)));
+  // Retain ALL raw-profile, guarded-JSON and post-baseline admission checks.
+  // Only identical full ledger content reuses its private semantic scan in this
+  // synchronous call. The existing four-content bound and copy isolation apply;
+  // the scope ends before storage callbacks, notifications or any async boundary.
+  return withAchievementVerificationScope(() => {
+    const validated = readPlayerProfile(value);
+    return readPlayerProfile(
+      prepareAchievementBaseline(
+        readPlayerProfile(checkedJson(JSON.stringify(validated))),
+      ),
+    );
+  });
 }
 export function serializePlayerProfileBackup(
   profile: PlayerProfile,
@@ -83,7 +97,7 @@ export function parsePlayerProfileBackup(
     kind: 'profile-backup',
     exportedAt: doc.exportedAt as string,
     exportedBuild: doc.exportedBuild,
-    profile: readPlayerProfile(doc.profile),
+    profile: validatedProfile(doc.profile),
   };
 }
 export async function readPlayerProfileBackup(

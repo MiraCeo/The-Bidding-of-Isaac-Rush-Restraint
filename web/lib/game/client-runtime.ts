@@ -20,6 +20,8 @@ import { validateTurn } from './turns';
 import type { RulesConfig } from './types';
 import type { SurvivalDifficulty } from './survival-difficulty';
 import type { SurvivalAiPublicContext } from './survival-ai-plan';
+import type { ClassicAiSettings } from './classic-difficulty';
+import { decideClassicAiTurn } from './classic-ai';
 
 export interface AiClientProfile {
   playerId: string;
@@ -146,6 +148,7 @@ function rankPercentiles(
 }
 
 export interface ClientAiRoomInput {
+  classicAi?: ClassicAiSettings;
   survivalDifficulty?: SurvivalDifficulty;
   survivalAiPolicy?: import('./survival-difficulty').SurvivalAiPolicy;
   survivalContext?: SurvivalAiPublicContext;
@@ -166,6 +169,7 @@ export function decideClientAiRoom(
   state: ClientAiRoomInput,
   decideTurn = decideAiTurn,
 ) {
+  if (state.classicAi && state.survivalContext) throw Error('经典与生存AI策略不能混用。');
   const { room, globalRoomIndex, remainingRooms, remainingGameRooms } = state;
   const decisionRandom = createSeededRandom(
     mixClientSeed(state.seed, (0x9e3779b9 ^ globalRoomIndex) >>> 0),
@@ -182,7 +186,7 @@ export function decideClientAiRoom(
     .map((player) => {
       const profile = state.aiProfiles[player.id];
       if (!profile) throw new Error(`玩家 ${player.id} 缺少 AI 档案。`);
-      const decision = decideTurn(
+      const decision = decideClassicAiTurn(
         player,
         room.floorIndex,
         state.rules,
@@ -226,6 +230,10 @@ export function decideClientAiRoom(
           personalities: profile.personalities,
           enableDoubleActions: true,
         },
+        state.classicAi,
+        mixClientSeed(state.seed, (0xd2511f53 ^ globalRoomIndex ^ Math.imul(Number(player.id.replace('ai-', '')), 0x85ebca6b)) >>> 0),
+        decideTurn,
+        state.seed,
       );
       const errors = validateTurn(player, decision.turn, state.rules);
       if (errors.length > 0) {

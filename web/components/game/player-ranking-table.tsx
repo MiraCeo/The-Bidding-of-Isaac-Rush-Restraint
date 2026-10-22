@@ -2,12 +2,15 @@ import type { ClientRoomSettlementRecord } from '@/lib/game/client-session';
 import type { PlayerAction } from '@/lib/game/types';
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
 import type { PublicRankingEntry } from '@/lib/ui/public-ranking';
+import { RankingScrollArea } from './ranking-self-summary';
 
 interface PlayerRankingTableProps {
   entries: readonly PublicRankingEntry[];
   scoreDecimals: ScoreDisplayDecimals;
   caption: string;
   settlement?: ClientRoomSettlementRecord;
+  primaryMetric?: 'score' | 'money';
+  scoreLabel?: string;
 }
 
 function actionLabel(action: PlayerAction): string {
@@ -21,26 +24,52 @@ export function PlayerRankingTable({
   scoreDecimals,
   caption,
   settlement,
+  primaryMetric = 'score',
+  scoreLabel = '累计积分',
 }: PlayerRankingTableProps) {
+  const moneyFirst = primaryMetric === 'money';
   return (
     <section className="result-panel round-ranking-panel ranking-page-panel">
-      <div className="result-table-wrap">
+      <RankingScrollArea
+        className="result-table-wrap ranking-data-scroll"
+        label={caption}
+      >
         <table className="result-table ranking-table">
           <caption className="sr-only">{caption}</caption>
+          {!settlement && (
+            <colgroup>
+              <col className="public-rank-column" />
+              <col />
+              <col className="public-primary-column" />
+              <col className="public-secondary-column" />
+            </colgroup>
+          )}
           <thead>
             <tr>
-              <th scope="col">排名</th>
+              <th scope="col">{settlement ? '顺位' : '排名'}</th>
               <th scope="col">玩家</th>
-              <th scope="col">角色</th>
+              <th
+                scope="col"
+                className="ranking-metric-primary"
+                aria-sort="descending"
+              >
+                {moneyFirst ? '当前资金' : scoreLabel}{' '}
+                <span aria-hidden="true">↓</span>
+              </th>
+              <th scope="col" className="ranking-number">
+                {moneyFirst ? scoreLabel : '剩余资金'}
+              </th>
               {settlement && (
                 <>
-                  <th scope="col">本轮行动</th>
-                  <th scope="col">本房积分</th>
-                  <th scope="col">获得道具</th>
+                  <th scope="col" className="ranking-number">
+                    本房积分
+                  </th>
+                  <th scope="col">本房行动</th>
+                  <th scope="col" className="ranking-number">
+                    获得道具
+                  </th>
                 </>
               )}
-              <th scope="col">{settlement ? '总分' : '累计积分'}</th>
-              <th scope="col">{settlement ? '资金' : '剩余资金'}</th>
             </tr>
           </thead>
           <tbody>
@@ -61,30 +90,62 @@ export function PlayerRankingTable({
               return (
                 <tr
                   key={entry.playerId}
+                  data-player-id={entry.playerId}
+                  data-rank={entry.rank}
                   className={entry.isHuman ? 'result-self-row' : ''}
+                  data-ranking-self={entry.isHuman}
+                  tabIndex={entry.isHuman ? -1 : undefined}
                 >
-                  <td>{entry.rank}</td>
                   <td>
-                    <strong>{entry.name}</strong>
+                    <span className="ranking-position">{entry.rank}</span>
                   </td>
-                  <td>{entry.characterName}</td>
+                  <th scope="row" className="ranking-player-cell">
+                    <strong>{entry.name}</strong>
+                    {entry.isHuman && (
+                      <em className="ranking-self-badge">本人</em>
+                    )}
+                    <small>{entry.characterName}</small>
+                  </th>
+                  <td
+                    className="ranking-metric-primary"
+                    title={String(moneyFirst ? entry.money : entry.score)}
+                  >
+                    <strong>
+                      {moneyFirst
+                        ? entry.money
+                        : entry.score.toFixed(scoreDecimals)}
+                    </strong>
+                  </td>
+                  <td
+                    className="ranking-number"
+                    title={String(moneyFirst ? entry.score : entry.money)}
+                  >
+                    {moneyFirst
+                      ? entry.score.toFixed(scoreDecimals)
+                      : entry.money}
+                  </td>
                   {settlement && (
                     <>
-                      <td>
+                      <td className="ranking-number">
+                        {gained >= 0 ? '+' : ''}
+                        {gained.toFixed(scoreDecimals)}
+                      </td>
+                      <td className="ranking-action-cell">
                         {turn?.actions.map(actionLabel).join(' / ') ?? '—'}
                       </td>
-                      <td>+{gained.toFixed(scoreDecimals)}</td>
-                      <td>{copies > 0 ? `+${copies}` : '—'}</td>
+                      <td
+                        className={`ranking-number${copies > 0 ? ' ranking-award-count' : ''}`}
+                      >
+                        {copies > 0 ? `+${copies}` : '—'}
+                      </td>
                     </>
                   )}
-                  <td>{entry.score.toFixed(scoreDecimals)}</td>
-                  <td>{entry.money}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-      </div>
+      </RankingScrollArea>
     </section>
   );
 }

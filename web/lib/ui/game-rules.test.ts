@@ -70,12 +70,12 @@ describe('in-game rule reference', () => {
 
   it('provides a complete, unique table of contents instead of a wall of unstructured cards', () => {
     const html = renderToStaticMarkup(createElement(GameRules));
-    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
     const targets = [...html.matchAll(/href="#([^"]+)"/g)].map(
       (match) => match[1],
     );
     expect(new Set(ids).size).toBe(ids.length);
-    expect(targets).toHaveLength(10);
+    expect(targets).toHaveLength(9);
     for (const target of targets) expect(ids).toContain(target);
     expect(html).toContain('aria-label="规则目录"');
     expect(html.match(/class="rule-chapter"/g)).toHaveLength(8);
@@ -83,15 +83,19 @@ describe('in-game rule reference', () => {
     expect(html).not.toContain('class="utility-notice"');
   });
 
-  it('renders quick-start steps, action definitions, comparison table and formulas while keeping the catalog collapsed', () => {
+  it('renders quick-start steps, action definitions, comparison table and formulas while keeping the catalog in an inactive peer panel', () => {
     const html = renderToStaticMarkup(createElement(GameRules));
     expect(html).toContain('class="rules-start-steps"');
     expect(html).toContain('<dl class="rule-actions">');
-    expect(html.match(/<dt>/g)).toHaveLength(3);
+    expect(
+      html.match(/<dl class="rule-actions">[\s\S]*?<\/dl>/)?.[0].match(/<dt>/g),
+    ).toHaveLength(3);
     expect(html).toContain('<table class="rule-comparison">');
     expect(html.match(/<th scope="row">/g)).toHaveLength(4);
     expect(html.match(/<figure class="rule-formula">/g)).toHaveLength(2);
     expect(html).toContain('T = 2/3 × M + 10% × F');
-    expect(html.match(/<details[^>]*>/)?.[0]).not.toMatch(/\bopen\b/);
+    expect(html).toContain('class="ai-guide-help"');
+    expect(html).toContain('aria-label="规则分类"');
+    expect(html).toContain('aria-label="道具图鉴"');
   });
 });

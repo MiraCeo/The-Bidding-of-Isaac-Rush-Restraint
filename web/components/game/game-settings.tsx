@@ -1,5 +1,5 @@
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CharacterAccessSettings } from './character-access-settings';
 import { AboutVersion } from './about-version';
 import { UtilityPageHeading } from './utility-page-heading';
 import {
@@ -15,13 +15,13 @@ interface GameSettingsProps {
   beforeGame?: boolean;
   onOpenReplay?: () => void;
   onReturnGame?: () => void;
+  returnLabel?: string;
 }
 export function GameSettings({
   preferences,
   saveStatus,
   onChange,
   beforeGame = false,
-  onReturnGame = () => {},
 }: GameSettingsProps) {
   return (
     <section
@@ -30,15 +30,12 @@ export function GameSettings({
       aria-labelledby="room-utilities-title"
     >
       <UtilityPageHeading
+        inlineDescription
         eyebrow="INTERFACE SETTINGS"
         title="设置"
         titleId="room-utilities-title"
-      >
-        <Button type="button" variant="secondary" onClick={onReturnGame}>
-          <ArrowLeft aria-hidden="true" />
-          返回游戏
-        </Button>
-      </UtilityPageHeading>
+        description="显示偏好、角色权限与版本信息。"
+      />
       <div className="utility-page-content game-settings-content">
         {
           <>
@@ -99,10 +96,12 @@ export function GameSettings({
                     }
                   />
                 </label>
-                <label className="setting-toggle" aria-label="默认展开共同市场">
+                <label className="setting-toggle" aria-label="默认展开市场参考">
                   <span>
-                    <strong>默认展开共同市场</strong>
-                    <small>只预览自己的行动，不公开秘密报价。</small>
+                    <strong>默认展开市场参考</strong>
+                    <small>
+                      查看本层已结算市场与自己的报价，不公开本房秘密报价。
+                    </small>
                   </span>
                   <input
                     type="checkbox"
@@ -116,25 +115,74 @@ export function GameSettings({
                   />
                 </label>
               </div>
-              <div className="settings-footer">
-                <output>
-                  {saveStatus === 'saved'
-                    ? '界面偏好已保存到当前浏览器。'
-                    : saveStatus === 'session'
-                      ? '浏览器存储不可用；修改仅在当前会话生效。'
-                      : '界面偏好与对局分别保存。'}
-                </output>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => onChange({ ...defaultGamePreferences })}
-                >
-                  恢复默认设置
-                </Button>
+            </fieldset>
+            <fieldset className="settings-group settings-settlement">
+              <legend>房间结算</legend>
+              <p className="settings-group-description">
+                修改立即应用，并用于后续结算页；页面内仍可手动开合。
+              </p>
+              <div className="settings-display-grid">
+                {(
+                  [
+                    [
+                      'settlementRewardsInitiallyOpen',
+                      '默认展开道具资格与发放',
+                      '查看各组名额与最终获奖名单。',
+                    ],
+                    [
+                      'settlementScoreInitiallyOpen',
+                      '默认展开积分计算明细',
+                      '查看行动数值、积分计算与资金效果。',
+                    ],
+                    [
+                      'settlementMarketInitiallyOpen',
+                      '默认展开结算共同市场',
+                      '查看已公开行动的市场分布图。',
+                    ],
+                  ] as const
+                ).map(([key, label, description]) => (
+                  <label
+                    key={key}
+                    className="setting-toggle"
+                    aria-label={label}
+                  >
+                    <span>
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={preferences[key]}
+                      onChange={(event) =>
+                        onChange({
+                          ...preferences,
+                          [key]: event.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+                ))}
               </div>
             </fieldset>
+            <div className="settings-footer">
+              <output>
+                {saveStatus === 'saved'
+                  ? '界面偏好已保存到当前浏览器。'
+                  : saveStatus === 'session'
+                    ? '浏览器存储不可用；修改仅在当前会话生效。'
+                    : '界面偏好与对局分别保存。'}
+              </output>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onChange({ ...defaultGamePreferences })}
+              >
+                恢复默认设置
+              </Button>
+            </div>
           </>
         }
+        <CharacterAccessSettings />
         {
           <details className="settings-version-details">
             <summary>版本与更新</summary>

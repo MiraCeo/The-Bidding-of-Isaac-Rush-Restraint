@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PlayerRankingTable } from './player-ranking-table';
+import { RankingSelfSummary } from './ranking-self-summary';
 
 import type { ActiveClientGameState } from '@/lib/game/client-session';
 import type { ScoreDisplayDecimals } from '@/lib/ui/game-preferences';
@@ -28,10 +29,7 @@ export function PublicRanking({ game, scoreDecimals }: PublicRankingProps) {
   const ranking = getPublicPlayerRanking(game, view);
   const human = ranking.find((entry) => entry.isHuman);
   return (
-    <div>
-      <p className="utility-notice">
-        累计积分未含终局倍率；本房行动与争夺结果在提交结算后公开。相同数值并列。
-      </p>
+    <div data-ranking-scope data-ranking-polish="public-table">
       <div className="public-ranking-heading">
         <div className="ranking-view-tabs" aria-label="公开排行类型">
           <button
@@ -51,15 +49,27 @@ export function PublicRanking({ game, scoreDecimals }: PublicRankingProps) {
             资金排行
           </button>
         </div>
-        <p className="public-ranking-self">
-          你的{view === 'score' ? '积分' : '资金'}排名{' '}
-          <strong>#{human?.rank ?? '—'}</strong>
-        </p>
+        <RankingSelfSummary
+          label={`你的${view === 'score' ? '积分' : '资金'}排名`}
+          rank={human?.rank}
+        >
+          {human &&
+            (view === 'score'
+              ? `${human.score.toFixed(scoreDecimals)} 分`
+              : `${human.money} 资金`)}
+        </RankingSelfSummary>
       </div>
+      <p className="ranking-basis">
+        {view === 'score'
+          ? '累计积分降序 · 未含终局倍率'
+          : '当前资金降序 · 非竞价能力'}
+        {' · 相同数值并列 · 本房行动结算后公开'}
+      </p>
       <PlayerRankingTable
         entries={ranking}
         scoreDecimals={scoreDecimals}
         caption={`当前公开${view === 'score' ? '积分' : '资金'}排行`}
+        primaryMetric={view}
       />
     </div>
   );

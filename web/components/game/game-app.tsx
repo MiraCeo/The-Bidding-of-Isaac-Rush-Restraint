@@ -1,3 +1,5 @@
+import { requireCharacterAccess } from '@/lib/ui/achievements/character-access';
+import { AchievementBaselineMaintenance } from './achievement-baseline-maintenance';
 import { useState, useCallback } from 'react';
 import { ClassicGameApp, type ClassicGameAppProps } from './classic-game-app';
 import { SurvivalGameApp } from './survival-game-app';
@@ -31,13 +33,21 @@ import {
   defaultSurvivalDifficulty,
   type SurvivalDifficulty,
 } from '@/lib/game/survival-difficulty';
-import { restoreSurvivalBackupProgress } from '@/lib/ui/survival-restore';
+import {
+  restoreClassicCoordinated,
+  restoreSurvivalCoordinated,
+} from '@/lib/ui/profile-operations';
+import { currentGrowthEpoch } from './use-live-persistence';
 import { SessionContext, type SessionTools } from './session-context';
 import { ProgressNavigationContext } from './progress-navigation';
+import type { AiGuideTarget } from '@/lib/ui/ai-guide-target';
 import { ProgressCenter, type ProgressSelection } from './progress-center';
 import type { RoomUtilityPanel } from './room-utilities';
 import { useReplayArchive } from './use-replay-archive';
-import { restoreClassicBackupProgress } from '@/lib/ui/backup-restore';
+import {
+  beginSurvivalGrowth,
+  bindGrowthEpoch,
+} from '@/lib/ui/achievements/lifecycle';
 
 export function GameApp() {
   const [initial] = useState(() => {
@@ -68,12 +78,24 @@ export function GameApp() {
   const [pendingPage, setPendingPage] = useState<
     RoomUtilityPanel | null | undefined
   >();
+  const [aiGuideTarget, setAiGuideTarget] = useState<AiGuideTarget>();
+  const openAiGuide = useCallback((target: AiGuideTarget) => {
+    setAiGuideTarget(target);
+    setPendingPage('rules');
+  }, []);
+  const consumeAiGuideTarget = useCallback(
+    () => setAiGuideTarget(undefined),
+    [],
+  );
   const [classicTools, setClassicTools] = useState<SessionTools | null>(null);
   const [survivalStatus, setSurvivalStatus] = useState('');
   const [replayOrigin, setReplayOrigin] = useState<
     'menu' | 'classic' | 'survival' | 'progress'
   >('survival');
   const [survivalRevision, setSurvivalRevision] = useState(0);
+  const [survivalSource, setSurvivalSource] = useState<{
+    source: string | null;
+  }>();
   const [selectedDifficulty, setSelectedDifficulty] =
     useState<SurvivalDifficulty>(() =>
       initial.survival.document
@@ -90,6 +112,9 @@ export function GameApp() {
           draft:
             initial.survival.document.draft ??
             survivalDraft(initial.survival.document.game),
+          ...(initial.survival.document.growth
+            ? { growth: initial.survival.document.growth }
+            : {}),
         }
       : null,
   );
@@ -113,6 +138,7 @@ export function GameApp() {
     setProgressOpen(false);
     setReplayReturnToProgress(false);
     setPendingPage(null);
+    setAiGuideTarget(undefined);
     try {
       getPreferenceStorage()?.setItem(activeModeKey, mode);
     } catch {
@@ -128,26 +154,41 @@ export function GameApp() {
     );
   }, []);
   const restoreSurvival = useCallback(
-    (
+    async (
       doc: SurvivalSaveDocument,
       profile?: PlayerProfile,
       expectedProfileSource?: string | null,
+      signal?: AbortSignal,
     ) => {
+      let source = getPreferenceStorage()?.getItem(survivalSaveKey) ?? null;
       if (profile) {
         const storage = getPreferenceStorage();
-        restoreSurvivalBackupProgress(
+        const committed = await restoreSurvivalCoordinated(
           storage,
-          doc.game,
-          doc.draft,
+          doc,
           profile,
           expectedProfileSource,
+          { signal },
         );
+        source = committed.source;
       }
+      if (signal?.aborted) return;
+      const epoch = currentGrowthEpoch();
+      setSurvivalSource({ source });
       setSelectedDifficulty(doc.game.aiDifficulty ?? 'highest');
       setSurvivalRevision((value) => value + 1);
       setSurvival({
         game: withSurvivalBuild(doc.game, readBuildVersion()),
         draft: doc.draft ?? survivalDraft(doc.game),
+        ...(doc.growth
+          ? {
+              growth: bindGrowthEpoch(
+                doc.growth,
+                epoch === undefined ? (doc.growth.profileEpoch ?? null) : epoch,
+                { imported: true },
+              ),
+            }
+          : {}),
       });
       setImportedSurvival(null);
       setSurvivalMessage('已载入生存对局。经典存档保留。');
@@ -198,24 +239,27 @@ export function GameApp() {
     } else if (!progressOpen) setProgressOrigin(screen);
     setProgressOpen(true);
   }
-  function importCandidate(
+  async function importCandidate(
     candidate: ModeDataCandidate,
     restoreProfile: boolean,
     expectedProfileSource?: string | null,
+    signal?: AbortSignal,
   ) {
+    if (signal?.aborted) return;
     if (candidate.kind === 'survival-replay') {
       replaySurvival(candidate.document);
       return;
     }
     if (candidate.kind === 'survival-checkpoint') {
-      restoreSurvival(candidate.document);
+      await restoreSurvival(candidate.document, undefined, undefined, signal);
       return;
     }
     if (candidate.kind === 'survival-backup') {
-      restoreSurvival(
+      await restoreSurvival(
         candidate.document.checkpoint,
         restoreProfile ? candidate.document.profile : undefined,
         expectedProfileSource,
+        signal,
       );
       return;
     }
@@ -223,18 +267,23 @@ export function GameApp() {
       replayClassic(candidate.document);
       return;
     }
+    let source: string | null | undefined;
     if (restoreProfile && candidate.document.profile) {
-      restoreClassicBackupProgress(
+      const committed = await restoreClassicCoordinated(
         getPreferenceStorage(),
         candidate.document.session,
         candidate.document.profile,
         expectedProfileSource,
+        { signal },
       );
+      source = committed.source;
     }
+    if (signal?.aborted) return;
     setClassicReplay(null);
     setClassicIncoming({
       session: candidate.document.session,
       revision: Date.now(),
+      source,
     });
     select('classic');
   }
@@ -262,8 +311,12 @@ export function GameApp() {
         replayReturnToProgress,
         pendingPage,
         consumePage: () => setPendingPage(undefined),
+        aiGuideTarget,
+        openAiGuide,
+        consumeAiGuideTarget,
       }}
     >
+      <AchievementBaselineMaintenance />
       <ClassicGameApp
         inactive={screen === 'survival' || progressOpen}
         onToolsChange={setClassicTools}
@@ -291,6 +344,8 @@ export function GameApp() {
         onSharedPreferencesChange={changePreferences}
       />
       <SurvivalGameApp
+        persistenceRevision={survivalRevision}
+        persistenceSource={survivalSource}
         selectedDifficulty={selectedDifficulty}
         onDifficultyChange={setSelectedDifficulty}
         key={`${survival?.game.seed ?? 'selection'}:${survivalRevision}`}
@@ -299,8 +354,28 @@ export function GameApp() {
         session={survival}
         setSession={setSurvival}
         onStart={(character) => {
-          setSurvival(
+          try {
+            requireCharacterAccess(getPreferenceStorage(), character);
+          } catch (error) {
+            setSurvivalMessage(
+              error instanceof Error ? error.message : '角色权限未核验。',
+            );
+            return;
+          }
+          setSurvivalSource({
+            source: getPreferenceStorage()?.getItem(survivalSaveKey) ?? null,
+          });
+          const next = beginSurvivalGrowth(
             startSurvivalClient(character, undefined, selectedDifficulty),
+          );
+          const epoch = currentGrowthEpoch();
+          setSurvival(
+            epoch === undefined
+              ? next
+              : {
+                  ...next,
+                  growth: bindGrowthEpoch(next.growth!, epoch, { fresh: true }),
+                },
           );
           setImportedSurvival(null);
           setSurvivalMessage('');
@@ -315,6 +390,7 @@ export function GameApp() {
             );
             return;
           }
+          setSurvivalSource(undefined);
           setSurvival(null);
           setImportedSurvival(null);
           setSurvivalMessage('');

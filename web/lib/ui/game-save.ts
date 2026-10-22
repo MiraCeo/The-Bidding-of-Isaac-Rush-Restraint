@@ -1,5 +1,7 @@
+import { prepareAchievementBaseline, withAchievementVerificationScope } from './achievements/registry';
 import { characterCatalog, characterNames } from '../game/characters';
 import { defaultRules } from '../game/config';
+import { readClassicAiSettings, classicDifficultyLabel } from '../game/classic-difficulty';
 import { parseReplay, serializeReplay, verifyReplayLog } from './game-replay';
 import { currentFileVersion, assertCurrentFileHeader } from './file-protocol';
 import {
@@ -23,6 +25,7 @@ import type { CharacterId, PlayerTurn } from '../game/item-types';
 import { hasItem } from '../game/runtime';
 import { measurePersistence } from './persistence-metrics';
 import type { CompletionOrigin } from './completion-registry';
+import { resetLegacyGrowthContext, beginClassicGrowth, restoreGrowthContext, validateGrowthContext, classicGrowthOrder, validateGrowthProfilePair } from './achievements/lifecycle';
 import { persistCompletionProfile } from './completion-persistence';
 import {
   preserveKnifeExplanationTails,
@@ -247,6 +250,12 @@ function encodeCurrent(
 ): string {
   if ('mode' in session.game)
     fail('不能将带生存模式身份的状态导出为经典存档。');
+  if (profile) {
+    profile = readPlayerProfile(profile);
+    if (session.growth && !session.growthIssue) validateGrowthProfilePair(profile, session.growth);
+    profile = prepareAchievementBaseline(profile, now);
+  }
+  if (session.growth && !session.growthIssue) session = { ...session, growth: resetLegacyGrowthContext(session.growth, classicGrowthOrder(session)) };
   const doc = {
     format,
     version: currentFileVersion,
@@ -260,6 +269,7 @@ function encodeCurrent(
       turns: session.turns,
       metadata: checkpointMetadata(session.replay),
     },
+    ...(session.growth && !session.growthIssue ? { growth: validateGrowthContext(session.growth, 'classic') } : {}),
     ...(profile
       ? {
           replay: packReplayFacts(session.replay!),
@@ -268,6 +278,7 @@ function encodeCurrent(
       : {}),
   };
   const source = stringifyChecked(doc);
+  if (profile && session.growth && !session.growthIssue) validateGrowthProfilePair(profile, session.growth);
   if (new TextEncoder().encode(source).length > maxSaveBytes)
     fail('存档文件超过8 MiB，不能导出。');
   return source;
@@ -283,7 +294,9 @@ export function serializeGameBackup(
   profile: PlayerProfile,
   now = new Date(),
 ): string {
-  return encodeCurrent(session, now, profile);
+  // All raw/profile/pair checks remain in encodeCurrent. The private scan cache
+  // lasts only through this pure synchronous export, never download/storage work.
+  return withAchievementVerificationScope(() => encodeCurrent(session, now, profile));
 }
 
 /** Validate on a detached state; never mutate or dispatch into the live game. */
@@ -302,6 +315,7 @@ export function parseGameSave(source: string): SaveDocument {
     'checkpoint',
     'checksum',
     ...(doc.kind === 'backup' ? ['replay', 'profile'] : []),
+    ...(Object.hasOwn(doc, 'growth') ? ['growth'] : []),
   ]);
   checkChecksum(doc);
   if (doc.compatibility !== saveCompatibility)
@@ -335,7 +349,10 @@ export function parseGameSave(source: string): SaveDocument {
   let verified = reduceGameSession(createGameSession(seed), {
     type: 'start_game',
     characterId: game.selectedCharacter as CharacterId,
+    ...(Object.hasOwn(game, 'classicAi') ? { classicAi: readClassicAiSettings(game.classicAi) } : {}),
   });
+  const growth = Object.hasOwn(doc, 'growth') ? validateGrowthContext(doc.growth, 'classic') : undefined;
+  if (growth) verified = beginClassicGrowth(verified, growth.excludedThrough, growth.expansionFrom ?? 34, growth.milestonesFrom ?? 34, growth.revisionsFrom ?? 34, growth.cfFrom ?? 34);
   const turns = saved.turns.map(readTurn);
   for (let i = 0; i < turns.length; i++) {
     const next = reduceGameSession(verified, {
@@ -381,12 +398,14 @@ export function parseGameSave(source: string): SaveDocument {
       doc.kind === 'backup'
         ? verifyReplayLog(unpackReplayFacts(doc.replay), verified.replay!)
         : restoreMetadata(saved.metadata, verified.replay!),
+    ...(growth ? { growth: restoreGrowthContext(growth, verified.growth!, classicGrowthOrder(verified)) } : {}),
   };
   if (
     doc.kind === 'backup' &&
     canonical(checkpointMetadata(session.replay)) !== canonical(saved.metadata)
   )
     fail('完整备份的检查点与回放来源不一致。');
+  if (doc.kind === 'backup' && session.growth) validateGrowthProfilePair(readPlayerProfile(doc.profile), session.growth);
   return {
     format,
     version: currentFileVersion,
@@ -410,12 +429,13 @@ export function describeSave(session: GameSession): string {
     room_ranking: '房间排行',
     game_result: '对局已结束',
   };
-  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}`;
+  return `${characterNames[game.selectedCharacter]} · 第 ${game.floorIndex + 1} 层 / 房间 ${game.roomIndex + 1} · ${phases[game.phase]}${game.classicAi ? ' · 难度 ' + classicDifficultyLabel(game.classicAi.difficulty, game.classicAi.policy) : ''}`;
 }
 const storageCache = new WeakMap<
   SaveStorage,
   {
     game: GameSession['game'];
+    growth?: GameSession['growth'];
     replay: ReplayLog | null;
     core: string;
     draft: RoomDraft | null;
@@ -466,6 +486,11 @@ function persistClassicSession(
 ): boolean {
   try {
     if (!storage) return false;
+    if (session.growth && !session.growthIssue && session.growth.acknowledged > 0) {
+      const local = loadPlayerProfile(storage);
+      if (local.message) return false;
+      validateGrowthProfilePair(local.profile, session.growth);
+    }
     if (session.game.phase === 'character_selection') {
       storage.removeItem(gameSaveKey);
       storage.removeItem(draftSaveKey);
@@ -475,7 +500,7 @@ function persistClassicSession(
     }
     const cached = storageCache.get(storage);
     const needsCore =
-      cached?.game !== session.game || storage.getItem(gameSaveKey) === null;
+      cached?.game !== session.game || cached?.growth !== session.growth || storage.getItem(gameSaveKey) === null;
     const core =
       !needsCore && cached ? cached.core : serializeGameCheckpoint(session);
     // Draft edits never rewrite the replay or core snapshot.
@@ -492,7 +517,9 @@ function persistClassicSession(
         recordCompletedMatch(profile, log, key, new Date(), origin),
       );
       // Only remove the active checkpoint after both completed archive and profile succeeded.
-      storage.removeItem(gameSaveKey);
+      if (session.growth && session.growth.acknowledged < session.growth.units.length)
+        storage.setItem(gameSaveKey, core);
+      else storage.removeItem(gameSaveKey);
       storage.removeItem(draftSaveKey);
       storage.removeItem(activeReplayKey);
     } else {
@@ -517,6 +544,7 @@ function persistClassicSession(
     }
     storageCache.set(storage, {
       game: session.game,
+      growth: session.growth,
       replay: session.replay,
       core,
       draft: session.draft,

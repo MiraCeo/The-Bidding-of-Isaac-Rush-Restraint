@@ -1,6 +1,9 @@
 import type { ReplayRoomRecord } from './replay-record';
 
-export function replayMarketModel(record: ReplayRoomRecord, radius: number) {
+export function replayMarketModel(
+  record: Pick<ReplayRoomRecord, 'settlement'>,
+  radius: number,
+) {
   const s = record.settlement;
   if (!s.baseline) return null;
   const target = s.baseline.target;

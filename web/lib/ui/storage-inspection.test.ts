@@ -55,6 +55,20 @@ describe('read-only storage inventory', () => {
     expect(backend.setItem).not.toHaveBeenCalled();
     expect(backend.removeItem).not.toHaveBeenCalled();
   });
+  it('classifies the optional achievement layout key as display-only without exposing or changing its value', () => {
+    const data = new Map([
+        ['bidding-achievement-layout-v1', '{"version":1,"columns":"3"}'],
+      ]),
+      backend = storage(data);
+    expect(inspectStorage(backend).entries[0]).toMatchObject({
+      label: '成就排列偏好',
+      group: 'preferences',
+    });
+    expect(data.get('bidding-achievement-layout-v1')).toBe(
+      '{"version":1,"columns":"3"}',
+    );
+    expect(backend.setItem).not.toHaveBeenCalled();
+  });
   it('reports unknown/unavailable rather than pretending blocked storage has zero data', () => {
     expect(inspectStorage(null)).toMatchObject({
       status: 'unavailable',
@@ -139,4 +153,16 @@ describe('read-only storage inventory', () => {
       quotaBytes: null,
     });
   });
+});
+import { profileReplacementEpochKey } from './profile-write-coordinator';
+it('classifies the operational replacement epoch with profile storage, without reading it as achievements or exposing its value', () => {
+  const data = new Map([[profileReplacementEpochKey, 'a'.repeat(64)]]),
+    backend = storage(data),
+    report = inspectStorage(backend);
+  expect(report.entries[0]).toMatchObject({
+    group: 'profile',
+    label: '档案替换代次（本机协调）',
+  });
+  expect(JSON.stringify(report)).not.toContain('a'.repeat(64));
+  expect(backend.setItem).not.toHaveBeenCalled();
 });

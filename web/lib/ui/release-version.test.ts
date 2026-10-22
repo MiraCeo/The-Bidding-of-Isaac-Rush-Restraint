@@ -20,12 +20,163 @@ import { parseReplay, serializeReplay } from './game-replay';
 
 describe('UI release version independent of save compatibility', () => {
   it('keeps package, lock and latest release note versions aligned', () => {
-    expect(appVersion).toBe('0.4.11');
+    expect(appVersion).toBe('0.8.2');
     expect(packageInfo.version).toBe(appReleaseNotes[0]!.version);
     expect(lockInfo.version).toBe(appVersion);
     expect(lockInfo.packages[''].version).toBe(appVersion);
     expect(saveFormatVersion).toBe(5);
     expect(replayFormatVersion).toBe(5);
+  });
+  it('separates the growth/collection patch from the initial 0.5.0 milestone without duplicating version entries', () => {
+    const latest = appReleaseNotes.find((n) => n.version === '0.5.1')!,
+      initial = appReleaseNotes.find((n) => n.version === '0.5.0')!;
+    expect(new Set(appReleaseNotes.map((n) => n.version)).size).toBe(
+      appReleaseNotes.length,
+    );
+    expect(latest.highlights.join(' ')).toContain('无损紧凑编码');
+    expect(latest.highlights.join(' ')).toContain('紧凑徽章收藏');
+    expect(initial.highlights).toHaveLength(8);
+    expect(initial.highlights.join(' ')).not.toContain('无损紧凑编码');
+    expect(initial.highlights.join(' ')).not.toContain('紧凑徽章收藏');
+    expect(latest.compatibility).toContain('内部schema2');
+  });
+  it('keeps the desktop batch in 0.5.2 and records new awards/notes separately in 0.5.3', () => {
+    const expansion = appReleaseNotes.find((n) => n.version === '0.5.3')!;
+    expect(expansion.highlights.join(' ')).toContain('36项');
+    expect(expansion.compatibility).toContain('schema3');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.5.4')!.compatibility,
+    ).toContain('纯展示');
+    expect(appReleaseNotes[0]!.version).toBe('0.8.2');
+    expect(appReleaseNotes.find((n) => n.version === '0.5.5')!.title).toContain(
+      '达成回显',
+    );
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.5.6')!.compatibility,
+    ).toContain('schema4');
+    const ab = appReleaseNotes.find((n) => n.version === '0.5.7')!;
+    expect(ab.compatibility).toContain('schema5');
+    expect(ab.compatibility).toContain('catalog4');
+    expect(ab.highlights.join(' ')).toContain('87枚');
+    expect(ab.highlights.join(' ')).toContain('双重保障');
+    const cf = appReleaseNotes.find((n) => n.version === '0.5.8')!;
+    expect(cf.compatibility).toContain('schema6');
+    expect(cf.compatibility).toContain('catalogVersion5');
+    expect(cf.highlights.join(' ')).toContain('107枚');
+    expect(cf.highlights.join(' ')).toContain('6／18／66');
+    const countFix = appReleaseNotes.find((n) => n.version === '0.5.9')!;
+    expect(countFix.highlights.join(' ')).toContain('57张');
+    expect(countFix.compatibility).toContain('纯展示');
+    const tierFix = appReleaseNotes.find((n) => n.version === '0.5.10')!;
+    expect(tierFix.highlights.join(' ')).toContain('最高等级');
+    expect(tierFix.compatibility).toContain('纯只读展示');
+    const baseline = appReleaseNotes.find((n) => n.version === '0.5.11')!;
+    expect(baseline.compatibility).toContain('achievementBaselineV1');
+    expect(baseline.highlights.join(' ')).toContain('手动一键解锁');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.4')!.compatibility,
+    ).toContain('不增加成就');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.5')!.compatibility,
+    ).toContain('新增10枚银金');
+    expect(appReleaseNotes[0]!.compatibility).toContain('schema8');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.6')!.highlights.join(' '),
+    ).toContain('50%');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.7')!.highlights.join(' '),
+    ).toContain('不遮挡结算');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.8')!.highlights.join(' '),
+    ).toContain('铜→银→金');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.9')!.highlights.join(' '),
+    ).toContain('粘性目录');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.10')!.highlights.join(' '),
+    ).toContain('选角');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.6.11')!.highlights.join(' '),
+    ).toContain('报价');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.7.0')!.highlights.join(' '),
+    ).toContain('理论市场等价上限');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.7.1')!.compatibility,
+    ).toContain('classic-tiered-1');
+    expect(
+      appReleaseNotes.find((n) => n.version === '0.7.1')!.highlights.join(' '),
+    ).toContain('最高（原版）');
+    expect(appReleaseNotes.find((n) => n.version === '0.7.2')!.title).toContain(
+      '排行',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.4')!.title).toContain(
+      '排行',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.5')!.title).toContain(
+      '生存',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.6')!.title).toContain(
+      '道具详情',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.7')!.title).toContain(
+      '总览',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.8')!.title).toContain(
+      '统计',
+    );
+    expect(appReleaseNotes.find((n) => n.version === '0.7.3')!.title).toContain(
+      '结算',
+    );
+    const numbering = appReleaseNotes.find((n) => n.version === '0.5.12')!;
+    expect(numbering.title).toContain('编号');
+    expect(numbering.highlights.join(' ')).toContain('具体行为');
+    expect(numbering.compatibility).toContain('不是档案key');
+    const desktop = appReleaseNotes.find((n) => n.version === '0.5.2')!;
+    expect(desktop.title).toContain('PC');
+    expect(desktop.highlights.join(' ')).toContain('主菜单版本胶囊');
+  });
+  it('records 0.8.0 copy and collection changes without changing rule or growth compatibility', () => {
+    const latest = appReleaseNotes.find((n) => n.version === '0.8.0')!;
+    expect(latest.version).toBe('0.8.0');
+    expect(latest.title).toContain('成就');
+    expect(latest.title).toContain('札记');
+    expect(latest.highlights.join(' ')).toContain('阿拉伯数字');
+    expect(latest.highlights.join(' ')).toContain('84条');
+    expect(latest.highlights.join(' ')).toContain('保留33条');
+    expect(latest.highlights.join(' ')).toContain('独立显示数值目标');
+    expect(latest.compatibility).toContain('不改阈值');
+    expect(latest.compatibility).toContain('schema8／catalogVersion7');
+    expect(releaseConfig).toEqual({
+      engineVersion: '20-personality-client-1',
+      saveFormatVersion: 5,
+      replayFormatVersion: 5,
+    });
+  });
+  it('records the versioned production population policy separately from the 0.8.0 copy release', () => {
+    const latest = appReleaseNotes.find((n) => n.version === '0.8.1')!;
+    expect(latest.version).toBe('0.8.1');
+    expect(latest.highlights.join(' ')).toContain('classic-population-1');
+    expect(latest.highlights.join(' ')).toContain('15／4／0');
+    expect(latest.highlights.join(' ')).toContain('classic-tiered-1');
+    expect(latest.highlights.join(' ')).toContain('久经沙场／久经风浪各10局');
+    expect(latest.highlights.join(' ')).toContain('坐山观虎斗1／5／10');
+    expect(latest.highlights.join(' ')).toContain('非将军之过1／5／10');
+    expect(latest.compatibility).toContain('文件v5／growth1');
+    expect(latest.compatibility).toContain('不重标旧局');
+  });
+  it('records 0.8.2 as a market interface delivery without changing gameplay compatibility', () => {
+    const latest = appReleaseNotes[0]!;
+    expect(latest.version).toBe('0.8.2');
+    expect(latest.title).toContain('市场');
+    const copy = latest.highlights.join(' ');
+    expect(copy).toContain('1280px');
+    expect(copy).toContain('A／B');
+    expect(copy).toContain('最近参照房');
+    expect(copy).toContain('精确数值');
+    expect(latest.compatibility).toContain('不调整AI');
+    expect(latest.compatibility).toContain('文件v5／growth1');
+    expect(latest.compatibility).toContain('schema8／catalogVersion7');
   });
   it('retains the 0.1.0 engine compatibility hash unchanged', () => {
     const engineVersion = '20-personality-client-1';

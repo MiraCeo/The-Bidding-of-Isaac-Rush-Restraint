@@ -1,7 +1,28 @@
-import { GameBrand } from './game-brand';
+import {
+  SettlementStatus,
+  SettlementStatusLabel,
+} from './settlement-navigation';
+import { MarketImpactPreview } from './market-impact-preview';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
+import type { HistoricalMarket } from '@/lib/ui/market-history';
+import type { MarketReplayPosition } from '@/lib/ui/market-reference-display';
+import {
+  getQuoteCapacity,
+  formatMarketAmount,
+  capacityDescription,
+} from '@/lib/ui/quote-capacity';
+import { GameHeader } from './game-header';
 import { ItemIcon } from './item-icon';
+import { LocateSelfButton } from './ranking-self-summary';
 import { displayItemText } from '@/lib/ui/item-labels';
-import { useState, useEffect, type ReactNode } from 'react';
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,6 +47,7 @@ import {
   switchQuoteKind,
 } from '@/lib/ui/room-action-draft';
 import { useUtilityPages } from './use-utility-pages';
+import { useSessionTools } from './session-context';
 import type { PreferenceSaveStatus } from './game-settings';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 import {
@@ -38,7 +60,6 @@ import {
   itemPresentations,
   validateTurn,
   type ActiveClientGameState,
-  type PlayerAction,
   type PlayerTurn,
   type RewardGroup,
 } from '@/lib/game';
@@ -47,12 +68,15 @@ type ActionKind = 'bid' | 'disrupt' | 'withdraw';
 type ActiveActionKind = Exclude<ActionKind, 'withdraw'>;
 
 interface RoomPrototypeProps {
+  marketHistory?: readonly HistoricalMarket[];
   rules?: import('@/lib/game/types').RulesConfig;
   extraStatus?: ReactNode;
+  headingActions?: ReactNode;
   renderUtilities?: (
     panel: import('./room-utilities').RoomUtilityPanel | null,
     turn: PlayerTurn,
     onReturn: () => void,
+    replayPosition?: MarketReplayPosition,
   ) => ReactNode;
   draft?: RoomDraft;
   onDraftChange?: (update: (current: RoomDraft) => RoomDraft) => void;
@@ -70,14 +94,12 @@ const roomKindNames = {
   hidden: '隐藏房',
   boss: 'BOSS 房',
 } as const;
-function actionLabel(action: PlayerAction): string {
-  if (action.type === 'withdraw') return '静观其变';
-  return `${action.type === 'bid' ? '竞拍' : '扰乱'} ${action.group} · ${action.amount}`;
-}
 
 export function RoomPrototype({
+  marketHistory,
   rules = defaultRules,
   extraStatus,
+  headingActions,
   renderUtilities,
   draft,
   onDraftChange,
@@ -87,11 +109,18 @@ export function RoomPrototype({
   preferenceSaveStatus,
   onPreferencesChange,
 }: RoomPrototypeProps) {
-  const floorMoney = rules.floorStartingMoney[game.floorIndex]!;
   const [rankingOpen, setRankingOpen] = useState(
     preferences.rankingInitiallyOpen,
   );
   const [marketOpen, setMarketOpen] = useState(preferences.marketInitiallyOpen);
+  const marketToggle = useRef<HTMLButtonElement>(null);
+  const marketHeading = useRef<HTMLHeadingElement>(null);
+  const marketElement = useRef<HTMLElement>(null);
+  const marketReturnScroll = useRef<number | null>(null);
+  const marketFocusRequested = useRef(false);
+  const marketScroll = useRef(0);
+  const tools = useSessionTools();
+  const [replayPosition, setReplayPosition] = useState<MarketReplayPosition>();
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
@@ -110,7 +139,83 @@ export function RoomPrototype({
       cancelled = true;
     };
   }, [preferences.marketInitiallyOpen]);
-  const { utilityPanel, changeUtilityPanel } = useUtilityPages();
+  const { utilityPanel, changeUtilityPanel: navigateUtilityPanel } =
+    useUtilityPages();
+  function changeUtilityPanel(
+    next: import('./room-utilities').RoomUtilityPanel | null,
+  ) {
+    setReplayPosition(undefined);
+    navigateUtilityPanel(next);
+  }
+  const closeMarket = useCallback(() => {
+    setMarketOpen(false);
+    marketToggle.current?.focus({ preventScroll: true });
+    if (marketReturnScroll.current !== null) {
+      window.scrollTo(0, marketReturnScroll.current);
+      marketReturnScroll.current = null;
+    } else if (window.matchMedia('(max-width: 1280px)').matches) {
+      marketToggle.current?.scrollIntoView({
+        block: 'center',
+        behavior: 'instant',
+      });
+    }
+  }, []);
+  useEffect(() => {
+    if (!marketOpen || !marketFocusRequested.current) return;
+    marketFocusRequested.current = false;
+    marketHeading.current?.focus({ preventScroll: true });
+    marketElement.current?.scrollIntoView({
+      block: 'start',
+      behavior: 'instant',
+    });
+  }, [marketOpen]);
+  useEffect(() => {
+    if (utilityPanel === null && marketElement.current)
+      marketElement.current.scrollTop = marketScroll.current;
+  }, [utilityPanel]);
+  useEffect(() => {
+    if (!marketOpen || utilityPanel) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        event.target instanceof Node &&
+        marketElement.current?.contains(event.target)
+      ) {
+        event.preventDefault();
+        closeMarket();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [marketOpen, utilityPanel, closeMarket]);
+  useEffect(() => {
+    if (!renderUtilities || utilityPanel !== 'replay') return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        setReplayPosition(undefined);
+        navigateUtilityPanel(null);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [renderUtilities, utilityPanel, navigateUtilityPanel]);
+
+  function toggleMarket() {
+    if (marketOpen) return closeMarket();
+    if (window.matchMedia('(max-width: 1280px)').matches) {
+      marketReturnScroll.current = window.scrollY;
+      marketFocusRequested.current = true;
+    }
+    setMarketOpen(true);
+  }
+  function openMarketReplay() {
+    if (!marketHistory?.[0]) return;
+    setReplayPosition(marketHistory[0]);
+    marketScroll.current = marketElement.current?.scrollTop ?? 0;
+    if (!renderUtilities) tools?.onReplaySourceChange('current');
+    navigateUtilityPanel('replay');
+  }
   const [localDraft, setLocalDraft] = useState(() =>
     createRoomDraft({ ...game, phase: 'room_action' }, rules)!,
   );
@@ -141,17 +246,23 @@ export function RoomPrototype({
   const humanEntryEvents = game.roomEntryEvents.filter(
     (event) => event.playerId === human.id || event.message.includes(human.id),
   );
-  const ranking = [...game.players]
-    .sort(
-      (left, right) =>
-        right.money - left.money || left.id.localeCompare(right.id),
-    )
-    .map((player) => ({
-      ...player,
-      name: player.isHuman
-        ? '你'
-        : (game.aiProfiles[player.id]?.name ?? player.id),
-    }));
+  const ranking = useMemo(
+    () =>
+      [...game.players]
+        .sort(
+          (left, right) =>
+            right.money - left.money || left.id.localeCompare(right.id),
+        )
+        .map((player) => ({
+          ...player,
+          name: player.isHuman
+            ? '你'
+            : (game.aiProfiles[player.id]?.name ?? player.id),
+          capacity: getQuoteCapacity(player, rules),
+        })),
+    [game.players, game.aiProfiles, rules],
+  );
+  const ownCapacity = ranking.find((player) => player.isHuman)!.capacity;
 
   const turn: PlayerTurn = {
     playerId: human.id,
@@ -178,30 +289,6 @@ export function RoomPrototype({
   const totalActualCost = resolvedPreviews.reduce(
     (sum, preview) => sum + preview.amounts.actualCost,
     0,
-  );
-  const publicMarketEntries = (game.pendingRoomTurns ?? [previewTurn]).flatMap(
-    (publicTurn) => {
-      const player = game.players.find(
-        (candidate) => candidate.id === publicTurn.playerId,
-      );
-      if (!player) return [];
-      return publicTurn.actions.flatMap((action, actionIndex) =>
-        action.type === 'withdraw'
-          ? []
-          : [
-              {
-                player,
-                action,
-                actionIndex,
-                amounts: getRuntimeActionAmounts(player, action, rules),
-              },
-            ],
-      );
-    },
-  );
-  const maximumMarketValue = Math.max(
-    floorMoney * 1.25,
-    ...publicMarketEntries.map((entry) => entry.amounts.marketEquivalent ?? 0),
   );
 
   function canDouble(kind: ActiveActionKind): boolean {
@@ -249,106 +336,212 @@ export function RoomPrototype({
         ? '扰乱市场'
         : '静观其变';
 
+  const panelControls = (
+    <div className="room-panel-controls" aria-label="房间辅助面板">
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-left ${rankingOpen ? 'drawer-tab-expanded' : ''}`}
+        onClick={() => setRankingOpen((open) => !open)}
+        aria-controls="ranking-drawer"
+        aria-expanded={rankingOpen}
+      >
+        <Menu aria-hidden="true" />
+        <span>{rankingOpen ? '收起排行' : '排行'}</span>
+        {rankingOpen ? (
+          <ChevronLeft aria-hidden="true" />
+        ) : (
+          <ChevronRight aria-hidden="true" />
+        )}
+      </button>
+      <button
+        type="button"
+        className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
+        ref={marketToggle}
+        onClick={toggleMarket}
+        aria-controls="market-drawer"
+        aria-expanded={marketOpen}
+      >
+        {marketOpen ? (
+          <ChevronRight aria-hidden="true" />
+        ) : (
+          <ChevronLeft aria-hidden="true" />
+        )}
+        <span>{marketOpen ? '收起市场' : '市场'}</span>
+        <Scale aria-hidden="true" />
+      </button>
+
+      <span className="room-panel-summary">
+        资金名次 {ranking.findIndex((player) => player.isHuman) + 1} /{' '}
+        {ranking.length}
+      </span>
+    </div>
+  );
+
   return (
     <main className={utilityPanel ? 'ranking-page' : 'game-page'}>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        showContext={
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules' &&
+          utilityPanel !== 'ranking'
+        }
+        status={
+          utilityPanel === 'ranking' ? (
+            <SettlementStatus
+              brief={
+                <SettlementStatusLabel
+                  mode={extraStatus ? '生存' : '经典'}
+                  floor={game.floorIndex + 1}
+                  room={game.roomIndex + 1}
+                  money={human.money}
+                />
+              }
+            >
+              <dl>
+                <div>
+                  <dt>角色</dt>
+                  <dd>
+                    <button
+                      type="button"
+                      className="ranking-build-link"
+                      aria-label="查看角色构筑"
+                      onClick={() => changeUtilityPanel('build')}
+                    >
+                      {characterNames[game.selectedCharacter]} →
+                    </button>
+                  </dd>
+                </div>
+                {!extraStatus && (
+                  <div>
+                    <dt>难度</dt>
+                    <dd>
+                      {classicDifficultyLabel(
+                        game.classicAi?.difficulty,
+                        game.classicAi?.policy,
+                      )}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </SettlementStatus>
+          ) : undefined
+        }
+        navigation={
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <div className="round-status">
-            <span className="status-chip">
-              <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
-              {game.roomIndex + 1}/5
-            </span>
-            <button
-              type="button"
-              className="status-chip build-entry"
-              aria-label="查看角色构筑"
-              aria-current={utilityPanel === 'build' ? 'page' : undefined}
-              onClick={() => changeUtilityPanel('build')}
-            >
-              {characterNames[game.selectedCharacter]}{' '}
-              <span aria-hidden="true">▾</span>
-            </button>
-            <span className="status-chip status-chip-money">
-              <Coins aria-hidden="true" />
-              <strong>{human.money}</strong>
-            </span>
-          </div>
-        </div>
-      </header>
+        }
+        context={
+          <>
+            <div className="round-status">
+              {!extraStatus && (
+                <span className="status-chip">
+                  难度{' '}
+                  {classicDifficultyLabel(
+                    game.classicAi?.difficulty,
+                    game.classicAi?.policy,
+                  )}
+                </span>
+              )}
+              <span className="status-chip">
+                <Gauge aria-hidden="true" />第 {game.floorIndex + 1} 层 · 房间{' '}
+                {game.roomIndex + 1}/5
+              </span>
+              <button
+                type="button"
+                className="status-chip build-entry"
+                aria-label="查看角色构筑"
+                aria-current={utilityPanel === 'build' ? 'page' : undefined}
+                onClick={() => changeUtilityPanel('build')}
+              >
+                {characterNames[game.selectedCharacter]}{' '}
+                <span aria-hidden="true">▾</span>
+              </button>
+              <span className="status-chip status-chip-money">
+                <Coins aria-hidden="true" />
+                <strong>{human.money}</strong>
+              </span>
+            </div>
+            {utilityPanel === null && panelControls}
+          </>
+        }
+      />
       {utilityPanel === null && extraStatus}
 
       <div
         className="room-game-content"
+        data-ranking-open={rankingOpen}
+        data-market-open={marketOpen}
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        <button
-          type="button"
-          className={`drawer-tab drawer-tab-left ${rankingOpen ? 'drawer-tab-expanded' : ''}`}
-          onClick={() => setRankingOpen((open) => !open)}
-          aria-controls="ranking-drawer"
-          aria-expanded={rankingOpen}
-        >
-          <Menu aria-hidden="true" />
-          <span>{rankingOpen ? '收起排行' : '排行'}</span>
-          {rankingOpen ? (
-            <ChevronLeft aria-hidden="true" />
-          ) : (
-            <ChevronRight aria-hidden="true" />
-          )}
-        </button>
-        <button
-          type="button"
-          className={`drawer-tab drawer-tab-right ${marketOpen ? 'drawer-tab-expanded' : ''}`}
-          onClick={() => setMarketOpen((open) => !open)}
-          aria-controls="market-drawer"
-          aria-expanded={marketOpen}
-        >
-          {marketOpen ? (
-            <ChevronRight aria-hidden="true" />
-          ) : (
-            <ChevronLeft aria-hidden="true" />
-          )}
-          <span>{marketOpen ? '收起市场' : '市场'}</span>
-          <Scale aria-hidden="true" />
-        </button>
-
         <aside
           id="ranking-drawer"
           className={`side-drawer ranking-drawer ${rankingOpen ? 'drawer-open' : ''}`}
+          hidden={!rankingOpen}
           aria-hidden={!rankingOpen}
           inert={!rankingOpen}
+          data-ranking-scope
         >
           <div className="drawer-heading">
             <div>
               <p className="eyebrow">PLAYER RANKING</p>
               <h2>资金排行</h2>
             </div>
+            <LocateSelfButton />
           </div>
-          <p className="drawer-description">按照当前剩余资金从高到低排列。</p>
+          <p className="drawer-description">
+            按当前资金降序 · {ranking.length} 人
+          </p>
+          <details className="ranking-capacity-help">
+            <summary>计算口径</summary>
+            <p>
+              下行竞／扰为单目标理论市场等价上限，并非本房报价。按当前资金、已持有道具和合法名义报价上限计算。完美视力修正竞拍市场等价；Steam折扣只减扣款，不扩大名义上限。双行动受各自总额限制，不把两项单目标上限相加；悬停数值可查看双行动能力。
+            </p>
+          </details>
+          <p className="ranking-capacity-legend">
+            上行资金 · 下行竞拍／扰乱能力上限
+          </p>
           <ol className="ranking-list">
             {ranking.map((player, index) => (
               <li
                 key={player.id}
+                data-player-id={player.id}
                 className={player.isHuman ? 'ranking-self' : ''}
+                data-ranking-self={player.isHuman}
+                tabIndex={player.isHuman ? -1 : undefined}
               >
                 <span className="ranking-position">{index + 1}</span>
                 <span className="ranking-avatar" aria-hidden="true">
                   {player.name.slice(0, 1)}
                 </span>
-                <span className="ranking-name">
+                <span className="ranking-name" title={player.name}>
                   {player.name}
-                  {player.isHuman && <small>当前玩家</small>}
+                  {player.isHuman && <small>本人</small>}
                 </span>
-                <strong>
-                  <Coins aria-hidden="true" />
-                  {player.money}
-                </strong>
+                <div className="ranking-amounts">
+                  <strong>
+                    <Coins aria-hidden="true" />
+                    {player.money}
+                  </strong>
+                  <small
+                    className="ranking-capacity"
+                    title={capacityDescription(player.capacity)}
+                    aria-label={capacityDescription(player.capacity)}
+                  >
+                    <span>
+                      竞{' '}
+                      {formatMarketAmount(player.capacity.bid.marketEquivalent)}
+                    </span>
+                    <span>
+                      扰{' '}
+                      {formatMarketAmount(
+                        player.capacity.disrupt.marketEquivalent,
+                      )}
+                    </span>
+                  </small>
+                </div>
               </li>
             ))}
           </ol>
@@ -356,96 +549,37 @@ export function RoomPrototype({
 
         <aside
           id="market-drawer"
+          ref={marketElement}
+          aria-labelledby="market-reference-title"
           className={`side-drawer market-drawer ${marketOpen ? 'drawer-open' : ''}`}
+          hidden={!marketOpen}
           aria-hidden={!marketOpen}
           inert={!marketOpen}
         >
           <div className="drawer-heading">
             <div>
-              <p className="eyebrow">SHARED MARKET</p>
-              <h2>全房间共同市场</h2>
+              <p className="eyebrow">MARKET REFERENCE</p>
+              <h2 id="market-reference-title" ref={marketHeading} tabIndex={-1}>
+                市场参考
+              </h2>
             </div>
-          </div>
-          <p className="drawer-description">
-            {locked
-              ? '本房间全部行动已经公开；共同基准线将在结算时生成。'
-              : '玩家提交后才会公开本房间的共同基准线与全部行动。'}
-          </p>
-          <div className="vertical-market-wrap">
-            <span className="market-top-label">
-              预览上限 · {maximumMarketValue}
-            </span>
-            <div
-              className="vertical-market"
-              aria-label={
-                locked ? '本房间公开市场等价出价' : '当前行动的市场等价出价预览'
-              }
+            <button
+              className="market-return-button"
+              type="button"
+              onClick={closeMarket}
             >
-              {!locked && (
-                <span className="market-pending">其他玩家尚未提交</span>
-              )}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-                <span
-                  key={ratio}
-                  className="market-tick"
-                  style={{ bottom: `${ratio * 100}%` }}
-                >
-                  {Math.round(maximumMarketValue * ratio)}
-                </span>
-              ))}
-              {publicMarketEntries.map((entry) => (
-                <span
-                  key={`${entry.player.id}-${entry.actionIndex}`}
-                  className={`vertical-action-marker ${entry.action.type === 'disrupt' ? 'vertical-action-marker-disrupt' : ''} ${entry.player.isHuman ? 'vertical-self-marker' : ''}`}
-                  style={{
-                    bottom: `${((entry.amounts.marketEquivalent ?? 0) / maximumMarketValue) * 100}%`,
-                    left: entry.player.isHuman
-                      ? entry.action.group === 'A'
-                        ? '42%'
-                        : '58%'
-                      : `${38 + ((Number(entry.player.id.replace('ai-', '')) * 17 + entry.actionIndex * 11) % 25)}%`,
-                  }}
-                  title={`${entry.player.isHuman ? '你' : (game.aiProfiles[entry.player.id]?.name ?? entry.player.id)}：${actionLabel(entry.action)}；市场等价 ${entry.amounts.marketEquivalent}`}
-                >
-                  {entry.player.isHuman && <b>你{entry.action.group}</b>}
-                </span>
-              ))}
-            </div>
-            <span className="market-bottom-label">低投入 · 0</span>
+              返回报价
+            </button>
           </div>
-          <div className="market-legend">
-            <span>
-              <i className="legend-dot legend-self" />
-              你的行动
-            </span>
-            {locked && (
-              <span>
-                <i className="legend-dot" />
-                竞拍
-              </span>
-            )}
-            {locked && (
-              <span>
-                <i className="legend-dot legend-disrupt" />
-                扰乱
-              </span>
-            )}
-          </div>
-          <div className="market-readout">
-            <span>{locked ? '公开市场样本' : '你的市场等价出价'}</span>
-            <strong>
-              {locked
-                ? `${publicMarketEntries.length} 份`
-                : resolvedPreviews.length === 0
-                  ? '—'
-                  : resolvedPreviews
-                      .map(
-                        (preview) =>
-                          `${preview.action.group} ${preview.amounts.marketEquivalent}`,
-                      )
-                      .join(' / ')}
-            </strong>
-          </div>
+          <MarketImpactPreview
+            history={marketHistory}
+            onViewReplay={openMarketReplay}
+            player={human}
+            turn={previewTurn}
+            kind={activeKind}
+            capacity={ownCapacity}
+            rules={rules}
+          />
         </aside>
 
         <section className="game-stage" aria-label="房间行动区">
@@ -457,6 +591,7 @@ export function RoomPrototype({
               <h2>选择这一房间的目标</h2>
             </div>
             <div className="room-intro-controls">
+              {headingActions}
               <BuildStatus
                 game={game}
                 rules={rules}
@@ -532,21 +667,40 @@ export function RoomPrototype({
                 <section
                   key={reward.group}
                   className={`reward-column reward-column-${reward.group.toLowerCase()}`}
+                  data-selected={groupSelected}
                 >
                   <article
                     className={`item-card ${groupSelected ? 'item-card-selected' : ''}`}
                   >
-                    <button
-                      type="button"
+                    <label
                       className="reward-target"
-                      aria-label={`选择目标 ${reward.group}`}
-                      aria-pressed={groupSelected}
-                      disabled={locked || !hasQuoteFunds}
-                      onClick={() => selectAction(activeKind, reward.group)}
+                      htmlFor={activeKind + '-' + reward.group}
                     >
-                      目标 {reward.group}{' '}
-                      <span>{groupSelected ? '已选' : '选择'}</span>
-                    </button>
+                      <input
+                        id={activeKind + '-' + reward.group}
+                        type={canDouble(activeKind) ? 'checkbox' : 'radio'}
+                        name={canDouble(activeKind) ? undefined : 'room-action'}
+                        checked={groupSelected}
+                        disabled={locked || available < 1}
+                        onChange={() => selectAction(activeKind, reward.group)}
+                        aria-label={
+                          (activeKind === 'disrupt' ? '扰乱' : '竞拍') +
+                          '奖励 ' +
+                          reward.group
+                        }
+                        aria-describedby="action-mode-hint"
+                      />
+                      <strong>目标 {reward.group}</strong>
+                      <span>
+                        {groupSelected
+                          ? '已选'
+                          : available < 1
+                            ? '资金不足'
+                            : canDouble(activeKind)
+                              ? '可追加'
+                              : '未选择'}
+                      </span>
+                    </label>
                     {reward.hidden ? (
                       <ItemIcon hidden size="room" className="room-item-icon" />
                     ) : (
@@ -583,7 +737,6 @@ export function RoomPrototype({
                       maximum={maximum}
                       available={available}
                       selected={groupSelected}
-                      multiple={canDouble(activeKind)}
                       onSelect={() => selectAction(activeKind, reward.group)}
                       onAmountChange={(amount) =>
                         setAmount(reward.group, activeKind, amount)
@@ -643,10 +796,16 @@ export function RoomPrototype({
         </section>
       </div>
       {renderUtilities ? (
-        renderUtilities(utilityPanel, turn, () => changeUtilityPanel(null))
+        renderUtilities(
+          utilityPanel,
+          turn,
+          () => changeUtilityPanel(null),
+          replayPosition,
+        )
       ) : (
         <RoomUtilities
           panel={utilityPanel}
+          replayPosition={replayPosition}
           game={game}
           turn={turn}
           preferences={preferences}
@@ -672,7 +831,6 @@ interface ActionOptionProps {
   maximum: number;
   available: number;
   selected: boolean;
-  multiple: boolean;
   onSelect: () => void;
   onAmountChange: (amount: number) => void;
 }
@@ -684,11 +842,9 @@ function ActionOption({
   maximum,
   available,
   selected,
-  multiple,
   onSelect,
   onAmountChange,
 }: ActionOptionProps) {
-  const id = `${kind}-${group}`;
   const isDisruption = kind === 'disrupt';
   const changeAmount = (nextAmount: number) =>
     onAmountChange(Math.min(maximum, Math.max(1, nextAmount)));
@@ -696,34 +852,9 @@ function ActionOption({
     <div
       className={`action-option ${isDisruption ? 'action-option-disrupt' : ''} ${selected ? 'action-option-selected' : ''}`}
     >
-      <label
-        className="action-option-label"
-        htmlFor={id}
-        aria-label={`${isDisruption ? '扰乱' : '竞拍'}奖励 ${group}`}
-      >
-        <input
-          id={id}
-          type={multiple ? 'checkbox' : 'radio'}
-          name={multiple ? undefined : 'room-action'}
-          checked={selected}
-          disabled={available < 1}
-          onChange={onSelect}
-        />
-        <span>
-          <strong>
-            {group} · {isDisruption ? '扰乱报价' : '竞拍报价'}
-          </strong>
-          <small>
-            {available < 1
-              ? '资金不足，无法报价'
-              : selected
-                ? '已选择此目标'
-                : multiple
-                  ? '可追加此目标'
-                  : '选择此目标'}
-          </small>
-        </span>
-      </label>
+      <strong className="action-quote-label">
+        {isDisruption ? '扰乱报价' : '竞拍报价'}
+      </strong>
       {available < 1 ? (
         <output className="action-quote-unavailable">
           <strong>无可用报价</strong>

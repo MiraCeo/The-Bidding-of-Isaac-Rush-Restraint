@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import runtimeBaseline from './fixtures/classic-cross-runtime-baseline.json';
 import { decideAiTurn } from './ai-decision';
 import { aiPersonalityOrder } from './ai-personality';
 import { characterOrder } from './characters';
@@ -35,6 +36,9 @@ const goldenHashes = {
   eden: 'dde4acfc',
   jacob_esau: '07695d97',
 };
+// Independently captured from the original 1db86ba engine on Linux Node 24.15.
+const runtimeGoldenHashes =
+  process.platform === 'linux' ? runtimeBaseline.ecology.linux : goldenHashes;
 const settings: SimulationOptions = {
   doctrinePopulation: { balanced: 9, cooperative: 5, chaotic: 5 },
   enablePersonalities: true,
@@ -111,7 +115,7 @@ describe('T07 noise experiments and T09 read-only monitor', () => {
         state = advanced;
       }
       expect(hash.toString(16).padStart(8, '0')).toBe(
-        goldenHashes[characterId],
+        runtimeGoldenHashes[characterId],
       );
     },
   );

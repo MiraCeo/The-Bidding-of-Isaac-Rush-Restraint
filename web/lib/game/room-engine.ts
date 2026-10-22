@@ -1,3 +1,4 @@
+import { rememberRoomNearMissEvidence, type RoomNearMissEvidence } from './room-near-miss-evidence';
 import type {
   GeneratedRoom,
   ItemAward,
@@ -206,6 +207,7 @@ export function settleRuntimeRoom(
     }
   }
 
+  const nearMissCandidates: RoomNearMissEvidence[] = [];
   const entitlementMap = new Map<string, Entitlement>();
   const cooperationPlacements: RoomSettlementResult['cooperationPlacements'] = [];
   const highPricePlacements: RoomSettlementResult['highPricePlacements'] = [];
@@ -245,6 +247,9 @@ export function settleRuntimeRoom(
         .filter((candidate) => candidate.distance <= cooperationRadius)
         .sort((left, right) => left.distance - right.distance || left.tie - right.tie);
       const placements = cooperationCandidates.slice(0, Math.ceil(cooperationCandidates.length / 2));
+      // Read the already-settled order, including disruptors and original tie draws.
+      const human = groupActions.find(a => a.action.type === 'bid' && playerById.get(a.playerId)?.isHuman);
+      if (human) nearMissCandidates.push({ group, cooperationLost: cooperationCandidates.some(c => c.resolved === human) && !placements.some(c => c.resolved === human), nextHighPrice: rankedParticipants[highPriceSlotCount]?.resolved === human });
       for (const candidate of placements) {
         cooperationPlacements.push({
           group,
@@ -271,6 +276,11 @@ export function settleRuntimeRoom(
       }
     }
   }
+
+  const nearMissWithoutQualification = nearMissCandidates.filter(f => {
+    const human = nextPlayers.find(p => p.isHuman);
+    return human && !entitlementMap.has(entitlementKey(human.id, f.group));
+  });
 
   // Shields refund failed normal bids before curse effects destroy an earned entitlement.
   for (const player of nextPlayers) {
@@ -422,6 +432,10 @@ export function settleRuntimeRoom(
       });
     }
   }
+
+  // Key by the shared breakdown object so record wrappers preserve the live evidence.
+  const humanId = nextPlayers.find(p => p.isHuman)?.id;
+  rememberRoomNearMissEvidence(scoreBreakdowns, nearMissWithoutQualification.filter(f => !awards.some(a => a.playerId === humanId && a.group === f.group)));
 
   return {
     players: nextPlayers,

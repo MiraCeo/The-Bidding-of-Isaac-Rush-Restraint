@@ -14,6 +14,7 @@ import { settleRuntimeRoom, type RoomSettlementResult } from './room-engine';
 import { generateFloor } from './rooms';
 import { calculateFinalScore } from './item-scoring';
 import { validateTurn } from './turns';
+import { readClassicAiSettings, type ClassicAiSettings } from './classic-difficulty';
 import {
   createClientRoster,
   decideClientAiRoom,
@@ -50,6 +51,7 @@ export interface ClientFinalRankingEntry {
 }
 
 export interface ActiveClientGameState {
+  classicAi?: ClassicAiSettings;
   phase: Exclude<ClientGamePhase, 'character_selection'>;
   seed: number;
   humanPlayerId: 'human';
@@ -75,6 +77,7 @@ export type ClientGameAction =
   | {
       type: 'start_game';
       characterId: CharacterId;
+      classicAi?: ClassicAiSettings;
     }
   | {
       type: 'submit_player_turn';
@@ -111,6 +114,7 @@ export function createCharacterSelectionState(
 export function startClientGame(
   characterId: CharacterId,
   seed = createSessionSeed(),
+  classicAi?: ClassicAiSettings,
 ): ActiveClientGameState {
   const normalizedSeed = seed >>> 0;
   const roomRandom = createSeededRandom(
@@ -134,6 +138,7 @@ export function startClientGame(
   );
 
   return {
+    ...(classicAi === undefined ? {} : { classicAi: readClassicAiSettings(classicAi) }),
     phase: 'room_action',
     seed: normalizedSeed,
     humanPlayerId: 'human',
@@ -173,6 +178,7 @@ function revealAiDecisions(
     state.rooms[state.floorIndex]!.length - state.roomIndex;
   const ai = decideClientAiRoom(
     {
+      ...(state.classicAi ? { classicAi: state.classicAi } : {}),
       seed: state.seed,
       players: state.players,
       aiProfiles: state.aiProfiles,
@@ -316,7 +322,7 @@ function reduceClientGame(
   decideTurn: typeof decideAiTurn,
 ): ClientGameState {
   if (action.type === 'start_game' && state.phase === 'character_selection') {
-    return startClientGame(action.characterId, state.seed);
+    return startClientGame(action.characterId, state.seed, action.classicAi);
   }
   if (action.type === 'submit_player_turn' && state.phase === 'room_action') {
     const human = state.players.find(

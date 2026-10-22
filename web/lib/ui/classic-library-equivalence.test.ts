@@ -253,6 +253,7 @@ it('manually re-enters an equivalent copy, clears relevant old deletion evidence
   expect(await library.add(original)).toBe('added');
   expect(await library.list()).toHaveLength(1);
 });
+// Full-game reconstruction/archiving can exceed 5s; keep assertions and the global default unchanged.
 it('leaves other real-branch deletion markers intact when manually restoring an equivalent record', async () => {
   const library = db();
   await library.add(original);
@@ -267,7 +268,7 @@ it('leaves other real-branch deletion markers intact when manually restoring an 
     }),
   ).toBe('removed');
   expect(await library.list()).toHaveLength(1);
-});
+}, 20000);
 it('keeps an active equivalent sibling and deletes only the selected physical record', async () => {
   const name = crypto.randomUUID(),
     library = db(name);

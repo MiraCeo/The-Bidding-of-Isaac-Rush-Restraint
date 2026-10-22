@@ -1,3 +1,5 @@
+import { createPlayerProfile, playerProfileKey } from './player-profile';
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { act, createElement, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -70,6 +72,12 @@ async function rulesTutorial() {
 
 describe('tutorial and version interface without a real browser', () => {
   it('enters from home without creating a real game and preserves the chosen character', async () => {
+    localStorage.setItem(
+      playerProfileKey,
+      JSON.stringify(
+        manuallyUnlockAchievementCharacters(createPlayerProfile()),
+      ),
+    );
     const generate = vi.spyOn(rooms, 'generateFloor'),
       decide = vi.spyOn(ai, 'decideAiTurn');
     await mount();

@@ -1,4 +1,4 @@
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
 import { Button } from '@/components/ui/button';
 import { GameNavigation } from './game-navigation';
 import { RoomUtilities } from './room-utilities';
@@ -6,7 +6,6 @@ import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
 import type { GamePreferences } from '@/lib/ui/game-preferences';
 import type { PreferenceSaveStatus } from './game-settings';
-import { appVersion } from '@/lib/ui/game-version';
 
 export function GameModeMenu({
   onClassic,
@@ -29,16 +28,14 @@ export function GameModeMenu({
   const tools = useSessionTools();
   return (
     <main className={utilityPanel ? 'ranking-page' : 'character-page'}>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        navigation={
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <span className="status-chip">主菜单 · {appVersion}</span>
-        </div>
-      </header>
+        }
+      />
       <section
         className="mode-menu-stage"
         hidden={utilityPanel !== null}
@@ -68,7 +65,7 @@ export function GameModeMenu({
             <small>
               {tools?.session.game.phase !== 'character_selection'
                 ? '已有经典对局，可继续或重新选角'
-                : '1名真人＋19名AI'}
+                : '1名真人＋19名AI · 四档AI难度 · 默认最高（原版）'}
             </small>
             <Button onClick={onClassic}>经典模式</Button>
           </article>
@@ -92,6 +89,7 @@ export function GameModeMenu({
         )}
       </section>
       <RoomUtilities
+        returnLabel="返回主菜单"
         panel={utilityPanel}
         preferences={preferences}
         saveStatus={status}

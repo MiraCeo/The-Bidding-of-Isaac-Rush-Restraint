@@ -37,7 +37,8 @@ describe('score display preferences do not change scoring', () => {
     );
     expect(markup).toContain('class="ranking-stage game-tools-stage"');
     expect(markup).toContain('class="result-table ranking-table"');
-    expect(markup.match(/<th scope="col">/g)).toHaveLength(5);
+    expect(markup.match(/<th scope="col"(?:\s|>)/g)).toHaveLength(4);
+    expect(markup).toContain('class="ranking-player-cell"');
     expect(markup).not.toMatch(
       /本轮行动|本房积分|获得道具|进入下一房间|<dialog/,
     );
@@ -66,7 +67,7 @@ describe('score display preferences do not change scoring', () => {
       }),
     ).replace(/<[^>]+>/g, '');
     expect(result).toContain(`本房积分+${score.toFixed(4)}`);
-    expect(result).toContain(`最终房间积分${score.toFixed(4)}`);
+    expect(result).toContain(`→本房积分 ${score.toFixed(4)}`);
     expect(ranking).toContain(total.toFixed(4));
     expect(game).toEqual(before);
     const table = renderToStaticMarkup(
@@ -77,7 +78,7 @@ describe('score display preferences do not change scoring', () => {
       }),
     );
     expect(table).toContain('class="result-table ranking-table"');
-    expect(table.match(/<th scope="col">/g)).toHaveLength(8);
+    expect(table.match(/<th scope="col"(?:\s|>)/g)).toHaveLength(7);
   });
 
   it('uses the selected precision in the final hero, podium and table', () => {
@@ -104,7 +105,9 @@ describe('score display preferences do not change scoring', () => {
     const humanScore = game.finalRanking.find(
       (entry) => entry.playerId === 'human',
     )!.finalScore;
-    expect(text).toContain(`你以 ${humanScore.toFixed(4)} 分`);
+    expect(markup).toContain(
+      `data-classic-final-score="true">${humanScore.toFixed(4)}`,
+    );
     expect(text).toContain(game.finalRanking[0]!.finalScore.toFixed(4));
     expect(game).toEqual(before);
   });

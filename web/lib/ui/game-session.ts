@@ -14,6 +14,7 @@ import {
   finalizeReplay,
   type ReplayLog,
 } from './replay-record';
+import { observeClassicGrowth, type GrowthContext } from './achievements/lifecycle';
 
 export type SelectedAction =
   | { kind: 'bid' | 'disrupt'; groups: RewardGroup[] }
@@ -23,6 +24,9 @@ export interface RoomDraft {
   amounts: Record<RewardGroup, { bid: number; disrupt: number }>;
 }
 export interface GameSession {
+  growth?: GrowthContext;
+  /** Observational capture failure never rolls back an already-settled game. */
+  growthIssue?: string;
   game: ClientGameState;
   draft: RoomDraft | null;
   /** Human submissions are retained for bounded integrity verification, not for UI playback. */
@@ -73,7 +77,7 @@ export function reduceGameSession(
     replay = appendReplayRoom(replay, game);
   else if (replay && game.phase === 'game_result')
     replay = finalizeReplay(replay, game);
-  return {
+  const next: GameSession = {
     game,
     replay,
     draft: newRoom
@@ -88,4 +92,13 @@ export function reduceGameSession(
           ? [...session.turns, action.turn]
           : session.turns,
   };
+  if (session.growth && game.phase !== 'character_selection' && action.type !== 'start_game') {
+    next.growth = session.growth;
+    next.growthIssue = session.growthIssue;
+    if (!session.growthIssue) {
+      try { next.growth = observeClassicGrowth(session, next, session.growth); }
+      catch (error) { next.growthIssue = error instanceof Error ? error.message : '成长捕获失败。'; }
+    }
+  }
+  return next;
 }

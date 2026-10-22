@@ -52,6 +52,8 @@ export interface AiDecisionExperiments {
 }
 
 export interface AiDecisionOptions {
+  /** Classic tier policy only; omitted keeps the frozen original arithmetic. */
+  classicPlanningFactor?: number;
   /** Research-only ablation, never set by the client. */
   survivalDisableRoleAdaptation?: boolean;
   survivalRolePrecision?: number;
@@ -79,6 +81,16 @@ export interface AiDecisionOptions {
 }
 
 export interface AiDecision {
+  /** When present, quote/secondary analysis describes intendedTurn, NOT execution. */
+  classicMistake?: {
+    kind: 'reward' | 'budget' | 'quote';
+    severity: 'mild' | 'medium';
+    analysisBasis: 'before-mistake';
+    intendedTurn: PlayerTurn;
+    beforeCost: number;
+    afterCost: number;
+    modelLoss: number;
+  };
   survivalAnalysis?: SurvivalAiPlan;
   strategy: AiStrategy;
   finalWeights: AiStrategyWeights;
@@ -650,8 +662,8 @@ export function decideAiTurn(
           ? 1
           : (analysis?.itemMultipliers[strategy] ?? 1);
       const situationModifier =
-        rawSituationModifier ** analysisInfluence.situation;
-      const itemModifier = rawItemModifier ** analysisInfluence.items;
+        rawSituationModifier ** (options.classicPlanningFactor === undefined ? analysisInfluence.situation : analysisInfluence.situation * options.classicPlanningFactor);
+      const itemModifier = rawItemModifier ** (options.classicPlanningFactor === undefined ? analysisInfluence.items : analysisInfluence.items * options.classicPlanningFactor);
       const decisionNoise = 0.9 + random.next() * 0.2;
       return [
         strategy,

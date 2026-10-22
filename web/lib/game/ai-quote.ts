@@ -407,7 +407,7 @@ function actionFromEquivalent(
   };
 }
 
-function candidateUtility(
+export function candidateUtility(
   player: RuntimePlayerState,
   action: PlayerAction,
   strategy: QuotingStrategy,

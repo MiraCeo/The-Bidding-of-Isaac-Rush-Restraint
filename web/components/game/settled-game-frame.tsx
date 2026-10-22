@@ -1,4 +1,5 @@
-import { GameBrand } from './game-brand';
+import { GameHeader } from './game-header';
+import { classicDifficultyLabel } from '@/lib/game/classic-difficulty';
 import type { ReactNode } from 'react';
 import { Coins } from 'lucide-react';
 import { characterNames, type ActiveClientGameState } from '@/lib/game';
@@ -7,6 +8,11 @@ import { RoomUtilities } from './room-utilities';
 import { MatchRestartControl } from './match-restart-control';
 import { useUtilityPages } from './use-utility-pages';
 import { useSessionTools } from './session-context';
+import {
+  SettlementStatus,
+  SettlementStatusLabel,
+  SettlementNavigationContext,
+} from './settlement-navigation';
 
 /** Utility navigation preserves the actual settled phase and never advances a room. */
 export function SettledGameFrame({
@@ -19,8 +25,19 @@ export function SettledGameFrame({
   const tools = useSessionTools()!;
   const { utilityPanel, changeUtilityPanel } = useUtilityPages();
   const human = game.players.find((p) => p.isHuman)!;
+  const isRoomResult = game.phase === 'room_result';
+  const compactRanking =
+    game.phase === 'room_ranking' ||
+    game.phase === 'game_result' ||
+    utilityPanel === 'ranking';
   return (
     <main
+      data-ranking-host={
+        (game.phase === 'room_ranking' || game.phase === 'game_result') &&
+        utilityPanel === null
+          ? true
+          : undefined
+      }
       className={
         utilityPanel
           ? 'ranking-page'
@@ -31,41 +48,151 @@ export function SettledGameFrame({
               : 'ranking-page'
       }
     >
-      <header className="topbar">
-        <div className="topbar-inner">
-          <GameBrand />
+      <GameHeader
+        showContext={
+          !isRoomResult &&
+          !compactRanking &&
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules'
+        }
+        status={
+          (isRoomResult || compactRanking) &&
+          utilityPanel !== 'settings' &&
+          utilityPanel !== 'rules' ? (
+            <SettlementStatus
+              brief={
+                <SettlementStatusLabel
+                  mode="经典"
+                  floor={game.floorIndex + 1}
+                  room={game.roomIndex + 1}
+                  money={human.money}
+                />
+              }
+            >
+              <dl>
+                <div>
+                  <dt>角色</dt>
+                  <dd>
+                    {compactRanking ? (
+                      <button
+                        type="button"
+                        className="ranking-build-link"
+                        aria-label="查看角色构筑"
+                        onClick={() => changeUtilityPanel('build')}
+                      >
+                        {characterNames[game.selectedCharacter]} →
+                      </button>
+                    ) : (
+                      characterNames[game.selectedCharacter]
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>难度</dt>
+                  <dd>{classicDifficultyLabel(game.classicAi?.difficulty, game.classicAi?.policy)}</dd>
+                </div>
+                <div>
+                  <dt>累计积分</dt>
+                  <dd>
+                    {human.score.toFixed(tools.preferences.scoreDecimals)}
+                  </dd>
+                </div>
+              </dl>
+            </SettlementStatus>
+          ) : undefined
+        }
+        navigation={
           <GameNavigation
             page={utilityPanel}
             onPageChange={changeUtilityPanel}
           />
-          <div className="round-status">
-            <span className="status-chip">
-              第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5
-            </span>
-            <button
-              type="button"
-              className="status-chip build-entry"
-              aria-label="查看角色构筑"
-              aria-current={utilityPanel === 'build' ? 'page' : undefined}
-              onClick={() => changeUtilityPanel('build')}
-            >
-              {characterNames[game.selectedCharacter]}{' '}
-              <span aria-hidden="true">▾</span>
-            </button>
-            <span className="status-chip status-chip-money">
-              <Coins aria-hidden="true" />
-              <strong>{human.money}</strong>
-            </span>
-          </div>
-        </div>
-      </header>
+        }
+        context={
+          <>
+            <div className="round-status">
+              <span className="status-chip">
+                难度 {classicDifficultyLabel(game.classicAi?.difficulty, game.classicAi?.policy)}
+              </span>
+              <span className="status-chip">
+                第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5
+              </span>
+              <button
+                type="button"
+                className="status-chip build-entry"
+                aria-label="查看角色构筑"
+                aria-current={utilityPanel === 'build' ? 'page' : undefined}
+                onClick={() => changeUtilityPanel('build')}
+              >
+                {characterNames[game.selectedCharacter]}{' '}
+                <span aria-hidden="true">▾</span>
+              </button>
+              <span className="status-chip status-chip-money">
+                <Coins aria-hidden="true" />
+                <strong>{human.money}</strong>
+              </span>
+            </div>
+          </>
+        }
+      />
       <div
         className="settled-page-content"
         hidden={utilityPanel !== null}
         inert={utilityPanel !== null}
       >
-        {utilityPanel === null && <MatchRestartControl />}
-        {children}
+        {!isRoomResult && !compactRanking && (
+          <nav className="settled-toolbar" aria-label="结算页面操作">
+            {tools.onReturnMenu && (
+              <button
+                type="button"
+                className="survival-menu-return"
+                onClick={tools.onReturnMenu}
+              >
+                返回主菜单
+              </button>
+            )}
+            {utilityPanel === null && <MatchRestartControl />}
+          </nav>
+        )}
+        <SettlementNavigationContext.Provider
+          value={{
+            auxiliaryActions:
+              utilityPanel === null ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="查看角色构筑"
+                    onClick={() => changeUtilityPanel('build')}
+                  >
+                    查看构筑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeUtilityPanel('replay')}
+                  >
+                    本局回放
+                  </button>
+                </>
+              ) : undefined,
+            lifecycleActions: (
+              <>
+                {tools.onReturnMenu && (
+                  <button
+                    type="button"
+                    className="survival-menu-return"
+                    onClick={tools.onReturnMenu}
+                  >
+                    返回主菜单
+                  </button>
+                )}
+                {utilityPanel === null && (
+                  <MatchRestartControl label="重新开始" />
+                )}
+              </>
+            ),
+          }}
+        >
+          {children}
+        </SettlementNavigationContext.Provider>
       </div>
       <RoomUtilities
         panel={utilityPanel}

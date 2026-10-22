@@ -8,8 +8,10 @@ import {
   survivalSaveKey,
   survivalLastCompletedKey,
 } from './survival-persistence';
+import { profileReplacementEpochKey } from './profile-write-coordinator';
 import { playerProfileKey } from './player-profile';
 import { gamePreferencesKey } from './game-preferences';
+import { achievementLayoutKey } from './achievements/layout-preferences';
 import { activeModeKey } from './survival-client';
 
 type InspectableStorage = Pick<Storage, 'length' | 'key' | 'getItem'>;
@@ -43,7 +45,12 @@ const knownKeys: Record<string, { label: string; group: StorageGroup }> = {
   [survivalSaveKey]: { label: '生存续玩检查点', group: 'survival' },
   [survivalLastCompletedKey]: { label: '生存最近完成回放', group: 'survival' },
   [playerProfileKey]: { label: '玩家档案', group: 'profile' },
+  [profileReplacementEpochKey]: {
+    label: '档案替换代次（本机协调）',
+    group: 'profile',
+  },
   [gamePreferencesKey]: { label: '显示偏好', group: 'preferences' },
+  [achievementLayoutKey]: { label: '成就排列偏好', group: 'preferences' },
   [activeModeKey]: { label: '上次活动模式', group: 'preferences' },
 };
 const legacyKeys = new Set([

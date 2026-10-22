@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
+import { readFileSync } from 'node:fs';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RoomPrototype } from '@/components/game/room-prototype';
@@ -104,9 +105,7 @@ describe('room-wide compact mode and local previews', () => {
     expect(
       container.querySelectorAll('input[type="number"], input[type="range"]'),
     ).toHaveLength(0);
-    expect(
-      element<HTMLButtonElement>('[aria-label="选择目标 A"]').disabled,
-    ).toBe(true);
+    expect(element<HTMLInputElement>('#bid-A').disabled).toBe(true);
     expect(element<HTMLButtonElement>('.confirm-button').disabled).toBe(true);
     expect(numbers('a')).toEqual(['—', '—', '—', '—']);
     expect(element('.action-summary').textContent).toContain('无可用报价');
@@ -188,7 +187,7 @@ describe('room-wide compact mode and local previews', () => {
     expect(element('.reward-column-a .quote-preview').textContent).toContain(
       '21.25 – 30',
     );
-    await click('[aria-label="选择目标 B"]');
+    await click('.reward-column-b .reward-target input');
     expect(numbers('a')).toEqual(['—', '—', '—', '—']);
     expect(numbers('b')).toEqual(['20', '20', '50', '25']);
   });
@@ -318,10 +317,213 @@ describe('room-wide compact mode and local previews', () => {
     expect(
       element<HTMLButtonElement>('.action-mode-switch button').disabled,
     ).toBe(true);
-    expect(element<HTMLButtonElement>('.reward-target').disabled).toBe(true);
+    expect(element<HTMLInputElement>('.reward-target input').disabled).toBe(
+      true,
+    );
     expect(element<HTMLFieldSetElement>('.action-pair').disabled).toBe(true);
     await mode('扰乱');
     await click('.confirm-button');
     expect(submit).not.toHaveBeenCalled();
+  });
+});
+
+describe('action workspace panel layout', () => {
+  it('keeps auxiliary controls in the HUD and changes in-flow panel visibility without losing quote drafts', async () => {
+    const submit = await mount(gameWith());
+    await amount('竞拍', 'A', 37);
+    const content = element<HTMLElement>('.room-game-content');
+    const rank = element<HTMLElement>('#ranking-drawer');
+    const market = element<HTMLElement>('#market-drawer');
+    expect(element('.page-context-bar .room-panel-controls')).toBeTruthy();
+    expect(content.querySelector('.drawer-tab')).toBeNull();
+    expect(rank.hidden).toBe(true);
+    expect(market.hidden).toBe(true);
+    for (const combination of ['rank', 'both', 'market', 'neither']) {
+      if (combination === 'rank' || combination === 'market')
+        await click('.drawer-tab-left');
+      else await click('.drawer-tab-right');
+      expect(content.dataset.rankingOpen).toBe(
+        String(combination === 'rank' || combination === 'both'),
+      );
+      expect(content.dataset.marketOpen).toBe(
+        String(combination === 'market' || combination === 'both'),
+      );
+      expect(rank.hidden).toBe(
+        !(combination === 'rank' || combination === 'both'),
+      );
+      expect(market.hidden).toBe(
+        !(combination === 'market' || combination === 'both'),
+      );
+      expect(
+        element<HTMLInputElement>('input[aria-label="竞拍奖励 A 的数值"]')
+          .value,
+      ).toBe('37');
+    }
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it('keeps reward, input and exact preview in the same selected target unit for two actions', async () => {
+    const submit = await mount(gameWith(['more_options']));
+    await amount('竞拍', 'A', 19);
+    await amount('竞拍', 'B', 21);
+    for (const group of ['a', 'b']) {
+      const unit = element<HTMLElement>('.reward-column-' + group);
+      expect(unit.dataset.selected).toBe('true');
+      expect(
+        unit.querySelectorAll('.item-card,.action-pair,.quote-preview'),
+      ).toHaveLength(3);
+      expect(numbers(group as 'a' | 'b')[0]).toBe(group === 'a' ? '19' : '21');
+    }
+    await click('.confirm-button');
+    expect(submit).toHaveBeenCalledExactlyOnceWith({
+      playerId: 'human',
+      actions: [
+        { type: 'bid', group: 'A', amount: 19 },
+        { type: 'bid', group: 'B', amount: 21 },
+      ],
+    });
+  });
+  it('scopes the compact layout to the action page and never fixes the confirmation over its inputs', () => {
+    const css = readFileSync('app/globals.css', 'utf8');
+    expect(css).toContain(
+      '.room-panel-controls .drawer-tab { position:static;',
+    );
+    expect(css).toContain('.room-game-content>.side-drawer { position:sticky;');
+    expect(css).toContain(
+      '.room-game-content>.side-drawer[hidden] { display:none; }',
+    );
+    expect(css).toContain(
+      '.room-game-content .action-footer-sticky { position:static;',
+    );
+    expect(css).toContain(
+      '.room-game-content .reward-grid { column-gap:12px; row-gap:0; }',
+    );
+    expect(css).toContain(
+      '.room-game-content .reward-column { grid-template-rows:subgrid; grid-row:span 3; }',
+    );
+    expect(css).toContain(
+      '.room-game-content[data-ranking-open]>.game-stage { grid-column:1; grid-row:1; }',
+    );
+  });
+});
+
+describe('single target entry per reward card', () => {
+  it.each([false, true])(
+    'moves the native selection to the card header, double=%s, and keeps amount-focus selection',
+    async (double) => {
+      const submit = await mount(gameWith(double ? ['more_options'] : []));
+      expect(container.querySelectorAll('.reward-target input')).toHaveLength(
+        2,
+      );
+      expect(
+        container.querySelectorAll(
+          '.action-pair input[type=radio], .action-pair input[type=checkbox], button.reward-target',
+        ),
+      ).toHaveLength(0);
+      const a = element<HTMLInputElement>('#bid-A'),
+        b = element<HTMLInputElement>('#bid-B');
+      expect(a.type).toBe(double ? 'checkbox' : 'radio');
+      expect(a.closest('article.item-card')).not.toBeNull();
+      expect(b.closest('article.item-card')).not.toBeNull();
+      expect(a.getAttribute('aria-describedby')).toBe('action-mode-hint');
+      await click('#bid-B');
+      expect(b.checked).toBe(true);
+      expect(a.checked).toBe(double);
+      await act(async () =>
+        element<HTMLInputElement>(
+          'input[aria-label="竞拍奖励 A 的数值"]',
+        ).focus(),
+      );
+      expect(a.checked).toBe(true);
+      expect(b.checked).toBe(double);
+      expect(submit).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('public capability and own market preview', () => {
+  it('adds theoretical market ceilings without changing money sorting or treating discounts as extra funds', async () => {
+    const game = gameWith(['steam_sale', 'twenty_twenty', 'twenty_twenty']);
+    game.players.find((p) => p.isHuman)!.money = 100;
+    const before = structuredClone(game);
+    await mount(game);
+    const rows = [...container.querySelectorAll('.ranking-list li')];
+    const expected = [...game.players].sort(
+      (a, b) => b.money - a.money || a.id.localeCompare(b.id),
+    );
+    expect(
+      rows.findIndex((row) => row.classList.contains('ranking-self')),
+    ).toBe(expected.findIndex((p) => p.isHuman));
+    const own = element('.ranking-self .ranking-capacity');
+    expect(own.textContent).toContain('竞 156.25');
+    expect(own.textContent).toContain('扰 125');
+    expect(own.getAttribute('title')).toContain('不代表本房实际出价');
+    expect(element('.market-impact-limit strong').textContent).toBe('156.25');
+    const ownMarket = element('.market-current-value td');
+    expect(ownMarket.textContent).toBe(
+      Number(ownMarket.getAttribute('title'))
+        .toFixed(2)
+        .replace(/0+$/, '')
+        .replace(/\.$/, ''),
+    );
+    expect(
+      element('.market-exact-values[aria-label="目标 A 精确数值"]').textContent,
+    ).toContain('市场等价');
+    expect(game).toEqual(before);
+    await mode('扰乱');
+    expect(element('.market-impact-limit strong').textContent).toBe('125');
+    expect(own.textContent).toContain('竞 156.25');
+  });
+  it('cannot reveal a supplied private turn through the preview', async () => {
+    const game = gameWith(),
+      submit = await mount(game);
+    const before = element('#market-drawer').innerHTML;
+    await mount(
+      {
+        ...game,
+        pendingRoomTurns: [
+          {
+            playerId: 'ai-1',
+            actions: [{ type: 'bid', group: 'B', amount: 98765 }],
+          },
+        ],
+      },
+      submit,
+    );
+    expect(element('#market-drawer').innerHTML).toBe(before);
+    expect(element('#market-drawer').textContent).not.toContain('98765');
+    expect(element('#market-drawer').textContent).toContain('市场参考');
+    expect(container.querySelector('.vertical-market')).toBeNull();
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it('renders double actions as two own samples with their shared nominal restriction', async () => {
+    await mount(gameWith(['more_options']));
+    await amount('竞拍', 'A', 19);
+    await amount('竞拍', 'B', 21);
+    expect(
+      container.querySelectorAll('.market-quote-comparison thead th'),
+    ).toHaveLength(3);
+    expect(element('.market-impact-pair').textContent).toContain('55');
+    await click('.observe-button');
+    expect(container.querySelectorAll('.market-quote-comparison')).toHaveLength(
+      0,
+    );
+    expect(element('.market-impact-empty').textContent).toContain(
+      '不产生市场样本',
+    );
+  });
+  it('shows zero capability and no imaginary sample when no quote is available', async () => {
+    const game = gameWith();
+    game.players.find((p) => p.isHuman)!.money = 0;
+    await mount(game);
+    expect(element('.ranking-self .ranking-capacity').textContent).toContain(
+      '竞 0',
+    );
+    expect(element('.market-impact-limit strong').textContent).toBe('0');
+    expect(container.querySelectorAll('.market-quote-comparison')).toHaveLength(
+      0,
+    );
+    expect(element('.market-impact-empty').textContent).toContain(
+      '没有可用报价',
+    );
   });
 });

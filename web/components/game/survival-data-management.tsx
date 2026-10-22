@@ -20,6 +20,9 @@ import { readBuildVersion } from '@/lib/ui/game-version';
 import { currentFileVersion } from '@/lib/ui/file-protocol';
 import { useBackupProfileGuard } from './use-backup-profile-guard';
 import { BackupProfileNotice } from './backup-profile-notice';
+import { BackupObjectHeading } from './backup-object-heading';
+import { CharacterArt } from './character-art';
+import { characterNames } from '@/lib/game';
 
 export function SurvivalDataManagement({
   session,
@@ -27,6 +30,7 @@ export function SurvivalDataManagement({
   onImport,
   onReplay,
   recentOverride,
+  saveStatus = '',
 }: {
   session: SurvivalClientSession | null;
   imported: SurvivalReplayDocument | null;
@@ -34,31 +38,54 @@ export function SurvivalDataManagement({
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   onReplay: (doc: SurvivalReplayDocument) => void;
   recentOverride?: { doc: SurvivalReplayDocument | null; error: string };
+  saveStatus?: string;
 }) {
   const [candidate, setCandidate] = useState<ModeDataCandidate | null>(null);
   const [restoreProfile, setRestoreProfile] = useState(false);
   const profileGuard = useBackupProfileGuard();
   const clearProfileGuard = profileGuard.clear;
-  const recheckProfile = () => {
-    profileGuard.capture();
-    setRestoreProfile(false);
-  };
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const [backup, setBackup] = useState<{ source: string; name: string } | null>(
     null,
   );
   const request = useRef(0);
+  const panelRef = useRef<HTMLElement>(null);
+  const hadPreview = useRef(false);
+  useEffect(() => {
+    const preview =
+      panelRef.current?.querySelector<HTMLElement>('.data-candidate');
+    if (preview && (candidate || backup)) {
+      preview.tabIndex = -1;
+      preview.focus({ preventScroll: true });
+      preview.scrollIntoView?.({ block: 'start' });
+    } else if (hadPreview.current)
+      panelRef.current
+        ?.querySelector<HTMLInputElement>('.survival-file-picker input')
+        ?.focus();
+    hadPreview.current = !!candidate || !!backup;
+  }, [candidate, backup]);
   const readController = useRef<AbortController | null>(null),
     exportController = useRef<AbortController | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const confirmController = useRef<AbortController | null>(null);
+  const recheckProfile = () => {
+    confirmController.current?.abort();
+    request.current++;
+    setImporting(false);
+    profileGuard.capture();
+    setRestoreProfile(false);
+  };
   useEffect(
     () => () => {
       request.current++;
       readController.current?.abort();
+      confirmController.current?.abort();
       exportController.current?.abort();
     },
     [],
@@ -83,8 +110,10 @@ export function SurvivalDataManagement({
     clearProfileGuard();
     request.current++;
     readController.current?.abort();
+    confirmController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
+    setImporting(false);
     setCandidate(null);
     setBackup(null);
     setReading(false);
@@ -113,6 +142,8 @@ export function SurvivalDataManagement({
   async function read(file?: File) {
     profileGuard.clear();
     readController.current?.abort();
+    confirmController.current?.abort();
+    setImporting(false);
     const controller = new AbortController();
     readController.current = controller;
     const id = ++request.current;
@@ -164,18 +195,32 @@ export function SurvivalDataManagement({
       if (!controller.signal.aborted) setExporting(false);
     }
   }
-  function confirm() {
-    if (!candidate) return;
+  async function confirm() {
+    if (!candidate || importing) return;
+    const controller = new AbortController(),
+      id = request.current;
+    confirmController.current?.abort();
+    confirmController.current = controller;
+    setImporting(true);
     try {
       const expectedProfileSource =
         restoreProfile &&
         (candidate.kind === 'backup' || candidate.kind === 'survival-backup')
           ? profileGuard.expectedSource()
           : undefined;
-      onImport(candidate, restoreProfile, expectedProfileSource);
-      cancel();
+      await onImport(
+        candidate,
+        restoreProfile,
+        expectedProfileSource,
+        controller.signal,
+      );
+      if (!controller.signal.aborted && id === request.current) cancel();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '未载入文件。');
+      if (!controller.signal.aborted && id === request.current)
+        setMessage(error instanceof Error ? error.message : '未载入文件。');
+    } finally {
+      if (!controller.signal.aborted && id === request.current)
+        setImporting(false);
     }
   }
   function prepareBackup() {
@@ -188,34 +233,84 @@ export function SurvivalDataManagement({
           session.game,
           session.draft,
           loaded.profile,
+          new Date(),
+          session.growthIssue ? undefined : session.growth,
         ),
         name: `生存完整备份-${session.game.seed}.json`,
       });
     });
   }
   return (
-    <section className="settings-group">
-      <h3>生存模式 · 存档与文件</h3>
-      <p>经典与生存分开保存。导入先预览，确认后才载入；回放只读。</p>
-      <p>
-        对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。日常继续游戏用续玩存档；回放保存过程，完整备份包含玩家档案。
-      </p>
+    <section
+      ref={panelRef}
+      className="settings-group backup-match backup-survival"
+      aria-labelledby="survival-backup-title"
+    >
+      <BackupObjectHeading
+        kind="match"
+        title="当前对局"
+        titleId="survival-backup-title"
+        badge="生存模式"
+        description={
+          session
+            ? phase === 'competition_complete'
+              ? '本局已结束，可查看或导出回放；本局完整备份另含玩家档案，不是整库备份。'
+              : '续玩存档保存当前位置与未提交报价；本局完整备份另含原始回放与玩家档案。'
+            : '没有进行中的对局，可读取已有文件；最近完成记录与当前对局分开保留。'
+        }
+      />
+      <div className="data-record-row">
+        {session && (
+          <CharacterArt characterId={session.game.selectedCharacter} />
+        )}
+        <div className="data-record-info">
+          <strong>
+            {session
+              ? characterNames[session.game.selectedCharacter]
+              : '没有进行中的对局'}
+          </strong>
+          {session && (
+            <span className="data-state">
+              {phase === 'competition_complete' ? '已结束' : '进行中'}
+            </span>
+          )}
+          <small>
+            {session
+              ? `第 ${session.game.floorIndex + 1} 层 · 房间 ${session.game.roomIndex + 1}/5 · 已结算 ${session.game.roomRecords.length} 房`
+              : '可读取已有续玩存档；最近完成的回放与当前对局分开保留。'}
+          </small>
+        </div>
+      </div>
+      {!!session && (
+        <output className="backup-save-state">
+          {saveStatus || '当前对局保留在会话中，请按需导出存档。'}
+        </output>
+      )}
       <div className="data-actions">
         <Button
+          variant={phase === 'competition_complete' ? 'secondary' : 'default'}
           disabled={!session || exporting}
           onClick={() =>
             run(() => {
               if (session)
                 return exportFile(
-                  serializeSurvivalCheckpoint(session.game, session.draft),
+                  serializeSurvivalCheckpoint(
+                    session.game,
+                    session.draft,
+                    new Date(),
+                    session.growthIssue ? undefined : session.growth,
+                  ),
                   `生存续玩-${session.game.seed}.json`,
                 );
             })
           }
         >
-          导出生存续玩存档
+          {phase === 'competition_complete'
+            ? '导出生存存档'
+            : '导出生存续玩存档'}
         </Button>
         <Button
+          variant={phase === 'competition_complete' ? 'default' : 'secondary'}
           disabled={!session?.game.roomRecords.length || exporting}
           onClick={() =>
             run(() => {
@@ -252,6 +347,12 @@ export function SurvivalDataManagement({
           }}
         />
       </label>
+      <details className="data-technical">
+        <summary>格式与技术信息</summary>
+        <p>
+          经典与生存分开保存。导入先预览，确认后才载入；回放只读。对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
+        </p>
+      </details>
       {reading && (
         <output>
           正在验证文件…{' '}
@@ -270,6 +371,7 @@ export function SurvivalDataManagement({
           profileGuard={profileGuard}
           onProfileRecheck={recheckProfile}
           onProfileChange={setRestoreProfile}
+          busy={importing}
           onConfirm={confirm}
           onCancel={cancel}
         />
@@ -291,6 +393,7 @@ export function SurvivalDataManagement({
                 <label>
                   <input
                     type="checkbox"
+                    disabled={importing}
                     checked={restoreProfile}
                     onChange={(e) => setRestoreProfile(e.target.checked)}
                   />
@@ -306,7 +409,7 @@ export function SurvivalDataManagement({
             <div className="data-actions">
               <Button
                 onClick={confirm}
-                disabled={restoreProfile && profileGuard.blocked}
+                disabled={importing || (restoreProfile && profileGuard.blocked)}
               >
                 确认{candidate.kind === 'replay' ? '打开回放' : '载入经典对局'}
               </Button>

@@ -1,3 +1,4 @@
+import { RecordContextCard } from './record-context-card';
 import { Check, AlertCircle, FileJson } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import type { ReplayDocument } from '@/lib/ui/game-replay';
 import type { DataManagementController } from './use-data-management';
 import { ModeFilePreview } from './mode-file-preview';
 import { BackupProfileNotice } from './backup-profile-notice';
+import { BackupObjectHeading } from './backup-object-heading';
+import { CharacterArt } from './character-art';
 
 export function dataTaskTitle(data: DataManagementController) {
   if (data.task === 'backup') return '完整备份';
@@ -18,7 +21,7 @@ export function dataTaskTitle(data: DataManagementController) {
       ? '载入完整备份'
       : data.candidate
         ? '载入对局'
-        : '导入文件';
+        : '读取对局文件';
 }
 export function DataManagement({
   data,
@@ -66,6 +69,7 @@ export function DataManagement({
             candidate={candidate}
             restoreProfile={data.restoreProfile}
             onProfileChange={data.setRestoreProfile}
+            busy={data.importing}
             onConfirm={data.confirmImport}
             onCancel={data.cancel}
             profileGuard={data.profileGuard}
@@ -158,7 +162,10 @@ export function DataManagement({
               <Button
                 type="button"
                 onClick={data.confirmImport}
-                disabled={data.restoreProfile && data.profileGuard.blocked}
+                disabled={
+                  data.importing ||
+                  (data.restoreProfile && data.profileGuard.blocked)
+                }
               >
                 {candidate.kind === 'replay'
                   ? '打开回放'
@@ -219,7 +226,7 @@ export function DataManagement({
           </li>
           <li>
             <Check aria-hidden="true" />
-            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；当前不发放成就或解锁角色。
+            玩家档案：完成记录、累计统计、去重凭据及已保留的扩展数据；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
           </li>
         </ul>
         {data.activeSession && data.showRecent && (
@@ -308,31 +315,37 @@ export function DataManagement({
       </div>
     );
   }
-  return (
-    <div className="data-management">
-      {picker}
-      <section
-        className="save-panel settings-group data-records"
-        aria-labelledby="data-records-title"
-      >
-        <h3 id="data-records-title">对局与记录</h3>
-        {data.activeSession ? (
-          <div className="data-record-row" data-record-source="current">
-            <div className="data-record-info">
-              <strong>
-                {
-                  characterNames[
-                    data.activeSession.game.phase !== 'character_selection'
-                      ? data.activeSession.game.selectedCharacter
-                      : 'isaac'
-                  ]
-                }
-              </strong>
-              <span className="data-state">
-                {finished ? '已结束' : '进行中'}
-              </span>
-              <small>
-                {finished
+  const recordContent = (
+    <>
+      {data.activeSession ? (
+        <div className="data-record-row" data-record-source="current">
+          {scope === 'all' && (
+            <CharacterArt
+              characterId={
+                data.activeSession.game.phase !== 'character_selection'
+                  ? data.activeSession.game.selectedCharacter
+                  : 'isaac'
+              }
+            />
+          )}
+          <div className="data-record-info">
+            <strong>
+              {
+                characterNames[
+                  data.activeSession.game.phase !== 'character_selection'
+                    ? data.activeSession.game.selectedCharacter
+                    : 'isaac'
+                ]
+              }
+            </strong>
+            <span className="data-state">{finished ? '已结束' : '进行中'}</span>
+            <small>
+              {scope === 'records'
+                ? (finished
+                    ? ''
+                    : describeDataProgress(data.activeSession) + ' · ') +
+                  `已结算 ${log?.rooms.length ?? 0} 房`
+                : finished
                   ? '15 / 15房间 · ' +
                     (tools.autoSaveStatus === 'saved'
                       ? '回放已保留'
@@ -341,132 +354,172 @@ export function DataManagement({
                     ' · 已结算' +
                     (log?.rooms.length ?? 0) +
                     ' / 15房间'}
-              </small>
-            </div>
-            <div className="data-actions">
-              {finished ? (
-                <>
+            </small>
+          </div>
+          <div className="data-actions">
+            {finished ? (
+              <>
+                <Button
+                  type="button"
+                  variant={
+                    tools.autoSaveStatus === 'session' ? 'secondary' : 'default'
+                  }
+                  onClick={data.openCurrent}
+                >
+                  查看对局
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    tools.autoSaveStatus === 'session' ? 'default' : 'secondary'
+                  }
+                  disabled={data.exporting}
+                  onClick={() => void data.exportReplay('current')}
+                >
+                  导出回放
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant={
+                    tools.autoSaveStatus === 'session' ? 'secondary' : 'default'
+                  }
+                  onClick={data.onReturnGame}
+                >
+                  返回游戏
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    tools.autoSaveStatus === 'session' ? 'default' : 'secondary'
+                  }
+                  disabled={data.exporting}
+                  onClick={() => void data.exportCheckpoint()}
+                >
+                  导出存档
+                </Button>
+                {!!log?.rooms.length && (
                   <Button
                     type="button"
-                    variant={
-                      tools.autoSaveStatus === 'session'
-                        ? 'secondary'
-                        : 'default'
-                    }
+                    variant="secondary"
                     onClick={data.openCurrent}
                   >
-                    查看对局
+                    查看回放
                   </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      tools.autoSaveStatus === 'session'
-                        ? 'default'
-                        : 'secondary'
-                    }
-                    disabled={data.exporting}
-                    onClick={() => void data.exportReplay('current')}
-                  >
-                    导出回放
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant={
-                      tools.autoSaveStatus === 'session'
-                        ? 'secondary'
-                        : 'default'
-                    }
-                    onClick={data.onReturnGame}
-                  >
-                    返回游戏
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      tools.autoSaveStatus === 'session'
-                        ? 'default'
-                        : 'secondary'
-                    }
-                    disabled={data.exporting}
-                    onClick={() => void data.exportCheckpoint()}
-                  >
-                    导出存档
-                  </Button>
-                  {!!log?.rooms.length && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={data.openCurrent}
-                    >
-                      查看回放
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          !recent && (
-            <div className="data-record-row">
-              <div className="data-record-info">
-                <strong>没有进行中的对局</strong>
-                <small>可返回游戏选择角色，或从下方导入已有文件。</small>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={data.onReturnGame}
-              >
-                返回游戏
-              </Button>
+        </div>
+      ) : (
+        !recent && (
+          <div className="data-record-row">
+            <div className="data-record-info">
+              <strong>没有进行中的对局</strong>
+              <small>可返回游戏选择角色，或从下方导入已有文件。</small>
             </div>
-          )
-        )}
-        {status}
-        {data.showRecent &&
-          recent &&
-          recordRow(
-            recent,
-            data.activeSession ? '上一局' : '最近对局',
-            'recent',
-            !data.activeSession,
-          )}
-        {data.showImported &&
-          tools.importedReplay &&
-          recordRow(
-            tools.importedReplay,
-            '文件回放',
-            'file',
-            !data.activeSession && !recent,
-          )}
-        {data.recent.error && (
-          <output className="save-message">
-            最近对局未能读取，原记录保留。{data.recent.error}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={data.onReturnGame}
+            >
+              返回游戏
+            </Button>
+          </div>
+        )
+      )}
+      {(scope !== 'records' || tools.autoSaveStatus === 'session') && status}
+      {data.activeSession &&
+        !data.ongoing &&
+        tools.autoSaveStatus === 'session' && (
+          <output className="data-autosave data-autosave-unavailable">
+            本局尚未保存到浏览器，请导出回放后再关闭页面。
           </output>
         )}
-        {tools.restoreMessage && (
-          <details className="data-technical">
-            <summary>恢复状态</summary>
-            <p>{tools.restoreMessage}</p>
-          </details>
+      {data.showRecent &&
+        recent &&
+        recordRow(
+          recent,
+          data.activeSession ? '上一局' : '最近对局',
+          'recent',
+          !data.activeSession,
         )}
-      </section>
+      {data.showImported &&
+        tools.importedReplay &&
+        recordRow(
+          tools.importedReplay,
+          '文件回放',
+          'file',
+          !data.activeSession && !recent,
+        )}
+      {data.recent.error && (
+        <output className="save-message">
+          最近对局未能读取，原记录保留。{data.recent.error}
+        </output>
+      )}
+      {scope !== 'records' && tools.restoreMessage && (
+        <details className="data-technical">
+          <summary>恢复状态</summary>
+          <p>{tools.restoreMessage}</p>
+        </details>
+      )}
+    </>
+  );
+  return (
+    <div className={`data-management ${scope === 'all' ? 'backup-match' : ''}`}>
+      {picker}
+      {scope === 'records' ? (
+        <RecordContextCard
+          className="data-records"
+          titleId="data-records-title"
+          status={
+            <>
+              <p>{tools.restoreMessage}</p>
+              <p>
+                {tools.autoSaveStatus === 'saved'
+                  ? '当前对局已自动保存。'
+                  : tools.autoSaveStatus === 'session'
+                    ? '本局尚未保存到浏览器。'
+                    : '暂无需要保存的对局。'}
+              </p>
+            </>
+          }
+        >
+          {recordContent}
+        </RecordContextCard>
+      ) : (
+        <section
+          className="save-panel settings-group data-records"
+          aria-labelledby="data-records-title"
+        >
+          <BackupObjectHeading
+            kind="match"
+            title="当前对局"
+            titleId="data-records-title"
+            badge="经典模式"
+            description={
+              data.activeSession
+                ? finished
+                  ? '本局已结束，可查看或导出回放；本局完整备份另含玩家档案，不是整库备份。'
+                  : '续玩存档保存当前位置与未提交报价；本局完整备份另含原始回放与玩家档案。'
+                : '没有进行中的对局，可读取已有文件；最近完成记录与当前对局分开保留。'
+            }
+          />
+          {recordContent}
+        </section>
+      )}
       {scope !== 'records' && (
         <section className="settings-group data-files">
-          <h3>数据管理</h3>
-          <p>
-            对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
-          </p>
+          <h4>文件操作</h4>
           <div className="data-file-row">
             <div>
-              <strong>导入文件</strong>
-              <small>选择后识别为对局、回放或备份，再确认操作。</small>
+              <strong>从文件恢复或查看</strong>
+              <small>识别存档、回放或完整备份，先预览再确认。</small>
             </div>
             <Button type="button" variant="secondary" onClick={data.openImport}>
-              导入文件
+              读取对局文件
             </Button>
           </div>
           {canBackup && (
@@ -497,13 +550,16 @@ export function DataManagement({
           <details className="data-technical">
             <summary>格式与技术信息</summary>
             <p>
+              对局文件统一为v5，默认无损压缩导出为.json，读取自动识别压缩容器或当前JSON。旧开发格式不读取、不迁移。
+            </p>
+            <p>
               经典与生存文件统一使用v5，旧v2/v3/v4不读取或自动迁移；玩家档案版本独立。存档不写入HTML，显示偏好单独保留。
             </p>
             {data.activeSession && (
               <p>对局种子：{data.activeSession.game.seed.toString(16)}</p>
             )}
             <p>
-              玩家档案预留角色解锁、成就和扩展模块；当前不限制角色选择或发放成就。
+              正式结算在协调保存成功后记入成就进度；角色权限与成就展示可在进度中查看。
             </p>
           </details>
         </section>

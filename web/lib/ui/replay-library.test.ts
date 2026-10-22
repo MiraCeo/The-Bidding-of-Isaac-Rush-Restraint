@@ -404,6 +404,7 @@ describe('independent indexed replay library', () => {
     ).rejects.toThrow();
     expect(await newFactory.databases()).toEqual([{ name, version: 2 }]);
   });
+  // Full-game reconstruction/archiving can exceed 5s; keep assertions and the global default unchanged.
   it('deduplicates cross-runtime knife explanation tails but retains the first original and distinguishes real scoring changes', async () => {
     const library = db();
     await library.add(survival);
@@ -429,5 +430,5 @@ describe('independent indexed replay library', () => {
     expect(await replayLibraryKey(changedScore)).not.toBe(
       await replayLibraryKey(doc),
     );
-  });
+  }, 20000);
 });

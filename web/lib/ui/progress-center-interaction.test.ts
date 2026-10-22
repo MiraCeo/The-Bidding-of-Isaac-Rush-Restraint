@@ -1,3 +1,5 @@
+import { appVersion } from './game-version';
+import { manuallyUnlockAchievementCharacters } from './achievements/registry';
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -18,6 +20,7 @@ import {
 import { playLongRun } from './survival-long-run';
 import { createPlayerProfile, playerProfileKey } from './player-profile';
 import { packDataFile } from './compressed-file';
+import { classicCompletionFixture } from './completion-registry.test-helper';
 import { waitForFileUi } from './file-export.test-helper';
 import oldCheckpoint from './fixtures/checkpoint-v2-lost-20261012.json';
 (
@@ -74,7 +77,9 @@ it('describes existing profile data in the backup preview and cancels back to th
   await click('完整备份');
   const preview = container.querySelector('.data-backup-preview')!;
   expect(preview.textContent).toContain('完成记录、累计统计、去重凭据');
-  expect(preview.textContent).toContain('当前不发放成就或解锁角色');
+  expect(preview.textContent).toContain(
+    '恢复操作不额外发放成就；角色权限按恢复后的档案快照生效',
+  );
   expect(preview.textContent).not.toContain('已保存的解锁');
   expect(document.activeElement?.id).toBe('progress-title');
   await act(async () =>
@@ -130,9 +135,13 @@ it('keeps one product identity across all five navigation entries and moves prog
       expect(container.querySelector('.topbar button')?.textContent).not.toBe(
         '返回主菜单',
       );
-      expect(
-        container.querySelector('.topbar .status-chip')?.textContent,
-      ).toContain('主菜单');
+      expect(container.querySelector('.topbar .app-version')?.textContent).toBe(
+        `v${appVersion}`,
+      );
+      expect(container.querySelector('.topbar')?.textContent).not.toContain(
+        '主菜单',
+      );
+      expect(container.querySelector('.page-context-bar')).toBeNull();
     }
   }
 });
@@ -158,14 +167,18 @@ it('uses the same heading skeleton for all four progress categories and keeps th
     ).toBe(tab);
   }
   await click('生存');
-  expect(
-    container.querySelector('.topbar .status-chip')?.textContent,
-  ).toContain('主菜单');
+  expect(container.querySelector('.topbar .app-version')?.textContent).toBe(
+    `v${appVersion}`,
+  );
+  expect(container.querySelector('.topbar')?.textContent).not.toContain(
+    '主菜单',
+  );
+  expect(container.querySelector('.page-context-bar')).toBeNull();
   expect(localStorage.getItem(gameSaveKey)).toBeNull();
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
 });
 it.each(['classic', 'survival'] as const)(
-  'shows the %s source match context in progress and preserves draft through its build shortcut',
+  'hides the %s HUD in progress and preserves draft when returning to game before opening build',
   async (mode) => {
     const c = classic(),
       s = survival();
@@ -177,21 +190,21 @@ it.each(['classic', 'survival'] as const)(
     const game = mode === 'classic' ? c.game : s.game;
     if (game.phase === 'character_selection')
       throw Error('Expected a started source match');
-    expect(
-      container.querySelector('.topbar .round-status')?.textContent,
-    ).toContain('第 1 层');
-    expect(
-      container.querySelector('.topbar .status-chip-money strong')?.textContent,
-    ).toBe(String(game.players.find((p) => p.isHuman)!.money));
+    expect(container.querySelector('.page-context-bar')).toBeNull();
     await click('对局记录');
     await click(mode === 'classic' ? '生存' : '经典');
+    expect(container.querySelector('.page-context-bar')).toBeNull();
+    expect(localStorage.getItem(gameSaveKey)).toBe(beforeC);
+    expect(localStorage.getItem(survivalSaveKey)).toBe(beforeS);
+    await click('返回游戏');
     expect(
-      container.querySelector('.topbar .status-chip-money strong')?.textContent,
+      container.querySelector('.page-context-bar .status-chip-money strong')
+        ?.textContent,
     ).toBe(String(game.players.find((p) => p.isHuman)!.money));
     await act(async () =>
       container
         .querySelector<HTMLButtonElement>(
-          '.topbar [aria-label="查看角色构筑"]',
+          '.page-context-bar [aria-label="查看角色构筑"]',
         )!
         .click(),
     );
@@ -231,7 +244,7 @@ it('opens the shared progress center from an empty menu and exposes both file mo
   expect(container.textContent).toContain('尚未开始对局');
   expect(localStorage.getItem(survivalSaveKey)).toBeNull();
   await click('存档与备份');
-  expect(button('导入文件')).toBeDefined();
+  expect(button('读取对局文件')).toBeDefined();
   await click('生存');
   expect(button('导出生存续玩存档').disabled).toBe(true);
   await click('返回主菜单');
@@ -284,7 +297,7 @@ it('routes the progress header to settings and rules without restarting the curr
   expect(container.querySelector('#room-utilities-title')!.textContent).toBe(
     '规则',
   );
-  await click('返回游戏');
+  await click('游戏');
   expect(
     container.querySelector<HTMLInputElement>(
       'input[aria-label="竞拍奖励 A 的数值"]',
@@ -292,7 +305,7 @@ it('routes the progress header to settings and rules without restarting the curr
   ).toBe('17');
   expect(localStorage.getItem(gameSaveKey)).toBe(before);
 });
-it('shows truthful limited history by mode and does not expose unimplemented achievements', async () => {
+it('shows truthful limited history by mode alongside the implemented achievement entry', async () => {
   const p = createPlayerProfile();
   p.history = [
     {
@@ -321,7 +334,8 @@ it('shows truthful limited history by mode and does not expose unimplemented ach
   await click('进度');
   expect(
     container.querySelectorAll('nav[aria-label="进度分类"] button'),
-  ).toHaveLength(4);
+  ).toHaveLength(5);
+  expect(button('成就')).toBeDefined();
   await click('对局记录');
   expect(container.querySelector('table')!.textContent).toContain('123.00');
   expect(container.querySelector('table')!.textContent).not.toContain('456.00');
@@ -348,14 +362,22 @@ it('keeps AI continuation alive while progress is open and refreshes completed h
   expect(container.querySelector('.progress-page')).not.toBeNull();
   expect(container.textContent).toContain('已结束');
   expect(container.querySelector('table')!.textContent).toContain('第1层淘汰');
-  expect(button('查看本局生存回放')).toBeDefined();
-  await click('查看本局生存回放');
+  const currentReplay = container.querySelector<HTMLButtonElement>(
+    '[aria-label="查看本局生存回放"]',
+  )!;
+  expect(currentReplay.textContent).toBe('查看对局');
+  await act(async () => currentReplay.click());
   expect(container.textContent).toContain('已结算 35 房');
   await click('返回进度');
   expect(container.querySelector('#progress-title')).not.toBeNull();
   expect(button('对局记录').getAttribute('aria-current')).toBe('page');
 }, 20000); // Full 77-command UI continuation, not a 5-second performance assertion.
 it('preserves an unstarted character selection through shared progress without starting a match', async () => {
+  localStorage.setItem(
+    playerProfileKey,
+    JSON.stringify(manuallyUnlockAchievementCharacters(createPlayerProfile())),
+  );
+
   localStorage.setItem(activeModeKey, 'classic');
   await mount();
   await act(async () =>
@@ -394,7 +416,7 @@ it('cancels a classic read on a mode change and discards a late result without a
   });
   const file = new File(['pending'], 'pending.json');
   Object.defineProperty(file, 'text', { value: () => reading });
-  await click('导入文件');
+  await click('读取对局文件');
   const input = container.querySelector<HTMLInputElement>(
     'input[aria-label="导入对局文件"]',
   )!;
@@ -420,7 +442,7 @@ it('rejects old raw and compressed development files from the shared entry witho
   await mount();
   await click('进度');
   await click('存档与备份');
-  await click('导入文件');
+  await click('读取对局文件');
   const beforeClassic = localStorage.getItem(gameSaveKey),
     beforeSurvival = localStorage.getItem(survivalSaveKey),
     input = container.querySelector<HTMLInputElement>(
@@ -447,4 +469,235 @@ it('rejects old raw and compressed development files from the shared entry witho
     expect(localStorage.getItem(survivalSaveKey)).toBe(beforeSurvival);
     expect(localStorage.getItem(playerProfileKey)).toBe(profile);
   }
+});
+
+it('routes overview shortcuts to the selected mode and preserves both games, drafts and profile', async () => {
+  classic();
+  survival();
+  const p = createPlayerProfile();
+  p.history = [
+    {
+      key: 'overview-history',
+      replayId: 'history-only',
+      characterId: 'lost',
+      completedAt: '2026-10-18T10:00:00.000Z',
+      finalScore: 123.4567,
+      rank: 3,
+      mode: 'survival',
+      aiDifficulty: 'standard',
+      status: 'eliminated',
+      eliminationFloorIndex: 1,
+    },
+  ];
+  localStorage.setItem(playerProfileKey, JSON.stringify(p));
+  await mount();
+  await click('进度');
+  const before = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  expect(container.querySelectorAll('.overview-match')).toHaveLength(2);
+  expect(container.querySelectorAll('[data-overview-result]')).toHaveLength(1);
+  expect(container.querySelector('.overview-recent')!.textContent).toContain(
+    '第2层淘汰',
+  );
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>('[aria-label="查看生存对局记录"]')!
+      .click(),
+  );
+  expect(button('对局记录').getAttribute('aria-current')).toBe('page');
+  expect(container.querySelector('.progress-replays>h3')!.textContent).toBe(
+    '对局与记录',
+  );
+  await click('总览');
+  await click('查看详细统计');
+  expect(button('统计').getAttribute('aria-current')).toBe('page');
+  await click('总览');
+  await click('管理存档');
+  expect(button('存档与备份').getAttribute('aria-current')).toBe('page');
+  await click('总览');
+  await click('全部记录');
+  expect(button('对局记录').getAttribute('aria-current')).toBe('page');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(before);
+});
+
+it('keeps record sources and shared filters by mode without mixing result history and full replay actions', async () => {
+  classic();
+  survival();
+  const p = createPlayerProfile();
+  p.history = [
+    {
+      key: 'records-classic',
+      replayId: 'history-only',
+      characterId: 'lost',
+      completedAt: '2026-10-18T10:00:00Z',
+      finalScore: 123.4567,
+      rank: 3,
+    },
+  ];
+  localStorage.setItem(playerProfileKey, JSON.stringify(p));
+  await mount();
+  await click('进度');
+  await click('对局记录');
+  const saved = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  const source = async (name: string) =>
+    act(async () =>
+      container
+        .querySelector<HTMLButtonElement>(
+          `.records-sources [aria-label="${name}"]`,
+        )!
+        .click(),
+    );
+  await source('完成结果');
+  const panel = container.querySelector<HTMLElement>('.records-history')!;
+  expect(panel.closest<HTMLElement>('.records-source-panel')!.hidden).toBe(
+    false,
+  );
+  expect(container.querySelector('.replay-library')).toBeNull();
+  expect(panel.querySelectorAll('[data-history-key]')).toHaveLength(1);
+  expect(panel.querySelectorAll('button')).toHaveLength(0);
+  await act(async () => {
+    const select = panel.querySelector<HTMLSelectElement>(
+      '[aria-label="完成记录角色"]',
+    )!;
+    select.value = 'lost';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await source('完整回放');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('lost');
+  const maintenance = container.querySelector<HTMLDetailsElement>(
+    '.records-maintenance',
+  )!;
+  expect(maintenance.open).toBe(false);
+  const area = container.querySelector('.library-table-wrap')!;
+  expect(
+    !!(
+      area.compareDocumentPosition(maintenance) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    ),
+  ).toBe(true);
+  await click('生存');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('all');
+  await source('完成结果');
+  await click('经典');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="回放库角色"]')!
+      .value,
+  ).toBe('lost');
+  await source('完成结果');
+  await click('总览');
+  await click('对局记录');
+  expect(
+    container
+      .querySelector('[aria-label="完成结果"]')!
+      .getAttribute('aria-pressed'),
+  ).toBe('true');
+  expect(
+    container.querySelector<HTMLSelectElement>('[aria-label="完成记录角色"]')!
+      .value,
+  ).toBe('lost');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(saved);
+});
+
+it('uses the same context frame, state pill, action labels and save disclosure for both completed modes', async () => {
+  const c = classicCompletionFixture(),
+    s = playLongRun(3, 'isaac', 'standard').game;
+  localStorage.setItem(gameSaveKey, serializeGameCheckpoint(c));
+  localStorage.setItem(survivalSaveKey, serializeSurvivalCheckpoint(s, null));
+  await mount();
+  await click('进度');
+  await click('对局记录');
+  const before = [gameSaveKey, survivalSaveKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  const shape = () => {
+    const card = container.querySelector('.records-context-card')!;
+    return {
+      heading: card.querySelector('h3')!.textContent,
+      state: card.querySelector('.data-state')!.textContent,
+      actions: [...card.querySelectorAll('.data-actions button')].map(
+        (e) => e.textContent,
+      ),
+      summary: card.querySelector('.records-save-status>summary')!.textContent,
+    };
+  };
+  const first = shape();
+  expect(first).toEqual({
+    heading: '对局与记录',
+    state: '已结束',
+    actions: ['查看对局', '导出回放'],
+    summary: '保存状态',
+  });
+  await click('生存');
+  expect(shape()).toEqual(first);
+  expect(
+    container.querySelector('.records-context-card small')!.textContent,
+  ).toBe(`已结算 ${s.roomRecords.length} 房`);
+  expect(
+    [gameSaveKey, survivalSaveKey].map((k) => localStorage.getItem(k)),
+  ).toEqual(before);
+});
+
+it('groups file operations by object in both modes and returns to the same mode record list without modifying drafts', async () => {
+  classic();
+  survival();
+  localStorage.setItem(activeModeKey, 'classic');
+  await mount();
+  const before = [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+    localStorage.getItem(k),
+  );
+  await click('进度');
+  await click('存档与备份');
+  const headings = () =>
+    [...container.querySelectorAll('.backup-object-title h3')].map(
+      (e) => e.textContent,
+    );
+  expect(headings()).toEqual(['当前对局', '独立玩家档案', '完整回放库']);
+  expect(
+    container.querySelector('.backup-match .backup-object-badge')!.textContent,
+  ).toBe('经典模式');
+  expect(
+    container.querySelector<HTMLDetailsElement>('.backup-profile-details')!
+      .open,
+  ).toBe(false);
+  expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
+  await click('生存');
+  expect(headings()).toEqual(['当前对局', '独立玩家档案', '完整回放库']);
+  expect(
+    container.querySelector('.backup-match .backup-object-badge')!.textContent,
+  ).toBe('生存模式');
+  expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3);
+  expect(container.querySelector('.backup-save-state')!.textContent).not.toBe(
+    '',
+  );
+  await click('前往对局记录');
+  expect(
+    container.querySelector('.progress-tabs button[aria-current="page"]')!
+      .textContent,
+  ).toBe('对局记录');
+  expect(
+    container.querySelector('.records-context-card')!.textContent,
+  ).toContain('本局尚无已结算房间');
+  expect(button('生存').className).toContain('bg-primary');
+  expect(
+    [gameSaveKey, survivalSaveKey, playerProfileKey].map((k) =>
+      localStorage.getItem(k),
+    ),
+  ).toEqual(before);
 });

@@ -82,6 +82,7 @@ describe('shared atlas rendering in the client', () => {
   it('finds custom items by their supplied artwork names without renaming or changing them', async () => {
     await mount(createElement(GameApp));
     await click(button('规则', element('nav[aria-label="主导航"]')));
+    await click(button('道具图鉴'));
     const input = element<HTMLInputElement>('input[type="search"]');
     for (const [alias, name] of [
       ['泪滴护符', '积分护符'],

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { BackupObjectHeading } from './backup-object-heading';
 import { getPreferenceStorage } from '@/lib/ui/game-preferences';
 import { maxFileBytes } from '@/lib/ui/file-json';
 import { downloadPortableJsonFile } from '@/lib/ui/json-download';
@@ -8,11 +9,11 @@ import {
   readPlayerProfileSnapshot,
   readPlayerProfileBackup,
   serializePlayerProfileBackup,
-  restorePlayerProfileBackup,
   PlayerProfileChangedError,
   type PlayerProfileSnapshot,
   type PlayerProfileBackupDocument,
 } from '@/lib/ui/player-profile-file';
+import { replacePlayerProfileCoordinated } from '@/lib/ui/profile-operations';
 import { subscribePlayerProfileChanges } from '@/lib/ui/profile-events';
 import type { PlayerProfile } from '@/lib/ui/player-profile';
 import {
@@ -82,22 +83,35 @@ export function PlayerProfileManagement() {
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false),
     [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLElement>(null);
+  const hadPreview = useRef(false);
+  useEffect(() => {
+    if (candidate) {
+      previewRef.current?.focus({ preventScroll: true });
+      previewRef.current?.scrollIntoView?.({ block: 'start' });
+    } else if (hadPreview.current) input.current?.focus();
+    hadPreview.current = !!candidate;
+  }, [candidate]);
   const operations = useRef({
     live: false,
     id: 0,
     read: null as AbortController | null,
     export: null as AbortController | null,
+    confirm: null as AbortController | null,
   });
   const cancel = useCallback(() => {
     const state = operations.current;
     state.id++;
     state.read?.abort();
+    state.confirm?.abort();
     state.export?.abort();
     setCandidate(null);
     setAcknowledged(false);
     setReading(false);
     setExporting(false);
+    setImporting(false);
     setMessage('已取消档案操作，未替换本机档案。');
   }, []);
   useEffect(() => {
@@ -115,6 +129,7 @@ export function PlayerProfileManagement() {
       state.live = false;
       state.id++;
       state.read?.abort();
+      state.confirm?.abort();
       state.export?.abort();
       unsubscribe();
       node?.removeEventListener('cancel', cancel);
@@ -134,6 +149,8 @@ export function PlayerProfileManagement() {
   async function read(file?: File) {
     const state = operations.current;
     state.read?.abort();
+    state.confirm?.abort();
+    setImporting(false);
     const controller = new AbortController();
     state.read = controller;
     const id = ++state.id;
@@ -195,20 +212,32 @@ export function PlayerProfileManagement() {
   }
   function recheck() {
     if (!candidate) return;
+    operations.current.confirm?.abort();
+    operations.current.id++;
+    setImporting(false);
     const local = readPlayerProfileSnapshot(getPreferenceStorage());
     setSnapshot(local);
     setCandidate({ ...candidate, local });
     setAcknowledged(false);
     setMessage('已重新核对本机档案；请查看两份档案，再明确确认替换。');
   }
-  function confirm() {
-    if (!candidate || !acknowledged || !candidate.local.available) return;
+  async function confirm() {
+    if (!candidate || !acknowledged || !candidate.local.available || importing)
+      return;
+    const state = operations.current,
+      id = state.id,
+      controller = new AbortController();
+    state.confirm?.abort();
+    state.confirm = controller;
+    setImporting(true);
     try {
-      const restored = restorePlayerProfileBackup(
+      const restored = await replacePlayerProfileCoordinated(
         getPreferenceStorage(),
         candidate.document.profile,
         candidate.local.source,
+        { signal: controller.signal },
       );
+      if (!state.live || id !== state.id || controller.signal.aborted) return;
       setSnapshot({ ...restored, available: true, message: '' });
       setCandidate(null);
       setAcknowledged(false);
@@ -218,32 +247,37 @@ export function PlayerProfileManagement() {
           : '档案内容一致，未重复写入；对局与回放库保持不变。',
       );
     } catch (error) {
+      if (!state.live || id !== state.id || controller.signal.aborted) return;
       if (error instanceof PlayerProfileChangedError) {
         setSnapshot(readPlayerProfileSnapshot(getPreferenceStorage()));
         setAcknowledged(false);
       }
       setMessage(errorText(error));
+    } finally {
+      if (state.live && id === state.id && !controller.signal.aborted)
+        setImporting(false);
     }
   }
   const changed =
     !!candidate &&
     snapshot.available &&
     candidate.local.source !== snapshot.source;
+  const registry = snapshot.profile
+    ? readCompletionRegistry(snapshot.profile)
+    : null;
   return (
     <section
       className="settings-group profile-management"
       aria-labelledby="profile-management-title"
+      data-preview={!!candidate}
     >
-      <div className="profile-management-heading">
-        <div>
-          <p className="eyebrow">PLAYER PROFILE BACKUP</p>
-          <h3 id="profile-management-title">独立玩家档案</h3>
-        </div>
-        <span>两种模式共用 · 不依附对局</span>
-      </div>
-      <p className="utility-notice">
-        备份已保留的完成记录与档案扩展数据，不包含续玩位置、完整回放或显示设置。最多200条轻量记录，不代表终身总局数；当前不发放成就或解锁角色。
-      </p>
+      <BackupObjectHeading
+        kind="profile"
+        title="独立玩家档案"
+        titleId="profile-management-title"
+        badge="两模式共用"
+        description="保留完成记录、累计统计与档案扩展数据，不包含续玩位置、完整回放或显示设置。恢复是替换，不是合并。"
+      />
       <div className="profile-local">
         <strong>
           {snapshot.profile
@@ -252,10 +286,49 @@ export function PlayerProfileManagement() {
               : '本机已保存的玩家档案'
             : '本机档案不可核验'}
         </strong>
-        <ProfileSummary
-          profile={snapshot.profile}
-          empty={snapshot.source === null}
-        />
+        <dl className="backup-profile-metrics">
+          <div>
+            <dt>已保留记录</dt>
+            <dd>
+              {snapshot.profile ? snapshot.profile.history.length : '无法核验'}
+            </dd>
+          </div>
+          <div>
+            <dt>经典／生存</dt>
+            <dd>
+              {snapshot.profile
+                ? `${count(snapshot.profile, 'classic')} / ${count(snapshot.profile, 'survival')}`
+                : '无法核验'}
+            </dd>
+          </div>
+          <div>
+            <dt>登记累计</dt>
+            <dd>
+              {!snapshot.profile
+                ? '无法核验'
+                : registry
+                  ? sumCounters(Object.values(registry.groups)).completed
+                  : '未启用'}
+            </dd>
+          </div>
+        </dl>
+        {snapshot.profile && (
+          <p className="backup-profile-scope-note">
+            {registry
+              ? `历史最多保留200条；登记累计自启用后计数${registry.baselineHistoryCount ? `，启用时的 ${registry.baselineHistoryCount} 条历史基线未补计` : '，与保留历史范围不同'}。`
+              : '登记累计尚未启用；保留历史不自动补计为累计。'}
+          </p>
+        )}
+        <details className="data-technical backup-profile-details">
+          <summary>档案时间、凭据与恢复说明</summary>
+          <ProfileSummary
+            profile={snapshot.profile}
+            empty={snapshot.source === null}
+          />
+          <p>
+            最多200条轻量记录，不代表终身总局数；恢复操作不额外发放成就；角色权限按恢复后的档案快照生效。
+          </p>
+        </details>
         {snapshot.message && <p className="save-message">{snapshot.message}</p>}
       </div>
       <div className="data-actions">
@@ -294,7 +367,12 @@ export function PlayerProfileManagement() {
         </div>
       )}
       {candidate && (
-        <section className="profile-candidate" aria-label="玩家档案恢复预览">
+        <section
+          ref={previewRef}
+          tabIndex={-1}
+          className="profile-candidate"
+          aria-label="玩家档案恢复预览"
+        >
           <h4>独立玩家档案恢复预览</h4>
           <p>
             {candidate.filename} · 档案备份v1 · 导出于{' '}
@@ -329,14 +407,19 @@ export function PlayerProfileManagement() {
             <input
               type="checkbox"
               checked={acknowledged && !changed}
-              disabled={changed || !candidate.local.available}
+              disabled={importing || changed || !candidate.local.available}
               onChange={(event) => setAcknowledged(event.target.checked)}
             />
             确认用文件档案替换本机档案（不合并）
           </label>
           <div className="data-actions">
             <Button
-              disabled={!acknowledged || changed || !candidate.local.available}
+              disabled={
+                importing ||
+                !acknowledged ||
+                changed ||
+                !candidate.local.available
+              }
               onClick={confirm}
             >
               确认恢复玩家档案

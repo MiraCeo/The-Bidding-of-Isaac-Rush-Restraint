@@ -107,7 +107,7 @@ export function groupKey(
   row: Pick<CompletionRecord, 'mode' | 'characterId' | 'aiDifficulty'>,
 ) {
   return row.mode === 'classic'
-    ? `classic/${row.characterId}`
+    ? `classic/${row.characterId}${row.aiDifficulty ? '/' + row.aiDifficulty : ''}`
     : `survival/${row.characterId}/${row.aiDifficulty ?? 'ungraded'}`;
 }
 function validGroup(key: string) {
@@ -116,7 +116,7 @@ function validGroup(key: string) {
     extra === undefined &&
     statisticCharacters.includes(role as CharacterId) &&
     (mode === 'classic'
-      ? difficulty === undefined
+      ? difficulty === undefined || statisticDifficulties.includes(difficulty as (typeof statisticDifficulties)[number])
       : mode === 'survival' &&
         statisticDifficulties.includes(
           difficulty as (typeof statisticDifficulties)[number],

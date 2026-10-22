@@ -1,4 +1,11 @@
-import { GameBrand } from './game-brand';
+import { useMatchScroll } from './use-match-scroll';
+import { selectMarketHistory } from '@/lib/ui/market-history';
+import { GameRules } from './game-rules';
+import { AchievementFeedbackContext } from './achievement-feedback-context';
+import { AchievementNotice } from './achievement-notice';
+import { UtilityPageHeading } from './utility-page-heading';
+import { ArrowLeft } from 'lucide-react';
+import { GameHeader } from './game-header';
 import {
   useEffect,
   useMemo,
@@ -12,7 +19,14 @@ import { Button } from '@/components/ui/button';
 import { CharacterSelection } from './character-selection';
 import { RoomPrototype } from './room-prototype';
 import { RoomResult } from './room-result';
+import { SurvivalFloorResult } from './survival-floor-result';
+import { SurvivalComplete } from './survival-complete';
+import {
+  SettlementStatus,
+  SettlementStatusLabel,
+} from './settlement-navigation';
 import { RoomRanking } from './room-ranking';
+import { SurvivalActionStatus } from './survival-action-status';
 import { SurvivalScoreBoard } from './survival-score-board';
 import { currentSurvivalBoard } from '@/lib/ui/survival-board';
 import type { ClientRankingView } from '@/lib/game/client-session';
@@ -21,13 +35,16 @@ import { GameSettings, type PreferenceSaveStatus } from './game-settings';
 import { GameTutorial } from './game-tutorial';
 import type { RoomUtilityPanel } from './room-utilities';
 import { ItemArtProvider, ItemIcon } from './item-icon';
-import {
-  SurvivalFloorFacts,
-  SurvivalTotalBoard,
-  SurvivalReplayViewer,
-} from './survival-replay-viewer';
+import { SurvivalReplayViewer } from './survival-replay-viewer';
+import type { MarketReplayPosition } from '@/lib/ui/market-reference-display';
 import { useUtilityPages } from './use-utility-pages';
-import { persistCompletionProfile } from '@/lib/ui/completion-persistence';
+import { useLivePersistence, currentGrowthEpoch } from './use-live-persistence';
+import { mergeSavedGrowth } from '@/lib/ui/achievements/client-persistence';
+import {
+  beginSurvivalGrowth,
+  bindGrowthEpoch,
+  survivalGrowthOrder,
+} from '@/lib/ui/achievements/lifecycle';
 import {
   reduceSurvivalClient,
   survivalRoomView,
@@ -37,31 +54,20 @@ import {
 import type { CharacterId, PlayerTurn } from '@/lib/game/item-types';
 import type { SurvivalGameAction } from '@/lib/game/survival-session';
 import { createSurvivalReplay } from '@/lib/ui/survival-record';
-import {
-  saveSurvivalProgress,
-  survivalSaveMessage,
-  type SurvivalReplayDocument,
-} from '@/lib/ui/survival-persistence';
-import {
-  getPreferenceStorage,
-  type GamePreferences,
-} from '@/lib/ui/game-preferences';
+import { type SurvivalReplayDocument } from '@/lib/ui/survival-persistence';
+import { type GamePreferences } from '@/lib/ui/game-preferences';
 import { getBuildSummary } from '@/lib/ui/player-build';
 import { survivalItemCatalog } from '@/lib/game/survival-content';
-import { survivalOfficialCutLines } from '@/lib/game/survival-rules';
 import {
   survivalDifficultyLabel,
   type SurvivalDifficulty,
 } from '@/lib/game/survival-difficulty';
 import { itemPresentations } from '@/lib/game/item-presentation';
-import { loadPlayerProfile } from '@/lib/ui/game-save';
-import {
-  survivalCompletionKey,
-  recordSurvivalCompletedMatch,
-} from '@/lib/ui/survival-profile';
 import type { ModeDataCandidate } from '@/lib/ui/mode-data';
 
 export interface SurvivalGameAppProps {
+  persistenceRevision?: number;
+  persistenceSource?: { source: string | null };
   onSaveStatusChange?: (message: string) => void;
   selectedDifficulty: SurvivalDifficulty;
   onDifficultyChange: (difficulty: SurvivalDifficulty) => void;
@@ -82,7 +88,8 @@ export interface SurvivalGameAppProps {
     candidate: ModeDataCandidate,
     profile: boolean,
     expectedProfileSource?: string | null,
-  ) => void;
+    signal?: AbortSignal,
+  ) => void | Promise<void>;
   restoreMessage?: string;
 }
 export function SurvivalGameApp(props: SurvivalGameAppProps) {
@@ -90,10 +97,41 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     useState<CharacterId | null>(null);
   const { session, preferences, setSession, onSaveStatusChange } = props;
   const game = session?.game;
+  const marketHistory = useMemo(
+    () =>
+      game
+        ? selectMarketHistory(game.roomRecords, game, survivalRoomRules(game))
+        : [],
+    [game],
+  );
+  useMatchScroll(
+    game
+      ? `${game.seed}:${game.phase}:${game.floorIndex}:${game.roomIndex}`
+      : undefined,
+    !props.inactive,
+  );
   const observedIncomplete = useRef(
     game !== undefined && game.phase !== 'competition_complete',
   );
   const log = useMemo(() => (game ? createSurvivalReplay(game) : null), [game]);
+  const liveSave = useLivePersistence({
+    mode: 'survival',
+    session,
+    initialSource: props.persistenceSource,
+    revision: props.persistenceRevision ?? 0,
+    origin: () => (observedIncomplete.current ? 'live' : 'restored'),
+    survivalLog: log,
+    onAcknowledged: (snapshot, context) =>
+      setSession((current) => {
+        if (!current?.growth || !snapshot.growth) return current;
+        const growth = mergeSavedGrowth(
+          current.growth,
+          snapshot.growth,
+          context,
+        );
+        return growth === current.growth ? current : { ...current, growth };
+      }),
+  });
   const { utilityPanel: panel, changeUtilityPanel: setPanel } = useUtilityPages(
     !props.inactive,
   );
@@ -101,14 +139,25 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     'survival' | ClientRankingView
   >('survival');
   const [message, setMessage] = useState('');
-  const [saveStatus, setSaveStatus] = useState('');
+  const saveStatus =
+    liveSave.message ||
+    (liveSave.saved ? '生存进度已自动保存。' : '生存进度待保存。');
   const [restart, setRestart] = useState(false);
-  const [profileMessage, setProfileMessage] = useState('');
+  const profileMessage =
+    liveSave.saved && !liveSave.message
+      ? '生存结果已登记，重复载入不会重复计局。'
+      : '';
   const [teachingOpen, setTeachingOpen] = useState(false);
   const dispatch = (action: SurvivalGameAction) => {
     try {
       if (!session) return;
-      const next = reduceSurvivalClient(session, action);
+      let source = session.growth
+        ? session
+        : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+      const epoch = currentGrowthEpoch();
+      if (source.growth && epoch !== undefined)
+        source = { ...source, growth: bindGrowthEpoch(source.growth, epoch) };
+      const next = reduceSurvivalClient(source, action);
       setSession((current) => (current === session ? next : current));
       if (action.type === 'advance_room' || action.type === 'advance_floor') {
         setPanel(null);
@@ -131,24 +180,8 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     };
   }, [props.imported, setPanel]);
   useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    const saved = saveSurvivalProgress(
-      getPreferenceStorage(),
-      session.game,
-      session.draft,
-    );
-    queueMicrotask(() => {
-      if (!cancelled) {
-        const status = survivalSaveMessage(saved);
-        setSaveStatus(status);
-        onSaveStatusChange?.(status);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, onSaveStatusChange]);
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
   useEffect(() => {
     if (
       !session ||
@@ -160,7 +193,13 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     const token = window.setTimeout(() => {
       try {
         const phase = session.game.phase;
-        const next = reduceSurvivalClient(session, {
+        let source = session.growth
+          ? session
+          : beginSurvivalGrowth(session, survivalGrowthOrder(session.game));
+        const epoch = currentGrowthEpoch();
+        if (source.growth && epoch !== undefined)
+          source = { ...source, growth: bindGrowthEpoch(source.growth, epoch) };
+        const next = reduceSurvivalClient(source, {
           type:
             phase === 'room_action'
               ? 'submit_ai_room'
@@ -178,40 +217,10 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.clearTimeout(token);
   }, [session, setSession, message]);
   useEffect(() => {
-    if (!game || !log) return;
-    if (game.phase !== 'competition_complete') {
+    if (!game) return;
+    if (game.phase !== 'competition_complete')
       observedIncomplete.current = true;
-      return;
-    }
-    let cancelled = false;
-    void survivalCompletionKey(log)
-      .then((key) => {
-        if (cancelled) return;
-        const storage = getPreferenceStorage();
-        const loaded = loadPlayerProfile(storage);
-        if (loaded.message) throw new Error(loaded.message);
-        const saved = persistCompletionProfile(storage, (profile) =>
-          recordSurvivalCompletedMatch(
-            profile,
-            log,
-            key,
-            new Date(),
-            observedIncomplete.current ? 'live' : 'restored',
-          ),
-        );
-        if (!saved.changed) return;
-        setProfileMessage('生存结果已登记，重复载入不会重复计局。');
-      })
-      .catch((error) => {
-        if (!cancelled)
-          setProfileMessage(
-            error instanceof Error ? error.message : '玩家进度未写入。',
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [game, log]);
+  }, [game]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && panel) {
@@ -223,12 +232,11 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [panel, setPanel]);
   const decimals = preferences.scoreDecimals;
-  const name = (id: string) =>
-    id === 'human' ? '你' : (game?.aiProfiles[id]?.name ?? id);
   function utilities(
     selected: RoomUtilityPanel | null,
     _turn?: PlayerTurn,
     onReturn?: () => void,
+    replayPosition?: MarketReplayPosition,
   ): ReactNode {
     if (!selected) return null;
     const close = () => {
@@ -258,10 +266,15 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
               </Button>
             )}
           </div>
-          {(props.imported?.replay ?? log) ? (
+          {(replayPosition ? log : (props.imported?.replay ?? log)) ? (
             <SurvivalReplayViewer
-              key={props.imported ? props.imported.exportedAt : 'current'}
-              log={(props.imported?.replay ?? log)!}
+              key={
+                !replayPosition && props.imported
+                  ? props.imported.exportedAt
+                  : 'current'
+              }
+              log={(replayPosition ? log : (props.imported?.replay ?? log))!}
+              initialRoom={replayPosition}
               decimals={decimals}
             />
           ) : (
@@ -276,7 +289,6 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
       content = (
         <>
-          <h2>构筑与当前状态</h2>
           <p>
             临时屏障 {summary.temporaryShields} · 持久屏障{' '}
             {summary.persistentShields} · 道具 {summary.itemCount}
@@ -334,6 +346,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           </div>
           {view === 'survival' ? (
             <SurvivalScoreBoard
+              embedded
               model={currentSurvivalBoard(game)}
               decimals={decimals}
             />
@@ -341,13 +354,14 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             <RoomRanking
               embedded
               hideViewTabs
+              hideHeading
               hideFooter
+              scoreScope="survival"
               finalRoom={false}
               game={{ ...survivalRoomView(game), roomRankingView: view }}
               onSwitch={setRankingView}
               onAdvance={() => dispatch({ type: 'advance_room' })}
               scoreDecimals={decimals}
-              scoreDescription="已结算房间积分排行，展示本房行动、得分与道具；总分不含层末余额兑换和继承，分层累计请查看生存榜。"
             />
           )}
           {game.phase === 'room_result' &&
@@ -366,128 +380,205 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     } else if (selected === 'rules')
       content = (
-        <>
-          <h2>生存模式规则</h2>
-          <Button
-            variant="secondary"
-            onClick={() => setTeachingOpen((open) => !open)}
-          >
-            {teachingOpen ? '收起生存教学' : '打开生存教学'}
-          </Button>
-          {teachingOpen && (
-            <GameTutorial mode="survival" scoreDecimals={decimals} />
-          )}
-          <p>
-            20人开局，每层5房，第5房为BOSS。每层基础资金重置为1000，再应用角色与道具效果。正式斩杀线为
-            {survivalOfficialCutLines.join('／')}。
-          </p>
-          <p>
-            层末：S = R ＋ 0.1 × 剩余资金 ＋ 0.2 × 上层S。累计积分只加 R
-            与资金兑换；继承分不重复计入，也不再次乘道具倍率。
-          </p>
-          <p>
-            线下全部淘汰。若不足两人，再从达标者末位补足；末位同分按种子抽签。剩余人数≤6时结算；全部线下则团灭，无冠军。
-          </p>
-          <p>
-            总榜：存活者在前；淘汰者按淘汰层数降序，再按累计积分降序。同层同分抽签，保留事实记录。
-          </p>
-          <p>
-            玩家提前淘汰后冻结，AI自动完成剩余比赛。每层BOSS使用普通奖励池，保留心脏对BOSS分数的追溯机制，不使用经典第三层双心脏规则。
-          </p>
-          <p>
-            生存模式暂不提供黑王子之冠，伊甸开局也不抽取。积分存储保留4位，显示偏好不改变淘汰判定。
-          </p>
-          <p>
-            生存AI分简单、标准、困难、最高四档；默认标准。最高保留0.3.1原设置，其他档逐级减弱判断和报价精度，基本资金规划与合法性不变。开局后难度锁定，存档和回放保留本局难度。
-          </p>
-          <details>
-            <summary>生存道具池 · 25件</summary>
-            <div className="survival-items">
-              {survivalItemCatalog.map((item) => (
-                <article key={item.id}>
-                  <ItemIcon itemId={item.id} />
-                  <b>{item.name}</b>
-                  <p>{itemPresentations[item.id].description}</p>
-                </article>
-              ))}
-            </div>
-          </details>
-        </>
+        <GameRules
+          mode="survival"
+          catalog={survivalItemCatalog}
+          onOpenTutorial={() => setTeachingOpen((open) => !open)}
+          tutorialLabel={teachingOpen ? '收起生存教学' : '打开生存教学'}
+          tutorial={
+            teachingOpen ? (
+              <GameTutorial mode="survival" scoreDecimals={decimals} />
+            ) : undefined
+          }
+        />
       );
     else content = <p>开始生存对局后可查看此页。</p>;
-    return (
-      <section
-        id="room-utilities-title"
-        tabIndex={-1}
-        className="ranking-stage game-tools-stage survival-utility"
+    const utilityHeading = (
+      <UtilityPageHeading
+        inlineDescription={selected === 'rules' || selected === 'ranking'}
+        titleId="room-utilities-title"
+        title={
+          selected === 'ranking'
+            ? '排行'
+            : selected === 'rules'
+              ? '生存模式规则'
+              : selected === 'build'
+                ? '构筑与当前状态'
+                : selected === 'replay'
+                  ? '生存回放'
+                  : '生存教学'
+        }
+        eyebrow={
+          selected === 'ranking'
+            ? 'PLAYER RANKING'
+            : selected === 'rules'
+              ? 'GAME RULES'
+              : selected === 'build'
+                ? 'YOUR BUILD'
+                : selected === 'replay'
+                  ? 'MATCH REPLAY'
+                  : 'LEARN BY PLAYING'
+        }
+        description={
+          selected === 'rules'
+            ? '现行生存机制与道具说明'
+            : selected === 'ranking' && game
+              ? rankingView !== 'survival' && game.roomSettlement
+                ? `生存 · 第${game.roomSettlement.room.floorIndex + 1}层 · 房间${game.roomSettlement.room.roomIndex + 1}/5 · 已结算`
+                : '生存模式'
+              : undefined
+        }
       >
         <Button variant="secondary" onClick={close}>
+          <ArrowLeft aria-hidden="true" />
           返回游戏
         </Button>
-        {content}
+      </UtilityPageHeading>
+    );
+    return (
+      <section
+        id="room-utilities"
+        aria-labelledby="room-utilities-title"
+        className="ranking-stage game-tools-stage survival-utility"
+        data-ranking-polish={selected === 'ranking' ? 'utility' : undefined}
+        data-ranking-layout={
+          selected === 'ranking'
+            ? game?.roomSettlement
+              ? rankingView
+              : 'survival'
+            : undefined
+        }
+      >
+        {selected === 'rules' ? (
+          content
+        ) : (
+          <>
+            {utilityHeading}
+            <div className="utility-page-content">{content}</div>
+          </>
+        )}
       </section>
     );
   }
   const human = game?.players.find((p) => p.id === 'human');
-  const lastHumanScore = game?.floorRecords.at(-1)?.scores.human;
+  const lastHumanScore =
+    game?.phase === 'competition_complete'
+      ? (game.eliminated.human?.score ?? game.floorRecords.at(-1)?.scores.human)
+      : game?.floorRecords.at(-1)?.scores.human;
+  const personalResultFloor =
+    game?.eliminated.human?.floorIndex ?? game?.floorIndex;
   const completedLayer =
     game?.phase === 'floor_result' || game?.phase === 'competition_complete';
-  const strip = game && (
-    <section className="survival-status" aria-label="生存进度">
-      <b>
-        生存 · 第 {game.floorIndex + 1} 层 · {game.activePlayerIds.length} 人
-      </b>
-      <span>难度 {survivalDifficultyLabel(game.aiDifficulty)}</span>
-      <span>
-        AI策略{' '}
-        {game.aiDifficulty === 'highest'
-          ? '原最高基线'
-          : game.aiPolicy === 'role-aware-1'
-            ? '角色适配'
-            : '历史原版'}
-      </span>
-      <span>斩杀线 {game.cutLines[game.floorIndex]}</span>
-      <span>资金 {human?.money}</span>
-      <span>
-        {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}{' '}
-        {(game.humanEliminatedAt !== null
-          ? game.eliminated.human!.score.roomScore
-          : (game.currentFloorRoomScores.human ?? []).reduce(
-              (sum, value) => sum + value,
-              0,
-            )
-        ).toFixed(decimals)}
-      </span>
-      <span>
-        {completedLayer ? '结算继承' : '上层继承'}{' '}
-        {(game.humanEliminatedAt !== null
-          ? game.eliminated.human!.score.inheritedScore
-          : completedLayer
-            ? (lastHumanScore?.inheritedScore ?? 0)
-            : (game.previousSurvivalScores.human ?? 0) * 0.2
-        ).toFixed(decimals)}
-      </span>
-      <span>
-        {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}{' '}
-        {((human?.money ?? 0) * 0.1).toFixed(decimals)}
-        {game.humanEliminatedAt === null && !completedLayer
-          ? '（层末为准）'
-          : ''}
-      </span>
-      <Button variant="secondary" onClick={props.onReturnMenu}>
-        返回主菜单
-      </Button>
-      {game.phase === 'room_action' && session?.draft && (
-        <Button variant="secondary" onClick={() => setRestart(true)}>
-          重新选角
-        </Button>
-      )}
-    </section>
-  );
+  const compactSettlement =
+    game?.phase === 'competition_complete' ||
+    ((game?.phase === 'room_result' || game?.phase === 'floor_result') &&
+      game.humanEliminatedAt === null);
+  const strip =
+    game &&
+    (game.phase === 'room_action' && session?.draft ? (
+      <SurvivalActionStatus
+        activePlayers={game.activePlayerIds.length}
+        cutLine={game.cutLines[game.floorIndex]!}
+        roomScore={(game.currentFloorRoomScores.human ?? []).reduce(
+          (sum, value) => sum + value,
+          0,
+        )}
+        inheritedScore={(game.previousSurvivalScores.human ?? 0) * 0.2}
+        balanceValue={(human?.money ?? 0) * 0.1}
+        decimals={decimals}
+        difficulty={survivalDifficultyLabel(game.aiDifficulty)}
+        policy={
+          game.aiDifficulty === 'highest'
+            ? '原最高基线'
+            : game.aiPolicy === 'role-aware-1'
+              ? '角色适配'
+              : '历史原版'
+        }
+        onReturnMenu={props.onReturnMenu}
+        onRestart={() => setRestart(true)}
+      />
+    ) : (
+      <section
+        className="survival-status survival-settled-status"
+        aria-label="生存进度"
+      >
+        <div className="survival-action-goal">
+          <span>
+            生存 · 第 {game.floorIndex + 1} 层 · 房间 {game.roomIndex + 1}/5 ·{' '}
+            {game.activePlayerIds.length} 人
+          </span>
+          <strong>斩杀线 {game.cutLines[game.floorIndex]}</strong>
+        </div>
+        <dl className="survival-score-parts" aria-label="生存结算积分构成">
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null ? '淘汰层房间分' : '本层房间分'}
+            </dt>
+            <dd>
+              {(game.humanEliminatedAt !== null
+                ? game.eliminated.human!.score.roomScore
+                : (game.currentFloorRoomScores.human ?? []).reduce(
+                    (sum, value) => sum + value,
+                    0,
+                  )
+              ).toFixed(decimals)}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null
+                ? '淘汰层继承'
+                : completedLayer
+                  ? '结算继承'
+                  : '上层继承'}
+            </dt>
+            <dd>
+              {(game.humanEliminatedAt !== null
+                ? game.eliminated.human!.score.inheritedScore
+                : completedLayer
+                  ? (lastHumanScore?.inheritedScore ?? 0)
+                  : (game.previousSurvivalScores.human ?? 0) * 0.2
+              ).toFixed(decimals)}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              {game.humanEliminatedAt !== null ? '淘汰层兑换' : '当前余额可兑'}
+            </dt>
+            <dd>
+              {((human?.money ?? 0) * 0.1).toFixed(decimals)}
+              {game.humanEliminatedAt === null && !completedLayer && (
+                <small className="survival-balance-hint">（层末为准）</small>
+              )}
+            </dd>
+          </div>
+        </dl>
+        <div className="survival-action-tools">
+          <span className="survival-settled-money">资金 {human?.money}</span>
+          <details className="survival-policy-details">
+            <summary>难度 {survivalDifficultyLabel(game.aiDifficulty)}</summary>
+            <p>
+              AI策略{' '}
+              {game.aiDifficulty === 'highest'
+                ? '原最高基线'
+                : game.aiPolicy === 'role-aware-1'
+                  ? '角色适配'
+                  : '历史原版'}
+            </p>
+          </details>
+          {!compactSettlement && (
+            <Button variant="secondary" onClick={props.onReturnMenu}>
+              返回主菜单
+            </Button>
+          )}
+        </div>
+      </section>
+    ));
   let page: ReactNode;
   if (!session)
     page = (
       <CharacterSelection
+        startMessage={props.restoreMessage}
         selected={selectedCharacter}
         onSelect={setSelectedCharacter}
         aiDifficulty={props.selectedDifficulty}
@@ -508,6 +599,7 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       <RoomPrototype
         key={`${game!.seed}:${game!.floorIndex}:${game!.roomIndex}`}
         game={survivalRoomView(game!)}
+        marketHistory={marketHistory}
         rules={survivalRoomRules(game!)}
         draft={session.draft}
         onDraftChange={(update) =>
@@ -529,28 +621,22 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
     let body: ReactNode;
     if (game!.phase === 'competition_complete')
       body = (
-        <>
-          <p className="eyebrow">SURVIVAL COMPLETE</p>
-          <h2>
-            {game!.championId
-              ? `${name(game!.championId)}获得生存榜首`
-              : '团灭 · 无冠军'}
-          </h2>
-          <p>
-            你的名次：第{' '}
-            {
-              game!.finalRanking.find((entry) => entry.playerId === 'human')!
-                .rank
-            }{' '}
-            名 ·{' '}
-            {game!.humanEliminatedAt === null
-              ? '存活'
-              : `第 ${game!.humanEliminatedAt + 1} 层淘汰`}
-          </p>
-          <SurvivalTotalBoard log={log!} decimals={decimals} />
-          <p>{profileMessage}</p>
-          <Button onClick={props.onNew}>再来一局生存</Button>
-        </>
+        <SurvivalComplete
+          log={log!}
+          aiProfiles={game!.aiProfiles}
+          decimals={decimals}
+          onNew={props.onNew}
+          onBuild={() => setPanel('build')}
+          onReplay={() => setPanel('replay')}
+          onReturnMenu={props.onReturnMenu}
+          profileMessage={profileMessage}
+          saveMessage={
+            <>
+              {message || (profileMessage ? null : saveStatus)}
+              {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+            </>
+          }
+        />
       );
     else if (game!.humanEliminatedAt !== null)
       body = (
@@ -565,25 +651,53 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     else if (game!.phase === 'floor_result')
       body = (
-        <>
-          <p className="eyebrow">FLOOR SETTLEMENT</p>
-          <h2>层末生存结算</h2>
-          <SurvivalFloorFacts
-            log={log!}
-            index={game!.floorRecords.length - 1}
-            decimals={decimals}
-          />
-          <Button onClick={() => dispatch({ type: 'advance_floor' })}>
-            {game!.floorRecords.at(-1)!.plan.shouldFinish
-              ? '查看生存总榜'
-              : '进入下一层'}
-          </Button>
-        </>
+        <SurvivalFloorResult
+          log={log!}
+          index={game!.floorRecords.length - 1}
+          decimals={decimals}
+          onAdvance={() => dispatch({ type: 'advance_floor' })}
+          onBuild={() => setPanel('build')}
+          onReplay={() => setPanel('replay')}
+          onReturnMenu={props.onReturnMenu}
+          onRestart={() => setRestart(true)}
+          saveMessage={
+            <>
+              {message || saveStatus}
+              {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+            </>
+          }
+        />
       );
     else
       body = (
         <RoomResult
+          preferences={preferences}
           embedded
+          scoreScope="survival"
+          auxiliaryActions={
+            <>
+              <button type="button" onClick={() => setPanel('build')}>
+                查看构筑
+              </button>
+              <button type="button" onClick={() => setPanel('replay')}>
+                本局回放
+              </button>
+            </>
+          }
+          lifecycleActions={
+            <>
+              <Button variant="secondary" onClick={props.onReturnMenu}>
+                返回主菜单
+              </Button>
+              <Button variant="ghost" onClick={() => setRestart(true)}>
+                重新开始
+              </Button>
+              <output className="settlement-save-state">
+                {message || saveStatus}
+                {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+              </output>
+            </>
+          }
           game={survivalRoomView(game!)}
           rules={survivalRoomRules(game!)}
           finalRoom={false}
@@ -598,9 +712,98 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
       );
     page = (
       <main className="ranking-page">
-        <header className="topbar">
-          <div className="topbar-inner">
-            <GameBrand />
+        <GameHeader
+          status={
+            compactSettlement && panel !== 'settings' && panel !== 'rules' ? (
+              <SettlementStatus
+                brief={
+                  <SettlementStatusLabel
+                    mode="生存"
+                    floor={game!.floorIndex + 1}
+                    room={game!.roomIndex + 1}
+                    money={human?.money ?? 0}
+                  />
+                }
+              >
+                <dl className="settlement-status-facts">
+                  <div>
+                    <dt>{completedLayer ? '存活人数' : '参与人数'}</dt>
+                    <dd>{game!.activePlayerIds.length} 人</dd>
+                  </div>
+                  <div>
+                    <dt>难度</dt>
+                    <dd>{survivalDifficultyLabel(game!.aiDifficulty)}</dd>
+                  </div>
+                  <div>
+                    <dt>AI策略</dt>
+                    <dd>
+                      {game!.aiDifficulty === 'highest'
+                        ? '原最高基线'
+                        : game!.aiPolicy === 'role-aware-1'
+                          ? '角色适配'
+                          : '历史原版'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      {game!.phase === 'competition_complete'
+                        ? '个人结果层／斩杀线'
+                        : '斩杀线'}
+                    </dt>
+                    <dd>
+                      {game!.phase === 'competition_complete'
+                        ? `第 ${(personalResultFloor ?? 0) + 1} 层 · ${game!.cutLines[personalResultFloor ?? 0]}`
+                        : game!.cutLines[game!.floorIndex]}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      {game!.phase === 'competition_complete'
+                        ? '个人结算房间分'
+                        : '本层房间分'}
+                    </dt>
+                    <dd>
+                      {(completedLayer
+                        ? (lastHumanScore?.roomScore ?? 0)
+                        : (game!.currentFloorRoomScores.human ?? []).reduce(
+                            (sum, n) => sum + n,
+                            0,
+                          )
+                      ).toFixed(decimals)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{completedLayer ? '结算继承' : '上层继承'}</dt>
+                    <dd>
+                      {(completedLayer
+                        ? (lastHumanScore?.inheritedScore ?? 0)
+                        : (game!.previousSurvivalScores.human ?? 0) *
+                          game!.rules.scoreInheritanceRatio
+                      ).toFixed(decimals)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      {completedLayer ? (
+                        '余额兑换'
+                      ) : (
+                        <>
+                          余额可兑<small>层末为准</small>
+                        </>
+                      )}
+                    </dt>
+                    <dd>
+                      {(completedLayer
+                        ? (lastHumanScore?.exchangedScore ?? 0)
+                        : (human?.money ?? 0) * game!.rules.moneyExchangeRatio
+                      ).toFixed(decimals)}
+                    </dd>
+                  </div>
+                </dl>
+              </SettlementStatus>
+            ) : undefined
+          }
+          navigation={
             <GameNavigation
               page={panel}
               onPageChange={(next) => {
@@ -608,12 +811,16 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
                 setPanel(next);
               }}
             />
-          </div>
-        </header>
-        {(panel === null || panel === 'ranking' || panel === 'build') && strip}
+          }
+        />
+        {!compactSettlement &&
+          (panel === null || panel === 'ranking' || panel === 'build') &&
+          strip}
         <div
           className="survival-tools"
-          hidden={panel === 'settings' || panel === 'rules'}
+          hidden={
+            compactSettlement || panel === 'settings' || panel === 'rules'
+          }
         >
           <Button variant="secondary" onClick={() => setPanel('build')}>
             构筑与当前状态
@@ -623,12 +830,21 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
           </Button>
           {game!.phase !== 'competition_complete' && (
             <Button variant="secondary" onClick={() => setRestart(true)}>
-              重新选角
+              重新开始
             </Button>
           )}
         </div>
         <section
           className="ranking-stage survival-stage"
+          data-ranking-layout={
+            game!.phase === 'competition_complete' && panel === null
+              ? 'complete'
+              : game!.phase === 'floor_result' &&
+                  game!.humanEliminatedAt === null &&
+                  panel === null
+                ? 'floor'
+                : undefined
+          }
           hidden={panel !== null}
           inert={panel !== null}
         >
@@ -641,24 +857,26 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
   if (props.imported && panel === 'replay')
     page = (
       <main className="ranking-page">
-        <header className="topbar">
-          <div className="topbar-inner">
-            <h1>生存只读回放</h1>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setPanel(null);
-                if (props.onReturnImported) props.onReturnImported();
-                else props.onReplay(null);
-              }}
-            >
-              {props.importedReturnLabel ?? '返回生存对局'}
-            </Button>
-            <Button variant="secondary" onClick={props.onReturnMenu}>
-              返回主菜单
-            </Button>
-          </div>
-        </header>
+        <GameHeader
+          navigation={<span className="header-location">生存只读回放</span>}
+          context={
+            <div className="readonly-return-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setPanel(null);
+                  if (props.onReturnImported) props.onReturnImported();
+                  else props.onReplay(null);
+                }}
+              >
+                {props.importedReturnLabel ?? '返回生存对局'}
+              </Button>
+              <Button variant="secondary" onClick={props.onReturnMenu}>
+                返回主菜单
+              </Button>
+            </div>
+          }
+        />
         {utilities('replay')}
       </main>
     );
@@ -669,11 +887,27 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
         className="game-client"
         data-reduce-motion={preferences.reduceMotion}
       >
-        {page}
-        <output className="survival-save-message">
-          {message || saveStatus}
-          {props.restoreMessage && <span> · {props.restoreMessage}</span>}
-        </output>
+        <AchievementFeedbackContext.Provider
+          value={
+            <AchievementNotice
+              ids={liveSave.achievementNotice}
+              onDismiss={liveSave.dismissNotice}
+            />
+          }
+        >
+          {page}
+        </AchievementFeedbackContext.Provider>
+        {!compactSettlement && (
+          <output className="survival-save-message">
+            {message || saveStatus}
+            {props.restoreMessage && <span> · {props.restoreMessage}</span>}
+          </output>
+        )}
+        {liveSave.message && (
+          <Button disabled={liveSave.busy} onClick={liveSave.retry}>
+            重试保存
+          </Button>
+        )}
         {message && game?.humanEliminatedAt !== null && (
           <Button onClick={() => setMessage('')}>重试AI续跑</Button>
         )}
@@ -684,16 +918,20 @@ export function SurvivalGameApp(props: SurvivalGameAppProps) {
             aria-label="重新开始生存对局"
             className="survival-confirm"
           >
-            <h2>放弃当前生存对局并重新选角？</h2>
+            <h2>重新开始生存对局？</h2>
+            <p>
+              结束当前对局，重新选择角色并开始新局？当前生存自动进度将被替换。
+            </p>
             <p>不会删除经典存档、玩家进度与已导出的文件。</p>
             <Button
               onClick={() => {
+                liveSave.invalidate();
                 setRestart(false);
                 setPanel(null);
                 props.onNew();
               }}
             >
-              确认重新选角
+              确认重新开始
             </Button>
             <Button variant="secondary" onClick={() => setRestart(false)}>
               取消

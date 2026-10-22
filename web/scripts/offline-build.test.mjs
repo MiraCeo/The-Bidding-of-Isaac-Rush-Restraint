@@ -27,19 +27,26 @@ it('builds the real game as a production single-file document without touching d
   expect(html).toContain('角色');
   expect(html).toContain('id="root"');
   expect(html).not.toContain('raw.githubusercontent.com');
-  const atlases = Array.from(
+  const images = Array.from(
     script.matchAll(/data:image\/png;base64,([A-Za-z0-9+/=]+)/g),
   ).map((match) => Buffer.from(match[1], 'base64'));
-  expect(atlases).toHaveLength(3);
-  for (const filename of [
-    'collectibles-sprite.png',
-    'trinket-sprite.png',
-    'grab-bag.png',
-  ]) {
+  const expectedImages = [
+    'items/collectibles-sprite.png',
+    'items/trinket-sprite.png',
+    'items/grab-bag.png',
+    'characters/isaac.png',
+    'characters/lost.png',
+    'characters/azazel.png',
+    'characters/eden.png',
+    'characters/jacob.png',
+    'characters/esau.png',
+  ];
+  expect(images).toHaveLength(expectedImages.length);
+  for (const filename of expectedImages) {
     const source = await readFile(
-      new URL(`../assets/items/${filename}`, import.meta.url),
+      new URL(`../assets/${filename}`, import.meta.url),
     );
-    expect(atlases.filter((bytes) => bytes.equals(source))).toHaveLength(1);
+    expect(images.filter((bytes) => bytes.equals(source))).toHaveLength(1);
   }
   expect(() => assertStandaloneHtml(html)).not.toThrow();
   expect(await readFile(webIndex, 'utf8').catch(() => null)).toBe(before);

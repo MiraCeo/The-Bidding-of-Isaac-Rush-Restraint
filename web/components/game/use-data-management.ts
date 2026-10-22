@@ -34,7 +34,8 @@ export function useDataManagement(
       candidate: ModeDataCandidate,
       profile: boolean,
       expectedProfileSource?: string | null,
-    ) => void;
+      signal?: AbortSignal,
+    ) => void | Promise<void>;
     onReplay?: (document: ReplayDocument) => void;
     onCurrentReplay?: () => void;
     profile?: { profile: PlayerProfile; message: string };
@@ -82,10 +83,13 @@ export function useDataManagement(
   const readController = useRef<AbortController | null>(null);
   const exportController = useRef<AbortController | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const confirmController = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
       request.current++;
       readController.current?.abort();
+      confirmController.current?.abort();
       exportController.current?.abort();
     },
     [],
@@ -109,9 +113,11 @@ export function useDataManagement(
   function cancel() {
     profileGuard.clear();
     readController.current?.abort();
+    confirmController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
     request.current++;
+    setImporting(false);
     setTask('settings');
     setCandidate(null);
     setBackup(null);
@@ -122,6 +128,8 @@ export function useDataManagement(
   async function readFile(file: File | undefined) {
     profileGuard.clear();
     readController.current?.abort();
+    confirmController.current?.abort();
+    setImporting(false);
     const controller = new AbortController();
     readController.current = controller;
     const id = ++request.current;
@@ -159,17 +167,24 @@ export function useDataManagement(
   function openImport() {
     profileGuard.clear();
     readController.current?.abort();
+    confirmController.current?.abort();
     exportController.current?.abort();
     setExporting(false);
     request.current++;
+    setImporting(false);
     setTask('import');
     setCandidate(null);
     setRestoreProfile(false);
     setMessage('');
     setReading(false);
   }
-  function confirmImport() {
-    if (!tools || !candidate) return;
+  async function confirmImport() {
+    if (!tools || !candidate || importing) return;
+    const controller = new AbortController(),
+      id = request.current;
+    confirmController.current?.abort();
+    confirmController.current = controller;
+    setImporting(true);
     try {
       const expectedProfileSource =
         restoreProfile &&
@@ -177,7 +192,12 @@ export function useDataManagement(
           ? profileGuard.expectedSource()
           : undefined;
       if (options.onImport) {
-        options.onImport(candidate, restoreProfile, expectedProfileSource);
+        await options.onImport(
+          candidate,
+          restoreProfile,
+          expectedProfileSource,
+          controller.signal,
+        );
         return;
       }
       if (candidate.kind === 'survival-replay') {
@@ -192,7 +212,7 @@ export function useDataManagement(
       ) {
         if (!tools.onSurvivalRestore)
           throw new Error('当前入口不支持生存文件。');
-        tools.onSurvivalRestore(
+        await tools.onSurvivalRestore(
           candidate.kind === 'survival-backup'
             ? candidate.document.checkpoint
             : candidate.document,
@@ -200,6 +220,7 @@ export function useDataManagement(
             ? candidate.document.profile
             : undefined,
           expectedProfileSource,
+          controller.signal,
         );
         return;
       }
@@ -207,19 +228,25 @@ export function useDataManagement(
         tools.onReplayImport(candidate.document);
         onOpenReplay();
       } else {
-        tools.onRestore(
+        await tools.onRestore(
           candidate.document.session,
           candidate.kind === 'backup' && restoreProfile
             ? candidate.document.profile
             : undefined,
           expectedProfileSource,
+          controller.signal,
         );
-        onReturnGame();
+        if (!controller.signal.aborted && id === request.current)
+          onReturnGame();
       }
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : '载入失败，当前对局未改变。',
-      );
+      if (!controller.signal.aborted && id === request.current)
+        setMessage(
+          error instanceof Error ? error.message : '载入失败，当前对局未改变。',
+        );
+    } finally {
+      if (!controller.signal.aborted && id === request.current)
+        setImporting(false);
     }
   }
   function openCurrent() {
@@ -372,15 +399,24 @@ export function useDataManagement(
     candidate,
     backup,
     restoreProfile,
-    setRestoreProfile,
+    setRestoreProfile: (value: boolean) => {
+      confirmController.current?.abort();
+      request.current++;
+      setImporting(false);
+      setRestoreProfile(value);
+    },
     profileGuard,
     recheckProfile: () => {
+      confirmController.current?.abort();
+      request.current++;
+      setImporting(false);
       profileGuard.capture();
       setRestoreProfile(false);
     },
     message,
     reading,
     exporting,
+    importing,
     activeSession,
     ongoing,
     recent,
